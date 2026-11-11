@@ -37,10 +37,15 @@
   "board": {
     "owner": "{{OWNER}}",
     "repo": "{{REPO}}",
-    "project": 1,
+    "project": 0,
     "field": "Status",
     "columns": ["Backlog", "Needs a board or decision", "Ready", "In progress", "Waiting for your check", "Blocked", "Done"],
-    "types": ["ui", "feature", "bug", "workflow"]
+    "types": ["ui", "feature", "bug", "workflow"],
+    "labels": {
+      "areas": ["area: UI", "area: Backend", "area: Workflow and docs"],
+      "effort": ["effort: small", "effort: medium", "effort: large", "effort: unknown"],
+      "feasibility": ["feasibility: high", "feasibility: medium", "feasibility: low"]
+    }
   },
   "baseline": "tools/workflow/baseline.json",
   "failTailLines": 60

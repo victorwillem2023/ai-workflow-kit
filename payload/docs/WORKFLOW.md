@@ -18,6 +18,9 @@ the rules Claude follows are in `CLAUDE.md`.
 - **One card, one session folder, one commit.** Each piece of work happens in its own folder
   (`../{{PREFIX}}-<topic>`, own port), so work in progress never breaks the main folder or another session.
 
+## The first time
+After the kit is installed, `/setup` once: it interviews you and writes the project's rules, config and first docs, and makes the board.
+
 ## Your four commands
 | You type | What happens |
 |---|---|

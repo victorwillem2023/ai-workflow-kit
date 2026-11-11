@@ -49,7 +49,9 @@ never through a shell, and takes the runner as an argument (`tests/workflow/boar
 
 | Command | What it does |
 |---|---|
-| `npm run board -- --check` | says which columns from the config the project lacks, and lists the open cards with no type label, and the area, effort and feasibility labels the `/idea` skill names that the repo does not have (for example after a rename on GitHub) |
+| `npm run board -- --init` | makes what the config describes and GitHub lacks: the labels (types, areas, effort, feasibility), the project itself when `board.project` is `0` (titled after the config's `name`, linked to the repo, its number written into the config) and the columns. Safe to run again: it only adds. Column colours come out grey; recolour them on GitHub if you like |
+| `npm run board -- --labels` | the labels the config allows, grouped: what `/idea` may use |
+| `npm run board -- --check` | says which columns from the config the project lacks, lists the open cards with no type label, and the labels the config names that the repo does not have (for example after a rename on GitHub) |
 | `npm run board -- --add "<title>" --label <type> [--label <name>]... [--body-file <file>] [--column "<column>"]` | a new card, in the first column (Backlog) unless told; refused without exactly one type label |
 | `npm run board -- --move <n> "<column>"` | moves card #n; an unknown column is refused with the list of columns |
 | `npm run board -- --block <n> "<reason>"` | moves card #n to *Blocked* and adds "Blocked: <reason>" as a comment; refused without a reason |
@@ -83,8 +85,8 @@ notes file, not every board's history.
 
 The `board` block in `workflow.config.json`: `owner` (the project's owner), `repo` (`owner/name`, where the issues
 live), `project` (the project number in its URL), `field` (the column field, `Status`), `columns` (the column
-names, spelled as on the board; `Blocked` must be one for `--block`) and `types` (the type labels; leave it out for no
-type rule). Field and option ids are read from the project, never stored in the repo; a script
+names, spelled as on the board; `Blocked` must be one for `--block`), `types` (the type labels; leave it out for no
+type rule) and `labels` (`areas`, `effort`, `feasibility`: the lists `/idea` picks from and `--init` makes). Field and option ids are read from the project, never stored in the repo; a script
 that makes many cards passes one `boardCache()` so the ids and the label list are read once (GitHub rate-limits bulk work).
 
 **When it cannot be reached** it prints one sentence and exits 1: gh missing (install it from https://cli.github.com;

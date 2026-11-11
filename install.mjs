@@ -40,6 +40,9 @@ function* walk(dir) {
   }
 }
 
+const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
+const markFile = join(target, '.workflow-kit');
+const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
 const done = { added: [], kept: [], replaced: [] };
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {
@@ -86,16 +89,14 @@ const have = new Set((existsSync(giPath) ? readFileSync(giPath, 'utf8') : '').sp
 const add = readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/).filter((l) => l.trim() && !have.has(l.trim()));
 if (add.length) writeFileSync(giPath, (existsSync(giPath) ? readFileSync(giPath, 'utf8').replace(/\n?$/, '\n') : '') + add.join('\n') + '\n');
 
-console.log(`Installed into ${target} (modules: ${modules.join(', ') || 'none'})`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force updates it)\nversion=${kitVersion}\nmodules=${modules.join(',')}\n`);
+console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (modules: ${modules.join(', ') || 'none'})` : `Installed kit ${kitVersion} into ${target} (modules: ${modules.join(', ') || 'none'})`);
+if (before && !force) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
 console.log(`
 Next, in ${target}:
-  1. Edit workflow.config.json (roots, test glob, commands, boundaries, security folders, board.project, session ports).
-  2. Fill CLAUDE.md, then the folder CLAUDE.md files you need. Replace every <...> in them.
-  3. Create the GitHub board (see tools/workflow/README.md, "Board"): a Project with a Status field with the columns from the config,
-     the type labels (ui, feature, bug, workflow) and your area labels; list the area labels in .claude/skills/idea/SKILL.md.
-     gh auth login && gh auth refresh -s project
-  4. npm run map && node tools/workflow/gate.mjs --update-baseline && npm run gate && npm run board -- --check
-  5. Dev dependencies the modules use: npm i -D tsx typescript @types/node @happy-dom/global-registrator
-     (the ui module's tests need happy-dom; the security module's tests and the gate's tests are plain node:test + tsx)
-  6. Commit once: "Workflow: ..."`);
+  1. npm i -D tsx typescript @types/node${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}
+  2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
+  3. Open Claude Code in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
+     docs/GUIDE.md and docs/ARCHITECTURE.md, makes the board (npm run board -- --init) and runs the gate.
+  4. Then /idea <the first thing to build> and /work <n>.`);

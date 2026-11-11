@@ -14,10 +14,8 @@ Run from any {{PROJECT}} folder.
    show it (number, title, column) and ask: "Same as this one?". Only on "no" go on; on "yes" stop and give that card's number.
 2. **Pick the labels**. Exactly one type: `ui` = a screen or part of the UI; `feature` = something the app does; `bug` =
    something broken; `workflow` = how we work (nothing in the app changes). One existing area label, one `effort: ...` and one
-   `feasibility: ...` label. Use only these names (spelled exactly), unless `gh label list --repo {{REPO}} --limit 100` shows otherwise:
-   - areas: <YOUR AREA LABELS, e.g. `area: UI`, `area: Backend`, `area: Workflow and docs` (create them once on GitHub, then list them here, spelled exactly)>
-   - effort: `effort: small`, `effort: small to medium`, `effort: medium`, `effort: medium to large`, `effort: large`, `effort: very large`, `effort: unknown`
-   - feasibility: `feasibility: high`, `feasibility: medium to high`, `feasibility: medium`, `feasibility: low to medium`
+   `feasibility: ...` label. Run `npm run board -- --labels` once: it prints the names the config allows, grouped; use only those,
+   spelled exactly (a group that says "none in the config" is skipped).
    Ask at most ONE question, and only when the type or the area cannot be told from the sentence (give your best guess with it).
    Never create an area label: if none fits, ask the owner.
 3. **Write the body** to a file in the scratchpad directory, short, in the shape of card #1: `**What it would do.**` (one or two

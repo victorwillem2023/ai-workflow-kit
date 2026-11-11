@@ -78,16 +78,31 @@ function setColumn(board, run, itemId, column, cache) {
     '--field-id', field.id, '--single-select-option-id', option.id]);
 }
 
-function ensureLabels(board, run, labels, cache = {}) {
-  if (!labels.length) return;
-  const have = cache.labels ??= new Set(ghJson(run, 'reading the labels', ['label', 'list', '--repo', board.repo, '--limit', '1000', '--json', 'name'])
-    .map((l) => l.name));
+const repoLabels = (board, run, cache) => cache.labels ??= new Set(ghJson(run, 'reading the labels',
+  ['label', 'list', '--repo', board.repo, '--limit', '1000', '--json', 'name']).map((l) => l.name));
+
+/** Makes the labels the repo lacks; returns the names made. `colorOf(name)` picks the colour (the config's `labelColor` by default). */
+function ensureLabels(board, run, labels, cache = {}, colorOf = () => board.labelColor ?? 'ededed') {
+  const made = [];
+  if (!labels.length) return made;
+  const have = repoLabels(board, run, cache);
   for (const name of labels) {
     if (have.has(name)) continue;
-    gh(run, 'making a label', ['label', 'create', name, '--repo', board.repo, '--color', board.labelColor ?? 'ededed']);
+    gh(run, 'making a label', ['label', 'create', name, '--repo', board.repo, '--color', colorOf(name)]);
     have.add(name);
+    made.push(name);
   }
+  return made;
 }
+
+// The label groups the config names (`board.types` and `board.labels`: areas, effort, feasibility), each with a colour.
+const LABEL_COLORS = { types: 'c5def5', areas: 'ededed', effort: 'fef2c0', feasibility: 'd4f0d4' };
+export function labelGroups(board) {
+  const l = board.labels ?? {};
+  return { types: board.types ?? [], areas: l.areas ?? [], effort: l.effort ?? [], feasibility: l.feasibility ?? [] };
+}
+const allLabels = (board) => Object.values(labelGroups(board)).flat();
+const colorFor = (board) => { const g = labelGroups(board); return (name) => LABEL_COLORS[Object.keys(g).find((k) => g[k].includes(name))] ?? 'ededed'; };
 
 // The config's type labels (`board.types`): a card has exactly one; none in the config means no rule.
 const typesOf = (board, labels) => (board.types ?? []).filter((t) => labels.includes(t));
@@ -176,23 +191,45 @@ export function searchCards(board, run, words) {
 }
 
 /** Which columns from the config the project lacks (empty when it has them all), the ones it has, and the
- *  open cards with no type label from the config (`untyped`, empty when the config lists no types). */
-export function checkBoard(board, run, cache = boardCache(), { skillText } = {}) {
+ *  open cards with no type label from the config (`untyped`, empty when the config lists no types), and the labels the config
+ *  names (types, areas, effort, feasibility) that the repo does not have (`unknownLabels`). */
+export function checkBoard(board, run, cache = boardCache()) {
   const have = statusField(board, run, cache).options.map((o) => o.name);
   const untyped = !board.types?.length ? [] : ghJson(run, 'reading the cards', ['issue', 'list', '--repo', board.repo,
     '--state', 'open', '--limit', '1000', '--json', 'number,title,labels'])
     .filter((c) => !typesOf(board, (c.labels ?? []).map((l) => l.name)).length)
     .map((c) => ({ number: c.number, title: c.title }));
-  return { columns: have, missing: board.columns.filter((c) => !have.includes(c)), untyped, unknownLabels: unknownSkillLabels(board, run, skillText, cache) };
+  const named = allLabels(board);
+  const unknownLabels = named.length ? named.filter((n) => !repoLabels(board, run, cache).has(n)) : [];
+  return { columns: have, missing: board.columns.filter((c) => !have.includes(c)), untyped, unknownLabels };
 }
 
-/** The area, effort and feasibility labels a skill text names in backticks (`area: Trips`). */
-export const skillLabels = (text) => [...new Set([...String(text ?? '').matchAll(/`((?:area|effort|feasibility): [^`\n.]+)`/g)].map((m) => m[1]))];
+// GraphQL takes the option list inline; names are JSON strings, colours an enum. Options are matched by name, so cards keep their column.
+const optionList = (names) => '[' + names.map((n) => `{name: ${JSON.stringify(n)}, color: GRAY, description: ""}`).join(', ') + ']';
 
-// The labels the skill names that the repo does not have; no skill text or no list in it means nothing to compare (and no call).
-function unknownSkillLabels(board, run, skillText, cache) {
-  const named = skillLabels(skillText);
-  if (!named.length) return [];
-  const have = cache.labels ??= new Set(ghJson(run, 'reading the labels', ['label', 'list', '--repo', board.repo, '--limit', '1000', '--json', 'name']).map((l) => l.name));
-  return named.filter((n) => !have.has(n));
+/**
+ * Sets the board up from the config: the labels (types, areas, effort, feasibility), the project (made when `board.project` is not
+ * a number yet, titled `title`, and linked to the repo), and the column field's options (the config's columns in order; options the
+ * board already has and the config does not list stay, after them). Safe to run again: it only makes what is missing.
+ */
+export function initBoard(board, run, cache = boardCache(), { title } = {}) {
+  const labelsMade = ensureLabels(board, run, allLabels(board), cache, colorFor(board));
+  let project = Number(board.project), created = false;
+  if (!Number.isInteger(project) || project <= 0) {
+    project = Number(ghJson(run, 'making the project', ['project', 'create', '--owner', board.owner, '--title', title ?? board.repo.split('/')[1], '--format', 'json']).number);
+    if (!project) throw new BoardError('gh made the project but did not say its number: look it up on GitHub and put it in workflow.config.json under board.project.');
+    created = true;
+    try { run(['project', 'link', String(project), '--owner', board.owner, '--repo', board.repo]); } catch { /* linking is a convenience */ }
+  }
+  const b = { ...board, project };
+  const field = statusField(b, run, cache);
+  const have = field.options.map((o) => o.name);
+  const columnsAdded = board.columns.filter((c) => !have.includes(c));
+  if (columnsAdded.length) {
+    const names = [...board.columns, ...have.filter((n) => !board.columns.includes(n))];
+    const query = `mutation { updateProjectV2Field(input: {fieldId: ${JSON.stringify(field.id)}, singleSelectOptions: ${optionList(names)}}) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }`;
+    gh(run, 'setting the columns', ['api', 'graphql', '-f', `query=${query}`]);
+    delete cache.field;
+  }
+  return { project, created, labelsMade, columnsAdded };
 }

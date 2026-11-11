@@ -1,6 +1,13 @@
 # AI workflow kit
 
 A way of working with an AI coding agent (built for Claude Code), packaged so a new project can start with it on day one.
+It is the step from vibe coding to engineering: plans you approve, tests first, scripts that check, one commit when you say done.
+
+```sh
+git clone https://github.com/victorwillem2023/ai-workflow-kit
+cd my-project && node ../ai-workflow-kit/install.mjs . --project "My App" --repo you/my-app
+# then in Claude Code: /setup
+```
 You steer, Claude plans, builds and checks; scripts do the checking so the AI does not have to; nothing is committed until you say so.
 
 ## The idea in eight rules
@@ -21,13 +28,14 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /idea /work /spec /build /ship  (the commands you type)
+  .claude/skills/         /setup /idea /work /spec /build /ship  (the commands you type)
   tools/workflow/         gate, board, file map, spec template, README (the reference)
   scripts/session.mjs     one worktree + port per card; --finish, --push, --list, --check-main, --remove
-  tests/workflow/         65 tests for the gate, map, docrefs and board code
+  tests/workflow/         tests for the gate, map, docrefs and board code
   docs/WORKFLOW.md        how to use it day to day, written for you
 starter/                  CORE files that are YOURS (copied only when missing, then edited)
-  CLAUDE.md               the rules Claude reads first (skeleton with <...> to fill)
+  CLAUDE.md               the rules Claude reads first (skeleton; /setup fills the <...> from an interview)
+  docs/GUIDE.md, docs/ARCHITECTURE.md   skeletons /setup fills
   workflow.config.json    roots, test commands, layer rules, security folders, session ports, board columns
   gitignore.txt, package-scripts.json, settings.local.json    merged into the project by the installer
 modules/                  OPTIONAL parts, each with payload/ (machinery) and starter/ (yours)
@@ -52,23 +60,29 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
 | `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
 
 ## Install into a new project
-Prerequisites: Node 22+, git, the GitHub CLI signed in with project access (`gh auth login`, `gh auth refresh -s project`), Claude Code.
-The tests are TypeScript run with `tsx`; the gate itself is plain Node and works on any repo that has test files and a typecheck command.
+Needs: Node 22+, git, the GitHub CLI (`gh auth login`, then `gh auth refresh -s project`), Claude Code.
 
 ```sh
 cd my-new-project            # a git repo with package.json
 node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
 # only some parts:  ... --modules security,testing
+npm i -D tsx typescript @types/node      # + @happy-dom/global-registrator with the ui module
 ```
-The modules' tests are TypeScript: `npm i -D tsx typescript @types/node @happy-dom/global-registrator` (happy-dom only for the ui module's test).
-Then:
-1. **Edit `workflow.config.json`**: `roots`, `tests` glob, `commands` (typecheck, test), `boundaries` (which folders may not import which), `security` folders, `session` (prefix, ports, extra `.env` lines such as a shared data dir), `board.project` (the project number in its GitHub URL).
-2. **Fill `CLAUDE.md`** (every `<...>`), and add a short `CLAUDE.md` in each source folder that has its own rules (what is allowed, what to read first).
-3. **Make the GitHub board**: a Project with a *Status* field holding the columns from the config, the four type labels, and your area/effort/feasibility labels. List the labels in `.claude/skills/idea/SKILL.md`. `npm run board -- --check` tells you what is missing.
-4. `npm run map && node tools/workflow/gate.mjs --update-baseline && npm run gate`
-5. Commit once: "Workflow: ...". Later, `/idea` your first card and `/work <n>` it.
+Then open Claude Code in the project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
+data comes in and the board's areas, then writes `CLAUDE.md`, `workflow.config.json`, `docs/GUIDE.md` and `docs/ARCHITECTURE.md`,
+runs `npm run board -- --init` (labels, the GitHub project, its columns) and the gate, and stops for your yes before one commit.
+After that: `/idea <the first thing to build>`, then `/work <n>`.
 
-The first gate run lists some "known stale doc references" because the skeleton docs mention files you have not written yet (`docs/GUIDE.md`, `docs/ARCHITECTURE.md`). Write them, then re-run `--update-baseline`.
+**Updating** a project to a newer kit: `git pull` in the kit, then `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --force`.
+It replaces the machinery (skills, tools, scripts) and never your starter files; `.workflow-kit` in the project says which version it has.
+
+## Good to know
+- **Windows first**: `dev.cmd` and `start.cmd` (dev module) are Windows scripts; everything else is plain Node and works anywhere.
+  `session.mjs` links `node_modules` into each session folder with a junction on Windows and a symlink elsewhere.
+- **JS and TS get the fast gate**: `npm run gate` picks the tests a change reaches from JS/TS imports. Another language still gets
+  every other check; set `commands` to its typecheck and test commands and use `gate:all` (the whole suite) as the test step.
+- **The board is GitHub Projects**, reached only through `tools/workflow/lib/board.mjs` and `gh`. A board that cannot be reached is
+  one warning line, never a stop.
 
 ## Adapting it
 - **No web UI**: install with `--modules security,testing,dev` (no ui), and drop the `ui` type from `workflow.config.json` and the `/work` skill. Everything else stands alone.

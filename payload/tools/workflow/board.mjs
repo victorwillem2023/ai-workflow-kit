@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // The backlog board from the command line (npm run board -- ...), on lib/board.mjs; settings: `board` in workflow.config.json.
-//   --check                      which columns from the config the project lacks, open cards with no type label, and /idea skill labels the repo lacks
+//   --init                       makes what the config describes and GitHub lacks: labels, the project (when board.project is not set; the number is
+//                                written into the config), the columns. Safe to run again.
+//   --labels                     the labels the config allows, grouped (types, areas, effort, feasibility); /idea reads this
+//   --check                      which columns from the config the project lacks, open cards with no type label, and config labels the repo lacks
 //   --add "<title>" --label <type> [--label <name>]... [--body-file <file>] [--column "<column>"]   a new card (Backlog by default)
 //   --move <number> "<column>"   move a card          --block <number> "<reason>"   to Blocked, the reason as a comment
 //   --show <number>              a card's title, column, labels and text
 //   --search "<words>"           cards (open and closed) whose title or text has the words: number, title, column
 // A failure prints one plain sentence and exits 1.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createCard, moveCard, blockCard, readCard, searchCards, checkBoard, BoardError } from './lib/board.mjs';
+import { createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, BoardError } from './lib/board.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WINDOWS_GH = 'C:\\Program Files\\GitHub CLI\\gh.exe';
@@ -27,7 +30,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number> or --search "<words>".';
+const usage = 'Use --init, --labels, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number> or --search "<words>".';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -36,21 +39,35 @@ function cardNumber(s) {
 }
 
 function main() {
-  const board = JSON.parse(readFileSync(join(root, 'workflow.config.json'), 'utf8')).board;
+  const configFile = join(root, 'workflow.config.json');
+  const config = JSON.parse(readFileSync(configFile, 'utf8'));
+  const board = config.board;
   if (!board) throw new BoardError('workflow.config.json has no "board" block.');
-  if (argv.includes('--check')) {
-    const skillFile = join(root, '.claude', 'skills', 'idea', 'SKILL.md');
-    const { missing, untyped, unknownLabels } = checkBoard(board, run, undefined, { skillText: existsSync(skillFile) ? readFileSync(skillFile, 'utf8') : '' });
+  if (argv.includes('--init')) {
+    const r = initBoard(board, run, undefined, { title: config.name });
+    if (r.created) {
+      config.board.project = r.project;
+      writeFileSync(configFile, JSON.stringify(config, null, 2) + '\n');
+      console.log(`board: project ${r.project} made for ${board.owner} and written into workflow.config.json`);
+    }
+    console.log(`board: ${r.labelsMade.length ? 'labels made: ' + r.labelsMade.join(', ') : 'every label exists'}`);
+    console.log(`board: ${r.columnsAdded.length ? 'columns added: ' + r.columnsAdded.join(', ') : 'every column exists'}`);
+    console.log(`board: https://github.com/${board.owner.includes('/') ? board.owner : 'users/' + board.owner}/projects/${r.project}`);
+  } else if (argv.includes('--labels')) {
+    const g = labelGroups(board);
+    for (const [k, names] of Object.entries(g)) console.log(`${k}: ${names.join(' | ') || '(none in the config)'}`);
+  } else if (argv.includes('--check')) {
+    const { missing, untyped, unknownLabels } = checkBoard(board, run);
     const problems = [];
     if (missing.length) problems.push(`The board lacks these columns: ${missing.join(', ')}.`);
     if (untyped.length) {
       problems.push(`${untyped.length} open card(s) have no type label (${board.types.join(', ')}):`,
         ...untyped.map((c) => `  #${c.number} ${c.title}`));
     }
-    if (unknownLabels.length) problems.push(`The /idea skill names labels the repo does not have: ${unknownLabels.join(', ')}.`);
+    if (unknownLabels.length) problems.push(`The config names labels the repo does not have (npm run board -- --init makes them): ${unknownLabels.join(', ')}.`);
     if (problems.length) throw new BoardError(problems.join('\n'));
     console.log(`board: project ${board.project} of ${board.owner} has all ${board.columns.length} columns` +
-      (board.types?.length ? ', and every open card has a type label' : '') + '; every label the /idea skill names exists');
+      (board.types?.length ? ', and every open card has a type label' : '') + '; every label the config names exists');
   } else if (argv.includes('--add')) {
     const title = value('--add');
     if (!title?.trim()) throw new BoardError(`--add needs a title. ${usage}`);

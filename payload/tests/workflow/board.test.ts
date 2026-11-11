@@ -2,7 +2,7 @@
 // Every test uses a fake `gh` runner that answers from memory and records the argument lists; no network.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createCard, moveCard, commentCard, blockCard, readCard, searchCards, checkBoard, boardCache, BoardError } from '../../tools/workflow/lib/board.mjs';
+import { createCard, moveCard, commentCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, boardCache, BoardError } from '../../tools/workflow/lib/board.mjs';
 import type { Board, GhResult } from '../../tools/workflow/lib/board.mjs';
 
 const COLUMNS = ['Backlog', 'Needs a board or decision', 'Ready', 'In progress', 'Waiting for your check', 'Done'];
@@ -30,6 +30,9 @@ function fakeGh(options = COLUMNS) {
     if (cmd === 'label create') return ok('');
     if (cmd === 'issue create') return ok('https://github.com/someone/app/issues/42\n');
     if (cmd === 'project item-add') return ok({ id: 'ITEM_42' });
+    if (cmd === 'api graphql' && args.some((a) => a.includes('updateProjectV2Field'))) return ok({ data: { updateProjectV2Field: { projectV2Field: { id: 'F_status' } } } });
+    if (cmd === 'project create') return ok({ number: 5, url: 'https://github.com/users/someone/projects/5' });
+    if (cmd === 'project link') return ok('');
     if (cmd === 'api graphql') {
       // The one-card lookup: issue #7 is on project 1 (ours); #8 only on project 2; any other number is on none.
       const number = Number(args.find((a) => a.startsWith('n='))?.slice(2));
@@ -203,27 +206,73 @@ describe('the board tool', () => {
     assert.deepEqual(checkBoard(board, fakeGh().run).untyped, [], 'a board with no types in the config has nothing to report');
   });
 
-  const SKILL = 'Labels: one `effort: ...` and one `feasibility: ...` (placeholders), `area: Trips`, `area: Names`, `effort: small`, `feasibility: high`, and the type `bug`.';
+  const LABELS = { areas: ['area: UI', 'area: Backend'], effort: ['effort: small'], feasibility: ['feasibility: high'] };
+  const labelled: Board = { ...typed, labels: LABELS };
   const withLabels = (names: string[]) => { const gh = fakeGh(TYPED_COLUMNS);
     const run = (a: string[], i?: string) => a.slice(0, 2).join(' ') === 'label list' ? ok(names.map((name) => ({ name }))) : gh.run(a, i);
-    return run; };
+    return { run, calls: gh.calls }; };
 
-  it('--check reports a label named in the /idea skill that the repo does not have', () => {
-    const run = withLabels(['area: Trips', 'effort: small', 'feasibility: high']);
-    assert.deepEqual(checkBoard(typed, run, boardCache(), { skillText: SKILL }).unknownLabels, ['area: Names']);
+  it('--check reports a label the config names that the repo does not have', () => {
+    const { run } = withLabels([...TYPES, 'area: UI', 'effort: small', 'feasibility: high']);
+    assert.deepEqual(checkBoard(labelled, run).unknownLabels, ['area: Backend']);
   });
 
-  it('--check says nothing about labels when every label in the /idea skill exists', () => {
-    const run = withLabels(['area: Trips', 'area: Names', 'effort: small', 'feasibility: high']);
-    assert.deepEqual(checkBoard(typed, run, boardCache(), { skillText: SKILL }).unknownLabels, []);
+  it('--check says nothing about labels when every label the config names exists', () => {
+    const { run } = withLabels([...TYPES, 'area: UI', 'area: Backend', 'effort: small', 'feasibility: high']);
+    assert.deepEqual(checkBoard(labelled, run).unknownLabels, []);
   });
 
-  it('--check still works when the /idea skill file has no label list', () => {
+  it('--check makes no label call when the config names no labels at all', () => {
     const gh = fakeGh(TYPED_COLUMNS);
-    for (const skillText of ['No labels here.', '', undefined]) {
-      assert.deepEqual(checkBoard(typed, gh.run, boardCache(), { skillText }).unknownLabels, []);
-    }
-    assert.equal(call(gh.calls, 'label list'), undefined, 'nothing to compare, so no extra call');
+    assert.deepEqual(checkBoard(board, gh.run).unknownLabels, []);
+    assert.equal(call(gh.calls, 'label list'), undefined);
+  });
+
+  it('--labels groups the config labels for /idea', () => {
+    assert.deepEqual(labelGroups(labelled), { types: TYPES, ...LABELS });
+    assert.deepEqual(labelGroups(board), { types: [], areas: [], effort: [], feasibility: [] });
+  });
+
+  it('--init makes the missing labels and columns and leaves an existing project alone', () => {
+    const { run, calls } = withLabels(['bug', 'area: UI']);
+    const partial = { ...labelled, columns: TYPED_COLUMNS };
+    const r = initBoard({ ...partial, columns: [...TYPED_COLUMNS, 'Later'] }, run);
+    assert.equal(r.created, false);
+    assert.equal(r.project, 1);
+    assert.deepEqual(r.labelsMade, ['ui', 'feature', 'workflow', 'area: Backend', 'effort: small', 'feasibility: high']);
+    assert.deepEqual(r.columnsAdded, ['Later']);
+    assert.equal(call(calls, 'project create'), undefined);
+    const made = calls.filter((c) => c.args.slice(0, 2).join(' ') === 'label create');
+    assert.equal(flag(made[0].args, '--color'), 'c5def5', 'a type label gets the type colour');
+    assert.equal(flag(made.find((c) => c.args[2] === 'area: Backend')!.args, '--color'), 'ededed');
+    const mutation = calls.find((c) => c.args.join(' ').includes('updateProjectV2Field'))!.args.join(' ');
+    for (const col of [...TYPED_COLUMNS, 'Later']) assert.ok(mutation.includes(JSON.stringify(col)), col);
+    assert.ok(mutation.includes('"F_status"'), 'the field id read from the project, never hard-coded');
+  });
+
+  it('--init keeps a column the board has that the config does not list, after the config ones', () => {
+    const gh = fakeGh([...TYPED_COLUMNS, 'Someday']);
+    const r = initBoard({ ...typed, columns: [...TYPED_COLUMNS, 'Soon'] }, gh.run);
+    assert.deepEqual(r.columnsAdded, ['Soon']);
+    const mutation = gh.calls.find((c) => c.args.join(' ').includes('updateProjectV2Field'))!.args.join(' ');
+    assert.ok(mutation.indexOf('"Soon"') < mutation.indexOf('"Someday"'));
+  });
+
+  it('--init makes the project when the config has no number, links it to the repo and says the number', () => {
+    const gh = fakeGh(TYPED_COLUMNS);
+    const r = initBoard({ ...typed, project: 0 }, gh.run, boardCache(), { title: 'My App' });
+    assert.equal(r.created, true);
+    assert.equal(r.project, 5);
+    assert.equal(flag(call(gh.calls, 'project create')!.args, '--title'), 'My App');
+    assert.deepEqual(call(gh.calls, 'project link')!.args.slice(2, 3), ['5']);
+    assert.equal(flag(call(gh.calls, 'project field-list')!.args, '--owner'), 'someone');
+  });
+
+  it('--init changes nothing when everything is there already', () => {
+    const { run, calls } = withLabels([...TYPES, 'area: UI', 'area: Backend', 'effort: small', 'feasibility: high']);
+    const r = initBoard(labelled, run);
+    assert.deepEqual(r, { project: 1, created: false, labelsMade: [], columnsAdded: [] });
+    assert.equal(calls.filter((c) => ['label create', 'project create'].includes(c.args.slice(0, 2).join(' ')) || c.args.join(' ').includes('updateProjectV2Field')).length, 0);
   });
 
   it('add refuses a card without a type label', () => {
