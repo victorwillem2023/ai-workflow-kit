@@ -1,0 +1,6 @@
+{
+  "gate": "node tools/workflow/gate.mjs",
+  "gate:all": "node tools/workflow/gate.mjs --all",
+  "map": "node tools/workflow/map.mjs",
+  "board": "node tools/workflow/board.mjs"
+}

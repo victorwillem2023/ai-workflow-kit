@@ -1,0 +1,47 @@
+{
+  "name": "{{PROJECT}}",
+  "roots": ["src", "tests", "scripts", "tools"],
+  "skipFiles": [],
+  "tests": "tests/**/*.test.ts",
+  "ignoreChanged": ["docs/**", "**/*.md", ".claude/**", "specs/**", ".gitignore", "workflow.config.json"],
+  "commands": {
+    "typecheck": "npm run typecheck",
+    "testAll": "npm test",
+    "testFiles": "node --import tsx --test"
+  },
+  "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
+  "size": { "maxLines": 400, "include": ["src/**/*.ts", "tools/**/*.mjs"] },
+  "docs": {
+    "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md"],
+    "exclude": ["docs/MAP.md"]
+  },
+  "boundaries": [
+    {
+      "name": "core is pure",
+      "from": "src/core/**",
+      "forbid": ["src/web/**", "src/server/**"],
+      "forbidNode": true
+    }
+  ],
+  "security": {
+    "code": "src/",
+    "server": "src/server/",
+    "inputFolders": ["src/core/", "src/server/"]
+  },
+  "session": {
+    "prefix": "{{PREFIX}}",
+    "firstPort": 8788,
+    "mainPort": 8787,
+    "env": {}
+  },
+  "board": {
+    "owner": "{{OWNER}}",
+    "repo": "{{REPO}}",
+    "project": 1,
+    "field": "Status",
+    "columns": ["Backlog", "Needs a board or decision", "Ready", "In progress", "Waiting for your check", "Blocked", "Done"],
+    "types": ["ui", "feature", "bug", "workflow"]
+  },
+  "baseline": "tools/workflow/baseline.json",
+  "failTailLines": 60
+}

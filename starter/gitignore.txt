@@ -1,0 +1,10 @@
+# waiting specs are local (the template is in tools/workflow/templates/)
+specs/
+# Claude session notes (keep CLAUDE.md current instead)
+PROGRESS.md
+NEXT-SESSION.md
+.env
+.env.*
+!.env.example
+node_modules/
+dist/

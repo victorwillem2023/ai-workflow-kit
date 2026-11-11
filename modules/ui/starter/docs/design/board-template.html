@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- A /ui board (stage 1). Copy this file to docs/design/<Name>.html, then replace the ??? parts.
+     Rules: the real tokens only (linked below, no hex, no new size or radius); variants A, B, C side by side, each with a letter,
+     a one-line name and what it costs; one variant marked as recommended; the phone width drawn for the recommended one; the real
+     words the app would show; the states that matter (empty, loading, error). `node scripts/shots.mjs` takes the four pictures. -->
+<html lang="en"><head><meta charset="utf-8"><title>Board ???: ??? (proposed)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../../src/web/styles.css">
+<script>/* dark when the browser (or scripts/shots.mjs --theme dark) asks for it; the tokens switch on data-theme */if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.setAttribute('data-theme','dark');</script>
+<style>
+  /* the board's own layout, built from the tokens */
+  .board { max-width: 1320px; margin: 0 auto; padding: var(--s6); display: flex; flex-direction: column; gap: var(--s5); }
+  .ey { font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  h1 { font-size: var(--t-xxl); line-height: 1.05; font-weight: 800; }
+  .lead { font-size: var(--t-m); color: var(--ink-2); max-width: 920px; }
+  .variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s5); align-items: start; }
+  .variant { display: flex; flex-direction: column; gap: var(--s3); }
+  .variant > header { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
+  .variant .letter { font-size: var(--t-xl); font-weight: 800; }
+  .variant .name { font-size: var(--t-l); font-weight: 700; }
+  .variant .cost { color: var(--ink-2); font-size: var(--t-s); }
+  .rec { border: 2px solid var(--brand); border-radius: var(--r-m); padding: var(--s3); }
+  .rec .badge { align-self: flex-start; background: var(--brand); color: var(--brand-ink); border-radius: var(--r-pill); padding: var(--s1) var(--s3); font-size: var(--t-xs); font-weight: 700; }
+  .phone { width: 400px; max-width: 100%; border: 1px solid var(--line); border-radius: var(--r-m); padding: var(--s3); background: var(--paper); }
+  .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
+  .note { color: var(--ink-2); }
+</style></head>
+<body><div class="board">
+
+  <header>
+    <p class="ey">Board ??? · proposed YYYY-MM-DD · card #???</p>
+    <h1>???: what this board decides</h1>
+    <p class="lead">One or two sentences: the problem, who has it, what the pick changes. Reply with the pick in your own words ("B, with A's header").</p>
+  </header>
+
+  <section class="variants">
+
+    <article class="variant">
+      <header><span class="letter">A</span><span class="name">??? short name</span></header>
+      <p class="cost">Gives: ???. Costs: ???.</p>
+      <div class="card"><!-- the real screen part A, built from .card .btn .chip .lrow ... --></div>
+    </article>
+
+    <article class="variant rec">
+      <span class="badge">Recommended</span>
+      <header><span class="letter">B</span><span class="name">??? short name</span></header>
+      <p class="cost">Gives: ???. Costs: ???. <b>Why recommended:</b> one sentence.</p>
+      <div class="card"><!-- variant B --></div>
+    </article>
+
+    <article class="variant">
+      <header><span class="letter">C</span><span class="name">??? short name</span></header>
+      <p class="cost">Gives: ???. Costs: ???.</p>
+      <div class="card"><!-- variant C --></div>
+    </article>
+
+  </section>
+
+  <section>
+    <p class="ey">Phone width (400 px), recommended variant</p>
+    <div class="phone"><!-- variant B at phone width: one bottom sheet, 44 px targets --></div>
+  </section>
+
+  <section>
+    <p class="ey">States</p>
+    <div class="states">
+      <div class="card"><div class="state"><b>Nothing here yet</b><span>The real empty words.</span><button class="btn pri" type="button">The one action</button></div></div>
+      <div class="card"><div class="state busy"><span>The real loading words…</span></div></div>
+      <div class="card"><div class="state err"><b>The real error words</b><span>What to do next.</span></div></div>
+    </div>
+  </section>
+
+</div></body></html>
