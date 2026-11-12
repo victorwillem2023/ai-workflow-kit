@@ -10,13 +10,16 @@ it). `/work <n>` sends a `ui` card here. Never commit before the owner says done
 
 ## 0. Is this a ui card?
 `npm run board -- --show <n>` (one card, never the whole board). Closed, *Done* or *Blocked*: as `/work` step 1.
+- **Already picked**: `grep -l "Card: #<n>" specs/*.md` finds a spec with "Owner approval: approved on ...": the board is
+  drawn and picked, and this new chat is stage 2. Go straight to *Stage 2*.
 - **No `ui` label** (another type, or none): stop. Say "Card #n is labelled `<type>`, not `ui`, so /ui does not run on it", and ask
   which type it is (with a recommendation). Relabel only on the owner's yes (`gh issue edit <n> --repo <board.repo> --add-label ui
   --remove-label <old>`). A `feature` card that turns out to need a new screen is relabelled `ui`, or split into a `ui` card and a
   `feature` card, with the owner's yes; it is never run through `/ui` halfway.
 - **Read only this** for UI work: `src/web/CLAUDE.md` (rules and done checklist), the core of `docs/STYLE.md` (tokens, components,
   rules; stop at *Board notes*), and the one notes file in `docs/design/notes/` for the board this card is about
-  (`docs/design/README.md` says which). Not the other notes files.
+  (the *Board notes* index at the end of `docs/STYLE.md` says which; a board with no notes file: `grep -n` its number in
+  `docs/design/README.md`, never read that whole). Not the other notes files.
 
 ## Short path: a small tweak to a part that exists
 "The button feels clunky", a spacing, a label, a colour that breaks a rule: no board. Say in two lines what changes and which file
@@ -27,7 +30,7 @@ part or a second screen, stop and go to stage 1.
 ## Stage 1: design (no app code)
 1. Start the session now (`node scripts/session.mjs <topic> --card <n>`, from the main folder): the board is committed with the
    feature. Work only in `../{{PREFIX}}-<topic>`, with absolute paths, every Bash command starting `cd <folder> &&`.
-2. Draw **one HTML board** in `docs/design/<Name>.html` (the next board number; look at the last rows of `docs/design/README.md`):
+2. Draw **one HTML board** in `docs/design/<Name>.html` (the next board number: `tail -5 docs/design/README.md`):
    Start from `docs/design/board-template.html` (copy it; it already has the variants A, B, C, the phone width and the states).
    - on the real tokens: `<link rel="stylesheet" href="../../src/web/styles.css">` for the variables (light on `:root`, dark on
      `data-theme='dark'`), the board's own layout in a short `<style>` built from those variables; no hex, no new size or radius;
@@ -47,12 +50,19 @@ part or a second screen, stop and go to stage 1.
    index of `docs/STYLE.md`.
 5. **Stop.** Show the four pictures' paths and the recommendation, and ask for the pick in the owner's words ("B, with A's header").
    Move the card to *Needs a board or decision* while waiting.
+6. **On the pick** (same chat): write `specs/<topic>.md` in the main folder from `tools/workflow/templates/spec.md`, short: the
+   board file, its picture paths and the pick in the owner's words, "Owner approval: approved on <date>", the files (all in
+   `src/web`; anything outside it said out loud, and then it needs a test as for a feature), the docs (`docs/STYLE.md` only for a
+   new token, component or rule; the notes file; the README row; the guide part in `docs/guide/` and README when what the user
+   can do changes). Write the pick and the date into the notes file. Then **stop**: tell the owner to open a new chat in the main
+   folder and run `/ui <n>` again. The build starts from the spec and the pictures, so the board's HTML (often 35 to 100 KB)
+   isn't sent again on every build and feedback round.
 
-## Stage 2: build (the same chat, in the session folder; no `/build` subagent)
-1. On the pick: write `specs/<topic>.md` from `tools/workflow/templates/spec.md`, short: the board and the pick in the owner's words
-   as "Owner approval: approved on <date>", the files (all in `src/web`; anything outside it said out loud, and then it needs a
-   test as for a feature), the docs (`docs/STYLE.md` only for a new token, component or rule; the notes file; the README row; GUIDE
-   and README when what the user can do changes). Write the pick and the date into the notes file. Move the card to *In progress*.
+## Stage 2: build (a new chat, in the session folder; no `/build` subagent)
+1. Read the spec and copy it into `../{{PREFIX}}-<topic>/specs/` (as `/build` step 3). Then read only `src/web/CLAUDE.md`, the core
+   of `docs/STYLE.md`, the board's notes file and its four pictures. Open the board's HTML only with
+   `grep -n` for the part you are building, never whole. Work only in the session folder, with absolute paths, every Bash command
+   starting `cd <folder> &&`. Move the card to *In progress*.
 2. Take the **before** pictures of the live app at the session's port (only for a part that exists), then build the pick in
    `src/web` from the tokens. `npm run gate` until it passes.
    ```sh

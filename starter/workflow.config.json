@@ -7,12 +7,12 @@
   "commands": {
     "typecheck": "npm run typecheck",
     "testAll": "npm test",
-    "testFiles": "node --import tsx --test"
+    "testFiles": "node --disable-warning=ExperimentalWarning --import tsx --test --test-reporter=./tools/workflow/lib/quiet-reporter.mjs"
   },
   "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
   "size": { "maxLines": 400, "include": ["src/**/*.ts", "tools/**/*.mjs"] },
   "docs": {
-    "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md"],
+    "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/guide/*.md", "docs/code/*.md"],
     "exclude": ["docs/MAP.md"]
   },
   "boundaries": [
@@ -46,6 +46,16 @@
       "effort": ["effort: small", "effort: medium", "effort: large", "effort: unknown"],
       "feasibility": ["feasibility: high", "feasibility: medium", "feasibility: low"]
     }
+  },
+  "harness": {
+    "opencode": {
+      "model": "deepseek/deepseek-v4-pro",
+      "cheapModel": "opencode/glm-5.3-flash-free",
+      "smallModel": "opencode/deepseek-v4.1-flash-free",
+      "exploreModel": "deepseek/deepseek-flash"
+    },
+    "private": [".env", "data/"],
+    "agentsMd": true
   },
   "baseline": "tools/workflow/baseline.json",
   "failTailLines": 60

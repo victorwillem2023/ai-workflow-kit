@@ -1,13 +1,13 @@
-# {{PROJECT}}: guide
+# {{PROJECT}} guide
 
-For people who use the app: what it does and how. `/setup` writes the first version; every feature that changes what a user
-can do updates it in the same commit.
+Everything the app does, for the people who use it, in one file per part. The [README](../README.md) has the short version.
+`/setup` writes the first parts; a feature that changes what a user can do updates its part in the same commit.
 
-## What it does
-<one paragraph>
+## The parts
 
-## Getting started
-<install or open, the first thing to try>
+| Part | What is in it |
+|---|---|
+| [Getting started](guide/getting-started.md) | installing or opening it, the first thing to try, the settings |
 
-## Features
-<one section per feature, in the words the app uses>
+To change the guide, edit the part that covers the feature (search `docs/guide/` with grep); keep this index to one line per
+part. A part that grows past about 15 KB is split by topic, each new file a row here, so a session opens only the one it needs.

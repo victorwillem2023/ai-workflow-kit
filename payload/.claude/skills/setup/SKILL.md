@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Set up {{PROJECT}} for the AI workflow right after the kit is installed: interviews the owner, then fills CLAUDE.md, workflow.config.json, docs/GUIDE.md and docs/ARCHITECTURE.md from the answers and the code, makes the board, and runs the gate. Run once, from the main folder.
+description: Set up {{PROJECT}} for the AI workflow right after the kit is installed: interviews the owner, then fills CLAUDE.md, workflow.config.json, the guide, docs/ARCHITECTURE.md and the folder notes from the answers and the code, writes the OpenCode commands, makes the board, and runs the gate. Run once, from the main folder.
 ---
 
 # /setup
@@ -22,23 +22,31 @@ A new, empty project: skip to the questions and say the answers will become the 
    reachable by other people (a tunnel, a deploy)?
 4. **The dev loop**: the command the owner runs while working, its port, and whether it restarts by itself.
 5. **The board**: the area labels (offer 3 to 6 from the folders and the app's parts), and whether the GitHub project exists already.
-6. **Files every feature touches** (the shared files for parallel work), if any beyond `README.md` and `docs/GUIDE.md`.
+6. **Files every feature touches** (the shared files for parallel work), if any beyond `README.md` and the guide.
+7. **Agents and models**: Claude Code only, or OpenCode too (and which paid and free models; the kit's defaults are in
+   `workflow.config.json` under `harness`)? Which folders hold private data that must never be read or sent to a model provider?
 Only real decisions; never ask what the code already says.
 
 ## 3. Write (show a short summary of each before writing it)
 - **`workflow.config.json`**: `roots`, `tests`, `commands` (typecheck, testAll, testFiles), `boundaries` from answer 2,
   `security.inputFolders` and `security.server` from answer 3, `session.mainPort` from answer 4, `board.labels.areas` from answer 5
-  (keep the effort and feasibility lists unless the owner changes them).
+  (keep the effort and feasibility lists unless the owner changes them), `harness` from answer 7 (`"opencode": false` for
+  Claude Code only; `private`: the data folders), `docs.include` with any other doc folder.
 - **`CLAUDE.md`**: replace every `<...>` with the answers, short. *How a request flows*: one line per step with the file that does it.
   *Layout rules*: the same rules as `boundaries`, in words. *Security*: name the real places outside data comes in, and the guard
-  to copy (`src/core/guards.ts` when the security module is installed). *Reading the code cheaply*: the large files, the folders never
-  to read. *Shared files*: answer 6. Keep the rest of the file as it is: those are the working rules.
-- **A folder `CLAUDE.md`** for each layer with its own rules (five to ten lines: what lives here, what it may import, what to read
-  first, its test rule). Not for a folder with nothing special to say.
-- **`docs/GUIDE.md`** (for users: what the app does, how to use it; a stub of headings for a new project) and
+  to copy (`src/core/guards.ts` when the security module is installed). *Reading the code cheaply*: the large files and the big docs to read by the section.
+  *Never read*: the data folders, generated files, recorded output, lock files. *Shared files*: answer 6. Keep the rest of the file as it is: those are the working rules.
+- **A folder `CLAUDE.md`** for each layer with its own rules (`src/core/CLAUDE.md` is the pattern): only rules, as bullets, about
+  1-2 KB, because it is loaded with every file read in that folder. Not for a folder with nothing special to say.
+- **`docs/code/<folder>.md`** for each big folder (`docs/code/core.md` is the pattern): where each part lives and how it connects,
+  read by `grep -n`. A new project: headings only; they fill as code arrives.
+- **The guide** (for users): `docs/GUIDE.md` is the index, one line per part; each part is a file in `docs/guide/` with a
+  link back to the index (`docs/guide/getting-started.md` is the pattern). A new project: one or two parts. And
   **`docs/ARCHITECTURE.md`** (the layers, the flow of a request, where state lives). Both short; they grow with each feature.
-- When the ui module is installed: in `src/web/CLAUDE.md` fill *UI structure*; leave `docs/STYLE.md` for the first `/ui` board
+- When the ui module is installed: in `src/web/CLAUDE.md` fill *New feature here* and *Rules here*, and `docs/code/web.md`; leave `docs/STYLE.md` for the first `/ui` board
   (its tokens come from there), unless the owner already has a brand: then put its colours in `src/web/styles.css` and `docs/STYLE.md`.
+- When the ui module is **not** installed (no `src/web/CLAUDE.md`): take the *UI style* section, the board and picture lines and
+  the `docs/design` paths out of `CLAUDE.md`, and the `ui` type out of `workflow.config.json`.
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
 
 ## 4. Make it real
@@ -46,6 +54,7 @@ Only real decisions; never ask what the code already says.
 npm run board -- --init        # labels, the project (when board.project is 0) and the columns
 npm run board -- --check
 npm run map
+npm run harness                 # .opencode/commands from the skills; opencode.jsonc and AGENTS.md when missing
 node tools/workflow/gate.mjs --update-baseline
 npm run gate
 ```
@@ -55,5 +64,5 @@ names a file that does not exist yet: write it or take the name out, don't basel
 
 ## 5. Stop
 Show what was written (files, one line each), what you guessed rather than were told, and ask for a yes. On yes, one commit:
-"Workflow: set up the AI workflow (CLAUDE.md, config, board, guide and architecture docs)". Then say the next step:
+"Workflow: set up the AI workflow (CLAUDE.md, config, board, agent commands, guide and architecture docs)". Then say the next step:
 `/idea <the first thing to build>`, then `/work <n>`.

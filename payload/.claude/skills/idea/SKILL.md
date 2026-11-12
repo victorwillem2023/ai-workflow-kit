@@ -6,7 +6,7 @@ model: haiku
 
 # /idea <a sentence>
 
-Cheap and quick: use a small model, read no other file (not the docs, not the code), and do not plan or build anything.
+Cheap and quick: use a small/free model when available (Claude Haiku, or the free model OpenCode's `/idea` command names), read no other file (not the docs, not the code), and do not plan or build anything.
 Run from any {{PROJECT}} folder.
 
 1. **Same idea already there?** Take the 2-3 main words of the sentence and run `npm run board -- --search "<words>"`.

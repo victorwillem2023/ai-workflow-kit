@@ -2,7 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { summaryOf, renderMap, sameMap, findInMap, usesInMap } from '../../tools/workflow/lib/map.mjs';
+import { summaryOf, renderMap, sameMap, findInMap, usesInMap, withoutImports } from '../../tools/workflow/lib/map.mjs';
 import { buildGraph } from '../../tools/workflow/lib/graph.mjs';
 
 describe('file map', () => {
@@ -80,6 +80,11 @@ describe('file map find', () => {
     const r = spawnSync(process.execPath, ['tools/workflow/map.mjs', '--uses', 'core/zzqxnobody'], { encoding: 'utf8' });
     assert.equal(r.status, 1);
     assert.match(r.stdout + r.stderr, /map: nothing matches core\/zzqxnobody/);
+  });
+  it('map find prints a line without its imports (--imports keeps them)', () => {
+    assert.equal(withoutImports('- `c.ts`: Gamma Route view. \u2192 core/a'), '- `c.ts`: Gamma Route view.');
+    assert.equal(withoutImports('- `d.ts`: Delta.'), '- `d.ts`: Delta.');
+    assert.equal(withoutImports('## src/web'), '## src/web');
   });
   it('map find stops at 25 lines and says how many more there are', () => {
     const big = '## d\n' + Array.from({ length: 45 }, (_, i) => '- `f' + i + '.ts`: thing.').join('\n') + '\n';

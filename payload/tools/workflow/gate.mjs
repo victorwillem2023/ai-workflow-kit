@@ -5,7 +5,9 @@
 //   node tools/workflow/gate.mjs --all      the same, with the whole test suite (before --finish)
 //   node tools/workflow/gate.mjs --list     only print which tests the change reaches
 //   node tools/workflow/gate.mjs --update-baseline   accept today's exceptions (rules and sizes) as the baseline
-//   (the gate also fails when docs/MAP.md is out of date: run npm run map, or a doc names a missing file or npm script)
+//   --allow-growth "<reason>"   with --update-baseline: accept a bigger number (a pure refactor); the reason is printed
+//   (the gate also fails when docs/MAP.md is out of date: run npm run map; when an OpenCode command is missing or stale: npm run harness;
+//   or when a doc names a missing file or npm script)
 //   --advice      only print the advice lines (security-review, hostile-input test) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
 // Project settings live in workflow.config.json; nothing here knows about the project.
@@ -13,7 +15,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests } from './lib/graph.mjs';
 import { findViolations, newViolations } from './lib/boundaries.mjs';
-import { oversize, sizeVerdict } from './lib/size.mjs';
+import { oversize, sizeVerdict, updateSizes, sizeNote } from './lib/size.mjs';
 import { globToRegExp, matchesAny } from './lib/glob.mjs';
 import { securityAdvice } from './lib/securityscan.mjs';
 import { hostileAdvice } from './lib/hostilecheck.mjs';
@@ -27,7 +29,8 @@ const flag = (n) => args.includes(n);
 const baseArg = args.includes('--base') ? args[args.indexOf('--base') + 1] : null;
 
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim();
-const gitOk = (...a) => { try { return git(...a); } catch { return null; } };
+// a git call that may fail (no origin yet, say): no output on stderr, null instead
+const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
 function listFiles() {
   const all = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean);
@@ -63,7 +66,20 @@ const npmScripts = Object.keys(JSON.parse(readFileSync('package.json', 'utf8')).
 const staleRefs = findStaleRefs(docTexts, (p) => existsSync(p), npmScripts);
 
 if (flag('--update-baseline')) {
-  const next = { boundaries: violations.map((v) => v.key).sort(), sizes: Object.fromEntries(Object.entries(sizes).sort()), docs: staleRefs.map(staleKey).sort() };
+  let reason = null;
+  if (flag('--allow-growth')) {
+    reason = (args[args.indexOf('--allow-growth') + 1] ?? '').trim();
+    if (!reason || reason.startsWith('--')) { console.log('--allow-growth needs a reason: --allow-growth "<reason>"'); process.exit(1); }
+  }
+  const upd = updateSizes(sizes, baseline.sizes ?? {}, reason, baseline.reasons ?? {});
+  if (!upd.ok) {
+    console.log('baseline not written: these would grow (put the new code in its own file, or --allow-growth "<reason>" for a pure refactor):');
+    for (const x of upd.raised) console.log(`  ${x.file} ${x.was ?? 'new'} -> ${x.now}`);
+    process.exit(1);
+  }
+  if (upd.message) console.log(upd.message);
+  const next = { boundaries: violations.map((v) => v.key).sort(), sizes: upd.next, docs: staleRefs.map(staleKey).sort() };
+  if (Object.keys(upd.nextReasons).length) next.reasons = upd.nextReasons;
   writeFileSync(baselineFile, JSON.stringify(next, null, 2) + '\n');
   console.log(`baseline written: ${next.boundaries.length} layer exceptions, ${Object.keys(next.sizes).length} big files, ${next.docs.length} stale doc references`);
   process.exit(0);
@@ -100,12 +116,13 @@ const steps = [
     return { ok: true, note: `${violations.length} known exceptions` };
   }],
   ['size', () => {
-    const v = sizeVerdict(sizes, baseline.sizes);
+    const v = sizeVerdict(sizes, baseline.sizes, baseline.reasons ?? {});
     if (v.failing.length) return { ok: false, out: v.failing.map((x) => `${x.file} is ${x.lines} lines (limit ${config.size.maxLines}): split it`).join('\n') };
-    const notes = v.grown.map((x) => `${x.file} grew ${x.was} -> ${x.now}`);
-    return { ok: true, note: notes.length ? 'growing: ' + notes.join('; ') : `${Object.keys(sizes).length} big files, none grown` };
+    if (v.stale.length) return { ok: false, out: v.stale.map((f) => `${f} has a reason in baseline.json but is not in the size list (stale reason): remove it`).join('\n') };
+    return { ok: true, note: sizeNote(sizes, v, baseline.reasons ?? {}) };
   }],
   ['map', () => run('node tools/workflow/map.mjs --check')],
+  ['harness', () => run('node tools/workflow/harness.mjs --check')],
   ['docs', () => {
     const fresh = newStaleRefs(staleRefs, baseline.docs ?? []);
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };

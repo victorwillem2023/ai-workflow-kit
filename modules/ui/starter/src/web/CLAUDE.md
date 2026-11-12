@@ -1,14 +1,21 @@
-# src/web: notes for Claude
+# src/web: notes for AI coding agents
 
 Loaded when you work on the UI (`src/web`, the style sheet, `index.html`). The overall flow and rules are in the root CLAUDE.md;
 `docs/MAP.md` lists every file.
 
-## UI structure
-<Where the actions live, where the state lives, where the panels and styles live: five lines, file names.>
+**New feature here**: <where a new action, a new style and a new panel go: one line, folder names>. Rules: root CLAUDE.md,
+*Code structure* and *Changing existing code*.
+
+## Rules here
+<Only the rules for this folder, as bullets: which narrow context each area file gets, where start-up code goes, how the
+style sheet is split. Keep this file short: it is loaded with every file read in `src/web`.>
+
+**Where things are**: `docs/code/web.md` holds the notes on where each part of the UI lives and how it connects.
+`grep -n` it for the feature or name you touch; read it whole only for work across the area.
 
 ## UI style (the bible: `docs/STYLE.md`)
 Every screen, panel and popup follows `docs/STYLE.md`. It is binding, not advice. The mockups are in `docs/design/png/` (index in
-`docs/design/README.md`); what still has to move to the style is on the board (label `ui`, one card per screen or part): read that
+`docs/design/README.md`: grep it for the board number, don't read it whole); what still has to move to the style is on the board (label `ui`, one card per screen or part): read that
 card first and leave a comment on it when you stop.
 
 **Before writing or changing any UI code:**
@@ -24,6 +31,9 @@ card first and leave a comment on it when you stop.
    relabel or split it. **A small tweak to a part that exists**: a fast live draft is allowed, no board, one pass, then the owner tries it.
 6. If you must deviate from a board, say so in the commit body and in your reply, and write it in the board's notes file (`docs/STYLE.md`
    too when a token, component or rule changes). Never leave code and style sheet disagreeing.
+
+Rules 1 to 4, 6 and the checklist below hold for every edit in `src/web`, whatever the card's label; only the board, the
+pictures and the numbered feedback rounds are kept to `ui` cards.
 
 **Done checklist for any UI change** (say it in the reply): tokens only, no inline styles, matches the board, 44 px targets,
 keyboard works, light and dark, phone width, the board card closed if one shipped.

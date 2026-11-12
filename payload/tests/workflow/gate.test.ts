@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { importsOf, resolveImport, buildGraph, affectedTests } from '../../tools/workflow/lib/graph.mjs';
 import { globToRegExp, matchesAny } from '../../tools/workflow/lib/glob.mjs';
 import { findViolations, newViolations } from '../../tools/workflow/lib/boundaries.mjs';
-import { oversize, sizeVerdict } from '../../tools/workflow/lib/size.mjs';
+import { oversize, sizeVerdict, updateSizes, sizeNote } from '../../tools/workflow/lib/size.mjs';
 import { securityAdvice } from '../../tools/workflow/lib/securityscan.mjs';
 import { hostileAdvice } from '../../tools/workflow/lib/hostilecheck.mjs';
 import { spawnSync } from 'node:child_process';
@@ -126,14 +126,65 @@ describe('layer boundaries', () => {
 
 describe('file size', () => {
   const lines = (n: number) => 'x\n'.repeat(n);
-  it('a new file over the limit fails; an old big file may stay but is reported when it grows', () => {
+  it('a new file over the limit still fails', () => {
     const sizes = oversize(files({ 'src/a.ts': lines(500), 'src/b.ts': lines(600), 'src/c.ts': lines(10) }), 400);
     assert.deepEqual(sizes, { 'src/a.ts': 500, 'src/b.ts': 600 });
-    const v = sizeVerdict(sizes, { 'src/a.ts': 500, 'src/b.ts': 550 });
-    assert.deepEqual(v.failing, []);
-    assert.deepEqual(v.grown, [{ file: 'src/b.ts', was: 550, now: 600 }]);
     const w = sizeVerdict({ ...sizes, 'src/new.ts': 401 }, { 'src/a.ts': 500, 'src/b.ts': 600 });
     assert.deepEqual(w.failing, [{ file: 'src/new.ts', lines: 401 }]);
+  });
+  it('a baselined file that grows now fails the size check', () => {
+    const v = sizeVerdict({ 'src/a.ts': 500, 'src/b.ts': 600 }, { 'src/a.ts': 500, 'src/b.ts': 550 });
+    assert.deepEqual(v.failing, [{ file: 'src/b.ts', was: 550, lines: 600 }]);
+    assert.deepEqual(v.grown, [{ file: 'src/b.ts', was: 550, now: 600 }]);
+  });
+  it('a baselined file that shrinks or stays the same passes', () => {
+    const v = sizeVerdict({ 'src/a.ts': 500, 'src/b.ts': 520 }, { 'src/a.ts': 500, 'src/b.ts': 550 });
+    assert.deepEqual(v.failing, []);
+    assert.deepEqual(v.grown, []);
+  });
+  it('--update-baseline refuses to raise a number and names the file', () => {
+    const r = updateSizes({ 'src/a.ts': 450, 'src/b.ts': 700, 'src/new.ts': 410 }, { 'src/a.ts': 500, 'src/b.ts': 600 }, null);
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.raised.map((x: { file: string }) => x.file), ['src/b.ts', 'src/new.ts']);
+    assert.equal(r.next, undefined);
+  });
+  it('--update-baseline lowers numbers and drops files that are now small', () => {
+    const r = updateSizes({ 'src/a.ts': 450 }, { 'src/a.ts': 500, 'src/gone.ts': 900 }, null);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.next, { 'src/a.ts': 450 });
+  });
+  it('--update-baseline with --allow-growth raises it and prints the reason', () => {
+    const r = updateSizes({ 'src/b.ts': 610 }, { 'src/b.ts': 600 }, 'import rewrite');
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.next, { 'src/b.ts': 610 });
+    assert.match(r.message ?? '', /import rewrite/);
+    assert.match(r.message ?? '', /src\/b\.ts 600 -> 610/);
+  });
+  it('the gate command refuses to raise a number without --allow-growth', () => {
+    const r = spawnSync(process.execPath, ['tools/workflow/gate.mjs', '--update-baseline', '--allow-growth'], { encoding: 'utf8' });
+    assert.notEqual(r.status, 0);
+    assert.match(r.stdout + r.stderr, /reason/);
+  });
+  it('--update-baseline keeps the reason of a file that is still big', () => {
+    const r = updateSizes({ 'src/a.ts': 450, 'src/b.ts': 600 }, { 'src/a.ts': 500, 'src/b.ts': 600 }, null, { 'src/a.ts': 'one parser, one job' });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.nextReasons, { 'src/a.ts': 'one parser, one job' });
+  });
+  it('--update-baseline drops the reason of a file that is no longer big', () => {
+    const r = updateSizes({ 'src/a.ts': 450 }, { 'src/a.ts': 500, 'src/gone.ts': 900 }, null, { 'src/a.ts': 'keep', 'src/gone.ts': 'old reason' });
+    assert.deepEqual(r.nextReasons, { 'src/a.ts': 'keep' });
+    const none = updateSizes({ 'src/a.ts': 450 }, { 'src/a.ts': 500, 'src/gone.ts': 900 }, null, { 'src/gone.ts': 'old reason' });
+    assert.deepEqual(none.nextReasons, {});
+  });
+  it('a reason for a file that is not in the size list fails the size check', () => {
+    const v = sizeVerdict({ 'src/a.ts': 500 }, { 'src/a.ts': 500 }, { 'src/a.ts': 'ok', 'src/small.ts': 'stale' });
+    assert.deepEqual(v.stale, ['src/small.ts']);
+    assert.equal(sizeVerdict({ 'src/a.ts': 500 }, { 'src/a.ts': 500 }).stale.length, 0);
+  });
+  it('the size note counts the files that have a reason', () => {
+    const sizes = { 'src/a.ts': 500, 'src/b.ts': 600 };
+    const v = sizeVerdict(sizes, sizes, { 'src/a.ts': 'one job' });
+    assert.equal(sizeNote(sizes, v, { 'src/a.ts': 'one job' }), '2 big files, 1 with a reason, none grown');
   });
   it('a file that got smaller than the limit drops out of the baseline list', () => {
     const v = sizeVerdict({ 'src/a.ts': 500 }, { 'src/a.ts': 500, 'src/gone.ts': 900 });

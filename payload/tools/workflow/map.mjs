@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Writes the file map (docs/MAP.md): one line per source file from its opening comment and imports.
 //   node tools/workflow/map.mjs           write it     node tools/workflow/map.mjs --check   fail if it is out of date
-//   node tools/workflow/map.mjs --find <words>   print only the map lines whose description has every word;  --uses <file>   the lines that import that file (read the map, write nothing)
+//   node tools/workflow/map.mjs --find <words>   print only the map lines whose description has every word (without their imports; --imports adds them);  --uses <file>   the lines that import that file (read the map, write nothing)
 // Settings: `map` in workflow.config.json ({ out, folders }).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { buildGraph } from './lib/graph.mjs';
-import { renderMap, sameMap, findInMap, usesInMap } from './lib/map.mjs';
+import { renderMap, sameMap, findInMap, usesInMap, withoutImports } from './lib/map.mjs';
 import { matchesAny } from './lib/glob.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
@@ -20,7 +20,8 @@ if (findAt >= 0 || usesAt >= 0) {
   const { lines, more } = !words.length ? { lines: [], more: 0 } : findAt >= 0 ? findInMap(text, words, 25) : usesInMap(text, words[0], 25);
   if (!lines.length) { console.log('map: nothing matches ' + words.join(' ')); process.exit(1); }
   const tail = more ? ['(+' + more + ' more: use a narrower word)'] : [];
-  console.log([...lines, ...tail].join('\n'));
+  const shown = findAt >= 0 && !process.argv.includes('--imports') ? lines.map(withoutImports) : lines;
+  console.log([...shown, ...tail].join('\n'));
   process.exit(0);
 }
 const all = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8', maxBuffer: 64 << 20 })

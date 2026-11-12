@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // Installs the workflow kit into a project.
 //   node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--force]
-// 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/WORKFLOW.md): the generic machinery. Copied as is, with
+// 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/WORKFLOW.md, docs/TOKENS.md): the generic machinery. Copied as is, with
 //    {{PROJECT}} {{REPO}} {{OWNER}} {{PREFIX}} filled in. Existing files are kept unless --force.
-// 2. starter/  (CLAUDE.md, workflow.config.json, docs/STYLE.md, docs/SECURITY.md, src/web/CLAUDE.md ...): YOUR files to edit.
+// 2. starter/  (CLAUDE.md, workflow.config.json, tsconfig.json, the guide, docs/code, folder CLAUDE.md files, STYLE.md ...): YOUR files to edit.
 //    Copied only when missing, never overwritten (not even with --force).
 // 3. modules/<name>/{payload,starter}  (ui, security, testing, dev; all by default, or pick with --modules): the same two kinds.
 //    ui = /ui skill, screenshots, style sheet, DOM helper, board template, STYLE.md; security = network guard, safe fetch, input guards,
 //    debug-handle gate and their tests, SECURITY.md; testing = fake clock, fakes pattern; dev = dev.cmd, start.cmd, dev-check.
-// 4. package.json gets the gate/gate:all/map/board scripts; .gitignore gets the kit's lines. Nothing is committed.
+// 4. package.json gets the test/test:full/typecheck/gate/gate:all/map/board/harness scripts (the project's own win, except npm's
+//    placeholder test); .gitignore gets the kit's lines. The OpenCode commands are written last (`npm run harness` again after a skill changes).
+//    Nothing is committed.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const kit = dirname(fileURLToPath(import.meta.url));
@@ -80,7 +83,10 @@ for (const [name, to] of rename) {
 const pkgPath = join(target, 'package.json');
 const scripts = JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'));
 const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : { name: prefix, private: true, type: 'module' };
-pkg.scripts = { ...scripts, ...(pkg.scripts ?? {}) };
+// the project's own scripts win, except npm's placeholder test script ("echo \"Error: no test specified\" && exit 1")
+const own = { ...(pkg.scripts ?? {}) };
+if (/no test specified/.test(own.test ?? '')) delete own.test;
+pkg.scripts = { ...scripts, ...own };
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
 // .gitignore lines
@@ -89,14 +95,20 @@ const have = new Set((existsSync(giPath) ? readFileSync(giPath, 'utf8') : '').sp
 const add = readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/).filter((l) => l.trim() && !have.has(l.trim()));
 if (add.length) writeFileSync(giPath, (existsSync(giPath) ? readFileSync(giPath, 'utf8').replace(/\n?$/, '\n') : '') + add.join('\n') + '\n');
 
+// the OpenCode commands (and, when missing, opencode.jsonc and AGENTS.md), so every agent can run /setup at once
+const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
+const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
+
 writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force updates it)\nversion=${kitVersion}\nmodules=${modules.join(',')}\n`);
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (modules: ${modules.join(', ') || 'none'})` : `Installed kit ${kitVersion} into ${target} (modules: ${modules.join(', ') || 'none'})`);
 if (before && !force) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
+console.log(`  ${harnessLine}`);
 console.log(`
 Next, in ${target}:
   1. npm i -D tsx typescript @types/node${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
-  3. Open Claude Code in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
-     docs/GUIDE.md and docs/ARCHITECTURE.md, makes the board (npm run board -- --init) and runs the gate.
-  4. Then /idea <the first thing to build> and /work <n>.`);
+  3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
+     the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)
+     and runs the gate.
+  4. Then /idea <the first thing to build> and /work <n>; after the yes, /build <topic> in a new chat.`);

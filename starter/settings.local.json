@@ -1,6 +1,12 @@
 {
   "permissions": {
     "allow": [
+      "Bash(npm run gate:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run map:*)",
+      "Bash(npm run harness:*)",
+      "Bash(node tools/workflow/gate.mjs:*)",
+      "Bash(node tools/workflow/map.mjs:*)",
       "Bash(npm run board:*)",
       "Bash(node tools/workflow/board.mjs:*)",
       "Bash(git status:*)",

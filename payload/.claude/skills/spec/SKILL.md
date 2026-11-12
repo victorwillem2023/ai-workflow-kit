@@ -13,11 +13,11 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
 
 1. Read the card: `npm run board -- --show <n>` (title, column, labels, text). Never read the whole board.
    Its type label (`ui`, `feature`, `bug`, `workflow`) goes on the spec's "Card:" line; a card with none: ask which.
-   Find what the feature does now in `docs/GUIDE.md` and the files in `docs/MAP.md` (search them, don't read them
+   Find what the feature does now in the guide part for it (`docs/GUIDE.md` lists them; open only that file in `docs/guide/`) and the files in `docs/MAP.md` (search them, don't read them
    whole) and open only the ranges you need.
 2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation).
 3. Copy `tools/workflow/templates/spec.md` to `specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
-   every section. Short, plain English.
+   every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
    - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one.
    - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
@@ -27,8 +27,9 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    Show the owner a summary, including that line, and stop.
 5. When the owner approves: set "Owner approval" and move the card to Ready: `npm run board -- --move <n> "Ready"`.
    If the board cannot be reached, say so in one line and carry on; the owner moves it by hand.
-6. Building happens in a session folder (`node scripts/session.mjs <topic>`), by a fresh session that reads the spec and
-   `tools/workflow/README.md`, not the old chat. It writes the tests first, and updates `## Status` at the end.
+   Then stop, and tell the owner to open a new chat in the main folder and run `/build <topic>`.
+6. Building happens in that new chat: `/build <topic>` makes the session folder and starts a builder that reads the spec and
+   the CLAUDE.md of each folder it touches, not this chat. It writes the tests first, and updates `## Status` at the end.
 
 Finished features wait on the local `main` until the owner runs `node scripts/session.mjs --push`; a new session starts from them.
 

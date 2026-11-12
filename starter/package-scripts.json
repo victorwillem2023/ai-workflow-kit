@@ -1,6 +1,10 @@
 {
+  "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-reporter=./tools/workflow/lib/quiet-reporter.mjs \"tests/**/*.test.ts\"",
+  "test:full": "node --disable-warning=ExperimentalWarning --import tsx --test \"tests/**/*.test.ts\"",
+  "typecheck": "tsc --noEmit",
   "gate": "node tools/workflow/gate.mjs",
   "gate:all": "node tools/workflow/gate.mjs --all",
   "map": "node tools/workflow/map.mjs",
-  "board": "node tools/workflow/board.mjs"
+  "board": "node tools/workflow/board.mjs",
+  "harness": "node tools/workflow/harness.mjs"
 }

@@ -92,6 +92,12 @@ export function findInMap(text, words, max) {
   return collect(text, ({ desc }) => want.every((w) => desc.toLowerCase().includes(w)), max);
 }
 
+// A map line without its imports (the part from ` → ` on): what `--find` prints unless `--imports` is given.
+export function withoutImports(line) {
+  const at = line.indexOf(' \u2192 ');
+  return at < 0 ? line : line.slice(0, at);
+}
+
 // The map lines whose imports name `file` exactly (e.g. `config/vibes`, `core/types`, or `b` in the same folder).
 export function usesInMap(text, file, max) {
   return collect(text, ({ deps }) => deps.includes(file), max);

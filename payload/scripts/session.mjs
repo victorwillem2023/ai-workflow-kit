@@ -3,16 +3,19 @@
 //   node scripts/session.mjs <topic> [--card 42]  make ../<prefix>-<topic> on branch <topic> from the local main (finished features that are
 //                                               not pushed yet included), print the port and the command; with --card the board card goes to
 //                                               "In progress" with a comment naming the folder and port, and the number is kept with the branch
-//   node scripts/session.mjs --finish <topic> [--no-checks] [--keep-commits]
+//   node scripts/session.mjs --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"]
 //                                               put the branch into the LOCAL main, not onto origin: squash the branch into ONE commit (with the
 //                                               first commit's message; --keep-commits for a big rework that is several), rebase it on main (a
 //                                               conflict only in the file map is solved by making the map again), re-make the map into the same
 //                                               commit, typecheck and test, move main forward, take the session away, move the card to
-//                                               "Waiting for your check"
+//                                               "Waiting for your check"; with --partial the card is only partly done: it stays in "In progress"
+//                                               (moved there if it was elsewhere) and the comment adds "Still open: <what is left>"
 //   node scripts/session.mjs --push [--no-checks]  send every finished feature to origin/main in one go (fast-forward only; when someone pushed
 //                                               meanwhile the unpushed commits are replayed on top of that and checked again first)
 //   node scripts/session.mjs --remove <topic>   take it away again (refuses while it has uncommitted work or is not merged)
-//   node scripts/session.mjs --check-main      is the main folder clean? fast-forwards it when it is only behind origin/main; fails (and says why) when it
+//   node scripts/session.mjs --clean [--yes]    the sessions whose branch is on main and that have no uncommitted work: lists them; with --yes removes
+//                                               them (through --remove's own checks). Other <prefix>-* folders are only named, never deleted
+//   node scripts/session.mjs --check-main     is the main folder clean? fast-forwards it when it is only behind origin/main; fails (and says why) when it
 //                                               has uncommitted files or has unpushed features while origin moved (ignored files such as waiting specs don't count)
 //   node scripts/session.mjs --list             the sessions, their ports and cards, and how many finished features are not pushed
 // node_modules is linked to the main folder's; .env is copied and given its own PORT plus the lines of "session.env" in
@@ -20,7 +23,7 @@
 // The board is reached through tools/workflow/lib/board.mjs; a board that cannot be reached is one warning line, never a stop.
 // WORKFLOW_GH (tests): a node script that stands in for the gh command.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -115,6 +118,11 @@ async function onBoard(what, fn) {
 const cardOf = (topic) => gitQuiet(main, 'config', '--get', `branch.${topic}.card`);
 const moveAndSay = (card, column, text) => onBoard(`Move card #${card} to "${column}"`, (lib, board, run) => {
   lib.moveCard(board, run, Number(card), column);
+  lib.commentCard(board, run, Number(card), text);
+});
+/** A card that is only partly done stays in "In progress" (moved there only when it is somewhere else) and the comment says what is left. */
+const sayPartial = (card, text) => onBoard(`Keep card #${card} in "In progress"`, (lib, board, run) => {
+  if (lib.readCard(board, run, Number(card)).column !== 'In progress') lib.moveCard(board, run, Number(card), 'In progress');
   lib.commentCard(board, run, Number(card), text);
 });
 
@@ -214,6 +222,7 @@ function runChecks(dir, again) {
  * another session's branch or files in it are never touched: when it is on another branch, only the main ref moves.
  */
 async function finish(topic, o) {
+  if (o.partial !== undefined && !o.partial.trim()) throw new Error('--partial needs the words for what is left, for example --partial "the map part".');
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   if (git(dir, 'branch', '--show-current') !== topic) throw new Error(`${dir} is not on branch "${topic}".`);
@@ -243,7 +252,8 @@ async function finish(topic, o) {
   if (git(main, 'branch', '--show-current') === 'main') git(main, 'merge', '--ff-only', topic);
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone
   remove(topic);
-  if (card) await moveAndSay(card, 'Waiting for your check', `Finished on the local main: ${subject}`);
+  if (card && o.partial !== undefined) await sayPartial(card, `Finished on the local main: ${subject}. Still open: ${o.partial.trim()}`);
+  else if (card) await moveAndSay(card, 'Waiting for your check', `Finished on the local main: ${subject}`);
   const n = Number(git(main, 'rev-list', '--count', 'origin/main..main'));
   console.log(`On local main, not pushed (${n} feature${n === 1 ? '' : 's'} waiting). Push with: node scripts/session.mjs --push`);
 }
@@ -286,16 +296,63 @@ function push(o) {
   }
 }
 
+const sameDir = (x, y) => resolve(x).toLowerCase() === resolve(y).toLowerCase();
+
+/**
+ * What a session's folder holds: 'uncommitted' (loose files), 'merged' (its branch is on main, the very thing --remove accepts)
+ * or '' (still work in progress). A branch with no commit of its own yet (one reflog entry: just created) is not "merged", though
+ * git calls it an ancestor of main; a branch whose history cannot be read stays '' too, so --clean never guesses.
+ */
+function sessionState(branch, dir) {
+  if (!branch || !existsSync(dir)) return '';
+  if (looseWork(dir)) return 'uncommitted';
+  try { git(main, 'merge-base', '--is-ancestor', branch, 'main'); } catch { return ''; }
+  return gitQuiet(main, 'reflog', 'show', '--format=%H', `refs/heads/${branch}`).split('\n').filter(Boolean).length > 1 ? 'merged' : '';
+}
+
+/** The worktrees git lists besides the main folder, with the branch and state of each. */
+const sessions = () => git(main, 'worktree', 'list').split('\n').filter(Boolean).map((r) => {
+  const branch = /\[(.+)\]$/.exec(r)?.[1];
+  const dir = r.split(/\s+/)[0];
+  return { row: r, branch, dir, isMain: sameDir(dir, main), state: sessionState(branch, dir) };
+});
+
+/** `<prefix>-*` folders next to the main folder that git does not list as a worktree: named, never deleted (they may hold work). */
+function strangers(known) {
+  return readdirSync(dirname(main), { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.startsWith(`${PREFIX}-`) && !known.some((s) => sameDir(s.dir, join(dirname(main), e.name))))
+    .map((e) => join(dirname(main), e.name));
+}
+const strangerNote = (dirs) => (dirs.length ? `\nFolders next to ${basename(main)} that git does not know as sessions (not touched; check them by hand):\n${dirs.map((d) => `  ${d}`).join('\n')}` : '');
+
+/** Without --yes: says which sessions it would remove. With --yes: removes them, one by one, through remove() and its checks. */
+function clean(yes) {
+  const all = sessions();
+  const todo = all.filter((s) => !s.isMain && s.state === 'merged');
+  if (!todo.length) console.log('No finished session to remove (a session is removed when its branch is on main and it has no uncommitted work).');
+  else if (!yes) {
+    console.log(`Would remove ${todo.length} finished session${todo.length === 1 ? '' : 's'}:\n${todo.map((s) => `  ${s.branch}  (${s.dir})`).join('\n')}\nRemoves nothing yet. Run: node scripts/session.mjs --clean --yes`);
+  } else {
+    for (const s of todo) {
+      try { remove(s.branch); } catch (e) { console.log(`Kept "${s.branch}": ${(e.stderr?.toString().trim() || e.message).split('\n')[0]}`); }
+    }
+  }
+  console.log(strangerNote(strangers(all)).trimStart());
+}
+
 function list() {
   const ports = usedPorts();
-  for (const r of git(main, 'worktree', 'list').split('\n')) {
-    const branch = /\[(.+)\]$/.exec(r)?.[1];
-    const dir = r.split(/\s+/)[0];
-    const env = join(dir, '.env');
-    const port = resolve(dir) === resolve(main) || !existsSync(env) ? undefined : /^PORT=(\d+)\s*$/m.exec(readFileSync(env, 'utf8'))?.[1];
-    const card = branch && port ? cardOf(branch) : '';
-    console.log(`${r}${port ? `  port ${port}` : ''}${card ? `  card #${card}` : ''}`);
+  const all = sessions();
+  for (const s of all) {
+    const env = join(s.dir, '.env');
+    const port = s.isMain || !existsSync(env) ? undefined : /^PORT=(\d+)\s*$/m.exec(readFileSync(env, 'utf8'))?.[1];
+    const card = s.branch && port ? cardOf(s.branch) : '';
+    const mark = s.isMain ? '' : s.state === 'merged' ? '  finished (merged)' : s.state === 'uncommitted' ? '  uncommitted work' : '';
+    console.log(`${s.row}${port ? `  port ${port}` : ''}${card ? `  card #${card}` : ''}${mark}`);
   }
+  const odd = strangers(all);
+  if (odd.length) console.log(strangerNote(odd));
+  if (all.some((s) => !s.isMain && s.state === 'merged')) console.log('\nFinished sessions can be taken away: node scripts/session.mjs --clean');
   console.log(`\nPorts in use by sessions: ${[...ports].sort().join(', ') || 'none'} (main uses ${MAIN_PORT}, see ${basename(main)}/.env)`);
   const s = mainState(false);
   console.log(s.ahead.length ? `${waiting(s.ahead.length)} not pushed yet: node scripts/session.mjs --push` : 'No finished feature is waiting to be pushed.');
@@ -305,14 +362,17 @@ const argv = process.argv.slice(2);
 const [a, b] = argv;
 const has = (flag) => argv.includes(flag);
 const valueOf = (flag) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] ?? '' : undefined);
+// a flag's text: empty when it is missing or the next word is another flag
+const textOf = (flag) => { const v = valueOf(flag); return v === undefined ? undefined : v.startsWith('--') ? '' : v; };
 try {
   if (a === '--list') list();
+  else if (a === '--clean') clean(has('--yes'));
   else if (a === '--check-main') checkMain();
   else if (a === '--push') push({ noChecks: has('--no-checks') });
   else if (a === '--remove' && b) remove(b);
-  else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits') });
+  else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial') });
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'));
-  else console.log('usage: node scripts/session.mjs <topic> [--card <n>] | --check-main | --finish <topic> [--no-checks] [--keep-commits] | --push [--no-checks] | --remove <topic> | --list');
+  else console.log('usage: node scripts/session.mjs <topic> [--card <n>] | --check-main | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --remove <topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);
