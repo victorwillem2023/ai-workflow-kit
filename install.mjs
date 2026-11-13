@@ -95,7 +95,7 @@ const have = new Set((existsSync(giPath) ? readFileSync(giPath, 'utf8') : '').sp
 const add = readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/).filter((l) => l.trim() && !have.has(l.trim()));
 if (add.length) writeFileSync(giPath, (existsSync(giPath) ? readFileSync(giPath, 'utf8').replace(/\n?$/, '\n') : '') + add.join('\n') + '\n');
 
-// the OpenCode commands (and, when missing, opencode.jsonc and AGENTS.md), so every agent can run /setup at once
+// the OpenCode commands (and, when missing, opencode.jsonc), so every agent can run /setup at once
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 

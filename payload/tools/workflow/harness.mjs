@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Writes what other coding agents need to run the skills in .claude/skills (see lib/harness.mjs).
 //   node tools/workflow/harness.mjs           writes .opencode/commands/<skill>.md for every skill (replaced each time: they are
-//                                             generated), and opencode.jsonc and AGENTS.md only when they are missing (yours to edit)
+//                                             generated), and opencode.jsonc (and AGENTS.md when harness.agentsMd is true) only when
+//                                             missing (yours to edit). AGENTS.md is opt-in: OpenCode reads it instead of CLAUDE.md.
 //   node tools/workflow/harness.mjs --check   says which command files are missing or out of date, writes nothing (exit 1 when any)
 // Settings: the "harness" block of workflow.config.json: { "opencode": { model, cheapModel, smallModel, exploreModel } | false,
-// "private": [".env", "data/"], "agentsMd": true }. No "harness" block: OpenCode on with the kit's default models.
+// "private": [".env", "data/"], "agentsMd": false }. No "harness" block: OpenCode on with the kit's default models.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -40,5 +41,5 @@ if (!existsSync('opencode.jsonc') && !existsSync('opencode.json')) {
   writeFileSync('opencode.jsonc', opencodeConfig({ project: config.name ?? 'this project', cfg: h.opencode || {}, claudeSettings, private: h.private ?? ['.env'] }));
   made.push('opencode.jsonc');
 }
-if (h.agentsMd !== false && !existsSync('AGENTS.md')) { writeFileSync('AGENTS.md', agentsMd(config.name ?? 'This project')); made.push('AGENTS.md'); }
+if (h.agentsMd === true && !existsSync('AGENTS.md')) { writeFileSync('AGENTS.md', agentsMd(config.name ?? 'This project')); made.push('AGENTS.md'); }
 console.log(`harness: ${stale.length ? `wrote ${stale.length} of ${skills.length} OpenCode commands` : `${skills.length} OpenCode commands, all current`}${made.length ? `; made ${made.join(', ')}` : ''}`);

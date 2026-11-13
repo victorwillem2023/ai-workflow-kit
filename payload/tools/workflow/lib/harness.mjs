@@ -125,14 +125,16 @@ export function opencodeConfig({ project, cfg = {}, claudeSettings, private: pri
   return `${head}\n${json}\n`;
 }
 
-/** AGENTS.md: the file several other coding agents read first. It points at CLAUDE.md so the rules live in one place. */
+/**
+ * AGENTS.md, for agents that read only that file. It points at CLAUDE.md and says nothing else, so the rules live in one place.
+ * Opt-in (`harness.agentsMd: true`): OpenCode reads AGENTS.md *instead of* CLAUDE.md when both exist, so with it OpenCode no
+ * longer loads CLAUDE.md by itself and depends on the model following this pointer.
+ */
 export function agentsMd(project) {
   return [
-    `# ${project}: notes for AI coding agents`,
+    `# ${project}`,
     '',
-    'The rules are in `CLAUDE.md` (read it first; each source folder has its own short `CLAUDE.md` too). The commands of the',
-    'flow (`/idea /work /spec /build /ship /ui /docs /check /find`) are skills in `.claude/skills/<name>/SKILL.md`: when one is',
-    'asked for and your agent has no such command, open that file and follow it step by step. How the flow works: `docs/WORKFLOW.md`.',
+    'Read `CLAUDE.md` in this folder now, before anything else, and follow it: it holds all the rules for this repo.',
     '',
   ].join('\n');
 }

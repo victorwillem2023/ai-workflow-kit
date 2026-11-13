@@ -107,7 +107,7 @@ card by hand on the board later.
 ## Agents and models
 The skills live once, in `.claude/skills/<name>/SKILL.md`; every agent reads those.
 - **Claude Code** runs them as `/<name>`. `/idea`, `/check`, `/find`, `/docs` carry `model: haiku` in their front matter.
-- **OpenCode** reads `CLAUDE.md` (no `AGENTS.md` needed) and the same skills. `.opencode/commands/<name>.md` is one short file per
+- **OpenCode** reads the root `CLAUDE.md` (no `AGENTS.md`: with one, OpenCode reads it instead of `CLAUDE.md`; it does not load folder `CLAUDE.md` files, so the root file says to read them) and the same skills. `.opencode/commands/<name>.md` is one short file per
   skill naming the skill, the agent (plan or build) and the model; `node tools/workflow/harness.mjs` writes them from the skills and
   `workflow.config.json` (`harness.opencode`), and `--check` (part of the gate) fails when one is missing or out of date.
   `opencode.jsonc` sets the models and mirrors `.claude/settings.local.json`'s permissions (the shell asks, the workflow's own

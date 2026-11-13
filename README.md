@@ -23,7 +23,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 9. **Read by the part, never whole.** A new chat per build; the file map searched, the guide one file per part, folder notes
    that hold only rules, a never-read list, a test run that prints only failures. Why each one: `docs/TOKENS.md`.
 10. **One set of skills, any agent.** Skills live in `.claude/skills/`; `npm run harness` writes OpenCode's commands from them
-    (paid model for the flow, free model only for the cheap helpers) and an `AGENTS.md` for agents that read that.
+    (paid model for the flow, free model only for the cheap helpers) and, if you want, an `AGENTS.md` that only points at `CLAUDE.md`.
 
 UI and security are first-class parts of the flow, not extras:
 - **UI**: a new screen is never invented in code. `/ui` draws an HTML board with variants A, B, C on the real style tokens, takes four pictures (desktop/phone, light/dark), and stops for your pick. Then it builds the pick; feedback rounds come with before/after pictures. `docs/STYLE.md` is binding; a done checklist ends every UI reply.
@@ -81,7 +81,7 @@ node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
 # only some parts:  ... --modules security,testing
 npm i -D tsx typescript @types/node      # + @happy-dom/global-registrator with the ui module
 ```
-The installer also writes `.opencode/commands/`, `opencode.jsonc` and `AGENTS.md`. Then open Claude Code (or OpenCode) in the
+The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
 data comes in and the board's areas, then writes `CLAUDE.md`, `workflow.config.json`, `docs/GUIDE.md` and `docs/ARCHITECTURE.md`,
 runs `npm run board -- --init` (labels, the GitHub project, its columns) and the gate, and stops for your yes before one commit.
@@ -97,8 +97,10 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
   `opencode.jsonc` whose permissions mirror `.claude/settings.local.json` and deny reading `.env` and the `harness.private`
   folders, in OpenCode 2's format (`permissions`, `agents`, `shell`; OpenCode 1 refuses it). The gate fails when a command is
   out of date. Defaults: DeepSeek for the flow, a free model only for the cheap helpers.
-- **Other agents** that read `AGENTS.md` get a pointer to `CLAUDE.md` and the skills. `"harness": { "opencode": false }` turns
-  the OpenCode files off.
+- **Other agents** that read only `AGENTS.md`: `"agentsMd": true` writes one that only points at `CLAUDE.md`. Off by default,
+  because OpenCode reads `AGENTS.md` *instead of* `CLAUDE.md` when both exist. OpenCode also loads only the root `CLAUDE.md`,
+  not a folder's, so the starter `CLAUDE.md` says to read a folder's `CLAUDE.md` before editing there.
+  `"harness": { "opencode": false }` turns the OpenCode files off.
 
 ## Good to know
 - **Windows first**: `dev.cmd` and `start.cmd` (dev module) are Windows scripts; everything else is plain Node and works anywhere.

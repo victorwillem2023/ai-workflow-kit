@@ -81,6 +81,8 @@ Every token read is paid for again on every later turn of the chat, so read by t
   renaming a file). Never read it whole: `npm run map -- --find <word>` (one telling word first; lines without their imports,
   `--imports` adds them) or `npm run map -- --uses <path>`, then open the file.
 - What the app does: `docs/GUIDE.md` is an index; open only the part in `docs/guide/` you need.
+- **Before editing in a folder, read its `CLAUDE.md`** (its rules, 1-2 KB). Claude Code loads it by itself; OpenCode and other
+  agents load only the root file, so read it yourself.
 - Where things are in a folder: `docs/code/<folder>.md`, by `grep -n`. The folder's own `CLAUDE.md` holds only its rules.
 - Read by the section, never whole (`grep -n '^## '` lists them): `docs/ARCHITECTURE.md`, `tools/workflow/README.md`,
   `docs/design/README.md` (one row per board: `grep -n` the number, `tail -5` for the last), <other big docs>.

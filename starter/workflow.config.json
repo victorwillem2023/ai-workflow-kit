@@ -55,7 +55,7 @@
       "exploreModel": "deepseek/deepseek-flash"
     },
     "private": [".env", "data/"],
-    "agentsMd": true
+    "agentsMd": false
   },
   "baseline": "tools/workflow/baseline.json",
   "failTailLines": 60

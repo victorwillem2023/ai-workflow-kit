@@ -54,7 +54,7 @@ Only real decisions; never ask what the code already says.
 npm run board -- --init        # labels, the project (when board.project is 0) and the columns
 npm run board -- --check
 npm run map
-npm run harness                 # .opencode/commands from the skills; opencode.jsonc and AGENTS.md when missing
+npm run harness                 # .opencode/commands from the skills; opencode.jsonc when missing (AGENTS.md only with harness.agentsMd)
 node tools/workflow/gate.mjs --update-baseline
 npm run gate
 ```

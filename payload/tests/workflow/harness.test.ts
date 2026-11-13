@@ -63,10 +63,10 @@ describe('harness: opencode.jsonc and AGENTS.md', () => {
     assert.match(text, /^\/\/ OpenCode for Demo/);
     assert.match(text, /\{ "action": "shell", "resource": "\*", "effect": "ask" \}/, 'one rule per line');
   });
-  it('AGENTS.md points at CLAUDE.md and the skills instead of repeating the rules', () => {
+  it('AGENTS.md only points at CLAUDE.md and repeats no rule', () => {
     const t = agentsMd('Demo');
     assert.match(t, /^# Demo/);
-    assert.match(t, /CLAUDE\.md/);
-    assert.match(t, /\.claude\/skills\/<name>\/SKILL\.md/);
+    assert.match(t, /Read `CLAUDE\.md`/);
+    assert.equal(t.trim().split('\n').filter((l) => l.trim()).length, 2, 'a title and the pointer, nothing else');
   });
 });
