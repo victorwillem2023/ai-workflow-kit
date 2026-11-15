@@ -161,6 +161,9 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.0.1**: the TypeScript `Dockerfile` runs without npm, npx, corepack or yarn (the first release scan of Training Coach failed on known
+  vulnerabilities in the npm that `node:22-slim` ships, never used by the running app), starts `node` directly so the app gets the stop
+  signal, and has a health check that uses Node's own fetch.
 - **2.0.0**: from idea to product. The README and `docs/LIFECYCLE.md` tell the whole lifecycle. The `production` module: settings
   checked at start-up, JSON logs that hide secrets and personal fields, `/health` and `/ready`, a stop that lets open requests
   finish, `docs/PRODUCTION.md` and `docs/PRIVACY.md`. The gate's *settings* check (every name the code reads is in `.env.example`).
