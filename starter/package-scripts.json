@@ -7,5 +7,6 @@
   "map": "node tools/workflow/map.mjs",
   "board": "node tools/workflow/board.mjs",
   "harness": "node tools/workflow/harness.mjs",
-  "health": "node tools/workflow/health.mjs"
+  "health": "node tools/workflow/health.mjs",
+  "protect": "node tools/workflow/protect.mjs"
 }

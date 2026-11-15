@@ -1,12 +1,12 @@
 {
   "ts": {
     "name": "TypeScript",
-    "needs": "npm i -D tsx typescript @types/node",
+    "needs": "npm i -D tsx typescript @types/node knip",
     "tests": "tests/*.test.ts"
   },
   "rust": {
     "name": "Rust",
-    "needs": "rustup (cargo, clippy)",
+    "needs": "rustup (cargo, clippy), then: cargo install cargo-machete cargo-audit --locked",
     "config": {
       "code": [
         ".rs",
@@ -50,6 +50,18 @@
             "reqwest"
           ]
         }
+      ],
+      "checks": [
+        {
+          "name": "unused",
+          "command": "cargo machete",
+          "all": true
+        },
+        {
+          "name": "audit",
+          "command": "cargo audit",
+          "all": true
+        }
       ]
     },
     "scripts": {
@@ -63,8 +75,12 @@
     "ci": [
       "- uses: dtolnay/rust-toolchain@stable",
       "  with:",
-      "    components: clippy"
-    ]
+      "    components: clippy",
+      "- uses: taiki-e/install-action@v2",
+      "  with:",
+      "    tool: cargo-machete,cargo-audit"
+    ],
+    "dependabot": "cargo"
   },
   "python": {
     "name": "Python",
@@ -110,7 +126,19 @@
         "include": [
           "src/**/*.py"
         ]
-      }
+      },
+      "checks": [
+        {
+          "name": "unused",
+          "command": "uv run deptry src && uv run vulture src --min-confidence 80",
+          "all": true
+        },
+        {
+          "name": "audit",
+          "command": "uv run pip-audit",
+          "all": true
+        }
+      ]
     },
     "scripts": {
       "test": "uv run pytest -q",
@@ -127,7 +155,8 @@
     "ci": [
       "- uses: astral-sh/setup-uv@v5",
       "- run: uv sync"
-    ]
+    ],
+    "dependabot": "uv"
   },
   "go": {
     "name": "Go",
@@ -198,7 +227,19 @@
           "internal/core/",
           "internal/server/"
         ]
-      }
+      },
+      "checks": [
+        {
+          "name": "unused",
+          "command": "go mod tidy -diff && go run honnef.co/go/tools/cmd/staticcheck@latest -checks U1000 ./...",
+          "all": true
+        },
+        {
+          "name": "audit",
+          "command": "go run golang.org/x/vuln/cmd/govulncheck@latest ./...",
+          "all": true
+        }
+      ]
     },
     "scripts": {
       "test": "go test ./...",
@@ -209,6 +250,7 @@
       "- uses: actions/setup-go@v5",
       "  with:",
       "    go-version-file: go.mod"
-    ]
+    ],
+    "dependabot": "gomod"
   }
 }

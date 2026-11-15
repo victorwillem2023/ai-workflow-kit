@@ -5,7 +5,8 @@ description: Review a finished {{PROJECT}} build with fresh eyes before it ships
 
 # /review <topic>
 
-Run in a new chat, never in the chat that built it: the builder does not grade its own work. Change no file.
+`/ship` runs this by itself in a subagent that has not seen the build; the owner can also run it in a new chat. Never in the
+chat that built it: the builder does not grade its own work. Change no file.
 Work in the session folder `../{{PREFIX}}-<topic>`.
 
 1. Read `specs/<topic>.md`, then `git diff main --stat` and the diff of the files that matter (not generated ones).

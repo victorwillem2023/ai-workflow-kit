@@ -11,9 +11,10 @@
 // 3. modules/<name>/{payload,starter}  (ui, security, testing, dev; all by default, or pick with --modules): the same two kinds.
 //    ui = /ui skill, screenshots, style sheet, DOM helper, board template, STYLE.md; security = network guard, safe fetch, input guards,
 //    debug-handle gate and their tests, SECURITY.md; testing = fake clock, fakes pattern; dev = dev.cmd, start.cmd, dev-check;
-//    map = the app map (docs/flow: a page of yes/no trees of what the app decides) and the request pages (docs/REQUESTS.md).
+//    map = the app map (docs/flow: a page of yes/no trees of what the app decides) and the request pages (docs/REQUESTS.md);
+//    deploy = a Dockerfile, npm run deploy / smoke / rollback (scripts/deploy.mjs), docs/DEPLOY.md.
 // 4. package.json gets the test/test:full/typecheck/gate/gate:all/map/board/harness scripts (the project's own win, except npm's
-//    placeholder test); .gitignore gets the kit's lines. The OpenCode commands are written last (`npm run harness` again after a skill changes).
+//    placeholder test); .gitignore gets the kit's lines; .github/dependabot.yml (weekly updates) is written when missing. The OpenCode commands are written last (`npm run harness` again after a skill changes).
 //    Nothing is committed.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -25,7 +26,7 @@ const args = process.argv.slice(2);
 const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefined;
 const force = args.includes('--force');
-const ALL = ['ui', 'security', 'testing', 'dev', 'map'];
+const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy'];
 const lang = opt('--lang') ?? 'ts';
 const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
 if (!LANGS[lang]) { console.error(`Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)`); process.exit(1); }
@@ -34,7 +35,7 @@ for (const m of modules) if (!ALL.includes(m)) { console.error(`Unknown module "
 const repo = opt('--repo');
 const project = opt('--project');
 if (!target || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || !project) {
-  console.error('Usage: node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--force]');
+  console.error('Usage: node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev,map,deploy] [--lang ts|rust|python|go] [--force]');
   process.exit(1);
 }
 if (!existsSync(target)) { console.error(`${target} does not exist. Make the project folder (and git init) first.`); process.exit(1); }
@@ -45,7 +46,7 @@ const vars = {
   TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
 };
 const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
-const TEXT = /\.(md|mjs|js|ts|json|mts|txt|html|css|toml)$/;
+const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml)|Dockerfile)$/;
 
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
@@ -132,6 +133,8 @@ const scripts = JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.js
 const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : { name: prefix, private: true, type: 'module' };
 // the project's own scripts win, except npm's placeholder test script ("echo \"Error: no test specified\" && exit 1")
 Object.assign(scripts, LANGS[lang].scripts ?? {});
+// a module's own scripts (modules/<name>/package-scripts.json)
+for (const m of modules) if (existsSync(join(kit, 'modules', m, 'package-scripts.json'))) Object.assign(scripts, JSON.parse(readFileSync(join(kit, 'modules', m, 'package-scripts.json'), 'utf8')));
 const own = { ...(pkg.scripts ?? {}) };
 if (/no test specified/.test(own.test ?? '')) delete own.test;
 pkg.scripts = { ...scripts, ...own };
@@ -149,6 +152,16 @@ const ciPath = join(target, '.github', 'workflows', 'gate.yml');
 if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replace(/\\/g, '/') === '.github/workflows/gate.yml')) {
   const steps = (LANGS[lang].ci ?? []).map((l) => `      ${l}\n`).join('');
   writeFileSync(ciPath, readFileSync(ciPath, 'utf8').replace(/^[ \t]*# another language: add its toolchain here.*\r?\n/m, steps));
+}
+
+// Dependabot: one grouped pull request a week per kind of dependency, so versions never fall far behind (written once, then yours)
+const botPath = join(target, '.github', 'dependabot.yml');
+if (!existsSync(botPath)) {
+  const kinds = [LANGS[lang].dependabot ?? 'npm', 'github-actions', ...(modules.includes('deploy') ? ['docker'] : [])];
+  mkdirSync(dirname(botPath), { recursive: true });
+  writeFileSync(botPath, '# Dependency updates: one small pull request a week per kind; the gate runs on each. Merge it on GitHub when it is green.\nversion: 2\nupdates:\n'
+    + kinds.map((k) => `  - package-ecosystem: ${k}\n    directory: /\n    schedule:\n      interval: weekly\n    groups:\n      all:\n        patterns: ["*"]\n`).join(''));
+  done.added.push('.github/dependabot.yml');
 }
 
 // .gitignore lines
@@ -171,7 +184,7 @@ console.log(`  added ${done.added.length} files, replaced ${done.replaced.length
 console.log(`  ${harnessLine}`);
 console.log(`
 Next, in ${target}:
-  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
+  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
   3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
      the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)

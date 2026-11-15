@@ -9,7 +9,7 @@ const KNOWN = {
   spec: { says: 'Write the spec for a new feature in specs/<topic>.md and wait for the owner\'s approval' },
   build: { says: 'Build an approved spec in its session folder', extra: 'For the subagent the skill starts, use the task tool with the `general` agent.' },
   ship: { says: 'Finish a feature after the owner says it is done: full gate, docs check, one commit, session finish',
-    extra: 'Where a security review is due, review the branch\'s diff yourself against CLAUDE.md\'s Security rules and report what you found before the commit.' },
+    extra: 'Where a security review is due, review the branch\'s diff yourself against CLAUDE.md\'s Security rules and report what you found before the commit. For the review subagent, use the task tool with the `general` agent.' },
   ui: { says: 'Work on one ui card: a board with variants A, B, C, then the pick built in src/web' },
   setup: { says: 'Set the project up: interview the owner, fill CLAUDE.md, the config and the first docs, make the board' },
   idea: { says: 'Add an idea, bug or workflow wish to the board as a Backlog card' },

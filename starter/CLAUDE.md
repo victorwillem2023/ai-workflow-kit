@@ -6,6 +6,8 @@ part a change touches.
 
 ## How we work (the owner decides what gets built)
 The owner wants to understand and steer the project, not just receive features. So:
+- **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
+  decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: in plain words what the user will see change, which files,
   which test proves it, which docs; wait for approval. `/work <n>` is the one entry: the card's one type label picks the route
   (*ui* = `/ui <n>`, a board with variants A, B, C first; *feature* = a plan with named tests; *bug* = a failing test first;
@@ -86,6 +88,8 @@ Treat every request and every third-party page as hostile (<say here if the serv
 - **Links and HTML**: an `href` built from data must be `http(s)` only; `innerHTML` only for static markup; text goes through a helper.
 - **A new endpoint, file reader or outbound fetch**: run a security review on the branch before `--finish`, and add its
   limits (body size, count, rate) in the same commit. (`npm run gate` prints an `advice:` line when it sees one.)
+- **Secrets** (keys, passwords, tokens) are read from the environment, never written into a file in git: the gate fails on one in a
+  change, and on a tracked `.env`.
 - **Before sharing a link** (tunnel): password set, empty data folder, stop the tunnel afterwards. Never print `.env` values.
 
 ## Reading the code cheaply

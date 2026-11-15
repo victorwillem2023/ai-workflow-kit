@@ -59,6 +59,9 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
              tests/security/security.test.ts (hostile-input tests), docs/SECURITY.md
   testing/   tests/clock.ts (fake clock: a 4 s wait costs milliseconds), tests/fakes.example.ts (fakeDeps + fixed NOW pattern)
   dev/       dev.cmd, start.cmd (Windows: install on first run, check packages and port), scripts/dev-check.mjs, .env.example
+  map/       docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
+  deploy/    a Dockerfile per language, scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
+             npm run smoke; npm run rollback), docs/DEPLOY.md
 ```
 
 ## The commands you type
@@ -75,11 +78,14 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
 ## Install into a new project
 Needs: Node 22+, git, the GitHub CLI (`gh auth login`, then `gh auth refresh -s project`), Claude Code.
 
+A web app: make it with its framework's own starter first (`npm create vite@latest my-app -- --template react-ts`), then install
+the kit into that folder. `/setup` recommends the framework when you haven't picked one.
+
 ```sh
 cd my-new-project            # a git repo with package.json
 node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
 # only some parts:  ... --modules security,testing
-npm i -D tsx typescript @types/node      # + @happy-dom/global-registrator with the ui module
+npm i -D tsx typescript @types/node knip # + @happy-dom/global-registrator with the ui module
 ```
 The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
@@ -126,6 +132,14 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.4.0**: built to ship. Gate: a secret in a change fails (`secrets`), a copied function fails (`copies`), files that change
+  together (`together`: a changed table needs a migration), and your own checks (`checks`: end-to-end tests, and per language
+  `unused` for dead code and unused libraries and `audit` for libraries with a known security problem). `npm run protect` (main can
+  no longer be deleted or rewritten). The deploy module (`npm run deploy`, `smoke`, `rollback`, a `Dockerfile`, `docs/DEPLOY.md`).
+  `.github/dependabot.yml`. Pull requests as a setting (`"flow": "pr"`: `--finish` opens one, `--merge <topic>` lands it when its
+  checks are green). `/ship` has a subagent that has not seen the build review it. `/setup` goes through the stack of a new project with you, one decision at a time with a recommendation
+  (`.claude/skills/setup/stack.md`: language, UI and app framework, backend, data, sign-in, where it runs, tests, the decided-once
+  questions) and writes `docs/STACK.md`. A library a change adds that `docs/STACK.md` does not name gets an `advice:` line. Globs take `{a,b}`.
 - **1.3.0**: from Trailsmith's 15 Nov audit. *Fix it where the rule lives* (rules 11 to 14 in the starter `CLAUDE.md`, a
   *Rules and where each lives* table in the starter `docs/ARCHITECTURE.md`, a section in the spec template, a line in `/spec` and `/setup`).
   Three gate checks: function length, the scope guard, the quality score. `/review` (fresh eyes before shipping) and `/lesson`

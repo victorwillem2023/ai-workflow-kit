@@ -10,6 +10,9 @@
 //                                               commit, typecheck and test, move main forward, take the session away, move the card to
 //                                               "Waiting for your check" (with --no-checks the folder and branch stay until --clean --yes); with --partial the card is only partly done: it stays in "In progress"
 //                                               (moved there if it was elsewhere) and the comment adds "Still open: <what is left>"
+//   "flow": "pr" under "session" in workflow.config.json: --finish pushes the branch and opens a pull request instead (GitHub runs the
+//                                               checks on it, the session folder stays for fixes), and
+//   node scripts/session.mjs --merge <topic>    merges it when its checks are green, brings main up to date and removes the session
 //   node scripts/session.mjs --push [--no-checks]  send every finished feature to origin/main in one go (fast-forward only; when someone pushed
 //                                               meanwhile the unpushed commits are replayed on top of that and checked again first)
 //   node scripts/session.mjs --remove <topic>   take it away again (refuses while it has uncommitted work or is not merged); first stops its
@@ -45,6 +48,8 @@ const folderOf = (topic) => join(dirname(main), `${PREFIX}-${topic}`);
 const FIRST_PORT = sessionCfg.firstPort ?? 8788;
 const MAIN_PORT = sessionCfg.mainPort ?? 8787;
 const SESSION_ENV = sessionCfg.env ?? {};
+// 'direct': a finished feature goes to the local main and --push sends it; 'pr': it becomes a pull request and --merge lands it
+const FLOW = sessionCfg.flow === 'pr' ? 'pr' : 'direct';
 
 function usedPorts() {
   const ports = new Set();
@@ -253,6 +258,7 @@ async function finish(topic, o) {
   if (!o.noChecks) runChecks(dir, '--finish');
   const card = cardOf(topic);
   const subject = git(dir, 'log', '-1', '--format=%s');
+  if (FLOW === 'pr') return openPullRequest(topic, dir, card, subject, o);
   if (git(main, 'branch', '--show-current') === 'main') git(main, 'merge', '--ff-only', topic);
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone
   if (!o.noChecks) remove(topic);
@@ -266,12 +272,54 @@ async function finish(topic, o) {
   console.log(`On local main, not pushed (${n} feature${n === 1 ? '' : 's'} waiting). Push with: node scripts/session.mjs --push`);
 }
 
+/** gh that must work: its output, or an error with the first line it printed. */
+function gh(...args) {
+  const r = ghRun(args);
+  if (r.error || r.status !== 0) throw new Error(`gh ${args.slice(0, 2).join(' ')} failed: ${(r.stderr || r.stdout || r.error?.message || '').trim().split('\n')[0]}`);
+  return r.stdout.trim();
+}
+
+/** The pull-request flow's finish: the checked branch goes to origin (its own branch, so rewriting it is fine) and becomes a pull request. */
+async function openPullRequest(topic, dir, card, subject, o) {
+  try { git(dir, 'push', '--force-with-lease', '-u', 'origin', `${topic}:${topic}`); }
+  catch (e) { throw new Error(`origin did not take branch "${topic}" (${(e.stderr?.toString() ?? '').trim().split('\n').pop() || 'refused'}).`); }
+  const seen = ghRun(['pr', 'view', topic, '--json', 'url,state', '--jq', 'select(.state=="OPEN") | .url']);
+  const url = seen.status === 0 && seen.stdout.trim() ? seen.stdout.trim() : gh('pr', 'create', '--base', 'main', '--head', topic, '--fill');
+  if (card && o.partial !== undefined) await sayPartial(card, `Pull request: ${url} (${subject}). Still open: ${o.partial.trim()}`);
+  else if (card) await moveAndSay(card, 'Waiting for your check', `Pull request: ${url} (${subject})`);
+  console.log(`Pull request: ${url}\nGitHub runs the checks on it; the session folder stays for fixes (finish again to update it).\nWhen the checks are green and the owner says so: node scripts/session.mjs --merge ${topic}`);
+}
+
+/** Lands a pull request: only with green checks; then main is brought up to date and the session is taken away. */
+async function merge(topic) {
+  if (FLOW !== 'pr') throw new Error('This project sends features straight to main (node scripts/session.mjs --push). For pull requests: "flow": "pr" under "session" in workflow.config.json.');
+  const checks = ghRun(['pr', 'checks', topic]);
+  const said = `${checks.stdout ?? ''}${checks.stderr ?? ''}`.trim();
+  if (checks.error || (checks.status !== 0 && !/no checks reported/i.test(said))) {
+    throw new Error(checks.status === 8 ? `The checks of "${topic}" are still running. Run --merge again when they are done.` : `The checks of "${topic}" are not green, so it is not merged:\n${said || checks.error?.message}`);
+  }
+  gh('pr', 'merge', topic, '--squash');
+  gitQuiet(main, 'push', 'origin', '--delete', topic);
+  catchUp(mainState(true));
+  const card = cardOf(topic);
+  // GitHub made one new commit of the branch, so git does not see the branch as merged: it is removed by name
+  const dir = folderOf(topic);
+  if (existsSync(dir) && looseWork(dir)) console.log(`${dir} has uncommitted work, so it is kept.`);
+  else {
+    if (existsSync(dir)) { stopServer(dir); if (removeFolder(main, dir) === 'held') console.log(heldMessage(dir)); }
+    gitQuiet(main, 'branch', '-D', topic);
+  }
+  if (card) await onBoard(`Say on card #${card} that it is merged`, (lib, board, run) => lib.commentCard(board, run, Number(card), 'Merged into main.'));
+  console.log(`Merged "${topic}" into main; the local main is up to date.`);
+}
+
 /**
  * Every finished feature to origin/main. Level or ahead: a plain push. When someone pushed meanwhile, the unpushed commits are
  * replayed on top of origin/main in a throwaway work folder, checked again, pushed, and only then does the local main move to them;
  * a conflict stops it with nothing changed and names the commit. The push is fast-forward only, never forced.
  */
 function push(o) {
+  if (FLOW === 'pr') throw new Error('This project works with pull requests: node scripts/session.mjs --merge <topic> lands one.');
   const s = mainState(true);
   if (!s.ahead.length) { catchUp(s); console.log('Nothing to push: no finished feature is waiting.'); return; }
   if (s.loose.length) throw new Error(looseMessage(s.loose));
@@ -383,10 +431,11 @@ try {
   else if (a === '--clean') clean(has('--yes'));
   else if (a === '--check-main') checkMain();
   else if (a === '--push') push({ noChecks: has('--no-checks') });
+  else if (a === '--merge' && b) await merge(b);
   else if (a === '--remove' && b) remove(b);
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial') });
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'));
-  else console.log('usage: node scripts/session.mjs <topic> [--card <n>] | --check-main | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --remove <topic> | --clean [--yes] | --list');
+  else console.log('usage: node scripts/session.mjs <topic> [--card <n>] | --check-main | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

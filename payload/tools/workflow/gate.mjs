@@ -6,25 +6,29 @@
 //   node tools/workflow/gate.mjs --list     only print which tests the change reaches
 //   node tools/workflow/gate.mjs --update-baseline   accept today's exceptions (rules and sizes) as the baseline
 //   --allow-growth "<reason>"   with --update-baseline: accept a bigger number (a pure refactor); the reason is printed
+//   (project steps from the config: `checks`, `together`, `copies`; a secret in the change fails too. See README.md, *What it checks*)
 //   (the gate also fails when docs/MAP.md is out of date: run npm run map; when an OpenCode command is missing or stale: npm run harness;
 //   or when a doc names a missing file or npm script)
 //   --advice      only print the advice lines (security-review, hostile-input test) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
 // Project settings live in workflow.config.json; nothing here knows about the project.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests } from './lib/graph.mjs';
 import { findViolations, newViolations } from './lib/boundaries.mjs';
 import { oversize, sizeVerdict, updateSizes, sizeNote } from './lib/size.mjs';
 import { globToRegExp, matchesAny } from './lib/glob.mjs';
-import { securityAdvice } from './lib/securityscan.mjs';
+import { securityAdvice, addedLines } from './lib/securityscan.mjs';
 import { hostileAdvice } from './lib/hostilecheck.mjs';
 import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
-import { longFunctions } from './lib/funclen.mjs';
+import { longFunctions, copiedFunctions } from './lib/funclen.mjs';
 import { specPaths, outsideSpec } from './lib/scope.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
+import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
+import { dueChecks, missingPartners } from './lib/checks.mjs';
+import { secretsIn, envFiles } from './lib/secrets.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -37,13 +41,15 @@ const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 <
 // a git call that may fail (no origin yet, say): no output on stderr, null instead
 const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
+// what the change is compared with: --base, or where this branch left main
+const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? 'HEAD';
+
 function listFiles() {
   const all = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean);
   return all.filter((f) => config.roots.some((r) => f.startsWith(r + '/')) && !matchesAny(f, config.skipFiles) && existsSync(f));
 }
 
 function changedFiles() {
-  const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? 'HEAD';
   const diff = git('diff', '--name-only', '--diff-filter=d', base).split('\n');
   const fresh = git('ls-files', '--others', '--exclude-standard').split('\n');
   return [...new Set([...diff, ...fresh])].filter(Boolean);
@@ -65,6 +71,8 @@ const sizes = oversize(new Map([...files].filter(([f]) => matchesAny(f, config.s
 // long functions (only when `functions` is set in the config): name -> lines, kept by the same ratchet as the file sizes
 const funcs = config.functions ? longFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.functions.include))), config.functions.maxLines) : null;
 const counts = countPatterns(files, config.ratchets);
+// functions with the same body in two places (only when `copies` is set): one line per group, a new line fails
+const copies = config.copies ? copiedFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.copies.include ?? config.functions?.include ?? config.size.include))), config.copies.minLines ?? 6).map((g) => [...g].sort().join(' = ')).sort() : null;
 const violations = findViolations(graph, config.boundaries);
 
 const docFiles = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
@@ -101,6 +109,7 @@ if (flag('--update-baseline')) {
     if (up.length && !reason) { console.log('baseline not written: these counts rose (put the rule in the kind\'s own file, or --allow-growth "<reason>"): ' + up.map((x) => `${x.name} ${x.was} -> ${x.now}`).join('; ')); process.exit(1); }
     next.ratchets = counts;
   }
+  if (copies) next.copies = copies;
   if (config.quality?.command) {
     // the score now becomes the number that may not drop; a lower one needs a reason, like a file that grew
     const score = parseScore(spawnSync(config.quality.command, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20 }).stdout ?? '', config.quality.pattern);
@@ -115,14 +124,21 @@ if (flag('--update-baseline')) {
 
 function adviceLines() {
   const codeDir = (config.security?.code ?? 'src/').replace(/\/$/, '');
-  const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? 'HEAD';
   const diff = gitOk('diff', '-U0', '--diff-filter=d', base, '--', codeDir, 'tests') ?? '';
   const fresh = new Map();
   const fresh0 = git('ls-files', '--others', '--exclude-standard', '--', codeDir).split('\n').map((x) => x.trim());
   for (const f of fresh0.filter((x) => x && existsSync(x))) fresh.set(f, readFileSync(f, 'utf8').split('\n'));
   return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security)];
 }
-if (flag('--advice')) { const a = adviceLines(); if (a.length) console.log(a.join('\n')); process.exit(0); }
+// a library a change adds that docs/STACK.md does not name (only when the project has a STACK.md)
+function depsLines() {
+  if (!existsSync('docs/STACK.md')) return [];
+  const stack = readFileSync('docs/STACK.md', 'utf8');
+  return ['package.json', 'Cargo.toml', 'pyproject.toml', 'go.mod'].filter((f) => existsSync(f)).flatMap((f) =>
+    unnamedDependencies(addedDependencies(f, gitOk('show', `${base}:${f}`) ?? '', readFileSync(f, 'utf8')), stack)
+      .map((n) => `advice: ${f} adds ${n}, which docs/STACK.md does not name: add it there with why (the owner's decision), or take it out`));
+}
+if (flag('--advice')) { const a = [...adviceLines(), ...depsLines()]; if (a.length) console.log(a.join('\n')); process.exit(0); }
 
 const changed = changedFiles();
 const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming });
@@ -171,6 +187,23 @@ const steps = [
     if (up.length) return { ok: false, out: up.map((x) => `${x.name}: ${x.now}, the baseline is ${x.was}. One more check on what kind a thing is: put what differs in the kind's own file`).join('\n') };
     return { ok: true, note: Object.entries(counts).map(([k, n]) => `${k} ${n}`).join(', ') };
   }],
+  copies && ['copies', () => {
+    const fresh = copies.filter((k) => !(baseline.copies ?? []).includes(k));
+    if (fresh.length) return { ok: false, out: fresh.map((k) => `${k.replaceAll(' = ', ' and ')} have the same body: keep one and call it from both places`).join('\n') };
+    return { ok: true, note: `${copies.length} known` };
+  }],
+  ['secrets', () => {
+    const added = addedLines(gitOk('diff', '-U0', '--diff-filter=d', base) ?? '');
+    for (const f of git('ls-files', '--others', '--exclude-standard').split('\n').filter((x) => x && existsSync(x) && statSync(x).size < 300_000)) added.set(f, readFileSync(f, 'utf8').split('\n'));
+    const found = [...secretsIn(added).map((x) => `${x.file} holds ${x.kind}`), ...envFiles(git('ls-files').split('\n')).map((f) => `${f} is in git: env files with real values stay out of it`)];
+    if (found.length) return { ok: false, out: found.join('\n') + '\nTake it out, read it from the environment (.env, never committed), and change the key if it was ever pushed. A made-up value: put "not a secret" in a comment on that line.' };
+    return { ok: true };
+  }],
+  config.together?.length && ['together', () => {
+    const m = missingPartners(config.together, changed);
+    if (m.length) return { ok: false, out: m.map((r) => `${r.name}: ${r.changed.join(', ')} changed and nothing under ${r.needs.join(', ')} did. These change together`).join('\n') };
+    return { ok: true };
+  }],
   config.scope === 'fail' && ['scope', () => { const s = scopeLines(); return s.length ? { ok: false, out: s.join('\n') } : { ok: true }; }],
   ['map', () => run('node tools/workflow/map.mjs --check')],
   // (only a builder that knows --check: an older one would rewrite the file instead of checking it)
@@ -188,6 +221,12 @@ const steps = [
     const r = run(`${config.commands.testFiles} ${reach.tests.join(' ')}`);
     return { ...r, note: `${reach.tests.length} test files` };
   }],
+  ...dueChecks(config.checks, changed, flag('--all')).map(({ check, due, why }) => [check.name, () => {
+    if (!due) return { ok: true, note: why };
+    // `setup` (installing a browser, say) runs on GitHub only; on your own computer it is installed once by hand
+    if (check.setup && process.env.CI) { const s = run(check.setup); if (!s.ok) return s; }
+    return run(check.command);
+  }]),
   config.quality?.command && ['quality', () => {
     const q = config.quality;
     if (!flag('--all') && !changed.some((f) => matchesAny(f, q.when ?? ['src/**']))) return { ok: true, note: 'not reached by this change' };
@@ -207,5 +246,5 @@ for (const [name, fn] of steps) {
   }
   console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
 }
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines()]) console.log(line);
+for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines()]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

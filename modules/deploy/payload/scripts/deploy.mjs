@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+// Deploys the commit you are on and proves it runs, or puts the old version back. Settings: `deploy` in workflow.config.json
+// ({ "url": "https://app.example.com", "command": "<the host's deploy command, {version} is the commit>", "rollback": "<the same for an
+// older {version}>", "health": "/health", "waitSeconds": 120 }); how the app answers /health is in docs/DEPLOY.md.
+//   node scripts/deploy.mjs                      deploy: run the command, wait until /health names this commit; if it never does, roll back
+//   node scripts/deploy.mjs --smoke              only ask the running app: is it up, and which version
+//   node scripts/deploy.mjs --rollback [<commit>]  put an older version back (default: the one deployed before, from this computer's list)
+// Only when the owner says so. Refuses uncommitted files and a commit that is not on origin/main: what runs is a commit you can find again.
+import { execFileSync, spawnSync } from 'node:child_process';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fill, healthUrl, ask, waitFor, previous } from '../tools/workflow/lib/deploy.mjs';
+
+const args = process.argv.slice(2);
+const git = (...a) => execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+const root = git('rev-parse', '--show-toplevel');
+process.chdir(root);
+const cfg = JSON.parse(readFileSync('workflow.config.json', 'utf8')).deploy ?? {};
+const stop = (line) => { console.log(line); process.exit(1); };
+if (!cfg.url) stop('Not set up yet: put "deploy": { "url": ..., "command": ..., "rollback": ... } in workflow.config.json (docs/DEPLOY.md says how).');
+
+const url = healthUrl(cfg.url, cfg.health);
+const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(10_000) }); return { status: r.status, body: await r.text() }; };
+const pauseMs = Number(process.env.WORKFLOW_DEPLOY_PAUSE_MS ?? 3000); // tests shorten it
+const waiting = { tries: Math.max(1, Math.ceil(((cfg.waitSeconds ?? 120) * 1000) / Math.max(pauseMs, 1))), pause: () => new Promise((r) => setTimeout(r, pauseMs)) };
+const run = (command) => spawnSync(command, { shell: true, stdio: 'inherit' }).status === 0;
+// the versions deployed from this computer, oldest first (kept beside the repository's git data, never committed)
+const logFile = join(resolve(root, git('rev-parse', '--git-common-dir')), 'deploys.log');
+const log = () => (existsSync(logFile) ? readFileSync(logFile, 'utf8').split('\n').filter(Boolean) : []);
+
+async function rollback(to, why) {
+  if (!cfg.rollback) stop(`${why}No "rollback" command in workflow.config.json: put the old version back by hand.`);
+  if (!to) stop(`${why}No earlier deploy is known on this computer. Name the commit: npm run rollback -- <commit>`);
+  console.log(`${why}Putting ${to} back...`);
+  const back = run(fill(cfg.rollback, to)) && (await waitFor(get, url, to, waiting)).ok;
+  console.log(back ? `Rolled back: ${cfg.url} runs ${to} again.` : `The rollback did not come up either: ${url} is not answering with ${to}. Look at the host now.`);
+  return back;
+}
+
+if (args.includes('--smoke')) {
+  const now = await ask(get, url);
+  console.log(now.up ? `up: ${cfg.url} runs ${now.version ?? 'a version it does not name (see docs/DEPLOY.md, the health address)'}` : `DOWN: ${url} does not answer 200`);
+  process.exit(now.up ? 0 : 1);
+}
+if (args.includes('--rollback')) {
+  const named = args[args.indexOf('--rollback') + 1];
+  const live = (await ask(get, url)).version;
+  process.exit((await rollback(named && !named.startsWith('--') ? named : previous(log(), live), '')) ? 0 : 1);
+}
+
+if (!cfg.command) stop('No "command" under "deploy" in workflow.config.json (docs/DEPLOY.md says how).');
+if (git('status', '--porcelain')) stop('There are uncommitted files: commit them first (only a commit is deployed).');
+try { git('merge-base', '--is-ancestor', 'HEAD', 'origin/main'); } catch { stop('This commit is not on origin/main yet: push first (node scripts/session.mjs --push).'); }
+const version = git('rev-parse', '--short=12', 'HEAD');
+const before = (await ask(get, url)).version;
+console.log(`Deploying ${version}${before ? ` (running now: ${before})` : ''}...`);
+const sent = run(fill(cfg.command, version));
+const now = sent ? await waitFor(get, url, version, waiting) : { ok: false, up: false, version: null };
+if (now.ok) {
+  appendFileSync(logFile, version + '\n');
+  console.log(`Live: ${cfg.url} runs ${version}.`);
+  process.exit(0);
+}
+const why = !sent ? 'The deploy command failed. ' : now.up ? `The app answers, but with version ${now.version ?? 'unknown'}, not ${version}. ` : `The new version did not come up (${url} gave no 200). `;
+if (before && before !== version) await rollback(before, why); else console.log(`${why}Nothing was running before, so there is nothing to put back.`);
+process.exit(1);

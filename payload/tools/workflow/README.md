@@ -29,6 +29,19 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   the baseline may not grow. Found by counting braces, so it reads TypeScript, JavaScript, Rust, Go and the like.
 - **ratchets** (when `ratchets` is in the config): each counts patterns in some files, for example checks on what kind a thing is
   (`{ "name": "kind checks", "include": ["src/plan/**"], "patterns": ["shape === '", "isBike\\("] }`); a count above the baseline fails.
+- **copies** (when `copies` is in the config): two functions with the same body (`copies.minLines` lines or more, 6 by default)
+  fail with both names, unless the pair is in the baseline: keep one and call it from both places.
+- **secrets**: a key or password in the added lines of a change (cloud and API keys, a private key, `password = "..."` with a
+  real-looking value) fails with the file and the kind, never the value; so does a tracked `.env`. A made-up value in a test
+  passes with `not a secret` in a comment on its line.
+- **together** (when `together` is in the config): files that change together.
+  `{ "name": "migration", "when": ["src/db/schema.ts"], "needs": ["migrations/**"] }` fails a change to the tables that adds no migration.
+- **your own checks** (`checks` in the config), after the tests, each a command that must pass:
+  `{ "name": "e2e", "command": "npx playwright test", "when": ["src/web/**"], "all": true, "setup": "npx playwright install --with-deps chromium" }`.
+  `when`: only when a changed file matches; `all`: only with `--all` (slow ones); `setup`: run first, on GitHub only. The kit sets
+  two per language: `unused` (dead code and libraries nothing uses) and `audit` (libraries with a known security problem).
+- **dependencies** (advice, when `docs/STACK.md` exists): a library a change adds to `package.json`, `Cargo.toml`, `pyproject.toml`
+  or `go.mod` that `docs/STACK.md` does not name gets an `advice:` line.
 - **scope**: with one spec in `specs/`, a changed file the spec never names is printed as a `scope:` line (`"scope": "fail"` makes
   it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out).
 - **quality** (when `quality.command` is in the config): the command prints "79 of 106"; fewer passing than the baseline fails.
@@ -46,12 +59,25 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 
 Changes to a file many things import (a shared types file, say) still run most tests: that is the measure of how coupled it is.
 
+## Straight to main, or pull requests
+`"flow"` under `session` in the config. `"direct"` (the default): `--finish` puts the feature on the local `main` and `--push` sends
+it. `"pr"`: `--finish` pushes the branch and opens a pull request, GitHub runs the gate on it, the session folder stays for fixes
+(finish again to update it), and `node scripts/session.mjs --merge <topic>` lands it only when its checks are green, brings the
+local `main` up to date and removes the session. With `"pr"`, `npm run protect` also refuses a direct push to `main` and asks
+GitHub to take only work whose gate passed. Run `npm run protect` again after changing the flow.
+
+## Protecting main
+`npm run protect` does two things: a git hook on this computer that refuses a push that would delete `main` on GitHub or rewrite
+it (a force push), and the same as a rule on GitHub. GitHub only takes the rule for a public repository or on a paid plan; when it
+refuses, the script says so and the local guard still works. `npm run protect -- --check` shows what is in place.
+`.github/dependabot.yml` (written at install) asks GitHub for one pull request a week per kind of dependency; the gate runs on it.
+
 ## Spec and ship (the flow around the gate)
 `/work <card number>` plans one card and stops for a yes; the build then starts in a new chat with `/build <topic>`, so the
 planning chat isn't sent again on every round (see *Board*). `/spec <card number>` (or `/spec <topic>`) reads that one card from the board, writes `specs/<topic>.md` from `templates/spec.md`
 and waits for approval; approval moves the card to Ready. A new chat builds it in a
 session folder (tests first), updates the spec's `## Status`, and `/ship <topic>` runs `gate:all`, checks the docs the spec
-lists, runs `security-review` if flagged, makes the one commit, deletes the spec and runs `session.mjs --finish`.
+lists, has a subagent that has not seen the build review it (`/review`), runs `security-review` if flagged, makes the one commit, deletes the spec and runs `session.mjs --finish`.
 `/build <topic>` sits between them: from a fresh chat in the main folder it makes (or reuses) the session folder, copies the
 approved spec into it and starts a subagent that builds it there, so nobody changes folder; feedback goes to the same subagent.
 **Several at once**: `/work 12 14 15` writes the specs one after another in one chat (each approved on its own); `/build a b c` starts one builder per independent spec, at most 3, in one message so they run together, each in its own folder, branch and port. Two specs whose "Files that change" name the same file overlap: the later waits until the first is shipped (the shared files listed in CLAUDE.md never count). One summary lists folder, URL and unsure items per topic; feedback goes to that topic's builder; `/ship` stays one topic at a time. `ui` cards join only after their variant is picked.

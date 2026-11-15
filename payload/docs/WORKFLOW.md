@@ -127,4 +127,9 @@ Columns, left to right: Backlog, Needs a board or decision, Ready, In progress, 
 ## Keeping it healthy
 - After adding or renaming a source file: `npm run map`.
 - The gate also checks that docs only mention files and commands that exist.
+- It refuses a key or password in a change, a function copied from another file, and (once set in the config) a changed
+  database table with no migration. Before shipping it also looks for code and libraries nothing uses, and libraries with a known
+  security problem.
+- Before the commit, `/ship` has a second agent that never saw the build compare it with the spec. You get its findings.
+- `npm run protect` (once, `/setup` runs it): `main` on GitHub can no longer be deleted or overwritten by accident.
 - When the workflow changes, update this file and `tools/workflow/README.md` in the same commit.

@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+target
+.venv
+dist
+data
+specs
+docs
+tests
+test-results

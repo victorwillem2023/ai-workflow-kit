@@ -14,11 +14,14 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
 1. Read `specs/<topic>.md`.
 2. `npm run gate:all` must pass. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.
-   For anything bigger than a small fix, ask the owner to run `/review <topic>` in a new chat first, and fix what it finds.
+   For anything bigger than a small fix, have fresh eyes review it before the commit: start a subagent that has not seen this
+   chat (the Task tool), with only this as its task: "Follow `.claude/skills/review/SKILL.md` for <topic>, in <the session
+   folder>. Change no file. Report the list." Fix what it finds that the spec backs, and show the owner the rest.
 3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first.
 4. Security: if "Security triggers" says yes, run the `security-review` skill and fix findings first.
 5. Delete `specs/<topic>.md` in the session folder and in the main folder (`/build` copied it from there; it is ignored, so nothing else removes it).
 6. Commit everything as ONE commit: subject = what changed for the user ("Area: what changed, and what else"),
    body = a few lines of what the feature now does. Add the Co-Authored-By line the session gives.
 7. `node scripts/session.mjs --finish <topic>` (squash, rebase on the local `main`, typecheck, tests; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node scripts/session.mjs --push` sends them; run it only when the owner says so.
+   With `"flow": "pr"` in the config it opens a pull request instead: give the owner its address, and run `node scripts/session.mjs --merge <topic>` only when the owner says so.
 8. Report in plain language, with an example where a term is technical: what changed, what the tests check, what you were unsure of.

@@ -16,11 +16,9 @@ A new, empty project: skip to the questions and say the answers will become the 
 
 ## 2. Ask the owner (AskUserQuestion, at most two rounds, each with your best guess as the recommended option)
 1. **What the app does**, in one or two sentences, and for whom.
-   - **A new project: the language.** Recommend one from the answer and say why in a sentence; the owner confirms or picks another.
-     Rust by default (the compiler catches most of an agent's mistakes before a test runs); TypeScript when most of the work is a
-     browser screen; Python for data, notebooks or machine-learning libraries; Go for a small network service the team already
-     runs in Go. An existing project keeps its language. `starter/lang.json` in the kit has each one's commands; another language
-     works too with its own check and test commands.
+   - **A new project: the stack.** Read `stack.md` in this folder and go through its decisions with the owner, one at a time,
+     each with a recommendation (language, screens, backend, data, sign-in, where it runs, tests, and the few decided-once questions).
+     Write the answers into `docs/STACK.md`. An existing project: fill `docs/STACK.md` from what the code already uses.
    - **A new project: the architecture.** Propose the folders and what each may import, fitted to the app, and show it before
      writing anything: a pure core (the rules, no files or network), a folder per outside service, the app on top (server,
      command line or screen). Two or three lines per folder. The owner confirms or changes it; it becomes answer 2.
@@ -31,6 +29,9 @@ A new, empty project: skip to the questions and say the answers will become the 
 4. **The dev loop**: the command the owner runs while working, its port, and whether it restarts by itself.
 5. **The board**: the area labels (offer 3 to 6 from the folders and the app's parts), and whether the GitHub project exists already.
 6. **Files every feature touches** (the shared files for parallel work), if any beyond `README.md` and the guide.
+   - **How work reaches main**: straight to `main` (the default, fine when you work alone and nothing is deployed yet), or pull
+     requests (`"flow": "pr"` under `session`: GitHub runs the checks before anything lands; making GitHub enforce it needs a
+     public repository or a paid plan).
 7. **The quality score**: is there a set of real cases whose pass count should never drop (typed requests and what must come
    out, sample files, recorded inputs)? If yes: the command that runs them and prints "N of M", for `quality` in the config.
 8. **Agents and models**: Claude Code only, or OpenCode too (and which paid and free models; the kit's defaults are in
@@ -62,16 +63,24 @@ Only real decisions; never ask what the code already says.
 - When the map module is installed (`docs/flow/`): the questions and the kinds in `docs/REQUESTS.md` from answer 1, the first
   real parts in `docs/flow/map.js` (an end not built yet is `gap`), then `node docs/flow/build-requests.mjs`.
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
+- **Checks that follow from the stack** (`workflow.config.json`; `tools/workflow/README.md`, *What it checks*): with a database,
+  `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);
+  with screens, the `e2e` entry of `stack.md` part 7 in `checks`; `knip.json` when the app starts somewhere else than `src/index.ts`.
+- When the deploy module is installed (`docs/DEPLOY.md`): fill it, and `deploy` in the config for the host chosen in `stack.md`
+  part 6 (`url`, `command`, `rollback`; `{version}` is the commit); fit the `Dockerfile` to the app and write `.env.example`.
+  An app with no server: take out `Dockerfile`, `.dockerignore`, `docs/DEPLOY.md` and the *Deploying* section of `CLAUDE.md`.
 
 ## 4. Make it real
 ```sh
 npm run board -- --init        # labels, the project (when board.project is 0) and the columns
 npm run board -- --check
+npm run protect                # main can no longer be deleted or rewritten: a guard on this computer, and the rule on GitHub
 npm run map
 npm run harness                 # .opencode/commands from the skills; opencode.jsonc when missing (AGENTS.md only with harness.agentsMd)
 node tools/workflow/gate.mjs --update-baseline
 npm run gate
 ```
+`npm run protect` says in one line when GitHub refuses (a private repository on the free plan): pass it on, the local guard is enough to go on.
 A board step that fails (gh missing or not signed in): say the one line it printed, give `gh auth login` and
 `gh auth refresh -s project`, and carry on; the owner runs `--init` later. The gate must pass; a stale doc reference means a doc
 names a file that does not exist yet: write it or take the name out, don't baseline it away.

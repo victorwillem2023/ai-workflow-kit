@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+// Protects main in two places, so a force push or a deleted branch cannot happen by accident (an agent's, or yours):
+//   node tools/workflow/protect.mjs           the guard on this computer (a git pre-push hook) and the rule on GitHub
+//   node tools/workflow/protect.mjs --local   only the guard on this computer
+//   node tools/workflow/protect.mjs --check   say what is in place; changes nothing
+// The GitHub rule needs gh, admin rights, and a public repository or a paid plan; when GitHub refuses, the local guard still works.
+// A hook that is already there and is not ours is left alone and named.
+import { execFileSync, spawnSync } from 'node:child_process';
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { ruleset, verdict, hookText } from './lib/protect.mjs';
+
+const args = process.argv.slice(2);
+const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+// the hooks folder is shared by every session folder of this repository
+const hook = join(resolve(root, execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).trim()), 'hooks', 'pre-push');
+const flow = (() => { try { return JSON.parse(readFileSync(join(root, 'workflow.config.json'), 'utf8')).session?.flow; } catch { return undefined; } })();
+const ours = () => existsSync(hook) && readFileSync(hook, 'utf8').includes('tools/workflow/protect.mjs');
+// gh with an argument list and no shell; on Windows also where its installer puts it. WORKFLOW_GH (tests): a node script that stands in for gh.
+function gh(a, input) {
+  const custom = process.env.WORKFLOW_GH;
+  const go = (cmd) => spawnSync(custom ? process.execPath : cmd, custom ? [custom, ...a] : a, { input, encoding: 'utf8', shell: false, windowsHide: true });
+  const res = go('gh');
+  return res.error?.code === 'ENOENT' && process.platform === 'win32' ? go('C:\\Program Files\\GitHub CLI\\gh.exe') : res;
+}
+
+function local() {
+  if (existsSync(hook) && !ours()) return `this computer: not set. ${hook} is someone else's hook; add the guard to it by hand (node tools/workflow/protect.mjs --print-hook)`;
+  writeFileSync(hook, hookText(flow));
+  chmodSync(hook, 0o755);
+  return flow === 'pr' ? 'this computer: a direct push to main is refused (git hook pre-push)' : 'this computer: a push that deletes or rewrites main is refused (git hook pre-push)';
+}
+
+function github(check) {
+  const { board } = JSON.parse(readFileSync(join(root, 'workflow.config.json'), 'utf8'));
+  const path = `repos/${board.owner}/${board.repo}/rulesets`;
+  const list = gh(['api', path]);
+  if (list.error) return 'GitHub: not set. gh is not installed (https://cli.github.com), then: gh auth login';
+  if (list.status === 0 && JSON.parse(list.stdout || '[]').some((r) => r.name === ruleset(flow).name)) return 'GitHub: main is protected already';
+  if (check) return list.status === 0 ? 'GitHub: main is not protected (run: npm run protect)' : verdict(list.status, list.stdout + list.stderr).line;
+  const made = gh(['api', '-X', 'POST', path, '--input', '-'], JSON.stringify(ruleset(flow)));
+  return verdict(made.status, made.stdout + made.stderr).line;
+}
+
+if (args.includes('--print-hook')) process.stdout.write(hookText(flow));
+else if (args.includes('--check')) console.log([ours() ? 'this computer: the guard is in place' : 'this computer: no guard (run: npm run protect)', github(true)].join('\n'));
+else console.log([local(), ...(args.includes('--local') ? [] : [github(false)])].join('\n'));
