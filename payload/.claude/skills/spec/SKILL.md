@@ -25,8 +25,14 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).
 3. Copy `tools/workflow/templates/spec.md` to `specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
+   - The app map (with the map module): `npm run board -- --map` shows the ends this card is on, and `grep -n` in
+     `docs/flow/map.js` finds the decisions it touches. Name each end the change moves (gap to built, a new end, a weak one
+     fixed), put `docs/flow/map.js` under "Files that change", and give every decision it touches its file (`f: 'src/...'`),
+     so the gate can tell when that code changes without its node.
    - The rule and who shares it: `grep -n` the rule's row in `docs/ARCHITECTURE.md`, *Rules and where each lives*; the change goes in
      the file that row names, and the spec lists the kinds of case that share it (CLAUDE.md, 11 to 14).
+   - **When it fails**: for each thing that can go wrong (bad input, a service down, a missing record), the error the person
+     sees and its code, so the tests can name them ("refuses a race date in the past with that reason").
    - **New rules**: ask it every time, never skip the line: does this change add a rule the code will keep to from now on (who may
      call, where writes may come from, a limit, a format every caller must use)? A new endpoint, a new check on input or a new
      permission usually does. Yes: the rule in one line and its new row, and `docs/ARCHITECTURE.md` goes under "Docs that change"

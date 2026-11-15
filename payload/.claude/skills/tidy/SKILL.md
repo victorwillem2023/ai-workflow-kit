@@ -9,7 +9,8 @@ model: sonnet
 The board's front desk: nothing waits without a decision, and the owner knows what matters this week. The script finds; you
 explain and propose; the owner decides; the board commands do it.
 
-1. **Read the triage**: `npm run board -- --triage` (lib/triage.mjs: the counts, the focus, and each finding with its cards).
+1. **Read the triage**: `npm run board -- --triage` (lib/triage.mjs: the counts, the focus, and each finding with its cards),
+   and with the app map `npm run board -- --gaps` (its `gap` and `weak` ends no open card is on).
    Read single cards only when a proposal needs their text (`npm run board -- --show <n>`). Never read the whole board.
 2. **One batch of proposals**, at most eight, the most blocking first, each one line with the command it would run:
    - too much in progress: which card to finish first and which to move back (`--move <n> "Ready"`);
@@ -17,7 +18,9 @@ explain and propose; the owner decides; the board commands do it.
    - stalled: move back, split ("the part left becomes a new card"), or close;
    - blocked long: unblock (`--move <n> "Ready"`) or close with why (`--close <n> "<reason>"`);
    - the inbox: adopt each with a type (`--adopt <n> --label <type>`), or close with a reply;
-   - unranked: a value guess per card for the owner to confirm (`gh issue edit <n> --add-label "value: medium"`), or `/shape`;
+   - the map's gaps: an end a card already covers gets that card on it (`card: [<n>]` on the end in `docs/flow/map.js`,
+     `grep -n` the end's words); a real gap gets a card (`/idea` with the end's words), or stays a gap on purpose (its note says why);
+   - unranked: a value guess per card for the owner to confirm (`npm run board -- --rate <n> value medium`), or `/shape`;
    - duplicates: merge into the older card (copy what the newer adds as a comment, `--close <newer> "duplicate of #<older>"`);
    - prune: close the listed old low-value cards with "closed in a backlog tidy-up; reopen if it matters again".
    Ask with AskUserQuestion (multiSelect), every proposal pre-ticked except closing; the owner unticks what they disagree with.

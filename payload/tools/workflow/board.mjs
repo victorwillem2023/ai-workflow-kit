@@ -3,6 +3,7 @@
 //   --init                       makes what the config describes and GitHub lacks: labels, the project (when board.project is not set; the number is
 //                                written into the config), the columns. Safe to run again.
 //   --labels                     the labels the config allows, grouped (types, areas, effort, feasibility); /idea reads this
+//   --gaps                       the app map's gap and weak ends no open card is on (with the map module; nothing without)
 //   --map [--all]                the worksheet (with the map module): open cards by column with the app map ends they are on, and the map's hygiene problems
 //   --check                      which columns from the config the project lacks, open cards with no type label, and config labels the repo lacks
 //   --add "<title>" --label <type> [--label <name>]... [--body-file <file>] [--column "<column>"]   a new card (Backlog by default)
@@ -43,7 +44,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --undepend <number> <n,m>, --rate <number> value|effort <word>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
+const usage = 'Use --init, --labels, --map, --gaps, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --undepend <number> <n,m>, --rate <number> value|effort <word>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -78,6 +79,17 @@ async function main() {
     if (!existsSync(lib)) throw new BoardError('--map needs the app map (the kit\'s map module: docs/flow and tools/workflow/lib/worksheet.mjs).');
     const { loadFlow, worksheet } = await import(pathToFileURL(lib).href);
     console.log(worksheet(loadFlow(root), listCards(board, run), board.columns, { all: argv.includes('--all') }).text);
+  } else if (argv.includes('--gaps')) {
+    // the app map's `gap` and `weak` ends that no open card is on: what nobody plans yet (/next and /tidy pass them on)
+    const lib = join(root, 'tools', 'workflow', 'lib', 'worksheet.mjs');
+    if (!existsSync(lib) || !existsSync(join(root, 'docs', 'flow', 'map.js'))) return;
+    const { loadFlow, mapGaps, mapFiles } = await import(pathToFileURL(lib).href);
+    const flow = loadFlow(root);
+    const gaps = mapGaps(flow, listCards(board, run));
+    if (gaps.length) console.log([`map: ${gaps.length} end${gaps.length === 1 ? '' : 's'} not built or weak, with no card on ${gaps.length === 1 ? 'it' : 'them'}:`,
+      ...gaps.slice(0, 10).map((e) => `  ${e.status}: ${e.where} › ${e.text}${e.note ? ` (${e.note})` : ''}`), ...(gaps.length > 10 ? [`  and ${gaps.length - 10} more`] : [])].join('\n'));
+    const { unnamed } = mapFiles(flow);
+    if (unnamed) console.log(`map: ${unnamed} decision${unnamed === 1 ? '' : 's'} name no file (f:), so the gate cannot tell when ${unnamed === 1 ? 'it goes' : 'they go'} stale`);
   } else if (argv.includes('--labels')) {
     const g = labelGroups(board);
     for (const [k, names] of Object.entries(g)) console.log(`${k}: ${names.join(' | ') || '(none in the config)'}`);
@@ -179,7 +191,7 @@ async function main() {
 }
 
 // the commands that only read: when GitHub cannot be reached they warn in one line and let the flow around them go on
-const READS = ['--labels', '--check', '--map', '--show', '--search', '--next', '--triage', '--inbox', '--graph'];
+const READS = ['--labels', '--check', '--map', '--gaps', '--show', '--search', '--next', '--triage', '--inbox', '--graph'];
 try { await main(); } catch (e) {
   if (e instanceof BoardError && e.gh && READS.some((r) => argv.includes(r))) {
     console.log(`board (warning): ${e.message} Carrying on without the board.`);

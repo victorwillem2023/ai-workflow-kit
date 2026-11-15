@@ -2,7 +2,7 @@
 // and the map's hygiene problems. A small map and card list from memory; no board, no files.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { worksheet, mapEnds } from '../../tools/workflow/lib/worksheet.mjs';
+import { worksheet, mapEnds, mapGaps, mapFiles, staleMapAdvice } from '../../tools/workflow/lib/worksheet.mjs';
 import type { Flow } from '../../tools/workflow/lib/worksheet.mjs';
 
 const COLUMNS = ['Backlog', 'Ready', 'In progress', 'Waiting for your check', 'Blocked', 'Done'];
@@ -59,5 +59,23 @@ describe('the worksheet maps board cards to the app map', () => {
     const { problems } = worksheet(flow, moved, COLUMNS);
     assert.ok(problems.some((p) => /"Ways up as a choice".* is building, but #23 is in Backlog/.test(p)));
     assert.ok(problems.some((p) => /#340 is on "Shore towns".* but is no card on the board/.test(p)));
+  });
+});
+
+describe('the app map steers', () => {
+  it('finds the gap and weak ends no open card is on: what nobody plans yet', () => {
+    const gaps = mapGaps(flow, [card(340, 'Backlog'), card(283, 'Done', 'closed')]);
+    assert.deepEqual(gaps.map((e) => e.text), ['Old wait'], 'Shore towns has an open card; Old wait only a closed one');
+  });
+  it('knows the files decisions are made in, counts the decisions that name none, and advises when that code changed alone', () => {
+    const named: Flow = { groups: [{ name: 'Plan', stages: [{ name: 'Rules', tree: [
+      { q: 'A goal?', f: 'src/core/plan/check-goal.ts', yes: [{ t: 'Planned', f: 'src/core/plan/build-plan.ts' }], no: [{ q: 'Asked again?', yes: [{ t: 'x' }] }] },
+    ] }] }] };
+    const { files, unnamed } = mapFiles(named);
+    assert.deepEqual([...files].sort(), ['src/core/plan/build-plan.ts', 'src/core/plan/check-goal.ts']);
+    assert.equal(unnamed, 1);
+    assert.match(staleMapAdvice(named, ['src/core/plan/check-goal.ts', 'tests/x.test.ts'])[0], /^advice: src\/core\/plan\/check-goal\.ts changed and docs\/flow\/map\.js did not/);
+    assert.deepEqual(staleMapAdvice(named, ['src/core/plan/check-goal.ts', 'docs/flow/map.js']), [], 'the map changed with it');
+    assert.deepEqual(staleMapAdvice(named, ['src/web/main.tsx']), [], 'code the map does not name');
   });
 });

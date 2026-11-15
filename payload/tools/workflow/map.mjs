@@ -6,7 +6,8 @@
 //   node tools/workflow/map.mjs --find <words>   print only the map lines whose description has every word (without their imports; --imports adds them);  --uses <file>   the lines that import that file (read the map, write nothing)
 // Settings: `map` in workflow.config.json ({ out, folders }).
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { buildGraph } from './lib/graph.mjs';
 import { renderMap, sameMap, findInMap, usesInMap, withoutImports } from './lib/map.mjs';
 import { matchesAny } from './lib/glob.mjs';
@@ -70,6 +71,7 @@ if (process.argv.includes('--check')) {
   if (stale.length) { console.error(`${stale.join(', ')} ${stale.length === 1 ? 'is' : 'are'} out of date (made from the code and the config): run npm run map`); process.exit(1); }
   console.log('map: up to date');
 } else {
-  for (const [f, want] of pages) if (read(f).replace(/\r\n/g, '\n') !== want) writeFileSync(f, want);
+  // (its folder too: the infra map goes into docs/run/, which a project making infrastructure before its run stage does not have yet)
+  for (const [f, want] of pages) if (read(f).replace(/\r\n/g, '\n') !== want) { mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, want); }
   console.log(`map: ${config.map.out} written (${text.split('\n').length} lines)${pages.length > 1 ? `, and ${pages.slice(1).map(([f]) => f).join(', ')}` : ''}`);
 }

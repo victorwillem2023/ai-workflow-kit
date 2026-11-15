@@ -64,7 +64,7 @@ const session = (r: Repo, topic: string) => {
 describe('cleaning up after a session', () => {
   after(() => {
     for (const pid of started) { try { process.kill(pid); } catch { /* stopped already */ } }
-    for (const r of roots) rmSync(r, { recursive: true, force: true });
+    for (const r of roots) rmSync(r, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
   });
 
   it('finishing a session stops its dev server and the watcher above it, and removes the folder', async () => {

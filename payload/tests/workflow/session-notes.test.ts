@@ -24,7 +24,7 @@ function ownerNotes(r: Repo) {
 const count = (r: Repo) => Number(git(r.main, 'rev-list', '--count', 'main'));
 
 describe('docs and settings left in the main folder', () => {
-  after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true }); });
+  after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); });
 
   it('--check-main names them as the owner\'s and says how to commit them, every file by its full name', () => {
     const r = repo(true);

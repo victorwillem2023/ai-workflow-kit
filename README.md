@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.9.x` tag** (now `v2.9.1`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
+> **Build on the latest `v2.9.x` tag** (now `v2.9.2`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
 > what that project taught (the docs in folders, and in 2.9.1 a folder only once its stage is reached). The same rule holds: a new
 > part, guide or skill comes from a real project running into its lack, never ahead of one.
 
@@ -206,6 +206,23 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.9.2**: **finding what goes wrong.** Every request has one id (the W3C `traceparent` trace id: kept when a request brings
+  one, made when not) on every log line, in the answer (`x-request-id`) and in its calls to other services, and one line when it
+  is answered (`POST /api/goal 400 12 ms`): `src/server/trace.ts`. Errors point at the cause: an `AppError` has a code, the words
+  a person reads, what the code was doing, the ids and the error it was handling (`cause`), and `answerError` turns any error
+  into `{ error, code, reference }` with the details in the log only, the whole cause chain in one line (`src/server/errors.ts`).
+  The page turns a failed call into an `ApiError` with one clear console line and sends uncaught errors to the log, capped
+  (`src/web/report.ts`). The gate's `errors` check refuses an empty catch and `console` in server code. `--serve` gives the
+  command to follow the server's log, readable (`node scripts/logs.mjs <topic> --follow`, `--ref <reference>` for one request).
+  **`/debug <what went wrong>`**: from what was seen and its reference to the log lines, the cause in the code, a failing test,
+  then the fix; `/spec` asks what the person sees when it fails, `/review` whether a failure would leave nothing to find. A
+  module can have more than one CLAUDE.md section, so these rules reach a project that has the first. **The app map steers**:
+  `npm run board -- --gaps` lists the map's `gap` and `weak` ends no card is on (and how many decisions name no file), `/next`
+  and `/tidy` pass them on (link the card, or make one), `/spec` names the ends a change moves and the file each decision is made
+  in, the hand-off names the ends a build moved, and the gate advises when code the map names changed without its node.
+  Fixed from GitHub's runs of 2.9.1 and before: the file map makes `docs/run/` when it writes the infra map there (a project
+  with infrastructure files before its run stage has no such folder), and the session tests' clean-up waits for a folder Windows
+  still holds.
 - **2.9.1**: **a stage's docs come with the stage.** A new project has no `docs/run/` or `docs/market/`: `/launch` and `/market`
   start their stage (`node tools/workflow/stage.mjs --enter run|market`, from the kit on this computer, which `.workflow-kit`
   now records), and `.workflow-kit` remembers it (`stages=`). Mentions of a doc not there yet say where it comes from ("comes with

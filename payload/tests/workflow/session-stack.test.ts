@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { commitIn, git, makeRepo, roots, run } from './session-repo';
 
 describe('a session built on top of another one', () => {
-  after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true }); });
+  after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); });
 
   it('starts from the other session\'s branch, waits for it, and moves onto main by itself when it is finished', () => {
     const r = makeRepo();

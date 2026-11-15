@@ -24,7 +24,9 @@ it is the try command alone.
 
 No file names, function names or code terms; where a term is needed, an example says what it means. In this order:
 
-1. **Open**: the link, or the one command to paste.
+1. **Open**: the link, or the one command to paste. With a server, also its log, as `--serve` printed it
+   (`node scripts/logs.mjs <topic> --follow`): what each click did on the server, one line per request. Something looks wrong:
+   the reference on the screen or in the console goes to `/debug`.
 2. **What is new**: one or two sentences on what a person can now do.
 3. **Try this**: two or three numbered steps with real example values, each with what should appear ("Set a 10 km run on
    1 March with three free days: a plan of 14 weeks appears, week 1 has three runs, the longest 5 km"). The expected results
@@ -33,8 +35,10 @@ No file names, function names or code terms; where a term is needed, an example 
    you follow this plan?
 5. **Edge cases**: two to four, each with the input and the answer it should give (a date in the past: refused, and it says why;
    a goal far beyond the usual week: a warning). Take them from the spec's cases and the tests.
-6. **Not in this card**: what is deliberately missing, so it is not reported as a fault.
-7. **Unsure**: the builder's "unsure" list in plain words.
+6. **On the app map** (with the map module): the ends this change built or moved, by their words, and that `docs/flow/index.html`
+   shows them (open it in the browser).
+7. **Not in this card**: what is deliberately missing, so it is not reported as a fault.
+8. **Unsure**: the builder's "unsure" list in plain words.
 
 End with: "Say **done** when it works, or tell me what is wrong." Move the card to *Waiting for your check*.
 

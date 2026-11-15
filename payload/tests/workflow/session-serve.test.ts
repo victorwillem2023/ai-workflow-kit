@@ -46,6 +46,7 @@ describe('serving a session for the owner to try', () => {
     const out = run(r, '--serve', 'a');
     assert.ok(out.ok, out.out);
     assert.match(out.out, new RegExp(`The dev server runs: ${url}`));
+    assert.match(out.out, /logs: +node scripts\/logs\.mjs a --follow/, 'how to watch its log comes with the link');
     assert.equal(await (await fetch(url)).text(), 'ok', 'it still runs after the command ended');
     const again = run(r, '--serve', 'a');
     assert.ok(again.ok, again.out);

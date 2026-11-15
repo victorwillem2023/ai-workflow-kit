@@ -161,7 +161,9 @@ async function serve(topic) {
   if (!port) throw new Error(`${env} names no PORT.`);
   const url = `http://127.0.0.1:${port}`;
   const answers = async () => { try { await fetch(url, { signal: AbortSignal.timeout(2000) }); return true; } catch { return false; } };
-  if (await answers()) { console.log(`The dev server runs already: ${url}`); return; }
+  // how to watch it while trying it: one readable line per request (scripts/logs.mjs); --ref <reference> for one request
+  const watch = `  logs:   node scripts/logs.mjs ${topic} --follow   (one line per request; --ref <reference> shows one request)`;
+  if (await answers()) { console.log(`The dev server runs already: ${url}\n${watch}`); return; }
   ensurePackages('before the dev server starts');
   const scripts = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts ?? {};
   if (!scripts.dev) throw new Error(`${dir} has no "dev" script, so there is nothing to open: a change without a screen is tried with a command (.claude/skills/build/try-it.md).`);
@@ -171,7 +173,7 @@ async function serve(topic) {
   // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
   spawn('npm', ['run', 'dev'], { cwd: dir, detached: true, stdio: ['ignore', out, out], shell: process.platform === 'win32', windowsHide: true }).unref();
   for (let i = 0; i < 120; i++) {
-    if (await answers()) { console.log(`The dev server runs: ${url} (its output: ${log}; --finish stops it)`); return; }
+    if (await answers()) { console.log(`The dev server runs: ${url} (--finish stops it)\n${watch}`); return; }
     await new Promise((r) => setTimeout(r, 500));
   }
   const last = readFileSync(log, 'utf8').trim().split('\n').slice(-15).join('\n');

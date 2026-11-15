@@ -33,7 +33,8 @@ Never offer a skill that is not installed as the next step.
      them) as the recommendation, and you ask the owner ONE question: which of these comes first (an order of all of them is
      fine). Write the answer so it is kept: the first gets `--rate <n> value high`, the next ones `medium` and `low` (only cards
      with no value yet, or ones the owner said to change). Then show the order it gives.
-3. Pass on its notes in one line each: cards with no value label ("set them with /shape, or say high, medium or low"), and
+3. With the app map, `npm run board -- --gaps`: when it lists ends nobody plans, one line ("the map has 21 ends no card is on:
+   /tidy links them to cards or makes the missing ones"). Then pass on the board's notes in one line each: cards with no value label ("set them with /shape, or say high, medium or low"), and
    issues waiting off the board (`npm run board -- --inbox`). When it says "the board needs ... decisions", offer
    `/tidy` in one line (it sorts them and names the week's focus).
 Nothing to start: say so, and offer `/idea` or `/shape` for the next thing in `docs/PRODUCT.md`; no `docs/PRODUCT.md` and no

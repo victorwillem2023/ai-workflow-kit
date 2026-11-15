@@ -31,6 +31,36 @@ export function mapEnds(flow) {
   return ends;
 }
 
+/** The ends not built (`gap`) or built with a known problem (`weak`) that no open card is on: what nobody plans yet. */
+export function mapGaps(flow, cards) {
+  const open = new Set(cards.filter((c) => c.state === 'open').map((c) => c.number));
+  return mapEnds(flow).filter((e) => (e.status === 'gap' || e.status === 'weak') && !e.cards.some((n) => open.has(n)));
+}
+
+/** The files the map says decisions are made in (`f:` on a question or an end), and how many decisions name none. */
+export function mapFiles(flow) {
+  const files = new Set();
+  let unnamed = 0;
+  const walk = (nodes) => {
+    for (const n of nodes ?? []) {
+      const f = typeof n.f === 'string' && /^[\w./-]+\.\w+$/.test(n.f) ? n.f : null;
+      if (f) files.add(f);
+      else if (n.q) unnamed++;
+      if (n.q) { walk(n.yes); walk(n.no); for (const [, sub] of n.opts ?? []) walk(sub); }
+    }
+  };
+  for (const g of flow.groups) for (const st of g.stages) if (!String(g.name).startsWith('What someone asks')) walk(st.tree);
+  return { files, unnamed };
+}
+
+/** The advice when code the map names changed and the map did not: a decision may have moved without its node. */
+export function staleMapAdvice(flow, changed) {
+  if (changed.includes('docs/flow/map.js')) return [];
+  const { files } = mapFiles(flow);
+  const hit = changed.filter((f) => files.has(f));
+  return hit.length ? [`advice: ${hit.join(', ')} changed and docs/flow/map.js did not: if a decision there changed, update its node in the same commit`] : [];
+}
+
 // A note that tells history (a date) instead of what is true now: "31 boards drawn (13 to 14 Nov)".
 const DATED = /\b\d{1,2}(?:\s*(?:to|-|–)\s*\d{1,2})?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/;
 // Columns where a card's work is under way: a `building` end's card belongs in one of these.

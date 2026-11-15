@@ -16,6 +16,7 @@ const KNOWN = {
   docs: { says: 'Small edit to the hand-written docs, never code, no commit' },
   check: { says: 'Run the gate and explain what failed, read-only', readOnly: true },
   find: { says: 'Where is X / how does Y work in the code, read-only', readOnly: true },
+  debug: { says: 'Find what goes wrong from what you saw: the reference, the log lines, a failing test, then the fix' },
 };
 
 export const DEFAULTS = {

@@ -15,6 +15,7 @@
 // Project settings live in workflow.config.json; nothing here knows about the project.
 import { checkPackages, describeMissing } from '../../scripts/packages.mjs';
 import { testPlan } from './lib/testplan.mjs';
+import { errorRuleFindings } from './lib/errorrules.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests } from './lib/graph.mjs';
@@ -343,6 +344,11 @@ const steps = [
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
     return { ok: true, note: `${docTexts.size} docs, ${staleRefs.length} known stale` };
   }],
+  // the changed code keeps problems findable: no empty catch, no console in the server (lib/errorrules.mjs)
+  ['errors', () => {
+    const found = changed.filter((f) => existsSync(f)).flatMap((f) => errorRuleFindings(f, readFileSync(f, 'utf8')).map((x) => `${f}:${x.line}: ${x.rule}: ${x.say}`));
+    return found.length ? { ok: false, out: found.join('\n') } : { ok: true };
+  }],
   // a package the lock lists and node_modules lacks: said plainly here, instead of as a typecheck or test error further down
   existsSync('package-lock.json') && ['packages', () => {
     const missing = checkPackages('.');
@@ -387,5 +393,7 @@ for (const [name, fn] of steps) {
   }
   console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
 }
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines()]) console.log(line);
+// the app map (map module): code the map names changed while the map did not (lib/worksheet.mjs)
+const mapLines = existsSync('docs/flow/map.js') && existsSync('tools/workflow/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
+for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

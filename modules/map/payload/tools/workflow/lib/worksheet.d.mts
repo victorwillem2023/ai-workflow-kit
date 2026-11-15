@@ -9,3 +9,9 @@ export function loadFlow(root: string): Flow;
 export function mapEnds(flow: Flow): MapEnd[];
 /** The worksheet as text, and the hygiene problems one line each; `all` lists every Backlog and Done card too. */
 export function worksheet(flow: Flow, cards: WorksheetCard[], columns: string[], opts?: { all?: boolean }): { text: string; problems: string[] };
+/** The `gap` and `weak` ends no open card is on. */
+export function mapGaps(flow: Flow, cards: WorksheetCard[]): MapEnd[];
+/** The files the map says decisions are made in, and how many decisions name none. */
+export function mapFiles(flow: Flow): { files: Set<string>; unnamed: number };
+/** The advice line when code the map names changed and docs/flow/map.js did not. */
+export function staleMapAdvice(flow: Flow, changed: string[]): string[];

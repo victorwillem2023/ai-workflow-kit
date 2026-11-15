@@ -16,6 +16,13 @@ each lives*), and the kinds of case that share it. The change goes in the rule's
 New rules: <none | the rule in one line ("the API only accepts writes from this site", "only this computer may ask") and its row
 to add to `docs/ARCHITECTURE.md`, *Rules and where each lives*; then `docs/ARCHITECTURE.md` is under "Docs that change">
 
+## When it fails
+Each thing that can go wrong (bad input, a service down, a missing record): what the person sees, and its error code, so a
+test can name it. A change where nothing can fail: "nothing".
+
+Map ends it moves (with the app map): <the ends by their words, and how each moves: gap to built, a new end, a weak one fixed;
+or "none">
+
 ## Files that change
 One line per file: what changes in it. Look in `docs/MAP.md` first.
 

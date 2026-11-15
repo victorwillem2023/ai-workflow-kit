@@ -57,6 +57,7 @@ yourself and can simply run again:
 |---|---|
 | `/docs <what to change>` | A small edit to the hand-written docs (README, `docs/*.md`, the CLAUDE.md notes). Never code, no commit: the next `/ship` commits it first, on its own. |
 | `/check` (or `/check all`) | Runs the gate and explains what failed and where, in plain words. Changes nothing. |
+| `/debug <what went wrong>` | Something goes wrong and you do not know why: from what you saw and the error's reference to its log lines, the cause in the code, a failing test that shows it, then the fix. Never a guessed fix. |
 | `/find <a question>` | Where is X, how does Y work: file paths and lines from the map, without reading whole files. Changes nothing. |
 
 Why the flow is split this way, and what keeps a session cheap: `docs/workflow/TOKENS.md`.

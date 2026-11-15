@@ -28,7 +28,7 @@ function prRepo(): Repo {
 }
 
 describe('the pull-request flow', () => {
-  after(() => { for (const d of roots) rmSync(d, { recursive: true, force: true }); });
+  after(() => { for (const d of roots) rmSync(d, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); });
 
   it('--finish pushes the branch and opens a pull request; main is not touched and the session folder stays', () => {
     const r = prRepo();

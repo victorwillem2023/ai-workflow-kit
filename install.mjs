@@ -305,8 +305,11 @@ for (const s of stages) {
 // .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
 // record is recognised by the heading or by the first file or command the section names.
 const sectionsDone = new Set((/^sections=(.*)$/m.exec(existsSync(markFile) ? readFileSync(markFile, 'utf8') : '')?.[1] ?? '').split(',').filter(Boolean));
-for (const m of modules) {
-  const part = join(kit, 'modules', m, 'claude-section.md');
+// A module may have more than one (claude-section-<name>.md, remembered as <module>:<name>), so a section added later still reaches
+// a project that has the first one.
+const sectionFiles = (m) => (existsSync(join(kit, 'modules', m)) ? readdirSync(join(kit, 'modules', m)).filter((f) => /^claude-section(-[\w-]+)?\.md$/.test(f)).sort() : [])
+  .map((f) => ({ key: f === 'claude-section.md' ? m : `${m}:${f.slice('claude-section-'.length, -3)}`, part: join(kit, 'modules', m, f) }));
+for (const { key: m, part } of modules.flatMap(sectionFiles)) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(part) || !existsSync(claude)) continue;
   const text = markAbsent(fill(readFileSync(part, 'utf8')));

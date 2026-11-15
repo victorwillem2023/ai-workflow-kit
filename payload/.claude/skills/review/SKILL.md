@@ -19,6 +19,9 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    - **Does it add a rule with no row?** Something the code now enforces for every caller (writes only from this site, only this
      computer may ask, a new limit or permission) that has no row in that table, whatever the spec's "New rules" line says.
    - **Is anything outside the spec touched?** `npm run gate` prints `scope:` lines for those files.
+   - **If it fails, does the log say what and where?** Each error a person or a dependency can cause is an `AppError` with
+     its `doing`, the ids and the `cause`; no catch swallows one; a new path writes its request line (CLAUDE.md, *Requests,
+     errors and logs*). A failure that would leave nothing to find is a finding.
    - **Would the owner understand it?** Names and comments say what a thing does; nothing is cleverer than it needs to be.
 3. Report as a short list, worst first, in plain words with one example each. Say "nothing found" when that is true.
    Do not suggest extra features or clean-ups.
