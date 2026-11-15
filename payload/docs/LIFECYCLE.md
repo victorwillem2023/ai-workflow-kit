@@ -9,19 +9,21 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 1. Idea | a card per idea, bug or wish | `/idea`, the board | always |
 | 2. Plan | the product questions, the stack, the layers; a spec per feature | `/setup`, `docs/STACK.md`, `/spec` | at the start; per card |
 | 3. Build | tests first, a session per card, checks by scripts | `/work`, `/build`, the gate | per card |
-| 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit | `/ship`, `.github/workflows/` | per card |
+| 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit; browser smoke and accessibility tests (**not yet**) | `/ship`, `.github/workflows/` | per card |
 | 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
 | 6. Grow | a launch, people finding it, feedback becoming cards | `/market`, `docs/GROWTH.md`, the launch check | when it works for its first users |
 | 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |
 
 ## 5. Run: what is laid from the first day
-Without a question, in every project (`docs/PRODUCTION.md`):
+Without a question, in a TypeScript project with the default modules (production and deploy, `docs/PRODUCTION.md`):
 - settings checked at start-up, every name in `.env.example` (a gate check);
 - structured logs that never hold a secret or personal data;
 - `/health` (alive, which version) and `/ready` (able to serve), and a stop that lets open requests finish;
-- database changes that work with the old version still running;
+- the rule that a database change works with the old version still running (written down, not checked);
 - a release pipeline: the gate, then one image per commit, scanned, with a bill of materials, kept in a registry;
 - the record of personal data (`docs/PRIVACY.md`), changed together with the tables.
+**Not yet** for Python, Go and Rust: the production module's settings check, logger and health and stop handlers (the
+Dockerfile and the release pipeline are there for every language).
 Security as code from the start: secrets, audit, hostile-input tests and import rules in the gate; pinned pipeline actions;
 image and configuration scans; agents that may not skip the push guard.
 
@@ -68,7 +70,8 @@ the platform repository and the architecture board (`/arch`): `docs/SCALING.md`.
   (`npm run setup-check`, and on GitHub when the guide or what it installs changes, and weekly).
 - **Security without hands**: every Monday a scan of libraries (OSV-Scanner, Trivy), our own code (Semgrep), images and
   infrastructure files (Trivy) and secrets in the history (gitleaks) becomes one report issue in plain words; a library fix that
-  exists comes as a pull request by itself; `/secops` proposes the rest (`tools/workflow/README.md`, *Security without hands*).
+  exists comes as a pull request by itself once Renovate (or Dependabot's security updates) is switched on for the repository;
+  `/secops` proposes the rest (`tools/workflow/README.md`, *Security without hands*).
 - **Versions**: every tool pinned in `.tool-versions`, Node one version everywhere, OpenTofu stacks pinned with their lock file
   (the gate's *versions* check); Renovate (`renovate.json`) keeps them current, nothing younger than 7 days but security fixes.
 - **Names of things in the system** (`<app>-<env>-<place>-<part>`, checked in the infrastructure files) and **order** (lists
@@ -78,11 +81,15 @@ the platform repository and the architecture board (`/arch`): `docs/SCALING.md`.
   a fresh-eyes review, and the owner's own sign-off for the exact files, which the gate requires (`docs/SENSITIVE.md`).
 - **Performance**: goals in the config (page weight, 95% of requests within 300 ms, under 1% errors), the page-weight check in
   the gate, and `npm run load` (k6: smoke, load, stress, spike, soak) against staging before a launch (`docs/PERFORMANCE.md`).
-- **AI inside the app**: every model call through one wrapper file (the gate's *ai* check), untrusted text as data, the answer
-  checked by a schema, tools that write only on a person's click, a spend cap, and injection attempts among the cases
-  (`docs/AI-SECURITY.md`).
-- **Access**: who has access to what, and why (`docs/ACCESS.md`); `npm run access` checks GitHub against it and lists the rest;
-  the weekly report says when the 90-day review is due.
+- **AI inside the app** (the ai module, `--with ai`): every model call through one wrapper file (the gate's *ai* check),
+  untrusted text as data, the answer checked by a schema, a spend cap, and injection attempts among the cases; tools that write
+  only on a person's click are a rule in `docs/AI-SECURITY.md`, not checked by a script.
+- **Access** (for a team or customers): who has access to what, and why (`docs/ACCESS.md`); `npm run access` checks GitHub
+  against it and lists the rest; the weekly report says when the 90-day review is due.
+- **Names of what the app builds in the cloud**: also checked in the infrastructure plan, the final names and the labels
+  (`docs/IAC.md`).
+- **Costs and advice**: the real bill in `docs/COSTS.md` (`npm run costs`), `/estimate` for a change, `/advise` for a choice,
+  every platform fact from its docs (`CLAUDE.md`, *Docs before memory*).
 - **Tools that moved on**: `docs/TOOLS.md` lists the current open-source choice per job and what it replaced (uv over pyenv and
   pip, Biome over ESLint and Prettier, OpenTofu over Terraform), reviewed with each kit release.
 - **Models**: plans on the strong model, building on the fast one, small jobs on the small one, and a script before any model
@@ -123,17 +130,17 @@ legal or tax advice: each line below names who to ask. A checklist, in about the
 What happens after a feature ships comes back as cards, the same way security does (the weekly report and `/secops`):
 | Signal | How it reaches the board |
 |---|---|
-| A person's feedback | the feedback form (`.github/ISSUE_TEMPLATE/feedback.yml`, linked from the app's help button) opens an issue; `npm run board -- --inbox` lists it and `--adopt <n> --label <type>` makes it a card |
-| Errors in use | the error tracker (Sentry, or GlitchTip) groups them; Sentry's alert rules can open a GitHub issue, GlitchTip and Uptime Kuma send a webhook to a small workflow that does; they land in the inbox |
+| A person's feedback | the feedback form (`.github/ISSUE_TEMPLATE/feedback.yml`) opens an issue; `npm run board -- --inbox` lists it and `--adopt <n> --label <type>` makes it a card. **Not yet**: a help button in the app that links the form; add the link with the first screens |
+| Errors in use | the error tracker (Sentry, or GlitchTip) groups them; Sentry's GitHub integration can open an issue for an alert, which lands in the inbox. **Not yet**: a workflow that turns a GlitchTip or Uptime Kuma webhook into an issue; until then, adopt those by hand |
 | An outage | the incident note (`docs/RECOVERY.md`) ends with a card for what changes so it does not happen again |
 | Did it work? | `/ship` puts the spec's *How we will know it worked* on the card with a date; on that date look, and write the answer on the card and in `docs/PRODUCT.md`, *What we learned* |
 | Usage | cookieless analytics (Plausible, Umami) answer "is it used"; one look a month, a card when a screen is never used |
 | A spike | its decision note (`docs/decisions/`) makes or changes a card |
 `/work` with no number ranks what can be started (`npm run board -- --next`: first version first, then value for the effort)
-and says how many issues wait in the inbox.
+and says how many issues wait in the inbox; `/tidy` sorts what piles up.
 
-**Feature flags**, for a change that should reach a few people first or be switched off without a deploy: one file reads
-them from the settings (`FEATURES=new-plan,export` in `.env`, so every name is in `.env.example`), the code asks that file and
+**Feature flags** (**not yet in the kit**: no flag code ships; this is how to add it), for a change that should reach a few
+people first or be switched off without a deploy: one file reads them from the settings (`FEATURES=new-plan,export` in `.env`, so every name is in `.env.example`), the code asks that file and
 nothing else, each flag names its card, and the card is not done until the flag and the old path are taken out. A flag
 service (OpenFeature with Unleash or Flagsmith) only when flags must change per user or without a restart.
 

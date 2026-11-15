@@ -16,5 +16,8 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
    (`docs/PRODUCT.md`, *What we learned*).
 3. For each thing that got in the way: propose one fix in one line, the cheapest that lasts. A script or check when it can be
    checked, a line in a skill or doc otherwise. On a yes, run `/lesson <it>` for it (one at a time).
-4. Write three lines at the top of `docs/PRODUCT.md`, *What we learned*, when the week taught something about the product
+4. **Once a month**, for a project that runs for others (`project.audience` team or customers): `npm run costs` (prices older
+   than 3 months to check again) and one suggestion from the platform panel (`/advise platform`, the single most useful
+   change, with its source and cost), offered, never pushed. And whether `docs/ROADMAP.md`'s sign for the next stage shows.
+5. Write three lines at the top of `docs/PRODUCT.md`, *What we learned*, when the week taught something about the product
    (not about the workflow: that goes through `/lesson`). Commit only when the owner says so ("Docs: the retro of week <n>").

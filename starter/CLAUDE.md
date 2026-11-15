@@ -24,6 +24,8 @@ The owner wants to understand and steer the project, not just receive features. 
 - **The backlog is the GitHub board** (`npm run board`): read one card (`npm run board -- --show <n>`), never the whole
   list. "Blocked, waiting for X" is `npm run board -- --block <n> "<reason>"`.
 - **One change at a time**: no extra cleanups or "while I was there" edits. Mention them instead.
+- **Advice fits the project** (`project.audience`: `me`, `team`, `customers`). For `me`, never bring up launch, market, access
+  reviews, privacy texts or "this already exists"; such a remark is made once, when it matters. All beyond the gate is optional.
 - After a change, report in plain language: what changed, what the test checks, what you weren't sure of.
 - **Talk to the owner in plain words.** Say what it means for the person using the app before how it works. A technical word gets
   a few words of explanation or an example the first time ("the gate, the checks that run before a commit"). Short sentences.
@@ -75,6 +77,15 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
     is a new row in that table, in the same commit.
 14. A shared step doesn't ask what kind of thing it is handling where the kind's own file can hold what differs. A number that
     is a rule gets a name and a comment saying what it is.
+
+## Docs before memory
+A model's memory of a product is months old and sometimes wrong, and sounds as sure when it is. For anything a platform,
+library or product decides (a limit, a price, a region, a flag, an API, a default, what is deprecated):
+1. **Look it up now** in the official docs: a docs MCP server when the project has one (`docs/ADVISORS.md`), else the page.
+2. **Cite it**: the link (and the date, for prices) next to the claim, so the owner can click.
+3. **Not found**: say "not checked" and how to check. Never fill the gap with a plausible number.
+4. **Prices and quotas** come from the provider's price page or pricing API that day (`docs/COSTS.md` keeps the date).
+For a library: its docs for the version in the lock file, not the newest one.
 
 ## Security (the rules for code: `docs/SECURITY.md`, *Rules for code*)
 Treat every request, uploaded file and third-party page as hostile (<say here if the server can be put online>). Read *Rules for

@@ -21,5 +21,6 @@
   "infra-plan": "node tools/workflow/infraplan.mjs",
   "infra-apply": "node tools/workflow/infraplan.mjs --apply",
   "drill": "node tools/workflow/drill.mjs",
-  "launch-check": "node tools/workflow/launchcheck.mjs"
+  "launch-check": "node tools/workflow/launchcheck.mjs",
+  "costs": "node tools/workflow/costs.mjs"
 }

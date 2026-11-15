@@ -202,12 +202,19 @@ export function searchCards(board, run, words) {
 }
 
 
-/** Every card (open and closed, at most 1000): number, title, state (lower case), labels and column, for the worksheet. */
+/** Every card (open and closed, at most 1000): number, title, state (lower case), labels, column, and when it was made and last
+ *  changed, for the worksheet, the ranking and the triage. */
 export function listCards(board, run) {
   return ghJson(run, 'reading the cards', ['issue', 'list', '--repo', board.repo, '--state', 'all', '--limit', '1000',
-    '--json', 'number,title,state,labels,projectItems'])
+    '--json', 'number,title,state,labels,projectItems,createdAt,updatedAt'])
     .map((c) => ({ number: c.number, title: c.title, state: String(c.state).toLowerCase(), labels: (c.labels ?? []).map((l) => l.name),
-      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null }));
+      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null }));
+}
+
+/** Closes card #number with the reason as its last comment (a duplicate, out of date, won't do: the owner said so). */
+export function closeCard(board, run, number, reason) {
+  if (!String(reason ?? '').trim()) throw new BoardError(`Say why #${number} is closed, for example --close ${number} "duplicate of #12".`);
+  gh(run, `closing card #${number}`, ['issue', 'close', String(number), '--repo', board.repo, '--comment', reason]);
 }
 
 /** Which columns from the config the project lacks (empty when it has them all), the ones it has, and the

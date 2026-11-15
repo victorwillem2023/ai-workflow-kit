@@ -250,6 +250,15 @@ never through a shell, and takes the runner as an argument (`tests/workflow/boar
 | `npm run board -- --next [n]` | the n (5) cards to build next, from the columns a card can start in: `first version` cards first (the first `board.labels.milestone`), then value for the effort (`value` high 3, medium 2, low 1, not set 1.5; divided by `effort` small 1, medium 2, large 4, unknown 3; times `feasibility` high 1, medium 0.75, low 0.5; a bug +0.5), each with its reason; counts the cards with no value label and the issues off the board (`lib/rank.mjs`, a fixed sum: the owner's labels decide, not a model) |
 | `npm run board -- --inbox` | open issues that are not on the board (feedback from the form, error alerts, ideas filed on GitHub), the weekly reports aside |
 | `npm run board -- --adopt <n> --label <type> [--label <name>]...` | puts issue #n on the board in Backlog with its labels |
+| `npm run board -- --triage` | what needs a decision (`lib/triage.mjs`): more in progress than `board.wip` (2), waiting for your check over 3 days, in progress or blocked unchanged for 14, the inbox, startable cards with no value, likely duplicates (titles sharing most words), and over `board.backlogMax` (30) cards in Backlog the old low-value ones to prune; then the focus (finish these, then start this). `--next` prints one line when anything is found; `/tidy` acts on it |
+| `npm run board -- --close <n> "<reason>"` | closes card #n with the reason as its last comment; refused without a reason |
+
+## Costs
+`npm run costs` reads `docs/COSTS.md` (`lib/costs.mjs`): the running costs table (what, provider, plan, € a month, grows with,
+checked, source) and your hours at the hourly rate; prints the month by provider and the year, and flags a line with no price,
+no source link, or a price checked more than 90 days ago. `npm run costs -- --compare <file.json>` puts options side by side
+(`monthly`, `perUnit` x `units`, `oneOff`, `setupHours`, `hoursPerMonth`, `hourlyRate`) at 1, 12 and 36 months, and says from
+which use a flat-priced option beats a per-use one. `/estimate` and `/advise buy or host` use both; `docs/BUY-OR-HOST.md` is the method.
 
 **The loop and the order of work**: `/shape <n>` asks whether an idea is worth it (the problem, today's alternative, the first
 ten users, the smallest version, the sign it worked, when to stop) and sets `value` and `first version`; `/spike <n>` tries the

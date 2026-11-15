@@ -21,15 +21,15 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | Stage | What the kit gives it |
 |---|---|
 | **Idea** | `/idea`: one card per idea, bug or wish on a GitHub board; `/shape`: is it worth building (the problem, today's alternative, the first ten users, the smallest version, when to stop); `/spike`: a throwaway try of the riskiest part |
-| **Plan** | `/setup`: the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to build next, by value for the effort, at any point; `/spec`: a plan with named tests and how we will know it worked |
+| **Plan** | `/setup`: who it is for, the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to do next and which command, by value for the effort, at any point; `/tidy` (`npm run board -- --triage`): the board kept from piling up; `/estimate`: a change's work and cost from `docs/COSTS.md`; `/advise`: up to three advisors on a choice, citing the docs; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
-| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned, distroless release image per commit; smoke and accessibility tests and a page-weight budget once there are screens |
-| **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data; `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/IAC.md`); deploys go from GitHub to staging, then production after your approval; `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
-| **Grow** | the loop back: feedback, errors and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, feature flags, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/MARKET.md` |
+| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit (distroless for TypeScript and Go, a slim image for Python and Rust); a page-weight budget once there are screens. **Not yet**: browser smoke and accessibility tests |
+| **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/IAC.md`); deploys go from GitHub to staging, then production after your approval; `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
+| **Grow** | the loop back: feedback and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/MARKET.md`. **Not yet**: feature-flag code (how to add it: `docs/LIFECYCLE.md`), a help button in the app linking the feedback form, and errors from the tracker becoming issues by themselves |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Not yet: ready-made starters for a cluster (a Helm chart, GitOps with
-Argo CD or Flux), serverless and queues; the guides say when and which, and `/launch` writes them for the project today.
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Everything past the gate is optional: `project.audience` (just me, a team,
+customers) decides what the kit brings up, so a personal project is never told to launch, market or review access.
 
 ## The idea in ten rules
 1. **Scripts check, the AI reads the result.** `npm run gate` is quiet when it passes: layer rules, file size, stale doc references, typecheck, and only the tests the change can reach.
@@ -53,7 +53,7 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market, and the cheap helpers /next /check /find /docs
+  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market /advise /estimate /tidy, and the cheap helpers /next /check /find /docs
                           infracheck and infraplan (infrastructure checked, planned, reviewed, applied), drill (the restore drill)
   tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
@@ -93,30 +93,41 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
   production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
              src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
              docs/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
+  cluster/   (optional, --with cluster) deploy/helm/app (a Helm chart: not root, read-only, no capabilities, a disruption budget,
+             autoscaling, a NetworkPolicy, a Gateway API route; values per environment), deploy/gitops/argocd (one Application
+             per environment), docs/CLUSTER.md; the infra check renders and scans each environment
   ai/        (optional, --with ai) src/server/ai.ts (the one file that calls a model: spend caps, limits, untrusted text as marked
              data, a canary against leaked instructions, answers checked by a zod schema, a log without content; the Anthropic
              SDK by default, a fake provider for tests), cases/ (real and hostile cases; npm run cases is the quality score)
 ```
 
 ## The commands you type
-| Command | Does |
-|---|---|
-| `/idea <sentence>` | Card in Backlog (duplicate check, labels, one question at most). Cheap model. |
-| `/work <n>` | The one entry: reads card n, takes the route its type says, plans, stops for yes, builds, stops for you to try it, ships on "done". |
-| `/ui <n>` | The `ui` route (called by `/work`). |
-| `/build <topic>` | After the yes, **in a new chat**: builds in a session folder, the feedback rounds, then `/ship` on "done". `/build a b c` runs up to 3 builders in parallel when their files do not overlap. |
-| `/spec`, `/ship` | The steps underneath. |
-| `/check`, `/find`, `/docs` | Cheap helpers on a small model: explain a failing gate, answer "where is X" from the map, a small docs edit. Read-only or no commit. |
-| `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
-| `/secops` | Reads the weekly security report (an issue every Monday), says what each finding means, proposes the fix; a yes makes it a fix or a card. |
-| `/launch` | Before the first real deploy: the platform, shape, database, load balancer, sizes and infrastructure tool, one decision at a time with prices that day; writes the record, `infra/`, the environments and the run docs. Never applies. |
-| `/arch <question>` | The architecture board: four AI reviewers (cost, operations, security, product) answer apart; a proposed decision record; you decide. |
-| `npm run infra-plan -- infra/<env>` then `npm run infra-apply -- infra/<env>` | The plan, reviewed against the stack's `plan.expect` (names, labels, nothing holding data destroyed); then you apply exactly that plan, typing a code. |
-| `/market [part]` | Bringing it to market: positioning, pricing, the page, the funnel, ads, the launch, the monthly review; answers in `docs/MARKET.md`, the work as cards. Never spends money or publishes. |
-| `npm run launch-check -- <address>` | Is the landing page ready: title, description, share preview, one heading, image texts, privacy link, trackers without consent, robots.txt, sitemap, weight. |
-| `npm run drill` | The restore drill: the latest backup restored into a new place, the app started on it and asked; the date goes in `docs/RECOVERY.md`. |
-| `npm run setup-check` | Runs `docs/SETUP.md`'s marked steps on a fresh clone: the setup guide is proven, not hoped. |
-| `npm run updates` | What Dependabot found: security alerts first, then each update with a verdict (take it, look first, hold). `/work` starts with its one line. |
+**Not sure what to type? Type `/next`: it tells you which command.** It looks at the board, the security alerts and where the
+project stands, and names the next command; ask it "which command for ...?" and it answers from the list below.
+
+| Stage | Command | Does |
+|---|---|---|
+| Start | `/next` | The front door: what to do now and which command does it; the cards to start, best first. Cheap model. |
+| Start | `/setup` | Once, after installing: interviews you (who it is for, the product, the stack) and writes the rules, config, docs and board. |
+| Idea | `/idea <sentence>` | Card in Backlog (duplicate check, labels, one question at most). Cheap model. |
+| Idea | `/shape <n>`, `/spike <n>` | Is it worth building (fitted to who it is for); a throwaway try of the riskiest part. |
+| Plan | `/tidy` | The board's front desk: too much in progress, cards waiting for you, stalled work, the inbox, duplicates, an old backlog; one batch of tidy-ups for a yes, then the week's focus. |
+| Plan | `/estimate <card or idea>` | What one change really takes: the cards and hours, the cost a month now and at 10 times (from `docs/COSTS.md` and the price pages), and everything else it brings. |
+| Plan | `/advise [panel] [question]` | Help choosing between options: up to three advisors from a panel (platform, architecture, buy or host, roadmap, growth), each citing the official docs; a pilot, pages to read, a proposed decision record. `/arch` is its architecture panel. You decide. |
+| Plan | `/spec` | The plan of a feature with named tests (`/work` runs it). |
+| Build | `/work <n>` | The one entry for a card: takes the route its type says, plans, stops for yes, builds, stops for you to try it, ships on "done". |
+| Build | `/build <topic>`, `/ui <n>` | After the yes, **in a new chat**: builds in a session folder with the feedback rounds (`/build a b c`: up to 3 builders when their files do not overlap); the `ui` route with boards first. |
+| Ship | `/review`, `/ship` | Fresh eyes on the diff; one commit when you say done (`/work` and `/build` call them). |
+| Ship | `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
+| Run | `/launch` | Before the first real deploy: platform, shape, database, load balancer, sizes and infrastructure tool, one decision at a time with prices that day; writes the record, `infra/`, the environments and the run docs. Never applies. |
+| Run | `npm run infra-plan -- infra/<env>` then `npm run infra-apply -- infra/<env>` | The plan, reviewed against the stack's `plan.expect` (names, labels, nothing holding data destroyed); then you apply exactly that plan, typing a code. |
+| Run | `npm run drill`, `npm run costs [-- --compare <file>]` | The restore drill (the date goes in `docs/RECOVERY.md`); the monthly bill with stale prices flagged, or paid against self-hosted at 1, 12 and 36 months. |
+| Run | `/secops` | Reads the weekly security report (an issue every Monday), says what each finding means, proposes the fix; a yes makes it a fix or a card. |
+| Grow | `/market [part]` | Positioning, pricing, the page, converting, ads, the launch, the monthly review; answers in `docs/MARKET.md`, the work as cards. Never spends money or publishes. |
+| Grow | `npm run launch-check -- <address>` | Is the landing page ready: title, description, share preview, one heading, image texts, privacy link, trackers without consent, robots.txt, sitemap, weight. |
+| Every week | `/retro`, `/lesson` | The week's shipping streak and code health, lessons turned into checks; a correction made to last. |
+| Any time | `/check`, `/find`, `/docs` | Cheap helpers on a small model: explain a failing gate, answer "where is X" from the map, a small docs edit. Read-only or no commit. |
+| Any time | `npm run updates`, `npm run setup-check` | Security alerts and dependency updates with a verdict each; `docs/SETUP.md`'s steps proven on a fresh clone. |
 
 ## Install into a new project
 Needs: Node 22+, git, the GitHub CLI (`gh auth login`, then `gh auth refresh -s project`), Claude Code.
@@ -182,6 +193,26 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.7.0**: an advisor, a board tidy-up and a cost estimate, and everything optional.
+  `project.audience` (`me`, `team`, `customers`, asked by `/setup`) decides what the kit brings up: a personal project hears
+  nothing about launch, market, access reviews or "this already exists"; the SecOps report leaves out access and drills for it.
+  **Docs before memory**, a section of `CLAUDE.md` so every skill follows it: a fact about a platform or product comes from its
+  official docs, read now and linked, or is marked "not checked"; `docs/ADVISORS.md` lists the docs MCP servers per platform
+  (Context7, AWS, Microsoft Learn, Google Cloud, Cloudflare, Terraform, GitHub). `/next` is the front door: it says which command,
+  and `docs/WORKFLOW.md` and this README list every command by stage. `/advise` is the one place for help deciding (panels:
+  platform, architecture, buy or host, roadmap, growth; at most three advisors chosen for the question, more on request), each
+  citing its sources, with pilots, reading and decision records; `/arch` is its architecture panel, and `/estimate` and
+  `/advise` hand over to each other; `/retro` brings one platform suggestion a month. `/estimate` gives a change's work, its cost a month now and at 10 times, and what else it brings, from `docs/COSTS.md` (new:
+  the real bill, with sources and dates) and `npm run costs` (the sums, and `--compare` for paid against self-hosted over 1, 12
+  and 36 months with your hours). `docs/BUY-OR-HOST.md` (maps, routing, geocoding, email, sign-in, search, AI),
+  `docs/STAGES.md` and the project's `docs/ROADMAP.md` (from ten users to a company). `/tidy` and
+  `npm run board -- --triage` keep the board from piling up (work-in-progress limit, waiting for you, stalled, long blocked, the
+  inbox, unranked, duplicates (short titles pair only on the same words), pruning) and name the focus; `--close` closes with
+  a reason. The lifecycle table and `docs/LIFECYCLE.md` now say **Not yet** for what the kit does not have (browser smoke and
+  accessibility tests, feature-flag code, the production module outside TypeScript, an errors-to-issues workflow). `docs/GROWTH.md` gains *Converting*
+  (each funnel step, what moves it, no dark patterns) and `/market convert` proposes product changes as cards. The cluster module
+  (`--with cluster`): a secure Helm chart, Argo CD per environment, rendered, schema-checked and scanned by the infra check.
+  Background jobs, queues and serverless: `docs/SCALING.md`.
 - **2.6.0**: `/market` and the Grow stage. `docs/GROWTH.md` is the guide (positioning in five answers, pricing models and
   providers, the landing page, search and Search Console, cookieless analytics on one funnel, a first Google Ads Search
   campaign step by step with Consent Mode and a stop rule, Performance Max and the rest, AdSense and when it does not fit,

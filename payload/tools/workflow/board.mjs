@@ -10,13 +10,17 @@
 //   --show <number>              a card's title, column, labels and text
 //   --search "<words>"           cards (open and closed) whose title or text has the words: number, title, column
 //   --next [n]                   the n (5) startable cards to build next: first-version cards first, then value for the effort (lib/rank.mjs)
+//   --triage                     the view for /tidy: too much in progress, cards waiting for you, stalled or long-blocked work, the inbox,
+//                                cards without a value, likely duplicates, an old backlog to prune; and the focus (lib/triage.mjs)
+//   --close <number> "<reason>"  close a card the owner decided against, the reason as its last comment
 //   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
 // A failure prints one plain sentence and exits 1.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { adoptCard, createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
+import { renderTriage, triage, triageLine } from './lib/triage.mjs';
+import { adoptCard, closeCard, createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 import { inbox, rankCards, STARTABLE } from './lib/rank.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -34,7 +38,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --inbox or --adopt <number> --label <type>.';
+const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -47,6 +51,8 @@ async function main() {
   const config = JSON.parse(readFileSync(configFile, 'utf8'));
   const board = config.board;
   if (!board) throw new BoardError('workflow.config.json has no "board" block.');
+  // board.wip: how many cards may be in progress at once (2 for one person); board.backlogMax: when the backlog needs pruning
+  const triageOptions = () => ({ wip: board.wip ?? 2, backlogMax: board.backlogMax ?? 30, firstVersion: board.labels?.milestone?.[0], columns: board.columns });
   if (argv.includes('--init')) {
     const r = initBoard(board, run, undefined, { title: config.name });
     if (r.created) {
@@ -110,6 +116,15 @@ async function main() {
     if (unvalued) console.log(`(${unvalued} startable card${unvalued === 1 ? ' has' : 's have'} no value label: set one, the order is only as good as the labels)`);
     const waiting = inbox(all).length;
     if (waiting) console.log(`(${waiting} open issue${waiting === 1 ? ' is' : 's are'} not on the board yet: npm run board -- --inbox)`);
+    const line = triageLine(triage(all, triageOptions()));
+    if (line) console.log(line);
+  } else if (argv.includes('--triage')) {
+    // the view for /tidy: what needs a decision so nothing piles up, and the focus (lib/triage.mjs)
+    console.log(renderTriage(triage(listCards(board, run), triageOptions())));
+  } else if (argv.includes('--close')) {
+    const number = cardNumber(value('--close'));
+    closeCard(board, run, number, argv[argv.indexOf('--close') + 2]);
+    console.log(`board: #${number} closed, the reason added as a comment`);
   } else if (argv.includes('--inbox')) {
     const waiting = inbox(listCards(board, run));
     if (!waiting.length) console.log('board: every open issue is on the board');

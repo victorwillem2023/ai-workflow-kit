@@ -16,8 +16,13 @@ yourself: the stack, the dev, build, test and typecheck commands, the folders th
 A new, empty project: skip to the questions and say the answers will become the plan for the first folders.
 
 ## 2. Ask the owner (AskUserQuestion, each with your best guess as the recommended option; an existing project: at most two rounds)
+0. **Who it is for**: just you (a personal, learning or hobby project), your team or company, or customers (people outside,
+   who may pay). Write it as `project.audience` (`me`, `team`, `customers`) in `workflow.config.json`. It decides how much of the
+   kit speaks up: for `me`, nothing about access reviews, restore drills, launch, market, privacy texts or "does this already
+   exist?" unless the owner asks; they stay in the kit, one command away. It can change any day (a hobby that gets users).
 1. **What the app does**, in one or two sentences, and for whom.
-   - **A new project: is it worth building?** First the questions of `/shape` (`.claude/skills/shape/SKILL.md`): the problem,
+   - **A new project: is it worth building?** (For `project.audience: me`, only the smallest useful version and the sign it
+     works for you: a project you want is worth building.) First the questions of `/shape` (`.claude/skills/shape/SKILL.md`): the problem,
      what people do today, the first ten users, the smallest useful version, how we will know it worked, when to stop. The
      answers become `docs/PRODUCT.md`; the smallest version becomes the first cards, labelled `first version` (`npm run board -- --next`
      ranks them first). Say plainly if the answers point to a spike before any stack (`/spike`). An existing project: fill

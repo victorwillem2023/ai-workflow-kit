@@ -10,6 +10,10 @@ Ten minutes of questions that can save weeks of building the wrong thing. Write 
 words, one batch of questions at a time (AskUserQuestion, with your best guess as the first option); skip what is already
 answered on the card or in `docs/PRODUCT.md`.
 
+0. **Fit the questions to the project** (`project.audience` in `workflow.config.json`). For `me` (personal, learning, a hobby):
+   ask only the smallest useful version and the sign it works for the owner; never argue that it already exists or will not
+   sell: wanting it is the reason. For `team` or `customers`: all of them. Either way, "something like it exists" is a fact to
+   say once, with what it means (copy what works, or differ on purpose), never a verdict, and never repeated.
 1. **Read** the card (`npm run board -- --show <n>`) and `docs/PRODUCT.md` (the product's own answers to these questions).
 2. **Ask** what is not yet answered:
    - **The problem**: what goes wrong for whom, today, in one sentence; how often; what it costs them (time, money, risk).

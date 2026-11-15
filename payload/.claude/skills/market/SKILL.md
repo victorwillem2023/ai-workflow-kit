@@ -4,11 +4,13 @@ description: Bring {{PROJECT}} to market ("/market", "/market ads", "/market lau
 model: opus
 ---
 
-# /market [positioning | pricing | page | ads | launch | review]
+# /market [positioning | pricing | page | convert | ads | launch | review]
 
 The kit's guide is `docs/GROWTH.md` (read by the section); the project's answers live in `docs/MARKET.md`. With no part named,
 start where `docs/MARKET.md` is still empty, in `docs/GROWTH.md`'s order. One part per message; stop for the owner after each.
 
+0. **Only when it is wanted.** For `project.audience` other than `customers`, say in one line that marketing is optional for
+   this project and stop unless the owner goes on (an internal tool may still want a short "how to start" page: offer that).
 1. **What we know.** Read `docs/PRODUCT.md` (the problem, the first users, how we will know it worked) and `docs/MARKET.md`.
    An empty `docs/PRODUCT.md`: run `/shape` first; marketing a product without a problem written down is guessing.
 2. **positioning**: draft the five answers (`docs/GROWTH.md`, *Positioning*) from `docs/PRODUCT.md` and what the owner says,
@@ -21,14 +23,20 @@ start where `docs/MARKET.md` is still empty, in `docs/GROWTH.md`'s order. One pa
    `npm run launch-check -- <address>` and explain each line; problems become part of that card.
 5. **The funnel**: which analytics tool (`docs/GROWTH.md`, *Analytics*; cookieless unless the owner chooses otherwise, and never
    on pages with sensitive data), which steps are counted, and the goals; the table in `docs/MARKET.md`. Setting it up is a card.
-6. **ads** (only once the page converts at a known rate): the channel that fits the users; for Google Ads Search the keyword
+6. **convert**: from the funnel table, the step where most people drop (ask the owner for the numbers if the table is empty).
+   For that step, three to five ideas from `docs/GROWTH.md`, *Converting*, fitted to this product (a feature, an onboarding
+   change, a page change, an email), each with the step it should move, a guess of how much, the effort, and how it will be
+   measured. Look at the product itself for the ideas (the first screens a new user sees: `npm run map -- --find` the sign-up and
+   first-use parts; with the ui module, the screenshots). On a yes each becomes a card (`/idea`, labelled with its value);
+   no dark patterns, ever.
+7. **ads** (only once the page converts at a known rate): the channel that fits the users; for Google Ads Search the keyword
    groups, negatives, two ads per group, the daily budget, the stop rule and conversion tracking with Consent Mode
    (`docs/GROWTH.md`, *Google Ads*). AdSense only for a content site with free traffic, never on the app or sensitive pages.
    Check the platform's policy for the product's category (health has its own) and say what it forbids. The owner creates the
    account, enters the card and presses start; you never hold the spending rights.
-7. **launch**: the checklist from `docs/GROWTH.md` against the real state, each box with its proof (a command's output, a
+8. **launch**: the checklist from `docs/GROWTH.md` against the real state, each box with its proof (a command's output, a
    link, a date) or a card for what is missing; the launch day, places, posts and emails drafted for the owner to send.
-8. **review** (monthly, or `/market review`): the owner pastes or exports the numbers (analytics, ads, sign-ups, payments);
+9. **review** (monthly, or `/market review`): the owner pastes or exports the numbers (analytics, ads, sign-ups, payments);
    fill the funnel table, the cost to win a user against what one brings, and per channel keep, change or stop, with the
    reason. One line per lesson in *What we learned*. Every change becomes a card.
 

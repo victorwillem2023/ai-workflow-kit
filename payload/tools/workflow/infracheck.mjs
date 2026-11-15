@@ -7,9 +7,12 @@
 //   Ansible: ansible-playbook --syntax-check per playbook
 //   OpenTofu / Terraform with *.tftest.hcl files: `test`, with mock_provider so no cloud account is needed
 //   startup scripts (cloud-init*.yaml, user-data*, startup*.sh): no secrets, no curl | sh, cloud-init's schema check
+//   Helm charts (deploy/helm/<chart>/, the cluster module): helm lint and helm template per values-<env>.yaml, kubeconform
 //   all: Trivy's configuration scan of infra/ (open firewalls, public buckets, unencrypted disks...)
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { stacks, startupFiles, startupProblems } from './lib/infracheck.mjs';
 
 const IMAGES = {
@@ -18,15 +21,19 @@ const IMAGES = {
   python: 'python:3.13-slim', // renovate: docker
   trivy: 'aquasec/trivy:0.76.2', // renovate: docker
   ubuntu: 'ubuntu:24.04', // renovate: docker
+  helm: 'alpine/helm:3.16.4', // renovate: docker
+  kubeconform: 'ghcr.io/yannh/kubeconform:v0.6.7', // renovate: docker
 };
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
 const config = JSON.parse(readFileSync('workflow.config.json', 'utf8'));
 const dir = config.map?.infraDir ?? 'infra';
-if (!existsSync(dir)) { console.log(`infra: no ${dir}/ folder yet (/launch makes it)`); process.exit(0); }
+// Helm charts (the cluster module: deploy/helm/<chart>/), each rendered per environment it has a values-<env>.yaml for
+const charts = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'deploy/helm'], { encoding: 'utf8' }).split('\n').filter((f) => /^deploy\/helm\/[^/]+\/Chart\.yaml$/.test(f)).map((f) => f.slice(0, -'/Chart.yaml'.length));
+if (!existsSync(dir) && !charts.length) { console.log(`infra: no ${dir}/ folder yet (/launch makes it)`); process.exit(0); }
 const here = process.platform === 'win32' ? execFileSync('cmd', ['/c', 'cd'], { encoding: 'utf8' }).trim() : process.cwd();
-const docker = (image, args, workdir = '/src') => spawnSync('docker', ['run', '--rm', '-v', `${here}:/src`, '-w', workdir, image, ...args], { encoding: 'utf8', env: { ...process.env, MSYS_NO_PATHCONV: '1' }, timeout: 10 * 60_000, maxBuffer: 64 << 20 });
+const docker = (image, args, workdir = '/src', input) => spawnSync('docker', ['run', '--rm', ...(input != null ? ['-i'] : []), '-v', `${here}:/src`, '-w', workdir, image, ...args], { input, encoding: 'utf8', env: { ...process.env, MSYS_NO_PATHCONV: '1' }, timeout: 10 * 60_000, maxBuffer: 64 << 20 });
 const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', dir], { encoding: 'utf8' }).split('\n').filter(Boolean);
 const found = stacks(files, dir, config.launch?.iac);
 const problems = [], tested = [];
@@ -62,10 +69,36 @@ if (configs.length) {
   const r = docker(IMAGES.ubuntu, ['sh', '-c', `apt-get update -qq >/dev/null && apt-get install -y -qq cloud-init >/dev/null 2>&1 && for f in ${configs.map((f) => `'${f}'`).join(' ')}; do cloud-init schema --config-file "$f" || exit 1; done`]);
   if (r.status !== 0) problems.push(`a startup script fails cloud-init's schema check\n${say(r)}`);
 }
-const scan = docker(IMAGES.trivy, ['config', '--quiet', '--exit-code', '1', '--severity', 'HIGH,CRITICAL', `/src/${dir}`]);
-if (scan.status === 1) problems.push(`Trivy found high or critical misconfigurations in ${dir}/ (fix them, or add a .trivyignore line with the reason)\n${say(scan)}`);
-else if (scan.status !== 0) problems.push(`Trivy did not run (is Docker running?)\n${say(scan)}`);
+// charts: helm lint, then each environment rendered and checked against the Kubernetes schemas (custom kinds like HTTPRoute
+// and Argo CD's Application are skipped by kubeconform when it has no schema for them)
+const rendered = [];
+const renderDir = mkdtempSync(join(tmpdir(), 'infra-check-'));
+for (const c of charts) {
+  const envs = files.concat(execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', c], { encoding: 'utf8' }).split('\n'))
+    .map((f) => new RegExp(`^${c}/values-([a-z0-9-]+)\\.ya?ml$`).exec(f)?.[1]).filter(Boolean);
+  for (const env of envs.length ? envs : [null]) {
+    const vals = ['-f', `${c}/values.yaml`, ...(env ? ['-f', `${c}/values-${env}.yaml`] : []), '--set', 'image.tag=check'];
+    const lint = docker(IMAGES.helm, ['lint', c, ...vals]);
+    if (lint.status !== 0) { problems.push(`${c}${env ? ` (${env})` : ''}: helm lint failed\n${say(lint)}`); continue; }
+    const out = docker(IMAGES.helm, ['template', 'check', c, ...vals]);
+    if (out.status !== 0) { problems.push(`${c}${env ? ` (${env})` : ''}: helm template failed\n${say(out)}`); continue; }
+    const valid = docker(IMAGES.kubeconform, ['-strict', '-ignore-missing-schemas', '-summary', '-'], '/src', out.stdout);
+    if (valid.status !== 0) problems.push(`${c}${env ? ` (${env})` : ''}: the rendered manifests are not valid Kubernetes\n${say(valid)}`);
+    else {
+      rendered.push(`${c.split('/').pop()}${env ? `/${env}` : ''}`);
+      // Trivy scans what was rendered with the real values: a chart scanned raw renders with defaults, or not at all
+      writeFileSync(join(renderDir, `${c.split('/').pop()}-${env ?? 'default'}.yaml`), out.stdout);
+    }
+  }
+}
+const scanTargets = [...(existsSync(dir) ? [[`/src/${dir}`, `${dir}/`, []]] : []), ...(rendered.length ? [['/rendered', 'the rendered charts', ['-v', `${renderDir}:/rendered`]]] : [])];
+for (const [path, name, mount] of scanTargets) {
+  const scan = spawnSync('docker', ['run', '--rm', '-v', `${here}:/src`, ...mount, IMAGES.trivy, 'config', '--quiet', '--exit-code', '1', '--severity', 'HIGH,CRITICAL', path], { encoding: 'utf8', env: { ...process.env, MSYS_NO_PATHCONV: '1' }, timeout: 10 * 60_000, maxBuffer: 64 << 20 });
+  if (scan.status === 1) problems.push(`Trivy found high or critical misconfigurations in ${name} (fix them, or add a .trivyignore line with the reason)\n${say(scan)}`);
+  else if (scan.status !== 0) problems.push(`Trivy did not run on ${name} (is Docker running?)\n${say(scan)}`);
+}
+rmSync(renderDir, { recursive: true, force: true });
 
 if (problems.length) { console.log(problems.join('\n\n')); process.exit(1); }
 console.log(`infra: ${found.length} stack${found.length === 1 ? '' : 's'} (${found.map((s) => `${s.dir} ${s.tool}`).join(', ') || 'none yet'}) formatted and valid`
-  + `${tested.length ? `; tests pass in ${tested.join(', ')}` : ''}${boot.length ? `; ${boot.length} startup script${boot.length === 1 ? '' : 's'} clean` : ''}; Trivy found nothing high`);
+  + `${tested.length ? `; tests pass in ${tested.join(', ')}` : ''}${rendered.length ? `; charts render valid for ${rendered.join(', ')}` : ''}${boot.length ? `; ${boot.length} startup script${boot.length === 1 ? '' : 's'} clean` : ''}; Trivy found nothing high`);

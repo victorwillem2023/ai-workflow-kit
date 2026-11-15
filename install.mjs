@@ -37,7 +37,7 @@ const lang = opt('--lang') ?? 'ts';
 const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
 if (!LANGS[lang]) { console.error(`Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)`); process.exit(1); }
 // modules only some apps need: added with --with <name> (an app that calls a language model: --with ai)
-const OPTIONAL = ['ai'];
+const OPTIONAL = ['ai', 'cluster'];
 const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
 // an update keeps the modules the project was installed with (.workflow-kit remembers them), plus any --with
 const remembered = target && existsSync(join(target, '.workflow-kit')) ? list(/^modules=(.*)$/m.exec(readFileSync(join(target, '.workflow-kit'), 'utf8'))?.[1]) : [];
@@ -57,7 +57,8 @@ const vars = {
   TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
 };
 const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
-const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml|cmd)|Dockerfile)$/;
+// files whose {{PROJECT}}-style placeholders are filled in (Helm's and GitHub's own {{ ... }} are left alone: only the names in `fill`)
+const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml|cmd|ya?ml|tpl)|Dockerfile)$/;
 
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
@@ -325,7 +326,7 @@ if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(pr
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
-writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nmodules=${modules.join(',')}\nsections=${[...sectionsDone].join(',')}\n${[...stamp].sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nmodules=${modules.join(',')}\nsections=${[...sectionsDone].join(',')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (modules: ${modules.join(', ') || 'none'})` : `Installed kit ${kitVersion} into ${target} (modules: ${modules.join(', ') || 'none'})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);

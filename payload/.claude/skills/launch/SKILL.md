@@ -10,6 +10,8 @@ The kit's guide for every decision is `docs/LAUNCH.md` (read by the section, in 
 `docs/INFRA.md`, the mesh in `docs/MESH.md`, CI/CD in `docs/CICD.md`, monitoring in `docs/MONITORING.md`, how a change goes out
 in `docs/IAC.md`, releases and user testing in `docs/RELEASES.md`. Nothing here is tied to one provider: the owner's answers are.
 
+0. **Only when it is wanted.** For `project.audience: me` with no wish to put it online for others, say in one line that
+   `/launch` is optional (a home server or the computer it runs on is fine) and stop unless the owner goes on.
 1. **What we know.** Read `docs/PRODUCT.md` (who uses it, how many, where), `docs/STACK.md`, `docs/SENSITIVE.md` and
    `sensitive.paths`, `docs/ENVIRONMENTS.md`, `launch` in `workflow.config.json` if it is set, and the card if one was named.
    Say back in five lines: the users and load expected in the first year, where the data may live, what must never be lost,

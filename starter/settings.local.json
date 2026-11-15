@@ -37,7 +37,9 @@
       "Bash(npm run drill:*)",
       "Bash(node tools/workflow/drill.mjs:*)",
       "Bash(npm run launch-check:*)",
-      "Bash(node tools/workflow/launchcheck.mjs:*)"
+      "Bash(node tools/workflow/launchcheck.mjs:*)",
+      "Bash(npm run costs:*)",
+      "Bash(node tools/workflow/costs.mjs:*)"
     ],
     "deny": [
       "Bash(npm run signoff:*)",

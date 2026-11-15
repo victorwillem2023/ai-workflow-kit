@@ -1,5 +1,8 @@
 # How to work with the AI workflow
 
+**Not sure what to type? Type `/next`: it tells you which command.** It looks at the board, the security alerts and where
+the project stands, and names the next step; ask it "which command for ...?" and it answers from *The commands, by stage*.
+
 For anyone working on this repo with an AI coding agent (for example Claude Code with Sonnet/Opus, OpenCode with DeepSeek, or a similar agent): what to type, what happens, and where you are asked to decide.
 "You" is the person steering the session; the agent does the planning, building and checking.
 The scripts behind it (gate, board, map, pictures) are described in `tools/workflow/README.md`;
@@ -21,16 +24,31 @@ the rules the agent follows are in `CLAUDE.md`.
 ## The first time
 After the kit is installed, `/setup` once: it interviews you and writes the project's rules, config and first docs, and makes the board.
 
-## Your four commands
-| You type | What happens |
-|---|---|
-| `/idea <a sentence>` | Adds a card to Backlog. Checks for a duplicate first, picks the labels, answers `#<n> made in Backlog: <url>`. Works in any folder. |
-| `/work <n>` | The main entry. Plans card n and stops for your yes, in the steps below. Run it from the main folder in a fresh chat. |
-| `/build <topic>` | After the yes, in a new chat: builds the plan, the feedback rounds and `/ship` all happen there. |
-| `/ui <n>` | Same, for a `ui` card (`/work` sends you there by itself). |
-| `node scripts/session.mjs --push` | Sends every finished feature to GitHub. Only when you say so. |
+## The commands, by stage
+Most days you need four: `/next`, `/idea`, `/work <n>` and, after the plan's yes, `/build <topic>` in a new chat. The rest
+come when a stage needs them; past the gate, every one is optional (`project.audience` decides what the kit brings up).
 
-`/spec` and `/ship` are the steps underneath; you rarely type them.
+| Stage | You type | What happens |
+|---|---|---|
+| Start | `/next` | What to do now and which command does it; the cards to start, best first. |
+| Start | `/setup` | Once, after the kit is installed: interviews you and writes the rules, config, first docs and the board. |
+| Idea | `/idea <a sentence>` | Adds a card to Backlog. Checks for a duplicate first, picks the labels, answers `#<n> made in Backlog: <url>`. Works in any folder. |
+| Idea | `/shape <n>` | Is it worth building: the questions, fitted to who it is for; sets the card's value. |
+| Idea | `/spike <n>` | A throwaway try of the riskiest part, ending in a decision note. |
+| Plan | `/tidy` | When the board piles up: one batch of tidy-ups for your yes, then the week's focus. |
+| Plan | `/estimate <n or a sentence>` | What one change costs: the work, the money a month now and at 10 times, and what else it brings. |
+| Plan | `/advise [panel] [question]` | Help choosing between options: up to three advisors, each citing the docs; `/arch` is its architecture panel. You decide. |
+| Build | `/work <n>` | The main entry. Plans card n and stops for your yes, in the steps below. Run it from the main folder in a fresh chat. |
+| Build | `/build <topic>` | After the yes, in a new chat: builds the plan, the feedback rounds and `/ship` all happen there. |
+| Build | `/ui <n>` | Same, for a `ui` card (`/work` sends you there by itself). |
+| Ship | `/spec`, `/review`, `/ship` | The steps underneath `/work` and `/build`; you rarely type them. |
+| Ship | `node scripts/session.mjs --push` | Sends every finished feature to GitHub. Only when you say so. |
+| Run | `/launch` | Where it runs, before the first real deploy; writes `infra/` and the environments. Never applies. |
+| Run | `npm run infra-plan -- infra/<env>`, then `npm run infra-apply -- infra/<env>` | The infrastructure change planned and checked against what was expected; then you apply exactly that plan. |
+| Run | `npm run drill`, `npm run costs` | The restore drill; the monthly bill, and paid against self-hosted (`-- --compare <file>`). |
+| Run | `/secops` | The weekly security report explained, with a fix or a card for each finding. |
+| Grow | `/market [part]` | Positioning, pricing, the page, converting, ads, the launch; `npm run launch-check -- <address>` checks the page. |
+| Every week | `/retro`, `/lesson` | What the week taught, turned into checks; a correction made to last. |
 
 Three cheap helpers, run on a small/free model (Haiku in Claude Code; in OpenCode the `cheapModel` of `harness.opencode` in `workflow.config.json`), for jobs you start
 yourself and can simply run again:

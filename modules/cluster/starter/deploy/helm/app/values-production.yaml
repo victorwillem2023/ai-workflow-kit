@@ -1,0 +1,10 @@
+autoscaling:
+  enabled: true
+env:
+  APP_ENV: production
+labels:
+  env: prod
+replicaCount: 2
+route:
+  enabled: true
+  hostname: app.example.com

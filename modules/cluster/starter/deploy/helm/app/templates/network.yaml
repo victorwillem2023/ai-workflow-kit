@@ -1,0 +1,47 @@
+{{- if .Values.networkPolicy.enabled }}
+# Traffic in only from the gateway's namespace, on the app's port; out only to DNS and HTTPS (the egress list in
+# infra/network.json names the hosts; a mesh or Cilium can enforce them by name).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "app.name" . }}
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "app.selector" . | nindent 6 }}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressNamespace }}
+      ports:
+        - port: {{ .Values.port }}
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - ports:
+        - port: 443
+          protocol: TCP
+{{- end }}
+{{- if .Values.route.enabled }}
+---
+# The way in, through the Gateway API (Istio, Envoy Gateway, Traefik, Cilium and the clouds all read it; docs/MESH.md).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "app.name" . }}
+  labels: {{- include "app.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.route.gateway }}
+      namespace: {{ .Values.route.gatewayNamespace }}
+  hostnames: [{{ required "route.hostname is the address users reach" .Values.route.hostname | quote }}]
+  rules:
+    - backendRefs:
+        - name: {{ include "app.name" . }}
+          port: 80
+{{- end }}

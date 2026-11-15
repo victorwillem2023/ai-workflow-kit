@@ -13,6 +13,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { connect as tlsConnect } from 'node:tls';
+import { forOthers } from './lib/audience.mjs';
 import { drillDue } from './lib/drill.mjs';
 import { accessDue, combine, fromCerts, fromGitleaks, fromOsv, fromSemgrep, fromTrivy, report } from './lib/secops.mjs';
 import { ipRuleProblems } from './lib/network.mjs';
@@ -60,12 +61,13 @@ async function build(dir) {
   const got = { trivy: readJson(join(dir, 'trivy.json')), osv: readJson(join(dir, 'osv.json')), semgrep: readJson(join(dir, 'semgrep.json')), gitleaks: readJson(join(dir, 'gitleaks.json')) };
   const hosts = domains();
   const certs = await Promise.all(hosts.map(certOf));
-  const access = existsSync('docs/ACCESS.md') ? readFileSync('docs/ACCESS.md', 'utf8') : null;
+  // access reviews and restore drills are about other people's access and data: not raised for a project only the owner uses
+  const access = forOthers(config) && existsSync('docs/ACCESS.md') ? readFileSync('docs/ACCESS.md', 'utf8') : null;
   const ranMore = [];
   // IP rules past their end date (the gate already refuses a bad one; dates run out on their own)
   const ipRules = ipRuleProblems(config.security?.ipRules).map((x) => ({ area: 'network', severity: x.severity, id: 'ip-rule', what: x.what, where: x.where, fix: 'take the entry out, or renew it in workflow.config.json with a reason and a new end date' }));
   const recovery = existsSync('docs/RECOVERY.md') ? readFileSync('docs/RECOVERY.md', 'utf8') : null;
-  const drill = drillDue(recovery, new Date(), Boolean(config.recovery?.drill));
+  const drill = forOthers(config) || config.recovery?.drill ? drillDue(recovery, new Date(), Boolean(config.recovery?.drill)) : [];
   const findings = combine(fromOsv(got.osv), fromTrivy(got.trivy), fromSemgrep(got.semgrep), fromGitleaks(got.gitleaks), fromCerts(certs), accessDue(access), ipRules, drill);
   if (recovery != null) ranMore.push('when the restore drill was last done (docs/RECOVERY.md, every 3 months)');
   const ran = Object.keys(got).filter((k) => got[k] != null).map((k) => COVERS[k]);

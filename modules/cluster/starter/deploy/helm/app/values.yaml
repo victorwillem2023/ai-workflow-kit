@@ -1,0 +1,34 @@
+# Shared by every environment; values-<env>.yaml changes only what differs. Keys in alphabetical order (docs/CONVENTIONS.md).
+autoscaling:
+  enabled: false
+  maxReplicas: 4
+  minReplicas: 2
+  targetCPUUtilizationPercentage: 70
+env: {}
+envFromSecret: ""
+health:
+  live: /health
+  ready: /ready
+image:
+  pullPolicy: IfNotPresent
+  repository: ghcr.io/{{REPO}} # lower case: the registry refuses capitals
+  tag: ""
+labels:
+  app: {{PREFIX}}
+  managed-by: helm
+networkPolicy:
+  enabled: true
+  ingressNamespace: gateway
+port: 8080
+replicaCount: 2
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+route:
+  enabled: false
+  gateway: public
+  gatewayNamespace: gateway
+  hostname: ""

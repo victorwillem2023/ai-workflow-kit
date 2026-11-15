@@ -78,6 +78,27 @@ week 2, pays**. One look a month; the numbers go in `docs/MARKET.md`. Cookieless
 need no consent banner; check the guidance of your country's data protection authority. **Never** count anything from pages
 that show health or other sensitive data, and never send such data to an analytics or ads tool.
 
+## Converting: from visitor to user to paying user
+More traffic into a leaking funnel wastes the traffic. Find the step where most people drop (the funnel table in
+`docs/MARKET.md`), fix that one, measure again. What usually moves each step:
+
+| Step that leaks | What tends to help | How to see it worked |
+|---|---|---|
+| **Visit to sign-up** | a headline that names the visitor's problem in their words; the product shown working (a short video, a live demo without signing up); the button's words say what they get ("Make my plan"); proof near the button; the price or "free" visible; fewer fields (email only, or sign in with Google or Apple) | sign-up rate per visit, per channel |
+| **Sign-up to the first useful moment** (activation) | time to value under two minutes: a starting template or sample data, an empty screen that says the one next step, a short checklist that ticks itself, asking only what the first result needs (the rest later); an email after a day only to those who did not reach it | share of sign-ups who reach the moment within a day, and how long it took |
+| **First use to coming back** (retention) | a reason to return built into the product (next week's plan, a reminder they set, a weekly summary email); a habit at a fixed moment; fixing the top complaint from the feedback inbox | share active in week 2 and week 4 |
+| **Using to paying** | the upgrade offered at the moment of value (when they hit the free limit doing something they want), not on day one; a trial that ends with a clear summary of what they did; yearly with about two months free; a plain pricing page with a question list; no card for a trial when you can afford it | trial-to-paid and free-to-paid rates; revenue per visitor |
+| **Paying to staying** (churn) | a cancel flow that asks why (one question) and offers a pause; a month-end email with what they got; fixing what the cancel reasons say | monthly churn; the reasons, counted |
+| **Users bringing users** | a share that shows their result (a plan, a route) with the product's name; "give a month, get a month" once they are happy | invites sent and accepted |
+
+Rules that keep it honest:
+- **One change at a time, measured** against the same weeks before. A/B tests only once a step has a few hundred conversions a
+  week per variant (GrowthBook or PostHog experiments, both self-hostable); below that, ship the change and compare periods.
+- **No dark patterns**: no fake timers, hidden cancel buttons, pre-ticked extras or fake scarcity; they are illegal in the EU
+  (unfair commercial practices, the Digital Services Act) and they cost trust you cannot buy back.
+- **Product changes are cards**: each conversion idea goes on the board with the step it should move, by how much, and how it
+  will be measured; `/market convert` proposes them, the owner ranks them with the rest (`npm run board -- --next`).
+
 ## Google Ads: paying to be found
 | Campaign | What | Start with it when |
 |---|---|---|

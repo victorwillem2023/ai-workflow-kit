@@ -1,0 +1,8 @@
+env:
+  APP_ENV: staging
+labels:
+  env: staging
+replicaCount: 1
+route:
+  enabled: true
+  hostname: staging.example.com

@@ -27,6 +27,27 @@ In this order, each step measured first with the load test (`docs/PERFORMANCE.md
 6. **The database**: a managed one with a read copy for reports; partitioning or sharding only with numbers that demand it.
 7. **Split a service out** only for the reasons below.
 
+## Background jobs and queues
+
+Slow or failing work (emails, exports, imports, AI calls, webhooks to others) leaves the request: the request saves a job, a
+worker does it, retries it, and records the result. In this order, each step only when the one before is too small:
+
+| Step | Choice | Fits | Watch out |
+|---|---|---|---|
+| 1. A job table in the app's database | for Postgres: pg-boss (Node), Graphile Worker (Node), Oban (Elixir), Procrastinate (Python), River (Go); for SQLite: a `jobs` table and a worker loop | one database, up to thousands of jobs a minute; a job and the data it changes in one transaction | none worth a second system at this size |
+| 2. A queue in Valkey or Redis | BullMQ (Node), RQ or Celery (Python), Sidekiq (Ruby), Asynq (Go) | many jobs, delays and rates, a dashboard | Valkey must be persistent (AOF) or jobs can be lost |
+| 3. A message broker | NATS JetStream (light), RabbitMQ (rich routing) | several services that must not know each other, fan-out to many | one more system to run, back up and watch |
+| 3. Managed | SQS and EventBridge (AWS), Pub/Sub and Cloud Tasks (GCP), Service Bus (Azure), Scaleway Queues | no broker to run, pay per message | tied to that cloud; local tests need its emulator (`docs/IAC.md`) |
+| 4. A log of events | Kafka or Redpanda | many consumers replaying the same history, analytics streams | a large system: a team's worth of work |
+
+Rules that hold at every step: every job can run twice without harm (idempotent: a job id, an "already done" check); a
+retry waits longer each time and stops after a few, landing in a dead-letter list someone looks at; a job carries ids, not
+personal data; the queue's length and the oldest job's age are on the monitoring (`docs/MONITORING.md`).
+
+**Serverless functions** suit the same work when it is rare or spiky: a webhook, a nightly export, an image resize (Cloud
+Run jobs, Lambda, Azure Functions, Scaleway Functions). They cost nothing when idle and a lot under steady load; keep the
+logic in the app's own modules so a function is a thin entry, and the code can move back into a worker without a rewrite.
+
 ## Repositories: one or many
 
 | Shape | Good | Costs | Choose it when |
@@ -81,14 +102,15 @@ moves, then the old code goes). Every split is an architecture decision (`/arch`
 ## The architecture board (`/arch`)
 
 Big decisions get more than one view before the owner decides: `/arch <question>` (for example "one repository or several
-for the coach app and the coaches' portal?") asks several AI reviewers, each with one point of view and the same facts:
+for the coach app and the coaches' portal?") is the architecture panel of `/advise` (`docs/ADVISORS.md`). It asks up to three
+AI reviewers, chosen from these points of view for what the question needs (more when the owner asks), with the same facts:
 - **simplicity and cost**: the smallest thing that works, what it costs a month and in hours;
 - **operations and scale**: what breaks at 10 times the load, how it is deployed, watched and recovered;
 - **security and data**: where the data goes, who can reach it, what the law and `docs/SENSITIVE.md` say;
 - **product and time**: what it does to the next three months of the board.
 
 Each answers on its own (they do not see each other), with a recommendation, the risks, what would change its mind and the
-evidence from the code and docs. The chair (the `/arch` skill) puts them side by side, says where they agree and disagree, and
+evidence from the code and docs. The chair (`/advise`, which `/arch` runs) puts them side by side, says where they agree and disagree, and
 writes a proposed decision record. **The owner decides**; the record says what was decided and why, and what would reopen it.
 When to call it: a new service or datastore, a new platform or provider, a change to a boundary, anything that is hard to undo.
 `/spec` suggests it when a spec does one of these.

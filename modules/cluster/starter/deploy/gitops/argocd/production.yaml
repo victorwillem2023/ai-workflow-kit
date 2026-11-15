@@ -1,0 +1,25 @@
+# Argo CD's view of {{PROJECT}} in production: the chart in this repository with values-production.yaml. The image tag (the commit) is set
+# by the deploy: deploy.environments.production.command runs "argocd app set {{PREFIX}}-production --helm-set image.tag={version}" and a
+# sync, then the deploy script checks /health and rolls back the same way (docs/CLUSTER.md).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{PREFIX}}-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/{{REPO}}.git
+    targetRevision: main
+    path: deploy/helm/app
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-production.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{PREFIX}}-production
+  syncPolicy:
+    # production syncs only when the deploy (after the approval) asks it to
+    syncOptions:
+      - CreateNamespace=true
