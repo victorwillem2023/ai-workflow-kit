@@ -52,7 +52,7 @@ const vars = {
   TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
 };
 const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
-const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml)|Dockerfile)$/;
+const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml|cmd)|Dockerfile)$/;
 
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
@@ -92,6 +92,8 @@ function copyTree(from, overwrite) {
     // another language: the TypeScript starter files stay out (the machinery's own tests are payload and stay in)
     if (lang !== 'ts' && !overwriteOnly(from) && (/\.tsx?$/.test(rel) || rel === 'tsconfig.json')) continue;
     if (rel === 'lang.json') continue;
+    // --update: the example code of the starter (src, tests) is for a new project; an existing one gets only docs and settings it lacks
+    if (update && !overwriteOnly(from) && /^(src|tests|cmd|internal|pkg)[\\/]/.test(rel) && !existsSync(join(target, rel))) continue;
     const dest = join(target, rel);
     const exists = existsSync(dest);
     const raw = readFileSync(src);
@@ -160,6 +162,22 @@ const own = { ...(pkg.scripts ?? {}) };
 if (/no test specified/.test(own.test ?? '')) delete own.test;
 pkg.scripts = { ...scripts, ...own };
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+
+// a tsconfig.json that was there before and checks nothing by itself (a framework starter's: "files": [] and references): the gate
+// gets its own, tsconfig.gate.json, over src, tests and scripts, so `npm run typecheck` really checks them
+if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(target, 'tsconfig.gate.json'))) {
+  const theirs = readFileSync(join(target, 'tsconfig.json'), 'utf8');
+  if (/"references"\s*:/.test(theirs) || /"files"\s*:\s*\[\s*\]/.test(theirs)) {
+    const gateCfg = JSON.parse(readFileSync(join(kit, 'starter', 'tsconfig.json'), 'utf8'));
+    const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+    gateCfg.compilerOptions.allowImportingTsExtensions = true; // framework starters import './App.tsx'
+    if (deps.react) gateCfg.compilerOptions.jsx = 'react-jsx';
+    if (deps.vite) gateCfg.compilerOptions.types.push('vite/client');
+    writeFileSync(join(target, 'tsconfig.gate.json'), JSON.stringify(gateCfg, null, 2) + '\n');
+    if (!own.typecheck) { pkg.scripts.typecheck = 'tsc --noEmit -p tsconfig.gate.json'; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
+    done.added.push('tsconfig.gate.json');
+  }
+}
 
 // another language: its commands and file endings into the config, when the config is the one just written
 if (LANGS[lang].config && done.added.includes('workflow.config.json')) {

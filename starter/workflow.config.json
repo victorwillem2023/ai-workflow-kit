@@ -21,7 +21,7 @@
       "say": "One more way around a check (any, @ts-ignore, an empty catch, a TODO with no card number): give it its real type, handle the error, or name the card (TODO #12)"
     }
   ],
-  "budget": { "CLAUDE.md": 13000, "src/**/CLAUDE.md": 3500 },
+  "budget": { "CLAUDE.md": 14000, "src/**/CLAUDE.md": 4500 },
   "testSeconds": 120,
   "scope": "advice",
   "copies": { "minLines": 6, "tests": ["tests/**/*.test.ts"] },

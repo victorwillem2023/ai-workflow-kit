@@ -43,7 +43,8 @@ const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 <
 const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
 // what the change is compared with: --base, or where this branch left main
-const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? 'HEAD';
+// (a repository with no commit yet is compared with git's empty tree, so everything counts as new)
+const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? (gitOk('rev-parse', '--verify', 'HEAD') ? 'HEAD' : '4b825dc642cb6eb9a060e54bf8d69288fbee4904');
 
 function listFiles() {
   const all = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean);
@@ -99,6 +100,8 @@ if (flag('--update-baseline')) {
     reason = (args[args.indexOf('--allow-growth') + 1] ?? '').trim();
     if (!reason || reason.startsWith('--')) { console.log('--allow-growth needs a reason: --allow-growth "<reason>"'); process.exit(1); }
   }
+  // the very first baseline of a project takes what is there (a framework starter's long demo function, say); after that only shrinking is free
+  if (!reason && !('cycles' in baseline)) reason = 'the first baseline';
   const upd = updateSizes(sizes, baseline.sizes ?? {}, reason, baseline.reasons ?? {});
   if (!upd.ok) {
     console.log('baseline not written: these would grow (put the new code in its own file, or --allow-growth "<reason>" for a pure refactor):');

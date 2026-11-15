@@ -1,8 +1,35 @@
 # The stack of a new project: the decisions that are expensive to change later
 
-Read by `/setup` for a new project only. Go through the decisions that apply, in this order, one at a time: recommend one choice
-with a one-sentence reason, say when another would be better, and let the owner confirm or pick. Skip what the app does not need
-(no server: no backend, database or sign-in). Write the answers into `docs/STACK.md`.
+Read by `/setup` for a new project only. Three steps: ask about the product (part A), choose every part from the answers
+(parts 1 to 8), show the choices as one page the owner can change (part B). Skip what the app does not need (no server: no
+backend, database or sign-in).
+
+## A. The product questions
+About the product and the people using it, never about technology. Batches of four, each with a suggested answer and "not sure"
+(then take the choice that is cheapest to change later and say so). Skip a question an earlier answer settled.
+1. **Who uses it**: only you, people you know, or anyone who signs up? How many in a year: tens, thousands, more?
+2. **Where**: a phone on the go, a computer at a desk, or both? Must it be in the app stores, or is a web page they can put on
+   their home screen enough?
+3. **Accounts**: does each person have their own data? Are there roles (a trainer and clients, a team and its members)?
+4. **What it remembers**: what is stored, and is any of it personal, about health, about children, or about money?
+5. **Without internet**: must it work with no connection (a gym basement, a trail) and catch up later?
+6. **Together**: do people see each other's changes at once (a chat, a shared plan), or is a refresh fine?
+7. **Money**: do people pay? Once, a subscription, through the app stores?
+8. **From outside**: which other services does it read or write (calendar, wearables, maps, mail, a payment provider)?
+9. **AI**: does it generate or judge anything (plans, feedback, pictures)? Must that work without sending personal data out?
+10. **Messages**: mail, push notifications, reminders at a set time?
+11. **Files**: do people upload photos, videos or documents? How large?
+12. **Languages and places**: one language or several? One country or the EU and beyond (privacy rules, where data is kept)?
+13. **Search engines**: must pages be found on Google, or is everything behind a sign-in?
+14. **When it breaks**: is an hour of downtime an annoyance or a disaster? Who is told?
+15. **Looking after it**: you with agents, or a team later? Any language or tool that team already knows?
+16. **Money to run it**: what may it cost per month now, and at a thousand users?
+
+## B. The page: *What I would build*
+One table, a row per part: the choice, why it follows from which answer ("phones and offline, so an installable web app with its
+data in the browser first"), and what would make us change it. Aim at an app that is modern, grows without a rewrite and can
+swap a part: the rules below. Under the table: what was left out on purpose and when to add it (a queue, a cache, a second
+server), and what it costs per month now and at the size from question 1. The owner changes a line or says yes.
 
 Before recommending a library or service by name, check its site or repository (a web search is fine): still maintained, its
 current major version, no announced end. Names below were right in November 2026; prefer what is current over what is written here.
@@ -18,6 +45,19 @@ Rules that keep a stack future-proof:
 Rust by default: the compiler catches most of an agent's mistakes before a test runs. TypeScript when most of the work is a
 browser screen. Python for data, notebooks or machine learning (run through uv). Go for a small network service a team already runs
 in Go. An existing project keeps its language. `starter/lang.json` in the kit has each one's commands.
+
+## 1b. What runs the JavaScript (only for TypeScript)
+Ask it, never assume it. Three sound choices; say which fits this app and why:
+- **Node** (the current LTS): the default for an app that must simply work everywhere. Every library and every host is tested on
+  it first. Pick it when the app leans on libraries with native parts (image handling, some database drivers) or on a host that
+  only offers Node.
+- **Bun**: one fast program that installs, runs TypeScript without a build step, tests and bundles. A good pick for a new
+  project with ordinary libraries (Hono, Drizzle, React, Zod all run on it) whose host runs a container. Check each library with a
+  native part first, and pin the version in the `Dockerfile`.
+- **Bun for installing, Node for running**: most of the speed, none of the runtime risk.
+The kit's own tools (the gate, the session script, the workflow tests) always run on Node, whatever the app runs on, so Node stays
+installed. With Bun: `testAll` and `testFiles` in the config are `bun test`, the install step is `bun install`, and the
+`Dockerfile` starts from `oven/bun` with a pinned version. Deno only when the owner asks for it.
 
 ## 2. Screens (web apps)
 - **UI framework**: React with TypeScript by default (agents know it best). Svelte when the owner wants less code per screen.

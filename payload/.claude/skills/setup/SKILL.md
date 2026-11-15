@@ -14,11 +14,14 @@ the source root (`ls`, not every file), `README.md` if there is one, `git log --
 yourself: the stack, the dev, build, test and typecheck commands, the folders that look like layers.
 A new, empty project: skip to the questions and say the answers will become the plan for the first folders.
 
-## 2. Ask the owner (AskUserQuestion, at most two rounds, each with your best guess as the recommended option)
+## 2. Ask the owner (AskUserQuestion, each with your best guess as the recommended option; an existing project: at most two rounds)
 1. **What the app does**, in one or two sentences, and for whom.
-   - **A new project: the stack.** Read `stack.md` in this folder and go through its decisions with the owner, one at a time,
-     each with a recommendation (language, screens, backend, data, sign-in, where it runs, tests, and the few decided-once questions).
-     Write the answers into `docs/STACK.md`. An existing project: fill `docs/STACK.md` from what the code already uses.
+   - **A new project: the product first, then what to build it with.** Read `stack.md` in this folder. Ask its product
+     questions in batches of four, in the owner's words, skipping what an earlier answer already settled. Then show one page,
+     *What I would build*: every part chosen (language, what runs it, screens, backend, data, sign-in, where it runs, tests),
+     each with one sentence on why it follows from the answers and what would make it change. Never ask the owner to pick a
+     technology they cannot judge: choose it and say why. The owner changes a line or says yes; only then write `docs/STACK.md`.
+     An existing project: fill `docs/STACK.md` from what the code already uses.
    - **A new project: the architecture.** Propose the folders and what each may import, fitted to the app, and show it before
      writing anything: a pure core (the rules, no files or network), a folder per outside service, the app on top (server,
      command line or screen). Two or three lines per folder. The owner confirms or changes it; it becomes answer 2.
@@ -62,6 +65,10 @@ Only real decisions; never ask what the code already says.
   the `docs/design` paths out of `CLAUDE.md`, and the `ui` type out of `workflow.config.json`.
 - When the map module is installed (`docs/flow/`): the questions and the kinds in `docs/REQUESTS.md` from answer 1, the first
   real parts in `docs/flow/map.js` (an end not built yet is `gap`), then `node docs/flow/build-requests.mjs`.
+- **After a framework starter** (Vite, Next.js, SvelteKit): `package.json` needs the scripts `dev.cmd` and `start.cmd` call
+  (`dev`, `build`, `start`; with Vite `start` is `vite preview`). The installer wrote `tsconfig.gate.json` for `npm run typecheck`
+  when the starter's own `tsconfig.json` checks nothing by itself: keep its `include` on every folder with code. Keep one
+  linter: with Biome, take the starter's ESLint config and packages out.
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
 - **Checks that follow from the stack** (`workflow.config.json`; `tools/workflow/README.md`, *What it checks*): with a database,
   `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);
@@ -75,6 +82,7 @@ Only real decisions; never ask what the code already says.
 npm run board -- --init        # labels, the project (when board.project is 0) and the columns
 npm run board -- --check
 npm run protect                # main can no longer be deleted or rewritten: a guard on this computer, and the rule on GitHub
+npx biome check --write src tests   # TypeScript, once: a framework starter's files into the kit's format; fix what it cannot
 npm run map
 npm run harness                 # .opencode/commands from the skills; opencode.jsonc when missing (AGENTS.md only with harness.agentsMd)
 node tools/workflow/gate.mjs --update-baseline

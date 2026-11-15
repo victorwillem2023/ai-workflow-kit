@@ -1,7 +1,7 @@
 // The file map (tools/workflow/lib/map.mjs): one line per source file, from its opening comment and imports.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { summaryOf, renderMap, sameMap, findInMap, usesInMap, withoutImports } from '../../tools/workflow/lib/map.mjs';
 import { buildGraph } from '../../tools/workflow/lib/graph.mjs';
 

@@ -18,7 +18,7 @@ export function ruleset(flow = 'direct') {
 export function verdict(status, out) {
   if (status === 0) return { ok: true, line: 'GitHub: main can no longer be deleted or rewritten' };
   if (/Upgrade to GitHub|make this repository public/i.test(out)) return { ok: false, line: 'GitHub: not set. Rules for a private repository need a paid plan (GitHub Pro) or a public repository; the guard on this computer still works' };
-  if (/not found|404/i.test(out)) return { ok: false, line: 'GitHub: not set. The repository was not found or you are not its admin (check board.owner and board.repo in workflow.config.json, and gh auth status)' };
+  if (/not found|404/i.test(out)) return { ok: false, line: 'GitHub: not set. The repository was not found: it is not on GitHub yet (run this again after the first push), or board.owner and board.repo in workflow.config.json are wrong, or you are not its admin (gh auth status)' };
   if (/gh auth login|not logged in|authentication/i.test(out)) return { ok: false, line: 'GitHub: not set. gh is not signed in: gh auth login' };
   return { ok: false, line: `GitHub: not set (${String(out).trim().split('\n').pop().slice(0, 200) || 'gh failed'})` };
 }
