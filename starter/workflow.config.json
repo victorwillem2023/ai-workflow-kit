@@ -53,8 +53,8 @@
     { "name": "page weight", "command": "node tools/workflow/perfbudget.mjs", "when": ["src/web/**", "package.json", "vite.config.*", "next.config.*"] }
   ],
   "docs": {
-    "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/guide/*.md", "docs/code/*.md"],
-    "exclude": ["docs/INFRA-MAP.md", "docs/MAP.md", "docs/README.md"]
+    "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/workflow/*.md", "docs/run/*.md", "docs/market/*.md", "docs/company/*.md", "docs/guide/*.md", "docs/code/*.md"],
+    "exclude": ["docs/run/INFRA-MAP.md", "docs/MAP.md", "docs/README.md"]
   },
   "boundaries": [
     {

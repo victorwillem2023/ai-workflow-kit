@@ -1,5 +1,5 @@
-// What the product costs (no I/O here): the running costs table and the hours in docs/COSTS.md, and the comparison of options
-// over time for a buy-or-host decision (docs/BUY-OR-HOST.md). The model explains; the sums are done here, the same every time.
+// What the product costs (no I/O here): the running costs table and the hours in docs/company/COSTS.md, and the comparison of options
+// over time for a buy-or-host decision (docs/run/BUY-OR-HOST.md). The model explains; the sums are done here, the same every time.
 const DAY = 86_400_000;
 const cells = (line) => line.split('|').slice(1, -1).map((c) => c.trim());
 const euros = (s) => { const m = /-?\d+(?:[.,]\d+)?/.exec(String(s).replace(/\s/g, '')); return m ? Number(m[0].replace(',', '.')) : null; };
@@ -17,7 +17,7 @@ function table(md, heading) {
   return body.filter((r) => !r.join('').startsWith('<')).map((r) => Object.fromEntries(head.map((h, i) => [h.toLowerCase(), r[i] ?? ''])));
 }
 
-/** docs/COSTS.md read: { lines, hours, rate }. */
+/** docs/company/COSTS.md read: { lines, hours, rate }. */
 export function parseCosts(md) {
   const lines = table(md, 'Running costs').map((r) => ({ what: r.what, provider: r.provider, plan: r['plan or size'], monthly: euros(r['€ a month']), grows: r['grows with'], checked: r.checked, source: r.source }));
   const hours = table(md, 'Your own time').map((r) => ({ what: r.what, hours: euros(r['hours a month']) ?? 0 }));

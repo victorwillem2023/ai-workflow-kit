@@ -83,11 +83,11 @@ export function fromCerts(certs, now = new Date()) {
   return out;
 }
 
-/** The access review (docs/ACCESS.md, its "Last review: YYYY-MM-DD" line): due every 90 days. No file: nothing to say. */
+/** The access review (docs/company/ACCESS.md, its "Last review: YYYY-MM-DD" line): due every 90 days. No file: nothing to say. */
 export function accessDue(text, now = new Date()) {
   if (text == null) return [];
   const m = /Last review:\s*(\d{4}-\d{2}-\d{2})/.exec(String(text));
-  const where = 'docs/ACCESS.md';
+  const where = 'docs/company/ACCESS.md';
   if (!m) return [{ area: 'access', severity: 'medium', id: 'access-review', what: 'no access review is recorded yet', where }];
   const days = Math.floor((now - new Date(`${m[1]}T00:00:00Z`)) / DAY);
   return days > 90 ? [{ area: 'access', severity: days > 120 ? 'high' : 'medium', id: 'access-review', what: `the last access review was ${days} days ago`, where }] : [];
@@ -159,7 +159,7 @@ export function fixFor(f) {
   }
   if (f.area === 'secret') return 'change the key at its provider now, then take it out of the code: it is in git\'s history, so treat it as leaked';
   if (f.area === 'certificate') return 'renewal is meant to be automatic (Caddy, cert-manager, or certbot\'s timer): find why it stopped and fix that; renewing by hand hides the broken part';
-  if (f.area === 'access') return 'run `npm run access`, check each person and key against docs/ACCESS.md, take away what is no longer needed, then set the date';
+  if (f.area === 'access') return 'run `npm run access`, check each person and key against docs/company/ACCESS.md, take away what is no longer needed, then set the date';
   if (f.fix) return f.fix;
   if (f.area === 'code') return 'read the rule and the line; fix it, or mark it `nosemgrep: <rule>` with the reason when it is safe by design';
   return 'see the rule';

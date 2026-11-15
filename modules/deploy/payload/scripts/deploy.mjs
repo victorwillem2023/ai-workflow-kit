@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Deploys the commit you are on and proves it runs, or puts the old version back. Settings: `deploy` in workflow.config.json
 // ({ "url": "https://app.example.com", "command": "<the host's deploy command, {version} is the commit>", "rollback": "<the same for an
-// older {version}>", "health": "/health", "waitSeconds": 120 }); how the app answers /health is in docs/DEPLOY.md.
+// older {version}>", "health": "/health", "waitSeconds": 120 }); how the app answers /health is in docs/run/DEPLOY.md.
 //   node scripts/deploy.mjs                      deploy: run the command, wait until /health names this commit, watch it (the canary,
 //                                                "watch" in the config: 5 minutes by default); if it never comes up or fails the watch, roll back
 //   node scripts/deploy.mjs --smoke              only ask the running app: is it up, and which version
@@ -24,7 +24,7 @@ const envName = args.includes('--env') ? args[args.indexOf('--env') + 1] : null;
 if (envName && !all.environments?.[envName]) stop(`No "${envName}" under deploy.environments in workflow.config.json. The environments: ${Object.keys(all.environments ?? {}).join(', ') || 'none yet (/launch sets them)'}.`);
 const { environments: _envs, ...shared } = all;
 const cfg = envName ? { ...shared, ...all.environments[envName] } : shared;
-if (!cfg.url) stop('Not set up yet: put "deploy": { "url": ..., "command": ..., "rollback": ... } in workflow.config.json (docs/DEPLOY.md says how).');
+if (!cfg.url) stop('Not set up yet: put "deploy": { "url": ..., "command": ..., "rollback": ... } in workflow.config.json (docs/run/DEPLOY.md says how).');
 
 const url = healthUrl(cfg.url, cfg.health);
 const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(10_000) }); return { status: r.status, body: await r.text() }; };
@@ -48,7 +48,7 @@ async function rollback(to, why) {
 
 if (args.includes('--smoke')) {
   const now = await ask(get, url);
-  console.log(now.up ? `up: ${cfg.url} runs ${now.version ?? 'a version it does not name (see docs/DEPLOY.md, the health address)'}` : `DOWN: ${url} does not answer 200`);
+  console.log(now.up ? `up: ${cfg.url} runs ${now.version ?? 'a version it does not name (see docs/run/DEPLOY.md, the health address)'}` : `DOWN: ${url} does not answer 200`);
   process.exit(now.up ? 0 : 1);
 }
 if (args.includes('--rollback')) {
@@ -57,7 +57,7 @@ if (args.includes('--rollback')) {
   process.exit((await rollback(named && !named.startsWith('--') ? named : previous(log(), live), '')) ? 0 : 1);
 }
 
-if (!cfg.command) stop('No "command" under "deploy" in workflow.config.json (docs/DEPLOY.md says how).');
+if (!cfg.command) stop('No "command" under "deploy" in workflow.config.json (docs/run/DEPLOY.md says how).');
 if (git('status', '--porcelain')) stop('There are uncommitted files: commit them first (only a commit is deployed).');
 try { git('merge-base', '--is-ancestor', 'HEAD', 'origin/main'); } catch { stop('This commit is not on origin/main yet: push first (node scripts/session.mjs --push).'); }
 const version = git('rev-parse', '--short=12', 'HEAD');

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A person signs off a change to sensitive files (`sensitive.paths` in workflow.config.json: money, health, legal texts,
-// personal data) after checking it themselves. Writes one row in docs/SIGNOFFS.md; the gate's *signoff* check needs it.
+// personal data) after checking it themselves. Writes one row in docs/company/SIGNOFFS.md; the gate's *signoff* check needs it.
 //   npm run signoff             show the sensitive files this change touches, ask the checklist, write the row
 //   npm run signoff -- --base <ref>   compare with this commit instead of where the branch left main
 // Only at a terminal with a person typing: no input from a pipe, a typed-back code, and agents are denied the command in
@@ -17,7 +17,7 @@ process.chdir(git('rev-parse', '--show-toplevel'));
 const config = JSON.parse(readFileSync('workflow.config.json', 'utf8'));
 const args = process.argv.slice(2);
 const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', 'origin/main') ?? git('merge-base', 'HEAD', 'main') ?? 'HEAD';
-const FILE = 'docs/SIGNOFFS.md';
+const FILE = 'docs/company/SIGNOFFS.md';
 
 const paths = config.sensitive?.paths ?? [];
 if (!paths.length) { console.log('signoff: no sensitive.paths in workflow.config.json, so nothing needs a sign-off'); process.exit(0); }
@@ -45,6 +45,6 @@ const code = String(randomInt(1000, 9999));
 if ((await rl.question(`Type ${code} to sign: `)).trim() !== code) stop('the code did not match');
 rl.close();
 
-if (!existsSync(FILE)) writeFileSync(FILE, '# Sign-offs\n\nOne row per checked version of the sensitive files (`sensitive.paths`), written by `npm run signoff`, never by hand or by an agent. Read docs/SENSITIVE.md for what is checked.\n\n| Date | Who | Fingerprint | Files |\n|---|---|---|---|\n');
+if (!existsSync(FILE)) writeFileSync(FILE, '# Sign-offs\n\nOne row per checked version of the sensitive files (`sensitive.paths`), written by `npm run signoff`, never by hand or by an agent. Read docs/workflow/SENSITIVE.md for what is checked.\n\n| Date | Who | Fingerprint | Files |\n|---|---|---|---|\n');
 appendFileSync(FILE, `${signoffRow({ date: new Date().toISOString().slice(0, 10), who, print, files })}\n`);
 console.log(`signoff: signed ${files.length} file${files.length === 1 ? '' : 's'} (${print}) in ${FILE}; it goes in the same commit as the change`);

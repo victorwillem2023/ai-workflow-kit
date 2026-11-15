@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// The access review: who and what can reach this repository on GitHub, against docs/ACCESS.md, plus the list of places
+// The access review: who and what can reach this repository on GitHub, against docs/company/ACCESS.md, plus the list of places
 // to check by hand. Run by the owner (gh signed in), every 90 days; the weekly security report says when it is due.
 //   npm run access              print the review
 //   npm run access -- --publish open it as an issue labelled "access-review" (a checklist to work through)
-//   npm run access -- --done    set "Last review: <today>" in docs/ACCESS.md, after every line is settled
+//   npm run access -- --done    set "Last review: <today>" in docs/company/ACCESS.md, after every line is settled
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { accessReport, compareAccess, parseAccess } from './lib/access.mjs';
@@ -12,7 +12,7 @@ process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 
 const config = JSON.parse(readFileSync('workflow.config.json', 'utf8'));
 const repo = String(config.board?.repo ?? '').includes('/') ? config.board.repo : `${config.board?.owner}/${config.board?.repo}`;
 const args = process.argv.slice(2);
-const FILE = 'docs/ACCESS.md';
+const FILE = 'docs/company/ACCESS.md';
 const today = new Date().toISOString().slice(0, 10);
 
 function gh(a, input) {

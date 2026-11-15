@@ -29,7 +29,7 @@ spec:
 {{- end }}
 {{- if .Values.route.enabled }}
 ---
-# The way in, through the Gateway API (Istio, Envoy Gateway, Traefik, Cilium and the clouds all read it; docs/MESH.md).
+# The way in, through the Gateway API (Istio, Envoy Gateway, Traefik, Cilium and the clouds all read it; docs/run/MESH.md).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

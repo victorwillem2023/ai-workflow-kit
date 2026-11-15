@@ -1,6 +1,6 @@
 # Argo CD's view of {{PROJECT}} in production: the chart in this repository with values-production.yaml. The image tag (the commit) is set
 # by the deploy: deploy.environments.production.command runs "argocd app set {{PREFIX}}-production --helm-set image.tag={version}" and a
-# sync, then the deploy script checks /health and rolls back the same way (docs/CLUSTER.md).
+# sync, then the deploy script checks /health and rolls back the same way (docs/run/CLUSTER.md).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

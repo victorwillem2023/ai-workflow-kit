@@ -1,5 +1,5 @@
 // The human sign-off for sensitive files (money, health, legal texts, personal data): a change to a file under
-// `sensitive.paths` in workflow.config.json passes the gate only when docs/SIGNOFFS.md holds a row whose fingerprint is the
+// `sensitive.paths` in workflow.config.json passes the gate only when docs/company/SIGNOFFS.md holds a row whose fingerprint is the
 // fingerprint of those files as they are now. `npm run signoff` writes the row, and only a person at a terminal can run it,
 // so a model cannot approve its own work; any later edit to those files changes the fingerprint and needs a new sign-off.
 import { createHash } from 'node:crypto';
@@ -9,7 +9,7 @@ export const CHECKLIST = [
   'I read every changed line in these files myself (git diff), not only a summary of them.',
   'Every number, rate, limit, rule or legal text comes from the source the spec names, and I checked it there.',
   'The expected values in the tests were worked out by me or come from that source, not from the AI.',
-  'No personal or sensitive data goes anywhere docs/PRIVACY.md does not say it goes.',
+  'No personal or sensitive data goes anywhere docs/company/PRIVACY.md does not say it goes.',
 ];
 
 /** The changed files that are sensitive (`changed` may hold deleted files: deleting a rule is a change too). */
@@ -22,7 +22,7 @@ export function fingerprint(files, read) {
   return h.digest('hex').slice(0, 16);
 }
 
-/** The rows of docs/SIGNOFFS.md: | date | who | fingerprint | files | */
+/** The rows of docs/company/SIGNOFFS.md: | date | who | fingerprint | files | */
 export function parseSignoffs(md) {
   const out = [];
   for (const line of String(md ?? '').split('\n')) {
@@ -46,6 +46,6 @@ export function signoffVerdict({ changed, paths, matches, read, signoffs }) {
     ok: false, files, print,
     line: `${files.join(', ')} ${files.length === 1 ? 'is' : 'are'} sensitive (sensitive.paths) and changed without a person's sign-off for this version.\n` +
       'The owner checks the change against its source and runs npm run signoff in a terminal (an agent cannot: it needs a person typing).\n' +
-      'Any later edit to these files needs a new sign-off. Read docs/SENSITIVE.md for what to check.',
+      'Any later edit to these files needs a new sign-off. Read docs/workflow/SENSITIVE.md for what to check.',
   };
 }

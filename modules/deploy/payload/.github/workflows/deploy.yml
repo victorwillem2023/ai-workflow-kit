@@ -7,7 +7,7 @@
 # the approval. Each environment is skipped while deploy.environments in workflow.config.json does not name it.
 # The host's credentials live in that environment's secrets: DEPLOY_SSH_KEY (a private key for an SSH deploy, Kamal, Compose)
 # and DEPLOY_TOKEN (a platform's API token), read by deploy.environments.<name>.command. Production's never reach staging.
-# docs/CICD.md says how this fits; the infrastructure under it changes only through the plan and review in docs/IAC.md.
+# docs/run/CICD.md says how this fits; the infrastructure under it changes only through the plan and review in docs/run/IAC.md.
 name: deploy
 on:
   workflow_run:

@@ -1,6 +1,6 @@
 # Argo CD's view of {{PROJECT}} in staging: the chart in this repository with values-staging.yaml. The image tag (the commit) is set
 # by the deploy: deploy.environments.staging.command runs "argocd app set {{PREFIX}}-staging --helm-set image.tag={version}" and a
-# sync, then the deploy script checks /health and rolls back the same way (docs/CLUSTER.md).
+# sync, then the deploy script checks /health and rolls back the same way (docs/run/CLUSTER.md).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

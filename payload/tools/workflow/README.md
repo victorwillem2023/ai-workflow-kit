@@ -2,7 +2,7 @@
 
 Scripts that check a change so an AI session doesn't have to. No packages; plain Node ESM.
 Project settings are in `workflow.config.json` at the repo root, the rest is generic.
-How to use the whole flow day to day (`/idea`, `/work`, `/ui`): `docs/WORKFLOW.md`. This file is the reference, read by the
+How to use the whole flow day to day (`/idea`, `/work`, `/ui`): `docs/workflow/WORKFLOW.md`. This file is the reference, read by the
 section (`grep -n '^## '` lists them), never whole. The flow runs in Claude Code and in OpenCode (see *Agents and models*).
 
 | Command | What it does |
@@ -67,7 +67,7 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **ai**: a language-model SDK (Anthropic, OpenAI, Google, Mistral, the AI SDK, LangChain, Ollama and others) or a model API
   address used in the app's code anywhere but the one wrapper file, `ai.wrapper` in the config, fails; so does any use when no
   wrapper is named. The wrapper holds the spend cap, the limits, the untrusted-content markers, the output schema and the log
-  (`docs/AI-SECURITY.md`).
+  (`docs/workflow/AI-SECURITY.md`).
 - **spikes**: no file under `spikes/` outside a `spike-<topic>` session: a spike's code is thrown away, what it taught is in
   `docs/decisions/`.
 - **page weight** (a `checks` entry, when screens or the build change): `node tools/workflow/perfbudget.mjs` builds the app and
@@ -76,16 +76,16 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **image** (when there is a `Dockerfile`): every base pinned to a version (no bare name, no `:latest`); the image that runs
   has a `USER` that is not root (or a `:nonroot` base) and copies only what runs, never `COPY . .` or a whole earlier stage;
   no `ARG`/`ENV` named like a secret (they stay in the image's history: `RUN --mount=type=secret` instead); no `ADD` from a URL;
-  a `.dockerignore` that leaves out `.git` and `.env`. Which base to run on: `docs/INFRA.md`, *Container images*.
+  a `.dockerignore` that leaves out `.git` and `.env`. Which base to run on: `docs/run/INFRA.md`, *Container images*.
 - **network** (when `security.egress` or `security.ipRules` is set): every `https://` host the code calls (strings in the code
   under `settings.include`, not tests, comments, local or schema addresses) is in `security.egress` (exact, or `*.domain`); every
   IP rule is a real address or range, has a `why` and an `until`, and no allowlist lets all of the internet in. A rule past its
-  `until` is raised by the weekly security report, not the gate. `docs/NETWORK.md` shows both lists (generated blocks).
+  `until` is raised by the weekly security report, not the gate. `docs/run/NETWORK.md` shows both lists (generated blocks).
 - **signoff** (when `sensitive.paths` is set): a change to a sensitive file (money, health, legal texts, personal data) passes
-  only when `docs/SIGNOFFS.md` holds a row whose fingerprint matches those files as they are now. The owner writes it with
+  only when `docs/company/SIGNOFFS.md` holds a row whose fingerprint matches those files as they are now. The owner writes it with
   `npm run signoff` in their own terminal after checking the change against its sources: it refuses input from a pipe, an agent
   or CI, asks the checklist (`sensitive.checklist` replaces the kit's four questions) and a typed-back code, and agents are
-  denied the command and the file. Any later edit needs a new sign-off. Why: `docs/SENSITIVE.md`.
+  denied the command and the file. Any later edit needs a new sign-off. Why: `docs/workflow/SENSITIVE.md`.
 - **together** (when `together` is in the config): files that change together.
   `{ "name": "migration", "when": ["src/db/schema.ts"], "needs": ["migrations/**"] }` fails a change to the tables that adds no migration.
 - **your own checks** (`checks` in the config), after the tests, each a command that must pass:
@@ -104,7 +104,7 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **testsNaming** (optional): a changed file that is not code picks the tests that name it; `{ "src/web/css/**": "css-parts.mjs" }`
   makes every file under that folder pick the tests that name that word instead.
 - **map**: everything `npm run map` makes must be what it would write now; a stale one fails the gate. That is `docs/MAP.md`;
-  `docs/INFRA-MAP.md` once there are infrastructure files (one row per OpenTofu resource and module and per Kubernetes object:
+  `docs/run/INFRA-MAP.md` once there are infrastructure files (one row per OpenTofu resource and module and per Kubernetes object:
   kind, name, place, size; `map.k8s` lists the manifest globs); and the generated blocks in the docs, the parts made from the
   config so they cannot disagree with it: `<!-- generated: layers -->` (the import rules), `versions` (`.tool-versions`),
   `settings` (`.env.example` with each name's comment), `sensitive`, `naming`, each closed by `<!-- /generated -->`.
@@ -173,11 +173,11 @@ and writes one report in plain words: an issue labelled `security-report` (last 
 - **By hand**: `npm run secops -- --scan` (Docker). The scanner versions live only in `SCANNERS` of `tools/workflow/secops.mjs`.
 - **What no scanner sees**: the certificate of each public address (`security.domains`, else the host of `deploy.url`), raised
   when it ends within 21 days or cannot be read (renewal is meant to be automatic, so that is a broken renewal); and the access
-  review, raised when the "Last review" date in `docs/ACCESS.md` is over 90 days old.
+  review, raised when the "Last review" date in `docs/company/ACCESS.md` is over 90 days old.
 
 ## Access review
 `npm run access` (the owner, `gh` signed in as an admin): the people, deploy keys and Actions secret names GitHub shows, against
-the table in `docs/ACCESS.md`: what nobody listed, what is listed but gone, a role that differs, and a checklist of the places no
+the table in `docs/company/ACCESS.md`: what nobody listed, what is listed but gone, a role that differs, and a checklist of the places no
 script sees (the cloud console, the registrar, the database, the providers). `--publish` makes it an issue labelled
 `access-review`; `--done` sets the date once every line is settled.
 
@@ -186,7 +186,7 @@ script sees (the cloud console, the registrar, the database, the providers). `--
 moves it) in Docker against `performance.load.url` (default the main port on this computer), walking `performance.load.paths`
 with `performance.load.users`, and judges k6's summary against `performance.goals` (`p95ms`, `errorRate`): a few plain lines,
 exit 1 when a goal is missed. Production (`deploy.url`) is refused without `--yes-production`. `--script-only` prints the k6
-script; a file `load/<kind>.js` of your own replaces the made one. Why and when each kind: `docs/PERFORMANCE.md`.
+script; a file `load/<kind>.js` of your own replaces the made one. Why and when each kind: `docs/run/PERFORMANCE.md`.
 
 ## Infrastructure: check, plan, apply
 - `npm run infra-check`: every stack under `infra/` (one per folder; the tool from its files, or `launch.iac`), in Docker:
@@ -198,12 +198,12 @@ script; a file `load/<kind>.js` of your own replaces the made one. Why and when 
   the environment, passed by name), saved beside git's data, and reviewed (`lib/infraplan.mjs`) against the stack's
   `plan.expect`, the protected kinds (`launch.protect`), `naming.resources` (the final names) and `launch.labels`.
 - `npm run infra-apply -- infra/<env>`: only at a terminal, with a typed code (agents are denied it in the settings), only a
-  plan that passed, only while no file of the stack changed since, and once. The why and the order: `docs/IAC.md`.
+  plan that passed, only while no file of the stack changed since, and once. The why and the order: `docs/run/IAC.md`.
 
 ## The restore drill
 `npm run drill` runs `recovery.drill.restore` into a new temporary folder (`{dir}`), starts the app with `recovery.drill.start`
 on `{port}`, asks it `recovery.drill.paths` (the first one until it answers, within `waitSeconds`), stops it, deletes the folder,
-and writes the date and timings into the *Last restore drill* row of `docs/RECOVERY.md`; `pingEnv` names an environment
+and writes the date and timings into the *Last restore drill* row of `docs/run/RECOVERY.md`; `pingEnv` names an environment
 variable with a dead man's switch address to call on success. SecOps flags a drill older than 90 days.
 
 ## The launch check
@@ -212,7 +212,7 @@ variable with a dead man's switch address to call on success. SecOps flags a dri
 image), exactly one `<h1>`, alt text on every image, a link to the privacy notice, trackers (`TRACKERS`: Google tag and Ads,
 Tag Manager, AdSense, DoubleClick, the Meta, LinkedIn and TikTok pixels, Hotjar, Clarity) without a consent manager or
 Consent Mode defaults, robots.txt (present, not `Disallow: /` for all, naming the sitemap), the sitemap, and for an address the
-weight of the page and its own files. Exit 1 on a problem; warnings are judgements. Why each: `docs/GROWTH.md`.
+weight of the page and its own files. Exit 1 on a problem; warnings are judgements. Why each: `docs/market/GROWTH.md`.
 
 ## A setup guide that is proven
 `docs/SETUP.md` marks its steps ```sh setup``` (must finish) and one ```sh start``` with `<!-- ready: http://127.0.0.1:<port>/ -->`
@@ -258,11 +258,11 @@ never through a shell, and takes the runner as an argument (`tests/workflow/boar
 | `npm run board -- --close <n> "<reason>"` | closes card #n with the reason as its last comment; refused without a reason |
 
 ## Costs
-`npm run costs` reads `docs/COSTS.md` (`lib/costs.mjs`): the running costs table (what, provider, plan, € a month, grows with,
+`npm run costs` reads `docs/company/COSTS.md` (`lib/costs.mjs`): the running costs table (what, provider, plan, € a month, grows with,
 checked, source) and your hours at the hourly rate; prints the month by provider and the year, and flags a line with no price,
 no source link, or a price checked more than 90 days ago. `npm run costs -- --compare <file.json>` puts options side by side
 (`monthly`, `perUnit` x `units`, `oneOff`, `setupHours`, `hoursPerMonth`, `hourlyRate`) at 1, 12 and 36 months, and says from
-which use a flat-priced option beats a per-use one. `/estimate` and `/advise buy or host` use both; `docs/BUY-OR-HOST.md` is the method.
+which use a flat-priced option beats a per-use one. `/estimate` and `/advise buy or host` use both; `docs/run/BUY-OR-HOST.md` is the method.
 
 **The loop and the order of work**: `/shape <n>` asks whether an idea is worth it (the problem, today's alternative, the first
 ten users, the smallest version, the sign it worked, when to stop) and sets `value` and `first version`; `/spike <n>` tries the

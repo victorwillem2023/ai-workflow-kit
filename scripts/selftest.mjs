@@ -17,6 +17,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MOVES, movePathsBack, oldPaths } from '../doc-layout.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const win = process.platform === 'win32';
@@ -42,6 +43,19 @@ const VARIANTS = {
 };
 
 /** Every mention of a skill the project does not have (in its skills, docs and CLAUDE.md) that does not say "(not installed)". */
+/** The project's text files (tracked and new, not ignored), with the kit's stamp file, which names paths too. */
+const projectText = (dir) => [...execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: dir, encoding: 'utf8', maxBuffer: 64 << 20 })
+  .split('\n').filter((f) => f && /\.(md|mjs|cjs|js|ts|tsx|mts|json|ya?ml|html|tpl|txt|toml|py|go|rs)$/.test(f) && existsSync(join(dir, f))), '.workflow-kit'];
+/** Every old doc path (from before kit 2.9) still named in the project: "file: docs/X.md". */
+function oldDocPaths(dir) {
+  return projectText(dir).flatMap((f) => oldPaths(readFileSync(join(dir, f), 'utf8')).map((p) => `${f}: ${p}`));
+}
+/** The project as a kit from before 2.9 left it: every doc back at the top of docs/, every path in its text the old one. */
+function asOlderKitLeftIt(dir) {
+  for (const [from, to] of MOVES) if (existsSync(join(dir, to))) execFileSync('git', ['mv', to, from], { cwd: dir, stdio: 'ignore' });
+  for (const f of projectText(dir)) { const was = readFileSync(join(dir, f), 'utf8'); const back = movePathsBack(was); if (back !== was) writeFileSync(join(dir, f), back); }
+}
+
 function unmarkedMentions(dir) {
   const skills = new Set(readdirSync(join(dir, '.claude', 'skills')));
   const missing = readdirSync(join(kit, 'payload', '.claude', 'skills')).filter((s) => !skills.has(s));
@@ -70,7 +84,7 @@ async function runVariant(name) {
   mkdirSync(dir);
   const steps = [];
   // its own port range, so projects checked side by side never stop each other's test servers
-  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_TEST_PORTS: String(Object.keys(VARIANTS).indexOf(name) * 400) };
+  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_KIT_TESTS: '1', WORKFLOW_TEST_PORTS: String(Object.keys(VARIANTS).indexOf(name) * 400) };
   const step = (label, cmd, args) => new Promise((done, fail) => {
     const t0 = Date.now();
     // npm, uv and cargo can be .cmd files on Windows; the arguments are fixed here, never outside input
@@ -107,6 +121,9 @@ async function runVariant(name) {
       console.log(`${found.length ? 'FAIL' : 'ok  '} ${name}: no command named that is not installed${found.length ? `:\n${found.slice(0, 20).join('\n')}` : ''}`);
       if (found.length) throw new Error('mentions');
     }
+    const stale = oldDocPaths(dir);
+    console.log(`${stale.length ? 'FAIL' : 'ok  '} ${name}: no doc named by its old path${stale.length ? `:\n${stale.slice(0, 20).join('\n')}` : ''}`);
+    if (stale.length) throw new Error('old doc paths');
     // what the installer's "step 1" asks a person to run (TypeScript: one or more "npm i" joined by &&), so that line is proven too
     const line = /^\s*(?:1\.|step 1:)\s*(npm i [^\n]+)$/m.exec(said)?.[1];
     if (!v.args.includes('--lang') && !line) { console.log(`FAIL ${name}: the installer printed no "npm i" step:\n${said}`); throw new Error('step 1'); }
@@ -121,7 +138,14 @@ async function runVariant(name) {
     await step('full gate', process.execPath, ['tools/workflow/gate.mjs', '--all']);
     git('add', '-A');
     git('commit', '-q', '-m', 'The first baseline');
+    // the update starts from the layout an older kit left (every doc at the top of docs/), so moving a project over is proven too
+    asOlderKitLeftIt(dir);
+    git('add', '-A');
+    git('commit', '-q', '-m', 'As a kit from before 2.9 left it');
     await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
+    const left = [...oldDocPaths(dir), ...MOVES.filter(([from]) => existsSync(join(dir, from))).map(([from]) => `${from} was not moved`)];
+    console.log(`${left.length ? 'FAIL' : 'ok  '} ${name}: the update moved the docs into their folders${left.length ? `:\n${left.slice(0, 20).join('\n')}` : ''}`);
+    if (left.length) throw new Error('docs not moved');
     await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
     return 'passed';
   } catch {

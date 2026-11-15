@@ -21,7 +21,9 @@ const started: number[] = [];
 const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const portOf = (dir: string) => Number(/^PORT=(\d+)\s*$/m.exec(readFileSync(join(dir, '.env'), 'utf8'))![1]);
 const waitFor = async (ok: () => boolean, what: string) => {
-  for (let i = 0; i < 100; i++) { if (ok()) return; await new Promise((r) => setTimeout(r, 100)); }
+  // up to 30 s: stopping a process tree is slow on a busy Windows machine (the kit's self-test checks several projects at once);
+  // a pass returns as soon as it is true
+  for (let i = 0; i < 300; i++) { if (ok()) return; await new Promise((r) => setTimeout(r, 100)); }
   throw new Error(`timed out waiting for ${what}`);
 };
 

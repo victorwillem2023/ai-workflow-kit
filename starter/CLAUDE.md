@@ -7,13 +7,13 @@ part a change touches. Where every other doc is (product, company, build, run, d
 ## How we work (the owner decides what gets built)
 The owner wants to understand and steer the project, not just receive features. So:
 - **A stage in plain words** ("ready to deploy", "let's get users", "what now?"): the command comes from `/next` (it reads where
-  the project is, `tools/workflow/stage.mjs`, and `docs/WORKFLOW.md`, *The commands, by stage*), never improvised.
+  the project is, `tools/workflow/stage.mjs`, and `docs/workflow/WORKFLOW.md`, *The commands, by stage*), never improvised.
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: what the user will see change, which files, which test proves it,
   which docs; wait for approval. `/work <n>` is the one entry; after the yes `/build <topic>` runs **in a new chat**, and
   `/ship <topic>` finishes it only when the owner says done (`tools/workflow/README.md`, read by the section).
-- **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`docs/TOKENS.md`).
+- **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`docs/workflow/TOKENS.md`).
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.
 - **Docs in the same commit**: the guide part and `README.md` when a feature changes; `docs/ARCHITECTURE.md` when the layers or
   flow change; `docs/code/<folder>.md` when a part moves. A doc with a `<!-- covers: ... -->` line fails the gate when its
@@ -74,8 +74,8 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 
 ## Docs before memory
 A fact a platform, library or product decides (a limit, price, region, flag, API, default, what is deprecated) is looked up
-now in its official docs (a docs MCP server, `docs/ADVISORS.md`, else the page) and cited with the link, a price with the date
-too (`docs/COSTS.md`). Not found: say "not checked" and how to check, never a plausible number. A library: the docs for the
+now in its official docs (a docs MCP server, `docs/company/ADVISORS.md`, else the page) and cited with the link, a price with the date
+too (`docs/company/COSTS.md`). Not found: say "not checked" and how to check, never a plausible number. A library: the docs for the
 version in the lock file.
 
 ## Security (the rules for code: `docs/SECURITY.md`, *Rules for code*)
@@ -83,9 +83,9 @@ Treat every request, uploaded file and third-party page as hostile (<say here if
 code* before you touch untrusted input, fetch a URL that came from a user or a third party, build a link or HTML from data, or add
 an endpoint, file reader or outbound fetch (those also need a security review before `--finish`). Secrets are read from the
 environment, never written into a file in git (the gate fails on one). Never print or send `.env` values.
-**Sensitive files** (`sensitive.paths`: money, health, legal texts, personal data; `docs/SENSITIVE.md`): no number, rate or
+**Sensitive files** (`sensitive.paths`: money, health, legal texts, personal data; `docs/workflow/SENSITIVE.md`): no number, rate or
 legal sentence from memory, only from the source the spec names; a missing source is a question for the owner. Only the owner
-signs off (`npm run signoff`): never run it, never write `docs/SIGNOFFS.md`.
+signs off (`npm run signoff`): never run it, never write `docs/company/SIGNOFFS.md`.
 
 ## Reading the code cheaply
 Every token read is paid for again on every later turn of the chat, so read by the part, never whole.

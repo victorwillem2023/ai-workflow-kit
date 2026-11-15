@@ -21,23 +21,27 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    whole) and open only the ranges you need.
 2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation). A card that adds a
    service or a datastore, a platform or provider, changes a boundary, or is otherwise hard to undo: suggest `/arch` first
-   (the architecture board, `docs/SCALING.md`), and write the spec on its accepted decision. A change under `infra/` names
-   what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/IAC.md`).
+   (the architecture board, `docs/run/SCALING.md`), and write the spec on its accepted decision. A change under `infra/` names
+   what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).
 3. Copy `tools/workflow/templates/spec.md` to `specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
    - The rule and who shares it: `grep -n` the rule's row in `docs/ARCHITECTURE.md`, *Rules and where each lives*; the change goes in
      the file that row names, and the spec lists the kinds of case that share it (CLAUDE.md, 11 to 14).
+   - **New rules**: ask it every time, never skip the line: does this change add a rule the code will keep to from now on (who may
+     call, where writes may come from, a limit, a format every caller must use)? A new endpoint, a new check on input or a new
+     permission usually does. Yes: the rule in one line and its new row, and `docs/ARCHITECTURE.md` goes under "Docs that change"
+     so `/ship` holds the commit to it. No: "none".
    - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one.
    - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
      order, so `/build` can run them as waves. Small or tangled work: leave the section out. The owner approves the split with the spec.
    - Security: any new endpoint, file reader or outbound fetch gets limits listed and a `security-review` before finish.
-     A new endpoint follows `docs/API.md` (schema, errors, paging, limits, who may call it); a new outside host goes in
+     A new endpoint follows `docs/workflow/API.md` (schema, errors, paging, limits, who may call it); a new outside host goes in
      `security.egress` (the owner says yes: what data goes there).
    - Sensitive (a file under `sensitive.paths`: money, health, legal texts, personal data): a *Sources* list. Every number, rate,
      limit or legal sentence the code will hold names where it comes from (a law with its article, a contract, a price list, a
      file in `docs/sources/`), and the tests' expected values come from there, worked out by the owner. Anything with no source
-     is an open question for the owner, never filled in from what the model remembers (`docs/SENSITIVE.md`).
+     is an open question for the owner, never filled in from what the model remembers (`docs/workflow/SENSITIVE.md`).
 4. Fill in "Suggested model for the build" (Sonnet by default: the plan is decided, building it is coding; Opus only if a design
    decision is left or a sensitive file is touched, with one reason).
    Show the owner a summary, including that line, and stop.

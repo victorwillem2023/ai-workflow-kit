@@ -31,7 +31,7 @@ Servers, buckets, databases, networks, queues, DNS names, secrets, dashboards an
 | Part | Values | Example |
 |---|---|---|
 | app | one short code for the product, the same everywhere | `{{PREFIX}}` |
-| env | `dev`, `test`, `uat`, `staging`, `prod` (`docs/ENVIRONMENTS.md`) | `prod` |
+| env | `dev`, `test`, `uat`, `staging`, `prod` (`docs/run/ENVIRONMENTS.md`) | `prod` |
 | place | the provider's own region or site code, never a made-up one | `hel1`, `fsn1`, `euw1`, `onprem1` |
 | part | what it does, a noun | `web`, `db`, `backups`, `queue` |
 | nn | a number, only when there are several alike | `01`, `02` |
@@ -50,7 +50,7 @@ from the start, even if it looks like too much for one server:
 - the same names carry into everything around the resource: the DNS name (`db-01.prod.hel1.internal`), the secret
   (`{{PREFIX}}/prod/db`), the dashboard and the alert ("{{PREFIX}}-prod-hel1-db-01: disk 90% full").
 
-The plan review (`npm run infra-plan`, `docs/IAC.md`) checks the **final** names of everything it would create, whatever built
+The plan review (`npm run infra-plan`, `docs/run/IAC.md`) checks the **final** names of everything it would create, whatever built
 them, against `naming.resources`, and that each carries the labels in `launch.labels` (for example `app`, `env`,
 `managed-by`). A kind with stricter rules (a globally unique bucket, a key without dashes) gets an `except` entry with the
 reason, never a second style made up on the spot.

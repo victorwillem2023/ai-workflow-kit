@@ -3,6 +3,7 @@
 // check), and on a failure it prints only the short tail that explains it, so reading it costs few tokens.
 //   node tools/workflow/gate.mjs            layer rules, file size, typecheck, tests the change can reach
 //   node tools/workflow/gate.mjs --all      the same, with the whole test suite (before --finish)
+//   --kit                     also the kit's own tests (tests/workflow/**), which otherwise run only when the machinery changed or on GitHub
 //   node tools/workflow/gate.mjs --list     only print which tests the change reaches
 //   node tools/workflow/gate.mjs --update-baseline   accept today's exceptions (rules and sizes) as the baseline
 //   --allow-growth "<reason>"   with --update-baseline: accept a bigger number (a pure refactor); the reason is printed
@@ -12,6 +13,8 @@
 //   --advice      only print the advice lines (security-review, hostile-input test, a missing push guard) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
 // Project settings live in workflow.config.json; nothing here knows about the project.
+import { checkPackages, describeMissing } from '../../scripts/packages.mjs';
+import { testPlan } from './lib/testplan.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests } from './lib/graph.mjs';
@@ -207,13 +210,17 @@ const changed = changedFiles();
 const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming });
 // a language whose tests the gate cannot pick by file (`testPicking: false`): the whole suite, unless only docs changed
 if (config.testPicking === false) { reach.all = changed.some((f) => !matchesAny(f, config.ignoreChanged)); reach.tests = []; }
+// which tests run (lib/testplan.mjs): the kit's own only when the machinery changed, on GitHub, with --kit or WORKFLOW_KIT_TESTS
+const plan = testPlan({ whole: flag('--all'), unknown: reach.all, reached: reach.tests, allTests: [...graph.files.keys()].filter(isTest), changed,
+  forced: Boolean(process.env.CI || process.env.WORKFLOW_KIT_TESTS) || flag('--kit') || config.testPicking === false, matches: matchesAny,
+  kitTests: config.kitTests, kitMachinery: config.kitMachinery });
 
 // the scope guard: with one spec in specs/, the changed files it does not name
 function scopeLines() {
   if (config.scope === 'off' || !existsSync('specs')) return [];
   const specs = readdirSync('specs').filter((f) => f.endsWith('.md'));
   if (specs.length !== 1) return [];
-  const ignore = ['specs/**', config.map?.out, config.map?.infraOut ?? 'docs/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', ...(config.scopeIgnore ?? [])].filter(Boolean);
+  const ignore = ['specs/**', config.map?.out, config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', ...(config.scopeIgnore ?? [])].filter(Boolean);
   return outsideSpec(changed, specPaths(readFileSync(`specs/${specs[0]}`, 'utf8')), ignore)
     .map((f) => `scope: ${f} changed, but specs/${specs[0]} does not name it (add it to the spec or take the change out)`);
 }
@@ -336,12 +343,18 @@ const steps = [
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
     return { ok: true, note: `${docTexts.size} docs, ${staleRefs.length} known stale` };
   }],
+  // a package the lock lists and node_modules lacks: said plainly here, instead of as a typecheck or test error further down
+  existsSync('package-lock.json') && ['packages', () => {
+    const missing = checkPackages('.');
+    return missing.length ? { ok: false, out: `${describeMissing(missing)}: run npm install (in the main folder: every session uses its packages)` } : { ok: true };
+  }],
   ['typecheck', () => run(config.commands.typecheck)],
   ['tests', () => {
-    if (flag('--all') || reach.all) { const t0 = Date.now(); const r = run(config.commands.testAll); suiteSeconds = (Date.now() - t0) / 1000; return { ...r, note: 'whole suite' + (reach.all ? ' (an unknown file changed)' : '') }; }
-    if (!reach.tests.length) return { ok: true, note: 'no tests reached by this change' };
-    const r = run(`${config.commands.testFiles} ${reach.tests.join(' ')}`);
-    return { ...r, note: `${reach.tests.length} test files` };
+    if (plan.mode === 'none') return { ok: true, note: plan.note };
+    const t0 = Date.now();
+    const r = run(plan.mode === 'suite' ? config.commands.testAll : `${config.commands.testFiles} ${plan.files.join(' ')}`);
+    if (plan.whole) suiteSeconds = (Date.now() - t0) / 1000;
+    return { ...r, note: plan.note };
   }],
   ...dueChecks(config.checks, changed, flag('--all')).map(({ check, due, why }) => [check.name, () => {
     if (!due) return { ok: true, note: why };

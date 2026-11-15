@@ -13,6 +13,9 @@ Plain words: what changes on screen or in the results. No file names here.
 A fix, or a change to a rule every feature keeps to: the rule in one line, its row in `docs/ARCHITECTURE.md` (*Rules and where
 each lives*), and the kinds of case that share it. The change goes in the rule's home. Anything else: "none".
 
+New rules: <none | the rule in one line ("the API only accepts writes from this site", "only this computer may ask") and its row
+to add to `docs/ARCHITECTURE.md`, *Rules and where each lives*; then `docs/ARCHITECTURE.md` is under "Docs that change">
+
 ## Files that change
 One line per file: what changes in it. Look in `docs/MAP.md` first.
 
@@ -36,9 +39,9 @@ The guide part (`docs/guide/<part>.md`), `README.md`, `docs/ARCHITECTURE.md`, or
 New endpoint, file reader or outbound fetch? yes/no. If yes: limits (body size, count, rate) and run a security review before finish.
 Untrusted input read? yes/no.
 A hot path (a list, a search, a page many people open, a job that runs often)? yes/no. If yes: the query plan and the load test to
-run (`docs/PERFORMANCE.md`).
+run (`docs/run/PERFORMANCE.md`).
 Calls a language model, or gives one tools? yes/no. If yes: what goes in (personal? untrusted?), how the answer is checked, which
-tools need a person's click, the cost per use and the cap, and the hostile cases added (`docs/AI-SECURITY.md`, *Before it ships*).
+tools need a person's click, the cost per use and the cap, and the hostile cases added (`docs/workflow/AI-SECURITY.md`, *Before it ships*).
 Sensitive file touched (`sensitive.paths`: money, health, legal texts, personal data)? yes/no. If yes: fill *Sources*; the owner
 signs off with `npm run signoff` before the commit.
 

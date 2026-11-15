@@ -1,6 +1,6 @@
 // Structured logs: one JSON line per event (time, level, message, fields), so a log service can search and count them.
 // Nothing secret or personal is ever written: a field whose name looks like a secret (password, token, key, cookie...) becomes
-// "[hidden]", and the fields the app names as personal (`personal`, from docs/PRIVACY.md) become "[personal]". Long text and
+// "[hidden]", and the fields the app names as personal (`personal`, from docs/company/PRIVACY.md) become "[personal]". Long text and
 // deep or long values are cut, so a hostile input cannot fill the disk through the log.
 //   const log = createLogger({ base: { app: 'my-app', version: process.env.APP_VERSION }, personal: ['email', 'weight'] });
 //   log.info('plan made', { userId, weeks: 12 });   log.error('import failed', err, { userId });

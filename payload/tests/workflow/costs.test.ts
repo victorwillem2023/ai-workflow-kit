@@ -1,4 +1,4 @@
-// What the product costs (lib/costs.mjs): the running costs in docs/COSTS.md, and options compared over time.
+// What the product costs (lib/costs.mjs): the running costs in docs/company/COSTS.md, and options compared over time.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { compareOptions, costReport, parseCosts } from '../../tools/workflow/lib/costs.mjs';

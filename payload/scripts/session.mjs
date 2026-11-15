@@ -42,6 +42,7 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { checkPackages, describeMissing } from './packages.mjs';
 import { heldMessage, removeEmptyStrangers, removeFolder, stopMessage, stopSessionServer } from './session-stop.mjs';
 
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -161,6 +162,7 @@ async function serve(topic) {
   const url = `http://127.0.0.1:${port}`;
   const answers = async () => { try { await fetch(url, { signal: AbortSignal.timeout(2000) }); return true; } catch { return false; } };
   if (await answers()) { console.log(`The dev server runs already: ${url}`); return; }
+  ensurePackages('before the dev server starts');
   const scripts = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts ?? {};
   if (!scripts.dev) throw new Error(`${dir} has no "dev" script, so there is nothing to open: a change without a screen is tried with a command (.claude/skills/build/try-it.md).`);
   const log = join(tmpdir(), `${PREFIX}-${topic}-dev.log`);
@@ -277,6 +279,7 @@ async function make(topic, card, on) {
   const taken = usedPorts();
   let port = FIRST_PORT;
   while (taken.has(port) || !(await free(port))) port++;
+  ensurePackages('before the new session');
   git(main, 'worktree', 'add', '-b', topic, dir, from);
   if (from !== 'main') git(main, 'config', `branch.${topic}.kitOn`, from);
   symlinkSync(join(main, 'node_modules'), join(dir, 'node_modules'), 'junction');
@@ -333,6 +336,20 @@ const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON
 function mapFile(dir) {
   try { return JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8')).map?.out ?? 'docs/MAP.md'; } catch { return 'docs/MAP.md'; }
 }
+/**
+ * The main folder's packages as package-lock.json lists them (scripts/packages.mjs): every session uses them through its link, so a
+ * card that added a package and landed on main would leave the others without it. What is missing is installed, or said.
+ */
+function ensurePackages(when) {
+  const missing = checkPackages(main);
+  if (!missing.length) return;
+  console.log(`${describeMissing(missing)} ${when}: installing them in the main folder (npm install)...`);
+  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+  const ok = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: main, stdio: 'inherit', shell: process.platform === 'win32' }).status === 0;
+  const left = checkPackages(main);
+  if (!ok || left.length) console.log(`Still not as the lock lists them${left.length ? `: ${describeMissing(left)}` : ''}. Run npm install in ${main} and read what it says.`);
+}
+
 // a shell only on Windows, where npm is a .cmd file; the arguments are fixed script names, never outside input
 // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 const npmRun = (dir, step, quiet) => spawnSync('npm', ['run', step], { cwd: dir, stdio: quiet ? 'ignore' : 'inherit', shell: process.platform === 'win32' }).status === 0;
@@ -423,6 +440,8 @@ async function finish(topic, o) {
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone
   // the sessions built on this one leave its old commits behind and sit on main now (or say what is in the way)
   for (const s of stackedOn(topic)) restack(s, original);
+  // the change may have added a package: the main folder (and every session through its link) gets it now
+  ensurePackages('now that it is on main');
   if (!o.noChecks) remove(topic);
   else {
     stopServer(dir);

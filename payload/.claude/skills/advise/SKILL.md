@@ -8,15 +8,15 @@ model: opus
 
 **Which command**: `/advise` helps choose between options; `/estimate` says what one chosen change costs in work and money.
 A question that is really "what would X cost?" goes to `/estimate`; an estimate that turns up a real choice comes back here.
-The panels and the docs servers: `docs/ADVISORS.md`; the docs rule: `CLAUDE.md`, *Docs before memory*. Panels: `platform`, `architecture` (also `/arch`),
+The panels and the docs servers: `docs/company/ADVISORS.md`; the docs rule: `CLAUDE.md`, *Docs before memory*. Panels: `platform`, `architecture` (also `/arch`),
 `buy or host`, `roadmap`, `growth`. No panel named: pick the one the question needs and say which. No question: the platform
 panel looks at the project as it is and names the three changes it would make first.
 
 1. **The brief**, once, short, with file paths: the question and the options on the table (add "do nothing yet" when it is
-   real); `docs/PRODUCT.md`, `docs/ROADMAP.md` (the stage), `project.audience` and `launch` in the config, `docs/COSTS.md` (via
+   real); `docs/PRODUCT.md`, `docs/company/ROADMAP.md` (the stage), `project.audience` and `launch` in the config, `docs/company/COSTS.md` (via
    `npm run costs`), `docs/STACK.md`, earlier records in `docs/decisions/`, the last load test and SecOps numbers when they bear
    on it. Never secrets, `.env`, or personal or health data in the brief.
-2. **The advisors, in parallel and apart**: at most three, chosen from the panel's roles (`docs/ADVISORS.md`) for what this
+2. **The advisors, in parallel and apart**: at most three, chosen from the panel's roles (`docs/company/ADVISORS.md`) for what this
    question needs most; say which and why in one line. More only when the owner asks for them or names them. One subagent per
    advisor, all in one message, model `sonnet`, each given the brief and its role. Each must, before answering, look up every platform or product fact it relies
    on in the official docs (a docs MCP server if the project has one, else the docs pages) and cite the link; a fact it could
@@ -32,5 +32,5 @@ panel looks at the project as it is and names the three changes it would make fi
    pages), a pilot (`/spike` card with the pilot's measure and cost cap), an estimate (`/estimate`), or a decision.
 5. **The record**, on a decision: `docs/decisions/<date>-<topic>.md`, status **proposed**, then **accepted** or **rejected**
    with why on the owner's word: the question, the options, the board's table, the sources, the cost, the consequences, and
-   *Reopen when*. A roadmap decision also updates `docs/ROADMAP.md`; a buy-or-host one adds its line to `docs/COSTS.md`.
+   *Reopen when*. A roadmap decision also updates `docs/company/ROADMAP.md`; a buy-or-host one adds its line to `docs/company/COSTS.md`.
    The cards it needs come from `/idea`. No commit from this skill: the record goes in with the first card that builds it.

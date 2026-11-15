@@ -65,7 +65,7 @@ describe('the security report', () => {
     assert.deepEqual(f.map((x) => [x.where, x.severity]), [['a.example', 'critical'], ['c.example', 'high']]);
     assert.match(report(f, { date: now }).body, /renewal is meant to be automatic/);
   });
-  it('says when the access review is due, and nothing for a project without docs/ACCESS.md', () => {
+  it('says when the access review is due, and nothing for a project without docs/company/ACCESS.md', () => {
     const now = new Date('2026-11-16T05:00:00Z');
     assert.deepEqual(accessDue(null, now), []);
     assert.deepEqual(accessDue('Last review: 2026-10-01', now), []);

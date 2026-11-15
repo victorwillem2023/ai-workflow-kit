@@ -7,6 +7,6 @@ model: opus
 # /arch <question>  or  /arch <card number>
 
 This is `/advise architecture <question>`: follow `.claude/skills/advise/SKILL.md` with the architecture panel
-(`docs/ADVISORS.md`, `docs/SCALING.md`, *The architecture board*). Use it for a new service or datastore, a platform or
+(`docs/company/ADVISORS.md`, `docs/run/SCALING.md`, *The architecture board*). Use it for a new service or datastore, a platform or
 provider, a boundary, the repository shape, or anything else hard to undo; small or easily undone questions do not need it:
 say so and answer directly.

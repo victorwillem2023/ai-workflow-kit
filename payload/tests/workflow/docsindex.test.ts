@@ -9,18 +9,20 @@ group('the docs index', () => {
     assert.equal(describe('# How to work with the AI workflow\n\n**Not sure?**'), 'How to work with the AI workflow');
     assert.equal(describe('# Notes\n\nOne note per decision. More text.'), 'One note per decision');
   });
-  it('groups the docs, lists a folder once, marks the kit\'s guides, and puts the unknown ones under Other', () => {
+  it('makes the folders the sections: the top of docs/, then each subject folder doc by doc, then the other folders once', () => {
     const page = renderDocsIndex([
       { path: 'docs/PRODUCT.md', text: '# Coach: the product' },
-      { path: 'docs/IAC.md', text: '# Infrastructure as code: test, plan, review, apply' },
+      { path: 'docs/run/IAC.md', text: '# Infrastructure as code: test, plan, review, apply' },
+      { path: 'docs/company/COSTS.md', text: '# Coach: what it costs to run' },
       { path: 'docs/decisions/README.md', text: '# Decisions\n\nOne note per decision worth remembering.' },
       { path: 'docs/decisions/2026-11-01-launch.md', text: '# Launch' },
-      { path: 'docs/HANDBOOK.md', text: '# Coach: the team handbook' },
-    ], new Set(['docs/IAC.md']));
-    assert.match(page, /## The product\n.*\n\n- \[PRODUCT\]\(PRODUCT\.md\): the product\n/);
-    assert.match(page, /- \[IAC\]\(IAC\.md\): test, plan, review, apply \*\(the kit's\)\*/);
-    assert.match(page, /- \[decisions\/\]\(decisions\/\): One note per decision worth remembering\n/);
-    assert.match(page, /## Other\n\n- \[HANDBOOK\]\(HANDBOOK\.md\): the team handbook/);
+    ], new Set(['docs/run/IAC.md']));
+    assert.match(page, /## The product and how it is built\n\n- \[PRODUCT\]\(PRODUCT\.md\): the product\n/);
+    assert.match(page, /## Running it \(`run\/`\)\n.*\n\n- \[run\/IAC\]\(run\/IAC\.md\): test, plan, review, apply \*\(the kit's\)\*/);
+    assert.match(page, /## The company \(`company\/`\)[\s\S]*- \[company\/COSTS\]\(company\/COSTS\.md\): what it costs to run/);
+    assert.doesNotMatch(page, /market\//, 'a folder the project does not have is not listed');
+    assert.match(page, /## The other folders\n\n- \[decisions\/\]\(decisions\/\): One note per decision worth remembering\n/);
     assert.equal((page.match(/decisions\//g) ?? []).length, 2, 'the folder is one line, not one per note');
+    assert.ok(page.indexOf('run/') < page.indexOf('company/'), 'the subjects in the order a project meets them');
   });
 });

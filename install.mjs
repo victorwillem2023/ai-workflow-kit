@@ -12,7 +12,7 @@
 //   --modules none: no modules at all.
 //   --lang ts (default) | rust | python | go: the check and test commands of starter/lang.json; a language other than ts
 //   leaves the TypeScript starter files out (tsconfig.json, the .ts examples of the modules).
-// 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/WORKFLOW.md, docs/TOKENS.md): the generic machinery. Copied as is, with
+// 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/workflow/WORKFLOW.md, docs/workflow/TOKENS.md): the generic machinery. Copied as is, with
 //    {{PROJECT}} {{REPO}} {{OWNER}} {{PREFIX}} filled in. Existing files are kept unless --force.
 // 2. starter/  (CLAUDE.md, workflow.config.json, tsconfig.json, the guide, docs/code, folder CLAUDE.md files, STYLE.md ...): YOUR files to edit.
 //    Copied only when missing, never overwritten (not even with --force).
@@ -20,15 +20,16 @@
 //    ui = /ui skill, screenshots, style sheet, DOM helper, board template, STYLE.md; security = network guard, safe fetch, input guards,
 //    debug-handle gate and their tests, SECURITY.md; testing = fake clock, fakes pattern; dev = dev.cmd, start.cmd, dev-check;
 //    map = the app map (docs/flow: a page of yes/no trees of what the app decides) and the request pages (docs/REQUESTS.md);
-//    deploy = a Dockerfile, npm run deploy / smoke / rollback (scripts/deploy.mjs), docs/DEPLOY.md.
+//    deploy = a Dockerfile, npm run deploy / smoke / rollback (scripts/deploy.mjs), docs/run/DEPLOY.md.
 // 4. package.json gets the test/test:full/typecheck/gate/gate:all/map/board/harness scripts (the project's own win, except npm's
 //    placeholder test); .gitignore gets the kit's lines; .github/dependabot.yml (weekly updates) is written when missing. The OpenCode commands are written last (`npm run harness` again after a skill changes).
 //    Nothing is committed.
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { MOVES, movePaths } from './doc-layout.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -50,9 +51,9 @@ const OPTIONAL = ['ai', 'cluster'];
 const PARTS = {
   shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/'],
   estimate: ['.claude/skills/estimate/'],
-  advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/BUY-OR-HOST.md', 'docs/SCALING.md', 'docs/STAGES.md', 'docs/ROADMAP.md'],
-  launch: ['.claude/skills/launch/', 'docs/CICD.md', 'docs/LAUNCH.md', 'docs/MESH.md', 'docs/MONITORING.md', 'docs/RELEASES.md'],
-  market: ['.claude/skills/market/', 'docs/GROWTH.md', 'docs/MARKET.md', 'tools/workflow/launchcheck.mjs', 'tools/workflow/lib/launchcheck.mjs', 'tools/workflow/lib/launchcheck.d.mts', 'tests/workflow/launchcheck.test.ts'],
+  advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/run/BUY-OR-HOST.md', 'docs/run/SCALING.md', 'docs/company/STAGES.md', 'docs/company/ROADMAP.md'],
+  launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MESH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],
+  market: ['.claude/skills/market/', 'docs/market/GROWTH.md', 'docs/market/MARKET.md', 'tools/workflow/launchcheck.mjs', 'tools/workflow/lib/launchcheck.mjs', 'tools/workflow/lib/launchcheck.d.mts', 'tests/workflow/launchcheck.test.ts'],
   retro: ['.claude/skills/retro/'],
   secops: ['.claude/skills/secops/', '.github/workflows/secops.yml'], 'setup-check': ['.github/workflows/setup.yml'],
 };
@@ -146,6 +147,34 @@ const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
 const hash = (text) => createHash('sha1').update(String(text).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
 const written = new Map((existsSync(markFile) ? readFileSync(markFile, 'utf8') : '').split(/\r?\n/).map((l) => /^sha (\S+) (.+)$/.exec(l)).filter(Boolean).map((m) => [m[2], m[1]]));
 const stamp = new Map(written);
+// --update from before kit 2.9: the docs move into their folders (doc-layout.mjs) before anything is copied, with git so their
+// history follows; a kit guide keeps its stamp under the new path (so it is still known as the kit's), and every old path in the
+// project's own text (tracked, untracked, and the waiting specs git ignores) is rewritten
+const movedDocs = [];
+// every text file a project may name a doc in, whatever its language
+const PROJECT_TEXT = /\.(md|mjs|cjs|js|jsx|ts|tsx|mts|json|txt|html|css|toml|cmd|ps1|sh|ya?ml|tpl|py|go|rs)$|(^|\/)Dockerfile$/;
+if (update) {
+  for (const [from, to] of MOVES) {
+    const a = join(target, from), b = join(target, to);
+    if (!existsSync(a) || existsSync(b)) continue;
+    mkdirSync(dirname(b), { recursive: true });
+    if (spawnSync('git', ['mv', from, to], { cwd: target, stdio: 'ignore' }).status !== 0) renameSync(a, b);
+    for (const m of [written, stamp]) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
+    movedDocs.push(from);
+  }
+  if (movedDocs.length) {
+    const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
+    const specs = existsSync(join(target, 'specs')) ? readdirSync(join(target, 'specs')).map((f) => `specs/${f}`) : [];
+    let rewritten = 0;
+    for (const f of [...new Set([...listed.split('\n'), ...specs])].filter((x) => x && PROJECT_TEXT.test(x) && !x.startsWith('node_modules/'))) {
+      const p = join(target, f);
+      if (!existsSync(p) || !statSync(p).isFile()) continue;
+      const was = readFileSync(p, 'utf8'), now = movePaths(was);
+      if (now !== was) { writeFileSync(p, now); rewritten++; }
+    }
+    done.movedDocs = { count: movedDocs.length, rewritten };
+  }
+}
 const overwriteOnly = (from) => from.endsWith('payload');
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {
@@ -165,7 +194,7 @@ function copyTree(from, overwrite) {
     const next = /\.cmd$/.test(src) ? marked.replace(/\r?\n/g, '\r\n') : marked;
     const key = rel.replace(/\\/g, '/');
     const machinery = overwriteOnly(from);
-    // a part left out: its machinery is not shipped, and its starter pages (docs/MARKET.md, docs/ROADMAP.md) are not made
+    // a part left out: its machinery is not shipped, and its starter pages (docs/market/MARKET.md, docs/company/ROADMAP.md) are not made
     if (skippedPart(key)) continue;
     if (machinery) shipped.add(key);
     if (exists && machinery && update && !overwrite) {
@@ -322,6 +351,10 @@ if (update && !done.added.includes('workflow.config.json')) {
       else if (r.except && !same.except) { same.except = r.except; addedSettings.push(`import rule "${r.name}": except ${r.except.join(', ')}`); }
     }
     if (k === 'checks') for (const c of v) if (c.name !== 'lint' && !mine.checks.some((x) => x.name === c.name)) { mine.checks.push(c); addedSettings.push(`checks: ${c.name}`); }
+    // kit 2.9: the docs' subject folders are checked like the top of docs/ (the doc-layout folders the kit's include names)
+    if (k === 'docs' && Array.isArray(mine.docs?.include)) for (const g of v.include.filter((x) => /^docs\/[a-z]+\/\*\.md$/.test(x))) {
+      if (!mine.docs.include.includes(g)) { mine.docs.include.push(g); addedSettings.push(`docs.include: ${g}`); }
+    }
     if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; addedSettings.push(`${k}.${kk}`); }
   }
   if (addedSettings.length) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
@@ -402,6 +435,7 @@ if (update) {
   if (lfHint) console.log(lfHint);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
+  if (done.movedDocs) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git, and the old paths rewritten in ${done.movedDocs.rewritten} of the project's files`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');

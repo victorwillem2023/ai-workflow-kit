@@ -1,4 +1,4 @@
-// The restore drill's pure parts (no I/O here): the "Last restore drill" row of docs/RECOVERY.md, written after a drill and
+// The restore drill's pure parts (no I/O here): the "Last restore drill" row of docs/run/RECOVERY.md, written after a drill and
 // read by the weekly SecOps report, which flags a drill older than 3 months.
 const DAY = 86_400_000;
 const ROW = /^\| Last restore drill \|[^|\n]*\|/m;
@@ -12,7 +12,7 @@ export function drillRow(md, { date, restoreSeconds, upSeconds }) {
 /** A SecOps finding when the last drill is older than 90 days, or none was done while backups are set up. */
 export function drillDue(md, now = new Date(), setUp = false) {
   if (md == null) return [];
-  const where = 'docs/RECOVERY.md';
+  const where = 'docs/run/RECOVERY.md';
   const m = /^\| Last restore drill \| (\d{4}-\d{2}-\d{2})/m.exec(String(md));
   if (!m) return setUp ? [{ area: 'recovery', severity: 'medium', id: 'restore-drill', what: 'no restore drill is recorded yet (npm run drill)', where }] : [];
   const days = Math.floor((now - new Date(`${m[1]}T00:00:00Z`)) / DAY);

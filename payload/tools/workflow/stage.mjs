@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Where the project is and what stage comes next, in a line or two (/next runs it first): the first version built and nothing
 // says where it runs (/launch), a card that must come before the first deploy, a launch plan with nobody to tell (/market), a week
-// shipped without a retro (/retro). Facts only (the board, docs/decisions/*-launch.md, docs/MARKET.md, git); the rules are in
+// shipped without a retro (/retro). Facts only (the board, docs/decisions/*-launch.md, docs/market/MARKET.md, git); the rules are in
 // lib/stage.mjs. A board that cannot be reached leaves its rules out. Prints nothing when there is nothing to say.
 //   node tools/workflow/stage.mjs
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -40,7 +40,7 @@ const lines = stageNudges({
   firstVersion: v1 ? { total: v1.length, open: v1.filter((c) => !done(c)).length } : null,
   beforeDeploy: (cards ?? []).filter((c) => !done(c) && BEFORE_DEPLOY.test(`${c.title}\n${c.body ?? ''}`)).map((c) => ({ number: c.number, title: c.title })),
   launched: decisions.some((f) => /-launch\.md$/.test(f)),
-  marketPage: existsSync('docs/MARKET.md'),
+  marketPage: existsSync('docs/market/MARKET.md'),
   installed: Object.fromEntries(['launch', 'market', 'retro'].map((p) => [p, existsSync(join('.claude', 'skills', p, 'SKILL.md'))])),
   shippedThisWeek: weeks.at(-1)?.features ?? 0,
   daysSinceRetro: lastRetro ? Math.floor((Date.now() / 1000 - Number(lastRetro)) / 86400) : null,

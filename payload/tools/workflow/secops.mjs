@@ -62,19 +62,19 @@ async function build(dir) {
   const hosts = domains();
   const certs = await Promise.all(hosts.map(certOf));
   // access reviews and restore drills are about other people's access and data: not raised for a project only the owner uses
-  const access = forOthers(config) && existsSync('docs/ACCESS.md') ? readFileSync('docs/ACCESS.md', 'utf8') : null;
+  const access = forOthers(config) && existsSync('docs/company/ACCESS.md') ? readFileSync('docs/company/ACCESS.md', 'utf8') : null;
   const ranMore = [];
   // IP rules past their end date (the gate already refuses a bad one; dates run out on their own)
   const ipRules = ipRuleProblems(config.security?.ipRules).map((x) => ({ area: 'network', severity: x.severity, id: 'ip-rule', what: x.what, where: x.where, fix: 'take the entry out, or renew it in workflow.config.json with a reason and a new end date' }));
-  const recovery = existsSync('docs/RECOVERY.md') ? readFileSync('docs/RECOVERY.md', 'utf8') : null;
+  const recovery = existsSync('docs/run/RECOVERY.md') ? readFileSync('docs/run/RECOVERY.md', 'utf8') : null;
   const drill = forOthers(config) || config.recovery?.drill ? drillDue(recovery, new Date(), Boolean(config.recovery?.drill)) : [];
   const findings = combine(fromOsv(got.osv), fromTrivy(got.trivy), fromSemgrep(got.semgrep), fromGitleaks(got.gitleaks), fromCerts(certs), accessDue(access), ipRules, drill);
-  if (recovery != null) ranMore.push('when the restore drill was last done (docs/RECOVERY.md, every 3 months)');
+  if (recovery != null) ranMore.push('when the restore drill was last done (docs/run/RECOVERY.md, every 3 months)');
   const ran = Object.keys(got).filter((k) => got[k] != null).map((k) => COVERS[k]);
   const failed = Object.keys(got).filter((k) => got[k] == null).map((k) => COVERS[k]);
   if (hosts.length) ran.push(`the certificates of ${hosts.join(', ')} (ending within 21 days)`);
   if (config.security?.ipRules?.length) ran.push(`the ${config.security.ipRules.length} IP allow and block rules (an end date that passed)`);
-  if (access != null) ran.push('when the access review was last done (docs/ACCESS.md, every 90 days)');
+  if (access != null) ran.push('when the access review was last done (docs/company/ACCESS.md, every 90 days)');
   ran.push(...ranMore);
   return report(findings, { ran, failed });
 }

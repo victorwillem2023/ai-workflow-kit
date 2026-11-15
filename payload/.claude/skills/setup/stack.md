@@ -69,7 +69,7 @@ installed. With Bun: `testAll` and `testFiles` in the config are `bun test`, the
 `Dockerfile` starts from `oven/bun` with a pinned version. Deno only when the owner asks for it.
 
 ## 2. Screens (web apps)
-Which framework for which app, what server rendering asks for, and content from a CMS (Storyblok, Payload): `docs/FRONTEND.md`.
+Which framework for which app, what server rendering asks for, and content from a CMS (Storyblok, Payload): `docs/workflow/FRONTEND.md`.
 - **UI framework**: React with TypeScript by default (agents know it best). Svelte when the owner wants less code per screen.
   No framework only for a single page or a tool with one or two screens. A map or canvas app still uses one for the panels
   around the map (MapLibre in React: react-map-gl).
@@ -119,14 +119,14 @@ that matches the answer to question 17, saying why. Where to look, by the shape 
   accounts. Count it in the price.
 Say what the free plan does not do (sleeps when idle, a limit on data or build minutes), so the first bill is not a surprise.
 With the deploy module: pick a host where deploying and going back are one command each. `npm run deploy` then proves the new version runs, or puts the old one
-back; the app's part is `GET /health` answering with its version (`docs/DEPLOY.md`).
+back; the app's part is `GET /health` answering with its version (`docs/run/DEPLOY.md`).
 
 ## 6b. AI inside the app (only when question 9 says so)
 Every call goes through one file of our own (model name, prompt, limits), so the model can be swapped in a line; name it
 as `ai.wrapper` in the config (the gate's *ai* check fails a model call anywhere else). What that file must hold, and the rules
-against prompt injection and the rest of the OWASP list: `docs/AI-SECURITY.md`. The kit's ai module is that file, ready:
+against prompt injection and the rest of the OWASP list: `docs/workflow/AI-SECURITY.md`. The kit's ai module is that file, ready:
 `node ../ai-workflow-kit/install.mjs . --update --with ai` adds `src/server/ai.ts`, its tests and `cases/`. Tools, MCP servers and
-agents: `docs/AI-AGENTS.md`. Choose by the job,
+agents: `docs/workflow/AI-AGENTS.md`. Choose by the job,
 and look the prices and limits up that day: they change every few months.
 - **Small or occasional** (a few calls a day, a personal tool, a first version): a free tier is enough. In November 2026:
   Google's Gemini API (Flash models), OpenRouter's free models, Groq, Cloudflare Workers AI. Say the catch: daily limits, and
@@ -162,7 +162,7 @@ test('the plan screen opens and passes the accessibility scan', async ({ page })
 ```
 The page-weight budget (`performance` in the config, the `page weight` check) keeps what a visitor downloads small: 250 KB
 compressed to start; raise it only with a reason. The goals for the server (`performance.goals`), the load tests (`npm run load`,
-k6) and Core Web Vitals with Lighthouse CI: `docs/PERFORMANCE.md`.
+k6) and Core Web Vitals with Lighthouse CI: `docs/run/PERFORMANCE.md`.
 
 ## 8. Decided once, costly later (ask only the ones that apply)
 - **More than one language for the people using it** ever: all text through an i18n library from the first screen.

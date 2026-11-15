@@ -41,7 +41,7 @@ A new, empty project: skip to the questions and say the answers will become the 
 3. **Untrusted input**: where does outside data come in (requests, uploads, third-party pages, webhooks)? Will the server ever be
    reachable by other people (a tunnel, a deploy)?
    - **Sensitive work**: which parts handle money, health or safety advice, legal texts, personal data or access (propose the
-     folders from the code or the plan; `docs/SENSITIVE.md`, *What counts*)? Those become `sensitive.paths`: every change there
+     folders from the code or the plan; `docs/workflow/SENSITIVE.md`, *What counts*)? Those become `sensitive.paths`: every change there
      needs the owner's own sign-off. Who checks the sources (the owner, an accountant, a lawyer, an expert)?
 4. **The dev loop**: the command the owner runs while working, its port, and whether it restarts by itself.
 5. **The board**: the area labels (offer 3 to 6 from the folders and the app's parts), and whether the GitHub project exists already.
@@ -92,32 +92,32 @@ Only real decisions; never ask what the code already says.
   `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);
   with screens, the `e2e` entry of `stack.md` part 7 in `checks` (required: a smoke test and an accessibility scan per main
   screen) and `performance.files` pointing at the built files (the `page weight` check); `knip.json` when the app starts somewhere else than `src/index.ts`.
-  With personal data (answer 4 of the product questions), `together` also keeps the tables and `docs/PRIVACY.md` in one change
-  (`{ "name": "privacy", "when": ["<the schema file>"], "needs": ["docs/PRIVACY.md"] }`).
+  With personal data (answer 4 of the product questions), `together` also keeps the tables and `docs/company/PRIVACY.md` in one change
+  (`{ "name": "privacy", "when": ["<the schema file>"], "needs": ["docs/company/PRIVACY.md"] }`).
 - **`docs/SETUP.md`**: fit its marked steps to the app (the install, the settings, the start command and its ready address,
   `session.mainPort`), then `npm run setup-check` must pass. **`docs/CONVENTIONS.md`**: the names the owner's team already uses,
   and `naming` in the config to match (the kit's defaults follow the language): the app's short code and the environment and
   place codes in *Names of things in the system* and `naming.resources`, the files whose lists stay alphabetical in `naming.sorted`.
 - **Sensitive and access**: `sensitive.paths` from answer 3 (the gate's *signoff* check; an empty list until there is such code);
-  in `docs/ACCESS.md` a row for the owner and every account the app already depends on (GitHub, the cloud, the domain, the sign-in
-  provider), then `npm run access` must list nothing unexpected. **`docs/ENVIRONMENTS.md`**: the *This project* row for `dev`;
+  in `docs/company/ACCESS.md` a row for the owner and every account the app already depends on (GitHub, the cloud, the domain, the sign-in
+  provider), then `npm run access` must list nothing unexpected. **`docs/run/ENVIRONMENTS.md`**: the *This project* row for `dev`;
   the rest waits for `/launch`. `security.domains`: the app's public addresses once it has any (their certificates are watched).
-  `security.egress`: every outside host the code calls today (the gate's *network* check), and `docs/NETWORK.md` from answer 3.
+  `security.egress`: every outside host the code calls today (the gate's *network* check), and `docs/run/NETWORK.md` from answer 3.
   AI inside the app (stack.md 6b): `ai.wrapper`, the one file that calls the model, and its first hostile cases in `quality`.
-- **Tools**: for each tool the project uses that `docs/TOOLS.md` lists under *Leaving*, one line to the owner with what replaced it
+- **Tools**: for each tool the project uses that `docs/workflow/TOOLS.md` lists under *Leaving*, one line to the owner with what replaced it
   and what moving costs; never change it without a yes (it becomes a card).
 - **Versions**: `.tool-versions` with the exact Node (and any other tool) the app uses, the same Node in the `Dockerfile` and
   `@types/node`; the gate's *versions* check must pass. Renovate: say the owner installs its GitHub app for the repository
   (https://github.com/apps/renovate); several repositories: the policy goes to a config repository of their own.
 - **Security**: `npm run secops -- --enable` (Dependabot alerts and security updates); the weekly report starts with the first push.
-- When the production module is installed (`docs/PRODUCTION.md`): fill the first rows of `docs/PRIVACY.md` from the product
+- When the production module is installed (`docs/run/PRODUCTION.md`): fill the first rows of `docs/company/PRIVACY.md` from the product
   answers (what is kept, why, where; "not decided" where it is not), and the logger's `personal` list from them. Don't ask
-  about hosts, clusters or queues now: `docs/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
+  about hosts, clusters or queues now: `docs/workflow/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
   Another language than TypeScript: write the same three parts (checked settings, safe logs, health and stopping) in the
-  language's own way when the server is first built, and point `docs/PRODUCTION.md` at those files.
-- When the deploy module is installed (`docs/DEPLOY.md`): fill it, and `deploy` in the config for the host chosen in `stack.md`
+  language's own way when the server is first built, and point `docs/run/PRODUCTION.md` at those files.
+- When the deploy module is installed (`docs/run/DEPLOY.md`): fill it, and `deploy` in the config for the host chosen in `stack.md`
   part 6 (`url`, `command`, `rollback`; `{version}` is the commit); fit the `Dockerfile` to the app and write `.env.example`.
-  An app with no server: take out `Dockerfile`, `.dockerignore`, `docs/DEPLOY.md` and the *Deploying* section of `CLAUDE.md`.
+  An app with no server: take out `Dockerfile`, `.dockerignore`, `docs/run/DEPLOY.md` and the *Deploying* section of `CLAUDE.md`.
 
 ## 4. Make it real
 ```sh

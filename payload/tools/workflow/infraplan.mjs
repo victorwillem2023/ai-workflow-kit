@@ -106,6 +106,6 @@ async function apply() {
     ? spawnSync('pulumi', ['up', '--yes', '--non-interactive', `--plan=${join(plans, `${slug}.pulumi.json`)}`], { cwd: stack.dir, stdio: 'inherit', shell: process.platform === 'win32' })
     : docker(IMAGES[stack.tool], ['apply', '-input=false', `/plans/${slug}.tfplan`], { tty: true });
   writeFileSync(metaFile, JSON.stringify({ ...meta, ok: false, applied: new Date().toISOString() })); // a plan is applied once
-  console.log(r.status === 0 ? `Applied: ${stack.dir}. Run the smoke check (npm run smoke) and update docs/ENVIRONMENTS.md if it changed what runs where.` : `The apply failed part way: plan again to see where ${stack.dir} stands now.`);
+  console.log(r.status === 0 ? `Applied: ${stack.dir}. Run the smoke check (npm run smoke) and update docs/run/ENVIRONMENTS.md if it changed what runs where.` : `The apply failed part way: plan again to see where ${stack.dir} stands now.`);
   process.exit(r.status === 0 ? 0 : 1);
 }

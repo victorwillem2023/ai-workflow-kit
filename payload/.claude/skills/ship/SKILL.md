@@ -30,7 +30,7 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    done. Only fixes that keep the behaviour (a rename, a test, a comment) go on without a new check.
    **A sensitive file changed** (the gate's *signoff* line): the review is not optional. Then stop and hand the owner the check:
    the files, the spec's *Sources*, and `cd <session folder> && npm run signoff` to run in their own terminal. You never run it,
-   never write `docs/SIGNOFFS.md`, and never call the change checked before the gate passes with their row.
+   never write `docs/company/SIGNOFFS.md`, and never call the change checked before the gate passes with their row.
 3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first.
 4. Security: if "Security triggers" says yes, run the `security-review` skill and fix findings first. It compares with
    `origin/HEAD`; when that is missing (a repo whose remote was added after `git init`), run `git remote set-head origin main`

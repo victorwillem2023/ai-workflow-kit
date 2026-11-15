@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import { matchesAny } from '../../tools/workflow/lib/glob.mjs';
 import { fingerprint, parseSignoffs, sensitiveFiles, signoffRow, signoffVerdict } from '../../tools/workflow/lib/signoff.mjs';
 
-const paths = ['src/core/billing/**', 'docs/PRIVACY.md'];
-const disk: Record<string, string> = { 'src/core/billing/vat.ts': 'export const VAT = 0.21;\n', 'docs/PRIVACY.md': '# Privacy\n' };
+const paths = ['src/core/billing/**', 'docs/company/PRIVACY.md'];
+const disk: Record<string, string> = { 'src/core/billing/vat.ts': 'export const VAT = 0.21;\n', 'docs/company/PRIVACY.md': '# Privacy\n' };
 const read = (f: string) => disk[f];
 
 describe('the sign-off for sensitive files', () => {

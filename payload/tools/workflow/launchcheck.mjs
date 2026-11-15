@@ -35,10 +35,10 @@ if (live) {
   const refs = [...page.matchAll(/<(?:script|img)\b[^>]*\bsrc\s*=\s*["']([^"']+)["']|<link\b[^>]*rel\s*=\s*["']stylesheet["'][^>]*href\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1] ?? m[2]);
   const own = [...new Set(refs.map((u) => new URL(u, target)).filter((u) => u.host === new URL(target).host).map((u) => u.href))].slice(0, 40);
   for (const u of own) { const got = await get(u); kb += got ? (got.bytes || Buffer.byteLength(got.body)) / 1024 : 0; }
-  if (kb > 1024) warnings.push(`the page and its own files weigh ${Math.round(kb)} KB; under 1 MB loads fast on a phone (docs/PERFORMANCE.md)`);
+  if (kb > 1024) warnings.push(`the page and its own files weigh ${Math.round(kb)} KB; under 1 MB loads fast on a phone (docs/run/PERFORMANCE.md)`);
 }
 
 for (const w of warnings) console.log(`warning: ${w}`);
 for (const p of problems) console.log(`PROBLEM: ${p}`);
-console.log(problems.length ? `\n${problems.length} problem${problems.length === 1 ? '' : 's'} to fix before launch (docs/GROWTH.md, The landing page).` : `launch check: ${target} is ready${warnings.length ? `, ${warnings.length} warning${warnings.length === 1 ? '' : 's'} to judge` : ''}${live ? ` (${Math.round(kb)} KB)` : ''}.`);
+console.log(problems.length ? `\n${problems.length} problem${problems.length === 1 ? '' : 's'} to fix before launch (docs/market/GROWTH.md, The landing page).` : `launch check: ${target} is ready${warnings.length ? `, ${warnings.length} warning${warnings.length === 1 ? '' : 's'} to judge` : ''}${live ? ` (${Math.round(kb)} KB)` : ''}.`);
 process.exit(problems.length ? 1 : 0);

@@ -16,6 +16,8 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    - **Were tests bent to pass?** List every existing test whose expectation changed (`git diff main -- tests`), and whether
      the spec meant that change.
    - **Was a rule copied?** A rule written a second time when it already has a home (`docs/ARCHITECTURE.md`, *Rules and where each lives*).
+   - **Does it add a rule with no row?** Something the code now enforces for every caller (writes only from this site, only this
+     computer may ask, a new limit or permission) that has no row in that table, whatever the spec's "New rules" line says.
    - **Is anything outside the spec touched?** `npm run gate` prints `scope:` lines for those files.
    - **Would the owner understand it?** Names and comments say what a thing does; nothing is cleverer than it needs to be.
 3. Report as a short list, worst first, in plain words with one example each. Say "nothing found" when that is true.

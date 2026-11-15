@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Writes the file map (docs/MAP.md): one line per source file from its opening comment and imports; the infra map
-// (docs/INFRA-MAP.md, every resource in the OpenTofu and Kubernetes files) once there are any; and the generated blocks in the
+// (docs/run/INFRA-MAP.md, every resource in the OpenTofu and Kubernetes files) once there are any; and the generated blocks in the
 // docs (`<!-- generated: layers -->`, see lib/docblocks.mjs). Nothing it writes may be edited by hand.
 //   node tools/workflow/map.mjs           write it     node tools/workflow/map.mjs --check   fail if it is out of date
 //   node tools/workflow/map.mjs --find <words>   print only the map lines whose description has every word (without their imports; --imports adds them);  --uses <file>   the lines that import that file (read the map, write nothing)
@@ -40,7 +40,7 @@ const text = head + renderMap(buildGraph(files), config.map.folders);
 // every page this writes: the file map, the infra map (when there are infrastructure files), and the generated blocks in docs
 const pages = [[config.map.out, text]];
 const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8', maxBuffer: 64 << 20 }).split('\n').filter((f) => f && existsSync(f));
-const infraOut = config.map.infraOut ?? 'docs/INFRA-MAP.md';
+const infraOut = config.map.infraOut ?? 'docs/run/INFRA-MAP.md';
 const tf = listed.filter((f) => /\.(tf|tofu)$/.test(f));
 const k8s = listed.filter((f) => matchesAny(f, config.map.k8s ?? ['k8s/**/*.yaml', 'k8s/**/*.yml', 'deploy/**/*.yaml', 'infra/**/*.yaml', 'charts/**/templates/*.yaml']));
 if (tf.length || k8s.length || existsSync(infraOut)) {
@@ -60,7 +60,7 @@ if (docsListed.length) {
   pages.push(['docs/README.md', renderDocsIndex(docsListed.map((path) => ({ path, text: writing.get(path) ?? read(path) })), kitFiles)]);
 }
 const makers = blockMakers({ config, toolVersions: read('.tool-versions'), envExample: read('.env.example') });
-for (const f of listed.filter((x) => x.endsWith('.md') && matchesAny(x, config.docs?.include ?? ['docs/*.md']))) {
+for (const f of listed.filter((x) => x.endsWith('.md') && matchesAny(x, config.docs?.include ?? ['docs/*.md', 'docs/*/*.md']))) {
   const was = readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
   if (hasBlocks(was)) pages.push([f, fillBlocks(was, makers)]);
 }

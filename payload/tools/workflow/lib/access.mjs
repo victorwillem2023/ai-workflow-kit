@@ -1,5 +1,5 @@
-// The access review (no I/O here): who and what can reach the project, compared with docs/ACCESS.md, the list of who should.
-// docs/ACCESS.md holds a table | Who | Where | Role | Why | ; a row whose Where is "GitHub" is checked against GitHub itself
+// The access review (no I/O here): who and what can reach the project, compared with docs/company/ACCESS.md, the list of who should.
+// docs/company/ACCESS.md holds a table | Who | Where | Role | Why | ; a row whose Where is "GitHub" is checked against GitHub itself
 // (people, deploy keys, the names of the Actions secrets); every other row (the cloud, the domain, the database, Google's
 // console) is checked by hand, and the review lists them so none is forgotten.
 
@@ -48,10 +48,10 @@ export function compareAccess(found, rows) {
 export function accessReport(c, today) {
   const out = [`# Access review, ${today}`, ''];
   const list = (title, items, say) => { out.push(`## ${title}`, ...(items.length ? items.map(say) : ['None.']), ''); };
-  list('On GitHub but not in docs/ACCESS.md', c.unlisted, (f) => `- ${f.kind} **${f.who}**${f.role ? ` (${f.role})` : ''}: add a row with why, or take the access away`);
-  list('In docs/ACCESS.md but no longer on GitHub', c.gone, (r) => `- ${r.who} (${r.where}): take the row out`);
+  list('On GitHub but not in docs/company/ACCESS.md', c.unlisted, (f) => `- ${f.kind} **${f.who}**${f.role ? ` (${f.role})` : ''}: add a row with why, or take the access away`);
+  list('In docs/company/ACCESS.md but no longer on GitHub', c.gone, (r) => `- ${r.who} (${r.where}): take the row out`);
   list('Another role than the list says', c.changed, (f) => `- ${f.who}: ${f.role} on GitHub, ${f.listed} in the list: change one of them`);
   list('Check by hand (no script sees these)', c.byHand, (r) => `- [ ] ${r.who}: ${r.where}${r.role ? `, ${r.role}` : ''}. Still needed? Two-step sign-in on?`);
-  out.push('When every line is settled: `npm run access -- --done` sets "Last review" in docs/ACCESS.md (the weekly security report reminds you after 90 days).');
+  out.push('When every line is settled: `npm run access -- --done` sets "Last review" in docs/company/ACCESS.md (the weekly security report reminds you after 90 days).');
   return out.join('\n');
 }

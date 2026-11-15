@@ -81,7 +81,7 @@ export function reviewPlan(changes, { expect = null, protect = PROTECTED, allowD
   }
   for (const c of changes) {
     if ((c.action === 'delete' || c.action === 'replace') && protect.test(c.type) && !allowDestroy.includes(c.address)) {
-      problems.push(`Would ${c.action === 'delete' ? 'destroy' : 'destroy and recreate'} ${c.address} (a ${c.type}: data or names live there). If that is really meant, the owner plans again with --allow-destroy ${c.address}, after a backup (docs/RECOVERY.md).`);
+      problems.push(`Would ${c.action === 'delete' ? 'destroy' : 'destroy and recreate'} ${c.address} (a ${c.type}: data or names live there). If that is really meant, the owner plans again with --allow-destroy ${c.address}, after a backup (docs/run/RECOVERY.md).`);
     }
     if (c.startup) warnings.push(`${c.address}: the startup script changes. On most clouds it only runs on the first boot, so ${c.action === 'replace' ? 'the server is rebuilt' : 'the running server does NOT get it until it is rebuilt'}.`);
   }

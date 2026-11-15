@@ -20,7 +20,7 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
   existsSync('Dockerfile') && ['image', () => {
     // the image holds only what runs, as a user who is not root, from a pinned base; no secret in its history
     const p = imageProblems(readText('Dockerfile'), existsSync('.dockerignore') ? readText('.dockerignore') : null);
-    return p.length ? { ok: false, out: `${p.join('\n')}\nThe rules and why: docs/INFRA.md, *Container images*.` } : { ok: true };
+    return p.length ? { ok: false, out: `${p.join('\n')}\nThe rules and why: docs/run/INFRA.md, *Container images*.` } : { ok: true };
   }],
   (Array.isArray(config.security?.egress) || config.security?.ipRules?.length) && ['network', () => {
     // every outside host the code calls is on the allowlist; every IP rule is a real range with a reason and an end date
@@ -32,7 +32,7 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
   config.sensitive?.paths?.length && ['signoff', () => {
     // a change to money, health, legal or personal-data files needs a person's sign-off for this exact version (npm run signoff)
     const all = [...git('diff', '--name-only', base).split('\n'), ...git('ls-files', '--others', '--exclude-standard').split('\n')].filter(Boolean);
-    const v = signoffVerdict({ changed: all, paths: config.sensitive.paths, matches: matchesAny, read: (f) => readText(f) ?? undefined, signoffs: readText('docs/SIGNOFFS.md') });
+    const v = signoffVerdict({ changed: all, paths: config.sensitive.paths, matches: matchesAny, read: (f) => readText(f) ?? undefined, signoffs: readText('docs/company/SIGNOFFS.md') });
     return v.ok ? { ok: true, note: v.files.length ? `${v.files.length} signed` : '' } : { ok: false, out: v.line };
   }],
   ['covers', () => {
@@ -40,12 +40,12 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
     const changes = parseNameStatus(gitOk('diff', '--name-status', '-M', base) ?? '', git('ls-files', '--others', '--exclude-standard').split('\n'));
     const specs = existsSync('specs') ? readdirSync('specs').filter((f) => f.endsWith('.md')).map((f) => readFileSync(`specs/${f}`, 'utf8')).join('\n') : '';
     const waivers = `${specs}\n${gitOk('log', `${base}..HEAD`, '--format=%B') ?? ''}`;
-    const stale = staleDocs({ docs: docTexts, changes, matches: matchesAny, waivers, ignore: [config.map?.out, config.map?.infraOut ?? 'docs/INFRA-MAP.md', config.baseline].filter(Boolean) });
+    const stale = staleDocs({ docs: docTexts, changes, matches: matchesAny, waivers, ignore: [config.map?.out, config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline].filter(Boolean) });
     if (stale.length) return { ok: false, out: `${stale.map((s) => `${s.doc} covers ${s.files.slice(0, 5).join(', ')}${s.files.length > 5 ? ` and ${s.files.length - 5} more` : ''}, which changed; the doc did not`).join('\n')}\nUpdate the doc in the same change. If it truly needs nothing, write in the spec (or the commit body) one line: "Docs: no change to <doc> (<why>)".` };
     return { ok: true };
   }],
   ['ai', () => {
-    // every model call goes through the one wrapper file, where the guards live (docs/AI-SECURITY.md)
+    // every model call goes through the one wrapper file, where the guards live (docs/workflow/AI-SECURITY.md)
     const code = new Map([...files].filter(([f]) => !isTest(f)));
     const p = aiProblems(code, config.ai?.wrapper);
     return p.length ? { ok: false, out: p.join('\n') } : { ok: true, note: config.ai?.wrapper ? `models only through ${config.ai.wrapper}` : '' };

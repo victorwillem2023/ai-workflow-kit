@@ -43,7 +43,7 @@ describe('the infra map', () => {
 
 describe('docs that say what they cover', () => {
   const docs = new Map([
-    ['docs/ENVIRONMENTS.md', '# Envs\n<!-- covers: infra/**, .github/workflows/release.yml -->\n'],
+    ['docs/run/ENVIRONMENTS.md', '# Envs\n<!-- covers: infra/**, .github/workflows/release.yml -->\n'],
     ['docs/code/server.md', '<!-- covers new files: src/server/** -->\n'],
   ]);
   it('reads both kinds of covers line', () => {
@@ -52,12 +52,12 @@ describe('docs that say what they cover', () => {
   it('fails a doc whose files changed while it did not; a new-files doc only for files that came or went', () => {
     const changes = parseNameStatus('M\tinfra/prod/main.tf\nM\tsrc/server/routes.ts\nA\tsrc/server/export.ts', []);
     assert.deepEqual(staleDocs({ docs, changes, matches: matchesAny }), [
-      { doc: 'docs/ENVIRONMENTS.md', files: ['infra/prod/main.tf'] },
+      { doc: 'docs/run/ENVIRONMENTS.md', files: ['infra/prod/main.tf'] },
       { doc: 'docs/code/server.md', files: ['src/server/export.ts'] },
     ]);
   });
   it('passes when the doc changed too, or a line says on purpose that it needs nothing', () => {
-    const changes = parseNameStatus('M\tinfra/prod/main.tf\nM\tdocs/ENVIRONMENTS.md', ['src/server/new.ts']);
+    const changes = parseNameStatus('M\tinfra/prod/main.tf\nM\tdocs/run/ENVIRONMENTS.md', ['src/server/new.ts']);
     assert.deepEqual(staleDocs({ docs, changes, matches: matchesAny, waivers: 'Docs: no change to docs/code/server.md (a helper inside the export part)' }), []);
   });
   it('counts a rename under both names, and leaves the generated files out', () => {

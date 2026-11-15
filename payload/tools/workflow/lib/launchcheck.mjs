@@ -41,7 +41,7 @@ export function pageProblems(html) {
   if (noAlt) problems.push(`${noAlt} image${noAlt === 1 ? '' : 's'} without alt text (alt="" for a decoration)`);
   if (!tags(html, 'a').some((t) => /privacy|privacybeleid|datenschutz|confidentialite|privacidad/i.test(attr(t, 'href') ?? ''))) problems.push('no link to the privacy notice (the footer of every page)');
   const found = TRACKERS.filter(([, re]) => re.test(html)).map(([name]) => name);
-  if (found.length && !CONSENT.test(html)) problems.push(`${found.join(', ')} on the page with no consent manager: in the EU they may only load after the visitor agrees (docs/GROWTH.md)`);
+  if (found.length && !CONSENT.test(html)) problems.push(`${found.join(', ')} on the page with no consent manager: in the EU they may only load after the visitor agrees (docs/market/GROWTH.md)`);
   else if (found.length) warnings.push(`${found.join(', ')} found, with a consent manager: check they really wait for consent, and that no page with sensitive data has them`);
   return { problems, warnings };
 }

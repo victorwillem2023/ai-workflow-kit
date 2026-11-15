@@ -1,6 +1,6 @@
 // The AI check (no I/O here): an app that calls a language model does it through one file, the wrapper (`ai.wrapper` in
 // workflow.config.json), where the guards live: the spend cap, the limits, the untrusted-content markers, the output schema,
-// the log without personal data (docs/AI-SECURITY.md). A model SDK imported anywhere else, or a model API called directly,
+// the log without personal data (docs/workflow/AI-SECURITY.md). A model SDK imported anywhere else, or a model API called directly,
 // fails the gate; so does using one with no wrapper declared, so AI in the app is always a decision the owner made.
 
 /** The SDKs and API hosts of the common model providers and frameworks. */
@@ -27,8 +27,8 @@ export function aiProblems(files, wrapper) {
     const uses = modelUses(path, text);
     if (!uses.length) continue;
     out.push(wrapper
-      ? `${path} uses ${uses.join(', ')} directly: call the model only through ${wrapper}, where the spend cap, the limits and the guards live (docs/AI-SECURITY.md)`
-      : `${path} uses ${uses.join(', ')}, and no "ai.wrapper" is set in workflow.config.json: put every model call in one file and name it there (docs/AI-SECURITY.md says what that file must hold)`);
+      ? `${path} uses ${uses.join(', ')} directly: call the model only through ${wrapper}, where the spend cap, the limits and the guards live (docs/workflow/AI-SECURITY.md)`
+      : `${path} uses ${uses.join(', ')}, and no "ai.wrapper" is set in workflow.config.json: put every model call in one file and name it there (docs/workflow/AI-SECURITY.md says what that file must hold)`);
   }
   return out;
 }

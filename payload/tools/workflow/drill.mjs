@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The restore drill: proves the backups can be used. Restores the latest backup into a new, empty folder, starts the app on it,
-// asks it the health address and a few read-only paths, stops it, and writes the date and the timings into docs/RECOVERY.md
+// asks it the health address and a few read-only paths, stops it, and writes the date and the timings into docs/run/RECOVERY.md
 // (the weekly SecOps report flags a drill older than 3 months). Settings: recovery.drill in workflow.config.json:
 //   { "restore": "<command that restores the latest backup into {dir}>", "start": "<command that starts the app on the data in
 //     {dir}, listening on {port}>", "port": 8799, "paths": ["/health"], "waitSeconds": 120, "pingEnv": "<name of an env var
@@ -48,11 +48,11 @@ try {
     if (!r.ok) throw new Error(`${p} answered ${r.status} on the restored data`);
   }
   const date = new Date().toISOString().slice(0, 10);
-  if (existsSync('docs/RECOVERY.md')) writeFileSync('docs/RECOVERY.md', drillRow(readFileSync('docs/RECOVERY.md', 'utf8'), { date, restoreSeconds, upSeconds }));
+  if (existsSync('docs/run/RECOVERY.md')) writeFileSync('docs/run/RECOVERY.md', drillRow(readFileSync('docs/run/RECOVERY.md', 'utf8'), { date, restoreSeconds, upSeconds }));
   if (cfg.pingEnv && process.env[cfg.pingEnv]) await fetch(process.env[cfg.pingEnv], { signal: AbortSignal.timeout(10_000) }).catch(() => {});
-  console.log(`Drill passed: restored in ${Math.round(restoreSeconds)} s, the app answered ${paths.length} path${paths.length === 1 ? '' : 's'} ${Math.round(upSeconds)} s later. docs/RECOVERY.md has the date: commit it with the next change.`);
+  console.log(`Drill passed: restored in ${Math.round(restoreSeconds)} s, the app answered ${paths.length} path${paths.length === 1 ? '' : 's'} ${Math.round(upSeconds)} s later. docs/run/RECOVERY.md has the date: commit it with the next change.`);
 } catch (e) {
-  console.log(`Drill FAILED: ${e.message}. The backups may not be usable: this is a card for today (docs/RECOVERY.md, Backups).`);
+  console.log(`Drill FAILED: ${e.message}. The backups may not be usable: this is a card for today (docs/run/RECOVERY.md, Backups).`);
   process.exitCode = 1;
 } finally {
   if (app?.pid) { try { process.platform === 'win32' ? spawnSync('taskkill', ['/pid', String(app.pid), '/t', '/f'], { stdio: 'ignore' }) : process.kill(-app.pid, 'SIGTERM'); } catch {} }
