@@ -36,7 +36,12 @@
     "sorted": [{ "file": "package.json", "keys": ["dependencies", "devDependencies"] }],
     "resources": [{ "glob": "infra/**/*.tf", "pattern": "^{{PREFIX}}-(dev|test|uat|staging|prod)-[a-z]+[0-9]*-[a-z0-9-]+$", "say": "<app>-<env>-<place>-<part> (docs/CONVENTIONS.md)" }]
   },
-  "performance": { "files": ["dist/assets/*.js", "dist/assets/*.css"], "maxKb": 250 },
+  "performance": {
+    "files": ["dist/assets/*.js", "dist/assets/*.css"],
+    "maxKb": 250,
+    "goals": { "p95ms": 300, "errorRate": 0.01 },
+    "load": { "paths": ["/health"], "users": 20, "duration": "2m" }
+  },
   "sensitive": {
     "paths": []
   },

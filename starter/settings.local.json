@@ -28,7 +28,9 @@
       "Bash(node tools/workflow/changelog.mjs:*)",
       "Bash(node tools/workflow/perfbudget.mjs:*)",
       "Bash(npm run retro:*)",
-      "Bash(node tools/workflow/retro.mjs:*)"
+      "Bash(node tools/workflow/retro.mjs:*)",
+      "Bash(npm run load:*)",
+      "Bash(node tools/workflow/load.mjs:*)"
     ],
     "deny": [
       "Bash(npm run signoff:*)",

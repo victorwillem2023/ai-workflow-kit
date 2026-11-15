@@ -173,7 +173,7 @@ async function run(o) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   let o;
   try { o = parseShotArgs(process.argv.slice(2)); } catch (e) { console.error(e.message); process.exit(1); }
   const timer = setTimeout(() => { console.error('Gave up after 30 seconds'); runningChrome?.kill(); process.exit(1); }, TIMEOUT_MS);

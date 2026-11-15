@@ -34,6 +34,8 @@ The guide part (`docs/guide/<part>.md`), `README.md`, `docs/ARCHITECTURE.md`, or
 ## Security triggers
 New endpoint, file reader or outbound fetch? yes/no. If yes: limits (body size, count, rate) and run a security review before finish.
 Untrusted input read? yes/no.
+A hot path (a list, a search, a page many people open, a job that runs often)? yes/no. If yes: the query plan and the load test to
+run (`docs/PERFORMANCE.md`).
 Calls a language model, or gives one tools? yes/no. If yes: what goes in (personal? untrusted?), how the answer is checked, which
 tools need a person's click, the cost per use and the cap, and the hostile cases added (`docs/AI-SECURITY.md`, *Before it ships*).
 Sensitive file touched (`sensitive.paths`: money, health, legal texts, personal data)? yes/no. If yes: fill *Sources*; the owner

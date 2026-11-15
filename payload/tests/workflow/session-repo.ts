@@ -30,7 +30,8 @@ else if(cmd==='issue view')out({number:42,projectItems:[{status:{name:process.en
 else out({});`;
 export const OPTION = { 'In progress': 'o3', 'Waiting for your check': 'o4' };
 export function makeRepo(): Repo {
-  const root = mkdtempSync(join(tmpdir(), 'session-'));
+  // a space and a "~" in the path, as in C:\Users\John Smith or a Windows short name (RUNNER~1): paths must survive both
+  const root = mkdtempSync(join(tmpdir(), 'session ~'));
   roots.push(root);
   const origin = join(root, 'origin.git');
   git(root, 'init', '--bare', '-b', 'main', origin);

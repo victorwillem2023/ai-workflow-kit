@@ -159,7 +159,8 @@ test('the plan screen opens and passes the accessibility scan', async ({ page })
 });
 ```
 The page-weight budget (`performance` in the config, the `page weight` check) keeps what a visitor downloads small: 250 KB
-compressed to start; raise it only with a reason.
+compressed to start; raise it only with a reason. The goals for the server (`performance.goals`), the load tests (`npm run load`,
+k6) and Core Web Vitals with Lighthouse CI: `docs/PERFORMANCE.md`.
 
 ## 8. Decided once, costly later (ask only the ones that apply)
 - **More than one language for the people using it** ever: all text through an i18n library from the first screen.

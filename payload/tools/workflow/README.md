@@ -179,6 +179,13 @@ the table in `docs/ACCESS.md`: what nobody listed, what is listed but gone, a ro
 script sees (the cloud console, the registrar, the database, the providers). `--publish` makes it an issue labelled
 `access-review`; `--done` sets the date once every line is settled.
 
+## Load tests
+`npm run load -- <smoke|load|stress|spike|soak> [--url <address>]` runs k6 (`K6` in `tools/workflow/load.mjs`, pinned, Renovate
+moves it) in Docker against `performance.load.url` (default the main port on this computer), walking `performance.load.paths`
+with `performance.load.users`, and judges k6's summary against `performance.goals` (`p95ms`, `errorRate`): a few plain lines,
+exit 1 when a goal is missed. Production (`deploy.url`) is refused without `--yes-production`. `--script-only` prints the k6
+script; a file `load/<kind>.js` of your own replaces the made one. Why and when each kind: `docs/PERFORMANCE.md`.
+
 ## A setup guide that is proven
 `docs/SETUP.md` marks its steps ```sh setup``` (must finish) and one ```sh start``` with `<!-- ready: http://127.0.0.1:<port>/ -->`
 below it (must answer). `npm run setup-check` runs them on a fresh clone of the committed repository; `.github/workflows/setup.yml`

@@ -77,3 +77,28 @@ describe('the retro numbers', async () => {
     assert.deepEqual(lines, ['big files: 1 -> 0 (better)', 'layer exceptions: 0 -> 1 (worse: a baseline grew, look at why)', 'test files: 10 -> 12']);
   });
 });
+
+describe('load tests', async () => {
+  const { k6Script, readSummary, stagesFor } = await import('../../tools/workflow/lib/load.mjs');
+  it('makes the stages of each kind from the expected users', () => {
+    assert.deepEqual(stagesFor('smoke'), [{ duration: '30s', target: 1 }]);
+    assert.deepEqual(stagesFor('stress', { users: 10 }).map((s) => s.target), [10, 20, 40, 0, 0]);
+    assert.equal(Math.max(...stagesFor('spike', { users: 10 }).map((s) => s.target)), 100);
+    assert.throws(() => stagesFor('lunch'), /unknown kind of test "lunch"/);
+  });
+  it('writes the goals into the script as k6 thresholds, and walks the configured paths', () => {
+    const s = k6Script('load', { paths: ['health', '/api/plans'], users: 5 }, { p95ms: 250, errorRate: 0.02 });
+    assert.match(s, /"http_req_duration":\["p\(95\)<250"\]/);
+    assert.match(s, /"http_req_failed":\["rate<0\.02"\]/);
+    assert.match(s, /const PATHS = \["\/health","\/api\/plans"\];/);
+  });
+  it('reads k6\'s summary against the goals, in plain words', () => {
+    const good = { metrics: { http_req_duration: { 'p(95)': 120.4, med: 40, max: 400 }, http_req_failed: { value: 0.001 }, http_reqs: { count: 1200, rate: 19.96 }, vus_max: { value: 20 } } };
+    const v = readSummary(good, 'load', { p95ms: 300, errorRate: 0.01 });
+    assert.equal(v.ok, true);
+    assert.deepEqual(v.lines.slice(0, 2), ['load: 1200 requests, 20 a second, up to 20 users at once', '95% answered within 120 ms (goal under 300 ms) ok; the slowest 400 ms, the middle 40 ms']);
+    const slow = readSummary({ metrics: { http_req_duration: { 'p(95)': 900 }, http_req_failed: { value: 0.05 } } }, 'stress', {});
+    assert.equal(slow.ok, false);
+    assert.match(slow.lines.join('\n'), /TOO SLOW[\s\S]*TOO MANY[\s\S]*where it broke/);
+  });
+});

@@ -32,12 +32,13 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { heldMessage, removeEmptyStrangers, removeFolder, stopMessage, stopSessionServer } from './session-stop.mjs';
 
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const gitQuiet = (cwd, ...args) => { try { return git(cwd, ...args); } catch { return ''; } };
-const here = resolve(dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+// fileURLToPath, not URL.pathname: the pathname keeps "~" and spaces encoded (C:\Users\RUNNER~1 became RUNNER%7E1, a folder that does not exist)
+const here = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** The first worktree git lists is the main folder, wherever this runs from. */
 const main = git(here, 'worktree', 'list', '--porcelain').split('\n')[0].replace(/^worktree /, '');
 /** Project settings: the "session" block of workflow.config.json (prefix of the session folders, ports, extra .env lines). */
@@ -385,10 +386,11 @@ function sessionState(branch, dir) {
 }
 
 /** The worktrees git lists besides the main folder, with the branch and state of each. */
-const sessions = () => git(main, 'worktree', 'list').split('\n').filter(Boolean).map((r) => {
-  const branch = /\[(.+)\]$/.exec(r)?.[1];
-  const dir = r.split(/\s+/)[0];
-  return { row: r, branch, dir, isMain: sameDir(dir, main), state: sessionState(branch, dir) };
+// the porcelain form, one field per line: a folder with a space in its path (C:\Users\John Smith) stays whole
+const sessions = () => git(main, 'worktree', 'list', '--porcelain').split(/\r?\n\r?\n/).filter((b) => b.trim()).map((block) => {
+  const dir = /^worktree (.+)$/m.exec(block)?.[1]?.trim();
+  const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim();
+  return { row: `${dir}  ${branch ? `[${branch}]` : '(detached)'}`, branch, dir, isMain: sameDir(dir, main), state: sessionState(branch, dir) };
 });
 
 /** `<prefix>-*` folders next to the main folder that git does not list as a worktree: named, never deleted (they may hold work). */

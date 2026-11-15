@@ -172,6 +172,14 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.3.1**: performance and load testing. Goals in the config (`performance.goals`: 95% of requests within 300 ms, under 1%
+  errors; `performance.load`: the paths and the expected users), and `npm run load -- smoke|load|stress|spike|soak`: k6 in Docker
+  (pinned, kept current by Renovate) against the dev server or staging, never production unplanned, judged against the goals in
+  plain lines. `docs/PERFORMANCE.md`: the page-weight budget, Core Web Vitals with Lighthouse CI, the kinds of load test and when,
+  queries, queues and caching; specs ask about hot paths. Fixed: the session script found its own folder through a URL path,
+  so on Windows short paths (`RUNNER~1`) and in any folder with a space it ran git in a folder that does not exist, and `--clean`
+  cut a path with a space in two; found by the kit's self-test on GitHub's Windows runner; the session tests now run in a path
+  with a space and a "~".
 - **2.3.0**: worth building, and proven for a person; ideas borrowed from gstack and BMAD, with scripts where they used prompts.
   The README now leads with the difference: scripts check, the AI reads the result. AI inside the app: the gate's *ai* check (every
   model call through one wrapper file, `ai.wrapper`) and `docs/AI-SECURITY.md` (prompt injection and the rest of the OWASP Top 10

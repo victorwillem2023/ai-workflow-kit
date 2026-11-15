@@ -72,6 +72,8 @@ production), a runbook (what to do when it breaks), and checks on the infrastruc
   a subject that says what changed for the user (`docs/CONVENTIONS.md`).
 - **Sensitive work** (money, health, legal texts, personal data): every value from a named source, tests worked out by a person,
   a fresh-eyes review, and the owner's own sign-off for the exact files, which the gate requires (`docs/SENSITIVE.md`).
+- **Performance**: goals in the config (page weight, 95% of requests within 300 ms, under 1% errors), the page-weight check in
+  the gate, and `npm run load` (k6: smoke, load, stress, spike, soak) against staging before a launch (`docs/PERFORMANCE.md`).
 - **AI inside the app**: every model call through one wrapper file (the gate's *ai* check), untrusted text as data, the answer
   checked by a schema, tools that write only on a person's click, a spend cap, and injection attempts among the cases
   (`docs/AI-SECURITY.md`).

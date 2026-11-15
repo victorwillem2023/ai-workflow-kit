@@ -15,5 +15,6 @@
   "signoff": "node tools/workflow/signoff.mjs",
   "access": "node tools/workflow/access.mjs",
   "changelog": "node tools/workflow/changelog.mjs",
-  "retro": "node tools/workflow/retro.mjs"
+  "retro": "node tools/workflow/retro.mjs",
+  "load": "node tools/workflow/load.mjs"
 }
