@@ -36,22 +36,41 @@ export interface SpendStore {
 }
 
 /** Spending kept in a JSON file (on the data volume, so it survives deploys); written whole and renamed into place. */
+/** Checked at once, so the app refuses to start rather than pay for calls it cannot count: the file must be writable (a
+ *  read-only container with no data volume fails here), and an existing one must be readable (a damaged file is not zero). */
 export function fileSpend(path: string): SpendStore {
   const read = (): Record<string, number> => {
+    let text: string;
     try {
-      return JSON.parse(readFileSync(path, 'utf8'));
+      text = readFileSync(path, 'utf8');
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return {};
+      throw e;
+    }
+    try {
+      return JSON.parse(text);
     } catch {
-      return {};
+      throw new Error(`The AI spend file ${path} is damaged: restore it from a backup (an empty file would reset the month's cap).`);
     }
   };
+  const write = (all: Record<string, number>) => {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(`${path}.tmp`, JSON.stringify(all));
+    renameSync(`${path}.tmp`, path);
+  };
+  try {
+    write(read());
+  } catch (e) {
+    throw new Error(
+      `The AI spend file ${path} cannot be written (${(e as Error).message}): give it a writable data volume, or every call would be paid for and not counted.`,
+    );
+  }
   return {
     spent: async (k) => read()[k] ?? 0,
     add: async (k, usd) => {
       const all = read();
       all[k] = (all[k] ?? 0) + usd;
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(`${path}.tmp`, JSON.stringify(all));
-      renameSync(`${path}.tmp`, path);
+      write(all);
     },
   };
 }

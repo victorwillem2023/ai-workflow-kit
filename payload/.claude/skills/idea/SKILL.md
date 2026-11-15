@@ -20,7 +20,10 @@ Run from any {{PROJECT}} folder.
    Ask at most ONE question, and only when the type or the area cannot be told from the sentence (give your best guess with it).
    Never create an area label: if none fits, ask the owner.
 3. **Write the body** to a file in the scratchpad directory, short, in the shape of card #1: `**What it would do.**` (one or two
-   sentences), `**Touches.**` (files or screens, a guess is fine), `**Effort** <words>. **Feasibility** <words>.`
+   sentences), `**Touches.**` (files or screens, a guess is fine), `**Effort** <words>. **Feasibility** <words>.`, and when it
+   cannot be built before another open card (it saves data and the store is a card; it shows a plan and the rules are a card;
+   it needs who is signed in): a last line `Depends on: #<n>, #<m>` (`npm run board -- --graph` shows what is there). The
+   order of work comes from these lines, so a missing one lets a card start too early.
 4. **Make the card**: `npm run board -- --add "<short title>" --label <type> --label "<area>" --label "<effort>" --label "<feasibility>" --body-file <file>`
    (one `--label` per label, exactly one of them a type).
 5. **Report**: the first line names the type you chose and why in a few words ("Type: ui, it is a screen."), the second is

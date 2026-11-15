@@ -2,7 +2,7 @@
 
 <ONE PARAGRAPH: what the app does, the stack, the runtime. Keep it to what an agent cannot see from the code.>
 User docs live in `README.md` and the guide (`docs/GUIDE.md` is its index, one file per part in `docs/guide/`); read only the
-part a change touches.
+part a change touches. Where every other doc is (product, company, build, run, decisions, the kit's guides): `docs/README.md`.
 
 ## How we work (the owner decides what gets built)
 The owner wants to understand and steer the project, not just receive features. So:
@@ -107,7 +107,7 @@ style rules, the feedback rounds and the done checklist.
 - Text the user sees (UI, warnings, names) is short, plain English, and built from measured facts; no jargon.
 - Commit messages: a subject that says what changed for the user ("Area: what changed, and what else"), then the why.
 - **One feature, one session, one commit; the owner says when it is done.** Commit and `--finish` only on "finish it" /
-  "commit and push"; push only when the owner says. No docs-only, tests-only or "fix after a check" commits; tests and
+  "commit and push"; push only when the owner says. No tests-only or "fix after a check" commits (docs and settings left in the main folder go in first, on their own: `/ship` step 0); tests and
   typecheck pass at every commit. **Never** merge by hand in the main folder, `git push --force` or rewrite `main` (the
   owner's squash has its own steps: `tools/workflow/README.md`, *Commits and sessions*).
 

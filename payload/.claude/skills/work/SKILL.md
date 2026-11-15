@@ -12,11 +12,17 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
 0. **What waits from outside**: `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
    alert: say it first, in plain words, and ask whether to deal with it before the card. Updates only: name the count in one line
    and go on (`npm run updates` lists them, each with take it, look first or hold).
-   **No card number given**: `npm run board -- --next 3` (a fixed sum of the owner's labels: first version first, then value
-   for the effort) and offer those three in one line each, with its reason; the owner picks. Its notes about cards with no value
+   **No card number given**: `npm run board -- --next 3` (the graph first: only cards nothing open holds back, those that
+   unlock the most first; then the owner's labels: first version, value for the effort) and offer those three in one line each, with its reason; the owner picks. Its notes about cards with no value
    label or issues waiting off the board (`npm run board -- --inbox`) are passed on in one line. Never read the whole board.
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
+   - **What it needs first**: `npm run board -- --graph` (the tree from the cards' "Depends on:" lines). The card waits for an
+     open card: say which, and offer that card instead (`/work <that one>`); start this one only if the owner says so, knowing
+     what is missing. While planning, if the plan turns out to need another card first (it stores data, and sign-in is a card
+     not built yet), stop and say so before any choice of a stand-in: propose adding the line (`npm run board -- --depends <n>
+     <m>`) and doing that card first; a stand-in (a fake sign-in for development) is the owner's choice, said as one, never
+     the default. Every dependency found this way is written on the card, so the next ranking knows it.
    - In *Blocked*: say the reason (the last "Blocked:" comment) and ask whether it is unblocked before going on.
    - No type label, or more than one: ask which of `ui`, `feature`, `bug`, `workflow`, `spike` it is (with a recommendation), and
      after the owner's yes add it: `gh issue edit <n> --repo <board.repo> --add-label <type>`.

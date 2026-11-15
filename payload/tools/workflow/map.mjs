@@ -14,6 +14,7 @@ import { codeTest } from './lib/lang.mjs';
 import { parseK8s, parseTf, renderInfraMap } from './lib/infra.mjs';
 import { networkPolicy } from './lib/netpolicy.mjs';
 import { blockMakers, fillBlocks, hasBlocks } from './lib/docblocks.mjs';
+import { renderDocsIndex } from './lib/docsindex.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -50,6 +51,14 @@ if (tf.length || k8s.length || existsSync(infraOut)) {
 const infraDir = config.map.infraDir ?? 'infra';
 if (existsSync(infraDir)) pages.push([`${infraDir}/network.json`, networkPolicy(config)]);
 const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : '');
+// the docs index: one page saying where every doc is, grouped (lib/docsindex.mjs); the kit's own guides are the ones .workflow-kit lists
+// (the pages this same run writes count too, so the first run and the second give the same index)
+const writing = new Map(pages.filter(([f]) => f.startsWith('docs/') && f.endsWith('.md')));
+const docsListed = [...new Set([...listed.filter((f) => f.startsWith('docs/') && f.endsWith('.md')), ...writing.keys()])].filter((f) => f !== 'docs/README.md').sort();
+if (docsListed.length) {
+  const kitFiles = new Set(read('.workflow-kit').split('\n').map((l) => /^sha \S+ (.+)$/.exec(l)?.[1]).filter(Boolean));
+  pages.push(['docs/README.md', renderDocsIndex(docsListed.map((path) => ({ path, text: writing.get(path) ?? read(path) })), kitFiles)]);
+}
 const makers = blockMakers({ config, toolVersions: read('.tool-versions'), envExample: read('.env.example') });
 for (const f of listed.filter((x) => x.endsWith('.md') && matchesAny(x, config.docs?.include ?? ['docs/*.md']))) {
   const was = readFileSync(f, 'utf8').replace(/\r\n/g, '\n');

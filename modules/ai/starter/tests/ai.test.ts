@@ -1,7 +1,7 @@
 // The model wrapper (src/server/ai.ts): every guard of docs/AI-SECURITY.md, with a fake provider, so nothing is sent anywhere.
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -143,6 +143,18 @@ describe('the caps and prices are required', () => {
       await fileSpend(path).add('month:2026-11', 0.4);
       await fileSpend(path).add('month:2026-11', 0.1);
       assert.equal(await fileSpend(path).spent('month:2026-11'), 0.5, 'a new store, as after a restart, sees what was spent');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('refuses to start when the spend file cannot be written or is damaged, instead of paying for calls it cannot count', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ai-spend-'));
+    try {
+      // a folder where the file's folder should be: no write can succeed there, on any system
+      writeFileSync(join(dir, 'not-a-folder'), 'x');
+      assert.throws(() => fileSpend(join(dir, 'not-a-folder', 'ai-spend.json')), /cannot be written.*writable data volume/);
+      writeFileSync(join(dir, 'damaged.json'), '{"month:2026-11": 0.4');
+      assert.throws(() => fileSpend(join(dir, 'damaged.json')), /damaged/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

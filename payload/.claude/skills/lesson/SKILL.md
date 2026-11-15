@@ -16,4 +16,4 @@ A correction that is only said once is made again next week. Pick the first that
 
 Rules for the line: one sentence, what to do and why in a few words. First `grep -n` for a line that already says it: sharpen
 that one, never add a second. If the file is over its size (root about 13 KB, a folder file about 2 KB), take out the line
-that matters least and say which. Show the owner the line before writing it. No commit: it rides with the next feature.
+that matters least and say which. Show the owner the line before writing it. No commit: the next `/ship` commits it first, as its own commit (`session.mjs --commit-notes`).

@@ -12,6 +12,8 @@
 //   --next [n]                   the n (5) startable cards to build next: first-version cards first, then value for the effort (lib/rank.mjs)
 //   --triage                     the view for /tidy: too much in progress, cards waiting for you, stalled or long-blocked work, the inbox,
 //                                cards without a value, likely duplicates, an old backlog to prune; and the focus (lib/triage.mjs)
+//   --graph                      which card needs which, as a tree (a "Depends on: #n" line in a card's text; lib/cardgraph.mjs)
+//   --depends <number> <n,m>     card <number> needs #n and #m done first: writes or extends its "Depends on:" line
 //   --close <number> "<reason>"  close a card the owner decided against, the reason as its last comment
 //   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
 // A failure prints one plain sentence and exits 1.
@@ -20,8 +22,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
-import { adoptCard, closeCard, createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
-import { inbox, rankCards, STARTABLE, TOOL_ISSUES } from './lib/rank.mjs';
+import { adoptCard, closeCard, createCard, dependCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
+import { inbox, rankCards, STARTABLE, TOOL_ISSUES, waitingCards } from './lib/rank.mjs';
+import { renderTree } from './lib/cardgraph.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WINDOWS_GH = 'C:\\Program Files\\GitHub CLI\\gh.exe';
@@ -38,7 +41,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
+const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -114,14 +117,30 @@ async function main() {
     const all = listCards(board, run);
     const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)) });
     const n = Number(value('--next')) || 5;
-    if (!ranked.length) console.log('board: no open card can be started (Backlog, Needs a board or decision, Ready)');
+    if (!ranked.length) console.log('board: no open card can be started (Backlog, Needs a board or decision, Ready), or each waits for another');
     for (const c of ranked.slice(0, n)) console.log(`#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
+    // the graph first: cards that wait for an open card are not offered, but said, with what they wait for
+    const { waiting: held, loops } = waitingCards(all, { columns: board.columns.filter((c) => STARTABLE.includes(c)) });
+    if (held.length) console.log(`(waiting for other cards: ${held.map((c) => `#${c.number} for ${c.waitsFor.map((d) => `#${d}`).join(', ')}`).join('; ')}; the tree: npm run board -- --graph)`);
+    for (const l of loops) console.log(`(LOOP: ${l.map((x) => `#${x}`).join(' -> ')} -> #${l[0]} wait for each other, so none can start)`);
+    const noEdges = all.filter((c) => c.state === 'open' && c.column).every((c) => !c.body);
+    if (noEdges && ranked.length > 1) console.log('(no card says what it depends on: a card that needs another first gets "Depends on: #n" (npm run board -- --depends <n> <m>), or the order can start one too early)');
     const unvalued = ranked.filter((c) => /value not set/.test(c.why)).length;
     if (unvalued) console.log(`(${unvalued} startable card${unvalued === 1 ? ' has' : 's have'} no value label: set one, the order is only as good as the labels)`);
     const waiting = inbox(all, undefined, toolIssues).length;
     if (waiting) console.log(`(${waiting} open issue${waiting === 1 ? ' is' : 's are'} not on the board yet: npm run board -- --inbox)`);
     const line = triageLine(triage(all, triageOptions()));
     if (line) console.log(line);
+  } else if (argv.includes('--graph')) {
+    // which card needs which, as a tree: what nothing waits on at the top, what depends on it below (lib/cardgraph.mjs)
+    // only the cards on the board (the reports and Renovate's dashboard are issues, not work)
+    const tree = renderTree(listCards(board, run).filter((c) => c.column));
+    console.log(tree || 'board: no open cards');
+  } else if (argv.includes('--depends')) {
+    const number = cardNumber(value('--depends'));
+    const on = String(argv[argv.indexOf('--depends') + 2] ?? '').split(/[\s,]+/).filter(Boolean).map(cardNumber);
+    dependCard(board, run, number, on);
+    console.log(`board: #${number} depends on ${on.map((x) => `#${x}`).join(', ')} (written in its text)`);
   } else if (argv.includes('--triage')) {
     // the view for /tidy: what needs a decision so nothing piles up, and the focus (lib/triage.mjs)
     console.log(renderTriage(triage(listCards(board, run), triageOptions())));
@@ -148,7 +167,7 @@ async function main() {
 }
 
 // the commands that only read: when GitHub cannot be reached they warn in one line and let the flow around them go on
-const READS = ['--labels', '--check', '--map', '--show', '--search', '--next', '--triage', '--inbox'];
+const READS = ['--labels', '--check', '--map', '--show', '--search', '--next', '--triage', '--inbox', '--graph'];
 try { await main(); } catch (e) {
   if (e instanceof BoardError && e.gh && READS.some((r) => argv.includes(r))) {
     console.log(`board (warning): ${e.message} Carrying on without the board.`);

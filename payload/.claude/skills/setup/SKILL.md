@@ -24,7 +24,7 @@ A new, empty project: skip to the questions and say the answers will become the 
    - **A new project: is it worth building?** (For `project.audience: me`, only the smallest useful version and the sign it
      works for you: a project you want is worth building.) First the questions of `/shape` (`.claude/skills/shape/SKILL.md`): the problem,
      what people do today, the first ten users, the smallest useful version, how we will know it worked, when to stop. The
-     answers become `docs/PRODUCT.md`; the smallest version becomes the first cards, labelled `first version` (`npm run board -- --next`
+     answers become `docs/PRODUCT.md`; the smallest version becomes the first cards, each with its `Depends on: #n` line, labelled `first version` (`npm run board -- --next`
      ranks them first). Say plainly if the answers point to a spike before any stack (`/spike`). An existing project: fill
      `docs/PRODUCT.md` from what the owner says in one round, and skip what they do not know yet.
    - **A new project: the product first, then what to build it with.** Read `stack.md` in this folder. Ask its product

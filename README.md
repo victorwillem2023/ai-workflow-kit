@@ -10,6 +10,10 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
+> **Build on `v2.8.2`** (the git tag). The kit is frozen there: until a real project has shipped its first cards on it, only
+> fixes land (2.8.x: a bug, a wrong doc, a check that lies), never a new part, guide or skill. New work waits for 2.9, which
+> starts from what that project taught.
+
 ```sh
 git clone https://github.com/victorwillem2023/ai-workflow-kit
 cd my-project && node ../ai-workflow-kit/install.mjs . --project "My App" --repo you/my-app
@@ -202,6 +206,20 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.8.2**, the version to build on (tagged `v2.8.2`; only fixes after it until 2.9). A lean project gets only the guides of
+  the parts it has (`launch` brings LAUNCH, CICD, MESH, MONITORING and RELEASES; `market` brings GROWTH, MARKET and the launch
+  check; `advise` brings BUY-OR-HOST, SCALING, STAGES and ROADMAP), and every mention of a command or guide it does not have
+  says "(not installed)", checked by the lean self-test. `docs/README.md` is the docs index, made by `npm run map`: every doc
+  grouped (the product, the company, how it is built, how it runs, decisions, working with the AI, guides for later), one
+  line each, the kit's own guides marked. The AI spend file is checked at start-up: not writable (a read-only container) or
+  damaged, and the app refuses to start instead of paying for calls it cannot count.
+  **The order of work follows the dependency graph**: a card says what it needs first (`Depends on: #1, #5`); `npm run board --
+  --next` never offers a card whose dependency is still open, puts the cards that unlock the most first, and only then weighs
+  value for the effort; `--graph` draws the tree, `--depends <n> <m>` writes a dependency, loops are named. `/idea`, `/shape`
+  and `/setup` write the lines, and `/work` checks the tree before planning: a card that needs another first stops and names it.
+  Docs and settings left in the main folder (from `/docs`, `/lesson`, `/shape` or the owner's own edits) no longer block `/ship`:
+  it puts them in first as their own commit with `node scripts/session.mjs --commit-notes "<subject>"`, after the quick gate
+  passes on them, so a hand edit that breaks a check is caught there; code left in the main folder still stops it.
 - **2.8.1**: the board inbox leaves out Renovate's Dependency Dashboard (by its default title, or the one `renovate.json` gives it),
   so `/next` and `/tidy` no longer ask for a decision about it.
 - **2.8.0**: safe before relying on it, and as lean as you want.

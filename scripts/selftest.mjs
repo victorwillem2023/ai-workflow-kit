@@ -10,7 +10,7 @@
 //   rust      cargo init, --lang rust (needs cargo, cargo-machete, cargo-audit)
 // A variant whose tools are missing on this computer says so and is skipped; CI installs them and runs them all.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +22,8 @@ const has = (cmd) => [['--version'], ['version']].some((a) => spawnSync(cmd, a, 
 
 const VARIANTS = {
   full: { args: ['--with', 'ai'] },
-  lean: { args: ['--lean'] },
+  // lean: no installed text may name a command that is not installed without saying so
+  lean: { args: ['--lean'], check: unmarkedMentions },
   cluster: { args: ['--with', 'cluster'], needs: ['docker'] },
   // /setup's step for a framework starter: its files into the kit's format, once (setup/SKILL.md)
   // and the one thing Biome cannot fix by itself in Vite's demo (a button with no type), fixed as the setup agent would
@@ -36,6 +37,22 @@ const VARIANTS = {
   go: { args: ['--lang', 'go'], needs: ['go'], prepare: [['go', ['mod', 'init', 'example.com/selftest']]], files: { 'internal/add/add.go': 'package add\n\n// Add adds two numbers.\nfunc Add(a, b int) int { return a + b }\n', 'internal/add/add_test.go': 'package add\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fatal("1 + 2")\n\t}\n}\n' } },
   rust: { args: ['--lang', 'rust'], needs: ['cargo', 'cargo-machete', 'cargo-audit'], prepare: [['cargo', ['init', '--lib', '--name', 'selftest', '--vcs', 'none', '--quiet']]] },
 };
+
+/** Every mention of a skill the project does not have (in its skills, docs and CLAUDE.md) that does not say "(not installed)". */
+function unmarkedMentions(dir) {
+  const skills = new Set(readdirSync(join(dir, '.claude', 'skills')));
+  const missing = readdirSync(join(kit, 'payload', '.claude', 'skills')).filter((s) => !skills.has(s));
+  if (!missing.length) return [];
+  const files = [...walkMd(join(dir, '.claude')), ...walkMd(join(dir, 'docs')), join(dir, 'CLAUDE.md')];
+  const out = [];
+  const re = new RegExp(`(\`/(?:${missing.join('|')})\\b[^\`\\n]*\`|(?<![\\w\`/.-])/(?:${missing.join('|')})\\b(?![\\w-]))(?! \\(not installed\\))`, 'g');
+  for (const f of files) readFileSync(f, 'utf8').split('\n').forEach((line, i) => { for (const m of line.matchAll(re)) out.push(`${f.slice(dir.length + 1)}:${i + 1}: ${m[0]}`); });
+  return out;
+}
+function walkMd(d) {
+  if (!existsSync(d)) return [];
+  return readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walkMd(join(d, e.name)) : e.name.endsWith('.md') ? [join(d, e.name)] : []));
+}
 
 function runVariant(name) {
   const v = VARIANTS[name];
@@ -73,6 +90,11 @@ function runVariant(name) {
     git('config', 'user.email', 'selftest@example.invalid');
     const install = [join(kit, 'install.mjs'), dir, '--project', 'Selftest App', '--repo', 'example/selftest-app', '--prefix', 'selftest', ...v.args];
     const said = step('install', process.execPath, install);
+    if (v.check) {
+      const found = v.check(dir);
+      console.log(`${found.length ? 'FAIL' : 'ok  '} ${name}: no command named that is not installed${found.length ? `:\n${found.slice(0, 20).join('\n')}` : ''}`);
+      if (found.length) throw new Error('mentions');
+    }
     // what the installer's "step 1" asks a person to run (TypeScript: one or more "npm i" joined by &&), so that line is proven too
     const line = /^\s*(?:1\.|step 1:)\s*(npm i [^\n]+)$/m.exec(said)?.[1];
     if (!v.args.includes('--lang') && !line) { console.log(`FAIL ${name}: the installer printed no "npm i" step:\n${said}`); throw new Error('step 1'); }

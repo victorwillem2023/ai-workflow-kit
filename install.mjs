@@ -46,10 +46,14 @@ const OPTIONAL = ['ai', 'cluster'];
 // the parts of the core past the build loop (skills an agent sees in every chat, and workflows that run by themselves): all in a
 // full install; with --lean none, unless named with --with (--lean --with shape,tidy). The build loop itself (setup, next, idea,
 // work, spec, build, ship, review, check, find, docs, lesson, the gate, the board, the map, sessions) is always there.
+// A part's guides and tools travel with it (a lean project without /market has no GROWTH.md either).
 const PARTS = {
   shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/'],
-  estimate: ['.claude/skills/estimate/'], advise: ['.claude/skills/advise/', '.claude/skills/arch/'],
-  launch: ['.claude/skills/launch/'], market: ['.claude/skills/market/'], retro: ['.claude/skills/retro/'],
+  estimate: ['.claude/skills/estimate/'],
+  advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/BUY-OR-HOST.md', 'docs/SCALING.md', 'docs/STAGES.md', 'docs/ROADMAP.md'],
+  launch: ['.claude/skills/launch/', 'docs/CICD.md', 'docs/LAUNCH.md', 'docs/MESH.md', 'docs/MONITORING.md', 'docs/RELEASES.md'],
+  market: ['.claude/skills/market/', 'docs/GROWTH.md', 'docs/MARKET.md', 'tools/workflow/launchcheck.mjs', 'tools/workflow/lib/launchcheck.mjs', 'tools/workflow/lib/launchcheck.d.mts', 'tests/workflow/launchcheck.test.ts'],
+  retro: ['.claude/skills/retro/'],
   secops: ['.claude/skills/secops/', '.github/workflows/secops.yml'], 'setup-check': ['.github/workflows/setup.yml'],
 };
 const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
@@ -63,6 +67,27 @@ const modules = [...new Set([...pickedModules, ...withs.filter((w) => !(w in PAR
 const parts = lean ? withs.filter((w) => w in PARTS) : Object.keys(PARTS);
 for (const m of modules) if (![...ALL, ...OPTIONAL].includes(m)) { console.error(`Unknown module or part "${m}". Modules: ${ALL.join(', ')}; with --with: ${OPTIONAL.join(', ')}; parts (with --lean): ${Object.keys(PARTS).join(', ')}`); process.exit(1); }
 const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.includes(p) && paths.some((x) => key === x || key.startsWith(x)));
+// In a lean project the installed text never points at what is not there: a command of a part left out gets "(not installed)"
+// after it, and a guide left out loses its backticks (so the docs check does not take it for a file that should exist) and says
+// which part brings it. Done when the file is written, so an update with --with <part> writes it back unmarked.
+const absent = Object.entries(PARTS).filter(([p]) => !parts.includes(p));
+const absentSkills = absent.flatMap(([, paths]) => paths.map((x) => /^\.claude\/skills\/([\w-]+)\/$/.exec(x)?.[1]).filter(Boolean));
+const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^docs\/[\w-]+\.md$/.test(x)).map((x) => [x, p]));
+// npm scripts that run a tool of a part left out (launch-check without market): not added to package.json, and not pointed at
+const scriptTool = (cmd) => /node (tools\/workflow\/[\w./-]+\.mjs)/.exec(cmd)?.[1];
+const absentScripts = Object.entries(JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'))).filter(([, cmd]) => scriptTool(cmd) && skippedPart(scriptTool(cmd))).map(([name]) => name);
+function markAbsent(text) {
+  if (!absent.length) return text;
+  let t = text;
+  if (absentSkills.length) {
+    const names = absentSkills.join('|');
+    t = t.replace(new RegExp(`\`/(${names})\\b([^\`\\n]*)\``, 'g'), (m) => `${m} (not installed)`);
+    t = t.replace(new RegExp(`(^|[\\s("'])/(${names})\\b(?![\\w-]| \\(not)`, 'gm'), '$1/$2 (not installed)');
+  }
+  for (const [doc, part] of absentDocs) t = t.replaceAll(`\`${doc}\``, `${doc} (with the ${part} part, not installed)`);
+  if (absentScripts.length) t = t.replace(new RegExp(`\`(npm run (?:${absentScripts.join('|')})\\b[^\`\\n]*)\``, 'g'), '$1 (not installed)');
+  return t;
+}
 const repo = opt('--repo');
 const project = opt('--project');
 if (!target || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || !project) {
@@ -136,10 +161,12 @@ function copyTree(from, overwrite) {
     const raw = readFileSync(src);
     // a Windows script is written with CRLF, as .gitattributes checks it out, so git has nothing to convert or warn about
     const filled = TEXT.test(src) ? fill(raw.toString('utf8')) : raw;
-    const next = /\.cmd$/.test(src) ? filled.replace(/\r?\n/g, '\r\n') : filled;
+    const marked = /\.md$/.test(src) ? markAbsent(filled) : filled;
+    const next = /\.cmd$/.test(src) ? marked.replace(/\r?\n/g, '\r\n') : marked;
     const key = rel.replace(/\\/g, '/');
     const machinery = overwriteOnly(from);
-    if (machinery && skippedPart(key)) continue;
+    // a part left out: its machinery is not shipped, and its starter pages (docs/MARKET.md, docs/ROADMAP.md) are not made
+    if (skippedPart(key)) continue;
     if (machinery) shipped.add(key);
     if (exists && machinery && update && !overwrite) {
       // --update: the same already, or untouched since the kit wrote it (then the kit's new one is taken), or the project's own
@@ -238,6 +265,7 @@ const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : { 
 Object.assign(scripts, LANGS[lang].scripts ?? {});
 // a module's own scripts (modules/<name>/package-scripts.json)
 for (const m of modules) if (existsSync(join(kit, 'modules', m, 'package-scripts.json'))) Object.assign(scripts, JSON.parse(readFileSync(join(kit, 'modules', m, 'package-scripts.json'), 'utf8')));
+for (const name of absentScripts) delete scripts[name];
 const own = { ...(pkg.scripts ?? {}) };
 if (/no test specified/.test(own.test ?? '')) delete own.test;
 pkg.scripts = { ...scripts, ...own };

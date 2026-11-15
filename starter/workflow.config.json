@@ -54,7 +54,7 @@
   ],
   "docs": {
     "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/guide/*.md", "docs/code/*.md"],
-    "exclude": ["docs/MAP.md", "docs/INFRA-MAP.md"]
+    "exclude": ["docs/INFRA-MAP.md", "docs/MAP.md", "docs/README.md"]
   },
   "boundaries": [
     {

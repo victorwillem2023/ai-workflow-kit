@@ -2,6 +2,8 @@
 // Pure apart from the runner: every call is `run(args, input)` with an argument list (never a shell string),
 // so tests pass a fake and the real one is in tools/workflow/board.mjs. Columns and type labels come from the config.
 
+import { addDepends, dependsOnLines } from './cardgraph.mjs';
+
 /** A failure said as one plain sentence, safe to print as is. */
 export class BoardError extends Error {
   constructor(message) { super(message); this.name = 'BoardError'; }
@@ -197,6 +199,14 @@ export function readCard(board, run, number) {
     labels: (c.labels ?? []).map((l) => l.name), column: onBoard?.status.name ?? null };
 }
 
+/** Card #number depends on the cards `on` (they must be done first): a "Depends on: #a, #b" line in its text, kept in one line. */
+export function dependCard(board, run, number, on) {
+  if (!on.length) throw new BoardError(`Name what #${number} depends on, for example --depends ${number} 1,3.`);
+  if (on.includes(number)) throw new BoardError(`#${number} cannot depend on itself.`);
+  const c = readCard(board, run, number);
+  gh(run, `writing the dependencies of #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, '--body-file', '-'], addDepends(c.body, on));
+}
+
 /** Cards (open and closed, at most 20) whose title or text contains the words; the words go to gh as one argument. */
 export function searchCards(board, run, words) {
   const text = String(words ?? '').trim();
@@ -212,9 +222,11 @@ export function searchCards(board, run, words) {
  *  changed, for the worksheet, the ranking and the triage. */
 export function listCards(board, run) {
   return ghJson(run, 'reading the cards', ['issue', 'list', '--repo', board.repo, '--state', 'all', '--limit', '1000',
-    '--json', 'number,title,state,labels,projectItems,createdAt,updatedAt'])
+    '--json', 'number,title,state,labels,projectItems,createdAt,updatedAt,body'])
     .map((c) => ({ number: c.number, title: c.title, state: String(c.state).toLowerCase(), labels: (c.labels ?? []).map((l) => l.name),
-      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null }));
+      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null,
+      // only the "Depends on: #n" lines are kept from the text (lib/cardgraph.mjs), not the whole body
+      body: dependsOnLines(c.body) }));
 }
 
 /** Closes card #number with the reason as its last comment (a duplicate, out of date, won't do: the owner said so). */

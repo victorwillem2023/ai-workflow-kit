@@ -31,5 +31,8 @@ answered on the card or in `docs/PRODUCT.md`.
    - A card: a comment that starts with **Pitch** (`/spec` looks for it before a large card) with the answers (`npm run board` has no edit; use `gh issue comment <n> --repo <board.repo> --body-file <file>`),
      and the labels: one `value: ...`, and `first version` when it belongs in the smallest useful version
      (`gh issue edit <n> --repo <board.repo> --add-label "<label>"`).
-   - A new product (from `/setup`): the answers become `docs/PRODUCT.md`, and the smallest version becomes the first cards.
+   - A new product (from `/setup`): the answers become `docs/PRODUCT.md`, and the smallest version becomes the first cards,
+     each with its `Depends on: #n` line where it needs another first (the rules before the screen that shows them, the store
+     and sign-in before anything is saved), then `npm run board -- --graph` shown to the owner: the order of work is that tree.
+   - Shaping a card: say what it needs first and write it (`npm run board -- --depends <n> <m>`).
 5. **Report** in two lines: the verdict and the labels set. Next step: `/spike <n>` for the riskiest assumption, or `/work <n>`.
