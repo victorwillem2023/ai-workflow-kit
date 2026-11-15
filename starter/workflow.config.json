@@ -41,7 +41,9 @@
       "from": "src/core/**",
       "forbid": ["src/web/**", "src/server/**"],
       "forbidNode": true
-    }
+    },
+    { "name": "variants are throwaway: the app never depends on them", "from": "src/{core,web,server}/**", "forbid": ["src/variants/**"] },
+    { "name": "variants use made-up data, never the server", "from": "src/variants/**", "forbid": ["src/server/**"] }
   ],
   "security": {
     "code": "src/",
