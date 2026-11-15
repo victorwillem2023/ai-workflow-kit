@@ -102,7 +102,9 @@ function copyTree(from, overwrite) {
     const dest = join(target, rel);
     const exists = existsSync(dest);
     const raw = readFileSync(src);
-    const next = TEXT.test(src) ? fill(raw.toString('utf8')) : raw;
+    // a Windows script is written with CRLF, as .gitattributes checks it out, so git has nothing to convert or warn about
+    const filled = TEXT.test(src) ? fill(raw.toString('utf8')) : raw;
+    const next = /\.cmd$/.test(src) ? filled.replace(/\r?\n/g, '\r\n') : filled;
     const key = rel.replace(/\\/g, '/');
     const machinery = overwriteOnly(from);
     if (exists && machinery && update && !overwrite) {
@@ -269,11 +271,25 @@ if (!existsSync(botPath)) {
   done.added.push('.github/dependabot.yml');
 }
 
+let lfHint = '';
 // .gitignore lines
 const giPath = join(target, '.gitignore');
 const have = new Set((existsSync(giPath) ? readFileSync(giPath, 'utf8') : '').split(/\r?\n/).map((l) => l.trim()));
 const add = [...readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/), ...(LANGS[lang].gitignore ?? [])].filter((l) => l.trim() && !have.has(l.trim()));
 if (add.length) writeFileSync(giPath, (existsSync(giPath) ? readFileSync(giPath, 'utf8').replace(/\n?$/, '\n') : '') + add.join('\n') + '\n');
+
+// line endings: LF everywhere, in the repository and on disk, whatever git's own setting says (Git for Windows sets
+// core.autocrlf=true, which made every `git add` warn "LF will be replaced by CRLF"); Windows scripts are the one exception.
+// Written once, then yours; a project's own .gitattributes is never changed.
+const gaPath = join(target, '.gitattributes');
+if (!existsSync(gaPath)) {
+  writeFileSync(gaPath, '# Line endings: LF in the repository and on disk on every computer, whatever git\'s own core.autocrlf says.\n'
+    + '# Windows scripts are the exception: cmd.exe wants CRLF.\n* text=auto eol=lf\n*.cmd text eol=crlf\n*.bat text eol=crlf\n'
+    + '*.png binary\n*.jpg binary\n*.gif binary\n*.ico binary\n*.webp binary\n*.woff2 binary\n*.pdf binary\n');
+  done.added.push('.gitattributes');
+} else if (update && !/eol=lf/.test(readFileSync(gaPath, 'utf8'))) {
+  lfHint = '  .gitattributes has no `* text=auto eol=lf`: without it git on Windows warns "LF will be replaced by CRLF" on every add';
+}
 
 // the map module: the request pages' file, so the map opens and the gate's check passes from the start
 if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(process.execPath, ['docs/flow/build-requests.mjs'], { cwd: target, encoding: 'utf8' });
@@ -290,6 +306,7 @@ console.log(`  ${harnessLine}`);
 if (update) {
   if (addedSettings.length) console.log(`  settings added to workflow.config.json: ${addedSettings.join(', ')}`);
   if (claudeAdded.length) console.log(`  rules added to .claude/settings.local.json: ${claudeAdded.join(', ')}`);
+  if (lfHint) console.log(lfHint);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');

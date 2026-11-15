@@ -140,6 +140,8 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.6.2**: a `.gitattributes` (LF everywhere, CRLF only for `.cmd` and `.bat`) written into every project, and in the kit itself:
+  Git for Windows sets `core.autocrlf=true`, so every `git add` warned "LF will be replaced by CRLF". The `.cmd` files are written with CRLF.
 - **1.6.1**: `npm run harness` (and so `--update`) adds to an `opencode.jsonc` written earlier the shell rules
   `.claude/settings.local.json` gained since (allows after the ask rule, denies after every allow), and leaves the rest of the file as it is.
 - **1.6.0**: `npm run updates` reads Dependabot (security alerts and pull requests) and gives each library a verdict: take it, look

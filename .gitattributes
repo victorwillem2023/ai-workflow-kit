@@ -1,0 +1,10 @@
+# Line endings: LF in the repository and on disk on every computer, whatever git's own core.autocrlf says.
+# The kit's own .cmd templates stay LF here; install.mjs writes them with CRLF into a project, whose .gitattributes keeps them so.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff2 binary
+*.pdf binary
