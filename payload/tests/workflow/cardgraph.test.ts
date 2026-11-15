@@ -1,7 +1,7 @@
 // Which cards need which (lib/cardgraph.mjs) and the order it gives (lib/rank.mjs): the graph first, then value for the effort.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDepends, cardGraph, dependsOn, renderTree } from '../../tools/workflow/lib/cardgraph.mjs';
+import { addDepends, cardGraph, dependsOn, removeDepends, renderTree } from '../../tools/workflow/lib/cardgraph.mjs';
 import { rankCards, waitingCards } from '../../tools/workflow/lib/rank.mjs';
 
 const card = (number: number, title: string, deps = '', labels: string[] = [], column = 'Backlog', state = 'open') =>
@@ -51,5 +51,22 @@ describe('the card graph', () => {
     ].join('\n'));
     assert.equal(addDepends('The text.', [5, 1]), 'The text.\n\nDepends on: #1, #5\n');
     assert.equal(addDepends('The text.\n\nDepends on: #1\n', [5]), 'The text.\n\nDepends on: #1, #5\n');
+    assert.equal(removeDepends('The text.\n\nDepends on: #1, #5\n', [5]), 'The text.\n\nDepends on: #1\n', 'one taken off');
+    assert.equal(removeDepends('The text.\n\nDepends on: #1\n', [1]), 'The text.\n', 'the line goes with the last one');
+  });
+
+  it('a card whose dependency is built and waits for the owner\'s check can start on top of it; one being built still waits', () => {
+    const cards = [
+      card(1, 'Training rules', '', [], 'Waiting for your check'),
+      card(2, 'Screen: see the plan', 'Depends on: #1'),
+      card(3, 'Store the plan', '', [], 'In progress'),
+      card(4, 'Log a workout', 'Depends on: #1, #3'),
+      card(5, 'Sign in', ''),
+    ];
+    const ranked = rankCards(cards);
+    assert.deepEqual(ranked.map((c) => c.number), [5, 2], 'the card with nothing open first, then the one on top of a built card');
+    assert.deepEqual(ranked[1].on, [1]);
+    assert.match(ranked[1].why, /^starts on top of #1 \(built, waiting for your check\)/);
+    assert.deepEqual(waitingCards(cards).waiting.map((c) => [c.number, c.waitsFor]), [[4, [3]]], 'only what is not built yet is waited for');
   });
 });

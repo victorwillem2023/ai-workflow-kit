@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on `v2.8.2`** (the git tag). The kit is frozen there: until a real project has shipped its first cards on it, only
+> **Build on the latest `v2.8.x` tag** (now `v2.8.3`). The kit is frozen at 2.8: until a real project has shipped its first cards on it, only
 > fixes land (2.8.x: a bug, a wrong doc, a check that lies), never a new part, guide or skill. New work waits for 2.9, which
 > starts from what that project taught.
 
@@ -206,7 +206,22 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
-- **2.8.2**, the version to build on (tagged `v2.8.2`; only fixes after it until 2.9). A lean project gets only the guides of
+- **2.8.3**, fixes from trying 2.8.2 on a real project. **Handing a build over to try** follows one page
+  (`.claude/skills/build/try-it.md`): `node scripts/session.mjs --serve <topic>` starts the session's dev server in the background
+  and waits until the link answers, so the owner only opens it; a change without a screen gets a try command
+  (`specs/<topic>.try.*`, never committed) that takes the owner's own numbers; the message is plain words with real examples
+  and what they should give, the owner's own numbers, edge cases and what is not in the card. A link only for a change that
+  shows something new on a screen: rules, data or an API with nothing to see yet get the try command alone, and a new
+  session no longer prints a link by itself. `/ship` commits only a version the
+  owner tried: a review fix that changes what it does goes back for a new check, and "continue" is not "done". Waiting for
+  another card is a `Depends on:` line, not the Blocked column (which hid those cards from `--next`), and `npm run board --
+  --undepend <n> <m>` takes a dependency off; both commands print the full list the card ends up with.
+  **Work no longer waits for a commit on main when it need not** (`.claude/skills/work/together.md`): a card whose dependency
+  is built and waits for the owner's check is offered by `--next` ("starts on top of #m") and starts on top of it
+  (`session.mjs <topic> --on <that topic>`); the base is finished first, and its `--finish` moves the sessions on it onto main
+  by itself (`--restack <topic>` when uncommitted work or a conflict was in the way). Cards that only make sense together or
+  change the same files are combined: one spec (`Card: #12, #14`), one session (`--card 12,14`), one commit that moves them all.
+- **2.8.2**, the first version to build on (tagged `v2.8.2`; only fixes after it until 2.9). A lean project gets only the guides of
   the parts it has (`launch` brings LAUNCH, CICD, MESH, MONITORING and RELEASES; `market` brings GROWTH, MARKET and the launch
   check; `advise` brings BUY-OR-HOST, SCALING, STAGES and ROADMAP), and every mention of a command or guide it does not have
   says "(not installed)", checked by the lean self-test. `docs/README.md` is the docs index, made by `npm run map`: every doc

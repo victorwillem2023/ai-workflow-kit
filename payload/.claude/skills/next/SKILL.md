@@ -16,9 +16,11 @@ Never offer a skill that is not installed as the next step.
 
 **Otherwise**, three commands:
 1. `npm run updates -- --short`: a security alert comes first, in one line, with "deal with it first?".
-2. `npm run board -- --next 3`: the cards to start, best first (first version, then value for the effort; a fixed sum of the
-   owner's labels). Give each as "#n title: why", and the command to start it: `/work <n>` (a `spike` card: `/spike <n>`;
-   a big idea with no pitch yet: `/shape <n>`).
+2. `npm run board -- --next 3`: the cards to start, best first (the dependency graph first: nothing open holds them back, or
+   only a card that is built and waits for the owner's check, which they start on top of; then first version, then value for
+   the effort; a fixed sum of the owner's labels). Give each as "#n title: why", and the command to start it: `/work <n>` (a
+   `spike` card: `/spike <n>`; a big idea with no pitch yet: `/shape <n>`). A card that "starts on top of #m" does not wait
+   for #m's check: say so in plain words.
 3. Pass on its notes in one line each: cards with no value label ("set them with /shape, or say high, medium or low"), and
    issues waiting off the board (`npm run board -- --inbox`). When it says "the board needs ... decisions", offer
    `/tidy` in one line (it sorts them and names the week's focus).

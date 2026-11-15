@@ -1,6 +1,7 @@
 # Spec: <topic>
 
-Card: #<n> (`npm run board -- --show <n>`), type <ui | feature | bug | workflow>
+Card: #<n> (`npm run board -- --show <n>`; cards combined into one commit: #<n>, #<m>), type <ui | feature | bug | workflow>
+Starts on: <main | <topic> of a built, unfinished card it needs (`.claude/skills/work/together.md`)>
 Card stays open after this spec: <no | yes, what is left>
 Owner approval: <not yet | approved on YYYY-MM-DD>
 Session: `node scripts/session.mjs <topic>` (folder `../{{PREFIX}}-<topic>`)

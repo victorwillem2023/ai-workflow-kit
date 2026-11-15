@@ -1,4 +1,5 @@
-// What to build next, by script (no I/O here): the open cards that can be started (nothing they depend on is still open),
+// What to build next, by script (no I/O here): the open cards that can be started (nothing they depend on is still open, or only
+// cards that are built and wait for the owner's check: those it starts on top of),
 // first-version cards first, then the ones that unlock the most, then by value for the effort, a low feasibility counting against. The labels come from `board.labels` (value, effort, feasibility,
 // milestone); the owner sets them, the script only does the sum, so the order is the same every time and easy to argue with.
 
@@ -9,6 +10,17 @@ const COST = { small: 1, medium: 2, large: 4, unknown: 3 };
 const ODDS = { high: 1, medium: 0.75, low: 0.5 };
 /** The columns a card can be started from; the rest are being worked on, waiting, blocked or done. */
 export const STARTABLE = ['Backlog', 'Needs a board or decision', 'Ready'];
+/** The columns of a card that is built but not finished: what depends on it can start on top of it (session.mjs --on). */
+export const BUILT = ['Waiting for your check'];
+
+/** For each open card, the open cards it waits for, split: `on` built ones it can start on top of, `waits` the ones not built yet. */
+function split(cards, built) {
+  const { waitsFor, unlocks } = cardGraph(cards);
+  const column = new Map(cards.map((c) => [c.number, c.column]));
+  const parts = new Map([...waitsFor].map(([n, deps]) => [n, {
+    on: deps.filter((d) => built.includes(column.get(d))), waits: deps.filter((d) => !built.includes(column.get(d))) }]));
+  return { parts, unlocks };
+}
 
 /** The word after "<group>: " on a card ("value: high" -> "high"). */
 const word = (labels, group) => labels.map((l) => new RegExp(`^${group}:\\s*(.+)$`, 'i').exec(l)?.[1]?.trim().toLowerCase()).find(Boolean);
@@ -28,22 +40,25 @@ export function scoreCard(card, firstVersion) {
 /** The open cards that can be started now, best first: [{ number, title, column, score, v1, unlocks, why }]. The graph comes
  *  first (lib/cardgraph.mjs): a card that waits for an open card is left out (`waitingCards` lists those), and among the rest
  *  first-version cards, then the ones that unlock the most other cards, then value for the effort. Ties: Ready, then older. */
-export function rankCards(cards, { firstVersion, columns = STARTABLE } = {}) {
-  const { waitsFor, unlocks } = cardGraph(cards);
-  return cards.filter((c) => c.state === 'open' && columns.includes(c.column) && !(waitsFor.get(c.number) ?? []).length)
+export function rankCards(cards, { firstVersion, columns = STARTABLE, built = BUILT } = {}) {
+  const { parts, unlocks } = split(cards, built);
+  return cards.filter((c) => c.state === 'open' && columns.includes(c.column) && !(parts.get(c.number)?.waits ?? []).length)
     .map((c) => {
       const s = scoreCard(c, firstVersion);
       const u = unlocks.get(c.number) ?? 0;
-      return { ...s, unlocks: u, why: u ? `unlocks ${u} card${u === 1 ? '' : 's'}, ${s.why}` : s.why };
+      const on = parts.get(c.number)?.on ?? [];
+      const top = on.length ? `starts on top of ${on.map((n) => `#${n}`).join(' and ')} (built, waiting for your check)` : '';
+      return { ...s, unlocks: u, on, why: [top, u ? `unlocks ${u} card${u === 1 ? '' : 's'}` : '', s.why].filter(Boolean).join(', ') };
     })
-    .sort((a, b) => Number(b.v1) - Number(a.v1) || b.unlocks - a.unlocks || b.score - a.score || (a.column === 'Ready' ? -1 : 0) - (b.column === 'Ready' ? -1 : 0) || a.number - b.number);
+    .sort((a, b) => Number(b.v1) - Number(a.v1) || b.unlocks - a.unlocks || a.on.length - b.on.length || b.score - a.score || (a.column === 'Ready' ? -1 : 0) - (b.column === 'Ready' ? -1 : 0) || a.number - b.number);
 }
 
 /** The startable open cards that wait for another open card: [{ number, title, waitsFor: [n...] }], and the loops. */
-export function waitingCards(cards, { columns = STARTABLE } = {}) {
-  const { waitsFor, loops, unknown } = cardGraph(cards);
-  const waiting = cards.filter((c) => c.state === 'open' && columns.includes(c.column) && (waitsFor.get(c.number) ?? []).length)
-    .map((c) => ({ number: c.number, title: c.title, waitsFor: waitsFor.get(c.number) }));
+export function waitingCards(cards, { columns = STARTABLE, built = BUILT } = {}) {
+  const { loops, unknown } = cardGraph(cards);
+  const { parts } = split(cards, built);
+  const waiting = cards.filter((c) => c.state === 'open' && columns.includes(c.column) && (parts.get(c.number)?.waits ?? []).length)
+    .map((c) => ({ number: c.number, title: c.title, waitsFor: parts.get(c.number).waits }));
   return { waiting, loops, unknown };
 }
 

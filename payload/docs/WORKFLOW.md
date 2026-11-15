@@ -76,8 +76,10 @@ Why the flow is split this way, and what keeps a session cheap: `docs/TOKENS.md`
    Answer yes, or say what to change. The card moves to *Ready*, and the agent asks you to open a new chat and run
    `/build <topic>`. The build starts fresh from the plan, so it doesn't carry the whole planning chat along (a small bug is
    fixed in the same chat).
-4. **Try it**: In that chat the agent builds in the session folder, then tells you the folder and a URL like
-   `http://127.0.0.1:8788`. Open it, refresh with Ctrl+F5. The card is in *Waiting for your check*.
+4. **Try it**: In that chat the agent builds in the session folder, then hands it over in plain words: what to try, with
+   examples, your own numbers and the edge cases. A change with a new screen comes with a link to a server that is already
+   running (open it, refresh with Ctrl+F5); a change with nothing to see yet (rules, data) comes with one command to paste,
+   where you type your own numbers. The card is in *Waiting for your check*.
 5. **Give feedback**: one numbered list per round ("1. the button is too big, 2. ..."). The agent does one pass per round
    and shows before and after pictures. Feedback that needs a change in core logic becomes its own card.
 6. **Say done**: "finish it" or "commit and push". The agent runs the full check, makes one commit, puts it on the local

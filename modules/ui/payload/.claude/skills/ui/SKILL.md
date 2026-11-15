@@ -86,10 +86,11 @@ It is a brief, not the design: redraw it on the project's tokens and parts as va
    ```sh
    node scripts/shots.mjs http://127.0.0.1:<port> --width 1400 --theme dark --click "<selector>" --out <scratchpad>/before-1.png
    ```
-   The owner runs `npm run dev` in the session folder (offer to start it in the background); never tell them to rebuild.
-3. Take the **after** pictures with the same command (same width, theme, clicks), look at them, then **stop**: move the card to
-   *Waiting for your check*, give the URL `http://127.0.0.1:<port>`, the before and after paths, what differs from the board and
-   why, and the "unsure" list.
+   The server runs through `node scripts/session.mjs --serve <topic>` (in the main folder; it waits until the link answers); never
+   tell the owner to start or rebuild anything.
+3. Take the **after** pictures with the same command (same width, theme, clicks), look at them, then **stop**: hand it over as
+   `.claude/skills/build/try-it.md` says (the link, what to click with example values, edge cases such as an empty list or a
+   long name), with the before and after paths and what differs from the board and why, and move the card to *Waiting for your check*.
 4. **Feedback rounds.** Ask for feedback as one numbered list per round ("1. the chip is too tall 2. ..."). One pass per round:
    answer every number (done, or why not), change only `src/web` (a number that needs core logic is said out loud and becomes its
    own card: `/idea`), new after pictures from the same commands, stop again. No commit between rounds.

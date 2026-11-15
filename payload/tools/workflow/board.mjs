@@ -14,6 +14,7 @@
 //                                cards without a value, likely duplicates, an old backlog to prune; and the focus (lib/triage.mjs)
 //   --graph                      which card needs which, as a tree (a "Depends on: #n" line in a card's text; lib/cardgraph.mjs)
 //   --depends <number> <n,m>     card <number> needs #n and #m done first: writes or extends its "Depends on:" line
+//   --undepend <number> <n,m>    takes #n and #m off that line (both print the full list the card ends up with)
 //   --close <number> "<reason>"  close a card the owner decided against, the reason as its last comment
 //   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
 // A failure prints one plain sentence and exits 1.
@@ -41,7 +42,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
+const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --undepend <number> <n,m>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -136,11 +137,13 @@ async function main() {
     // only the cards on the board (the reports and Renovate's dashboard are issues, not work)
     const tree = renderTree(listCards(board, run).filter((c) => c.column));
     console.log(tree || 'board: no open cards');
-  } else if (argv.includes('--depends')) {
-    const number = cardNumber(value('--depends'));
-    const on = String(argv[argv.indexOf('--depends') + 2] ?? '').split(/[\s,]+/).filter(Boolean).map(cardNumber);
-    dependCard(board, run, number, on);
-    console.log(`board: #${number} depends on ${on.map((x) => `#${x}`).join(', ')} (written in its text)`);
+  } else if (argv.includes('--depends') || argv.includes('--undepend')) {
+    // prints the full list the card ends up with, so a dependency that is still there is never hidden
+    const flag = argv.includes('--depends') ? '--depends' : '--undepend';
+    const number = cardNumber(value(flag));
+    const on = String(argv[argv.indexOf(flag) + 2] ?? '').split(/[\s,]+/).filter(Boolean).map(cardNumber);
+    const now = dependCard(board, run, number, on, { remove: flag === '--undepend' });
+    console.log(`board: #${number} ${now.length ? `now depends on ${now.map((x) => `#${x}`).join(', ')}` : 'depends on no card now'} (written in its text)`);
   } else if (argv.includes('--triage')) {
     // the view for /tidy: what needs a decision so nothing piles up, and the focus (lib/triage.mjs)
     console.log(renderTriage(triage(listCards(board, run), triageOptions())));

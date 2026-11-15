@@ -13,7 +13,7 @@ explain and propose; the owner decides; the board commands do it.
    Read single cards only when a proposal needs their text (`npm run board -- --show <n>`). Never read the whole board.
 2. **One batch of proposals**, at most eight, the most blocking first, each one line with the command it would run:
    - too much in progress: which card to finish first and which to move back (`--move <n> "Ready"`);
-   - waiting for your check: "try #12 at <url>, then say done or what is wrong" (nothing to run: it is the owner's turn);
+   - waiting for your check: "try #12 the way it was handed over (its link for a screen, its try command otherwise), then say done or what is wrong" (nothing to run: it is the owner's turn);
    - stalled: move back, split ("the part left becomes a new card"), or close;
    - blocked long: unblock (`--move <n> "Ready"`) or close with why (`--close <n> "<reason>"`);
    - the inbox: adopt each with a type (`--adopt <n> --label <type>`), or close with a reply;

@@ -17,9 +17,12 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    label or issues waiting off the board (`npm run board -- --inbox`) are passed on in one line. Never read the whole board.
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
-   - **What it needs first**: `npm run board -- --graph` (the tree from the cards' "Depends on:" lines). The card waits for an
-     open card: say which, and offer that card instead (`/work <that one>`); start this one only if the owner says so, knowing
-     what is missing. While planning, if the plan turns out to need another card first (it stores data, and sign-in is a card
+   - **What it needs first**: `npm run board -- --graph` (the tree from the cards' "Depends on:" lines). For each open card it
+     waits for, the earliest way that does not stop the owner's flow (`.claude/skills/work/together.md` has the rules):
+     **built** (in *Waiting for your check*, or its session is done): start on top of it (`--on <its topic>`: no waiting for
+     its commit on main); **planned or being built and close to this one** (small, same files, or this one only makes sense
+     with it): offer to **combine** them (one session, one spec, one commit for both cards); **otherwise**: say which card it
+     waits for, and offer that one instead (`/work <that one>`); start this one only if the owner says so, knowing what is missing. While planning, if the plan turns out to need another card first (it stores data, and sign-in is a card
      not built yet), stop and say so before any choice of a stand-in: propose adding the line (`npm run board -- --depends <n>
      <m>`) and doing that card first; a stand-in (a fake sign-in for development) is the owner's choice, said as one, never
      the default. Every dependency found this way is written on the card, so the next ranking knows it.
@@ -47,18 +50,22 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    - With a spec: `/build <topic>`, in the new chat (steps 3 to 5 then run there).
    - A small bug: `node scripts/session.mjs <topic>`, then in that folder write the failing test, run it and see it
      fail, fix, and run `npm run gate` until it passes.
-4. **Stop while the owner tries it**: move the card to *Waiting for your check*, give the folder and the URL
-   (`http://127.0.0.1:<port>`, `npm run dev` there), and the "unsure" list. Feedback goes to the same builder
-   (`/build` step 6).
+4. **Stop while the owner tries it**: hand it over as `.claude/skills/build/try-it.md` says (the server already running and the
+   link, or a try command for a change without a screen; plain words, examples, their own numbers, edge cases) and move the card
+   to *Waiting for your check*. Feedback goes to the same builder (`/build` step 6). "continue" or "ok" is not "done": ask.
 5. **Finish only when the owner says done** ("commit and push", "finish it"): `/ship <topic>` (for a small bug without a
    spec, the same steps: `gate:all`, one commit, `node scripts/session.mjs --finish <topic>`). Then move the card to *Done*.
 
-**Blocked at any step** (waiting for the owner, an outside service, another card): `npm run board -- --block <n> "waiting
-for <what>"`, say so in one line, and stop. If the board cannot be reached, say so in one line and carry on; the owner
+**Waiting for another card** is a dependency, not a block: `npm run board -- --depends <n> <m>` (the card stays where it is and
+`--next` offers it once #m is done), say so in one line, and stop. **Blocked** (waiting for the owner or an outside service):
+`npm run board -- --block <n> "waiting for <what>"`, say so in one line, and stop. If the board cannot be reached, say so in one line and carry on; the owner
 moves the card by hand.
 
 ## Several cards (`/work 12 14 15`)
-Read each card (step 1; one `--show` per card). `ui` cards go their own route (`/ui <n>`), not here. For the others, write the specs
+Read each card (step 1; one `--show` per card). `ui` cards go their own route (`/ui <n>`), not here. First sort them, as
+`together.md` says, and show that sorting with the plans: which are **combined** (one spec, one session, one commit closing
+them all), which are **stacked** (one starts on top of the other, its spec's "Starts on" line), and which run **side by side**.
+For the others, write the specs
 **one after another in this chat** (shared context is cheaper than parallel spec agents; do not fan out `/spec`). Show each spec and
 stop for its own yes: an unapproved spec never gets a builder. Then stop: the owner opens a new chat and runs `/build a b c`,
 which checks for overlap, starts at most 3 builders at once and gives one summary. Feedback and `/ship` go one topic at a time. One card behaves exactly as above.

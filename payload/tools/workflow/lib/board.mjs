@@ -2,7 +2,7 @@
 // Pure apart from the runner: every call is `run(args, input)` with an argument list (never a shell string),
 // so tests pass a fake and the real one is in tools/workflow/board.mjs. Columns and type labels come from the config.
 
-import { addDepends, dependsOnLines } from './cardgraph.mjs';
+import { addDepends, dependsOn, dependsOnLines, removeDepends } from './cardgraph.mjs';
 
 /** A failure said as one plain sentence, safe to print as is. */
 export class BoardError extends Error {
@@ -200,11 +200,14 @@ export function readCard(board, run, number) {
 }
 
 /** Card #number depends on the cards `on` (they must be done first): a "Depends on: #a, #b" line in its text, kept in one line. */
-export function dependCard(board, run, number, on) {
+/** Adds (or with remove takes off) what card `number` depends on; returns the full list it ends up with. */
+export function dependCard(board, run, number, on, { remove = false } = {}) {
   if (!on.length) throw new BoardError(`Name what #${number} depends on, for example --depends ${number} 1,3.`);
   if (on.includes(number)) throw new BoardError(`#${number} cannot depend on itself.`);
   const c = readCard(board, run, number);
-  gh(run, `writing the dependencies of #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, '--body-file', '-'], addDepends(c.body, on));
+  const body = remove ? removeDepends(c.body, on) : addDepends(c.body, on);
+  gh(run, `writing the dependencies of #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, '--body-file', '-'], body);
+  return dependsOn(body);
 }
 
 /** Cards (open and closed, at most 20) whose title or text contains the words; the words go to gh as one argument. */

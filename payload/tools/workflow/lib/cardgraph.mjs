@@ -16,11 +16,19 @@ export const dependsOnLines = (body) => (String(body ?? '').match(LINE) ?? []).m
 
 /** A card's text with a dependency line added (or the existing "Depends on:" line extended), for --depends. */
 export function addDepends(body, numbers) {
-  const all = [...new Set([...dependsOn(body), ...numbers])].sort((a, b) => a - b);
-  const line = `Depends on: ${all.map((n) => `#${n}`).join(', ')}`;
+  return setDepends(body, [...dependsOn(body), ...numbers]);
+}
+/** The card text without those dependencies (the line goes when none are left). */
+export function removeDepends(body, numbers) {
+  return setDepends(body, dependsOn(body).filter((n) => !numbers.includes(n)));
+}
+function setDepends(body, numbers) {
+  const all = [...new Set(numbers)].sort((a, b) => a - b);
   const text = String(body ?? '');
   // [ \t] and not \s at the start: \s would swallow the blank line above the existing line
   const existing = /^[ \t]*\**depends on\**[ \t]*:?.*$/im;
+  if (!all.length) return text.replace(/\n*^[ \t]*\**depends on\**[ \t]*:?.*$/im, '');
+  const line = `Depends on: ${all.map((n) => `#${n}`).join(', ')}`;
   return existing.test(text) ? text.replace(existing, line) : `${text.replace(/\s*$/, '')}\n\n${line}\n`;
 }
 

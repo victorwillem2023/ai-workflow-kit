@@ -26,7 +26,7 @@ No spec packages, or a single package: step 4 above, one builder.
 3. **Cap of 3.** Start at most 3 independent topics; the rest wait until one of the three is shipped (say so). Then `/build <waiting topic>` as usual.
 4. Do steps 2 and 3 above for each starting topic (one session folder, its own port), then start all their subagents (step 4) in
    **one message**, several Agent calls, so they run at the same time. Name each `build-<topic>`.
-5. When the builders have reported, give one summary: for each topic its folder, URL (`http://127.0.0.1:<port>`, `npm run dev` there)
-   and its "unsure" list, plus the waiting topics with the reason. Stop there.
+5. When the builders have reported, hand each topic over as `try-it.md` says (its server started with `--serve <topic>`, or its
+   try command), one block per topic, plus the waiting topics with the reason. Stop there.
 6. Feedback names a topic and goes to that topic's builder only (SendMessage, step 6). Shipping is one topic at a time: `/ship a`, then `/ship b`.
 7. `ui` cards keep their own route (`/ui`): they join a batch only after the variant is picked. One topic behaves exactly as above.
