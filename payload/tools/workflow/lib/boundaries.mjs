@@ -6,7 +6,8 @@ export function findViolations(graph, rules) {
   const out = [];
   for (const rule of rules) {
     for (const file of graph.files.keys()) {
-      if (!matchesAny(file, [rule.from])) continue;
+      // `except`: files the rule does not apply to, named on purpose (the start file that loads a dev-only page, say)
+      if (!matchesAny(file, [rule.from]) || matchesAny(file, rule.except ?? [])) continue;
       for (const to of graph.imports.get(file) ?? []) {
         if (matchesAny(to, rule.forbid ?? [])) out.push({ rule: rule.name, file, target: to, key: `${rule.name}|${file}|${to}` });
       }

@@ -66,7 +66,8 @@ written:
   with its letter, name, cost and states, on a page that exists only while developing (the dev server's `/variants`; it must not
   be in the built app). The page is `src/variants/index.tsx` (or the framework's equivalent), inside the variants folder, and
   only the app's start file loads it, behind the framework's development switch (with Vite:
-  `if (import.meta.env.DEV) import('./variants')`). Never put it in `src/web`: the app may not import a variant.
+  `if (import.meta.env.DEV) import('./variants')`). Never put the page in `src/web`: the app may not import a variant. The start file is the one stated
+  exception (`except` on that import rule), so keep the line there and nowhere else.
 - Step 3's four pictures are taken of that page (`node scripts/shots.mjs http://127.0.0.1:<port>/variants ...`). The pictures
   and the notes file are the record: the README row links the pictures, there is no board file.
 - Stage 2 moves the picked variant into `src/web` and deletes `src/variants/<topic>/`. `npm run gate:all` fails while a variant

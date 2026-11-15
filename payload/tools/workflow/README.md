@@ -18,7 +18,8 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 
 ## What it checks
 - **layers**: `boundaries` in the config says which folders may not import which (`src/core` is pure, no
-  `node:` modules). A violation already in `baseline.json` is accepted, a new one fails.
+  `node:` modules). Imports are read from `import ... from`, `import('...')`, `require('...')` and a folder's index file; a rule's
+  `except` names files it does not apply to, on purpose (the start file that loads the dev-only variants page). A violation already in `baseline.json` is accepted, a new one fails.
 - **size**: a new file over `size.maxLines` fails. A big file in the baseline may stay but must not grow: growth fails with
   `<file> grew <was> -> <now>: put the new code in its own file`. `--update-baseline` only lowers or removes numbers; a raised
   or new one is refused (files named, exit 1) unless `--allow-growth "<reason>"` is given (for a pure refactor such as an import

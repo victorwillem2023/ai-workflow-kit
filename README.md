@@ -139,6 +139,9 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.5.3**: the import rules see `require('...')`, `import(`...`)` and a folder's `index.tsx`, so no import slips past them; a rule
+  can name a stated exception (`except`), used for the start file that loads the variants page; `--update` adds a missing rule
+  and sets component variants for a framework project.
 - **1.5.2**: `/ui` with a UI framework draws its variants A, B, C as real components (`"ui": { "boards": "components" }`, set by the
   installer when it finds the framework), so the pick is half built; the gate fails when a variant is left at ship time. A picture
   from an outside tool can be the brief. A renamed `CLAUDE.md` section is not added twice; the baseline refuses a rules file that grew.

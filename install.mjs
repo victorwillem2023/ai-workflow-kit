@@ -220,7 +220,12 @@ if (update && !done.added.includes('workflow.config.json')) {
       continue;
     }
     // an import rule the kit has and the project lacks, by its name (a folder the project does not have matches nothing)
-    if (k === 'boundaries') for (const r of v) if (!mine.boundaries.some((x) => x.name === r.name)) { mine.boundaries.push(r); addedSettings.push(`import rule: ${r.name}`); }
+    if (k === 'boundaries') for (const r of v) {
+      const same = mine.boundaries.find((x) => x.name === r.name);
+      if (!same) { mine.boundaries.push(r); addedSettings.push(`import rule: ${r.name}`); }
+      // the kit's own rule, by its name, that the kit has since given a stated exception: the exception is added, nothing else
+      else if (r.except && !same.except) { same.except = r.except; addedSettings.push(`import rule "${r.name}": except ${r.except.join(', ')}`); }
+    }
     if (k === 'checks') for (const c of v) if (c.name !== 'lint' && !mine.checks.some((x) => x.name === c.name)) { mine.checks.push(c); addedSettings.push(`checks: ${c.name}`); }
     if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; addedSettings.push(`${k}.${kk}`); }
   }
@@ -269,6 +274,7 @@ if (update) {
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');
+  if (framework && JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).ui?.boards === 'html') console.log('  not changed: "ui": { "boards": "html" } although the project has a UI framework. Set it to "components" to have /ui draw its variants as real components.');
   console.log('  then: step 1 below, npm run map, node tools/workflow/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
 }
 if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${happyDom}` : LANGS[lang].needs}`); process.exit(0); }

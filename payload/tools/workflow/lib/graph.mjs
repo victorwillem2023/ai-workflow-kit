@@ -6,7 +6,8 @@ import { matchesAny } from './glob.mjs';
 
 const FROM = /\b(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]/g;
 const SIDE = /\bimport\s*['"]([^'"]+)['"]/g;
-const DYNAMIC = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+const DYNAMIC = /\bimport\s*\(\s*(?:['"]([^'"]+)['"]|`([^`$]+)`)\s*\)/g; // import('./x') and import(`./x`) without ${}
+const REQUIRE = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 const CODE = /\.(?:ts|tsx|mjs|js)$/;
 const BUILTIN = new Set(builtinModules);
 
@@ -87,9 +88,9 @@ export function resolveGo(from, text, known) {
 
 export function importsOf(text) {
   const found = new Set();
-  for (const re of [FROM, SIDE, DYNAMIC]) {
+  for (const re of [FROM, SIDE, DYNAMIC, REQUIRE]) {
     re.lastIndex = 0;
-    for (let m; (m = re.exec(text)); ) found.add(m[1]);
+    for (let m; (m = re.exec(text)); ) found.add(m[1] ?? m[2]);
   }
   return [...found];
 }
@@ -102,7 +103,8 @@ export function resolveImport(from, spec, known) {
   if (!spec.startsWith('.')) return null;
   const base = posix.join(posix.dirname(from), spec);
   const stem = base.replace(/\.(?:js|mjs)$/, '');
-  const tries = [base, base + '.ts', base + '.tsx', base + '.mjs', base + '.js', base + '/index.ts', stem + '.ts', stem + '.tsx'];
+  // a folder stands for its index file (`import('../variants')` is src/variants/index.tsx)
+  const tries = [base, base + '.ts', base + '.tsx', base + '.mjs', base + '.js', base + '/index.ts', base + '/index.tsx', base + '/index.mjs', base + '/index.js', stem + '.ts', stem + '.tsx'];
   return tries.find((t) => known.has(t)) ?? null;
 }
 
