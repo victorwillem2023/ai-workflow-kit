@@ -40,9 +40,9 @@ const VARIANTS = {
 function runVariant(name) {
   const v = VARIANTS[name];
   const missing = (v.needs ?? []).filter((t) => !has(t));
-  // go mod tidy -diff (the unused check) needs Go 1.23 or newer
+  // the pinned staticcheck and govulncheck (starter/lang.json) need Go 1.26 or newer
   const goMinor = Number(/go1\.(\d+)/.exec(spawnSync('go', ['version'], { encoding: 'utf8', shell: win }).stdout ?? '')?.[1] ?? 0);
-  if (name === 'go' && !missing.length && goMinor < 23) missing.push(`go 1.23 or newer (this computer has 1.${goMinor})`);
+  if (name === 'go' && !missing.length && goMinor < 26) missing.push(`go 1.26 or newer (this computer has 1.${goMinor})`);
   if (missing.length) { console.log(`skip ${name}: ${missing.join(', ')} not installed here (CI runs it)`); return 'skipped'; }
   // the project folder itself has a plain lower-case name: a starter takes it as the package name (mkdtemp's has capitals)
   const tmp = mkdtempSync(join(tmpdir(), `kit-selftest-${name}-`));

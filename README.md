@@ -216,7 +216,7 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
   copied everything (now only the installed app), the Vite starter's demo links counted as outbound calls, two TypeScript
   classes Vite's `erasableSyntaxOnly` refuses, and lint failing on a project with no `src` yet. The k6 pin is visible to
   Renovate, with a test that every pinned image is. Board read commands warn in one line and carry on when GitHub cannot be
-  reached. `/setup` and the installer end with `/next`. Go needs 1.23 or newer (said now).
+  reached. `/setup` and the installer end with `/next`. Go needs 1.26 or newer, and its checks run pinned versions of staticcheck and govulncheck instead of @latest.
 - **2.7.0**: an advisor, a board tidy-up and a cost estimate, and everything optional.
   `project.audience` (`me`, `team`, `customers`, asked by `/setup`) decides what the kit brings up: a personal project hears
   nothing about launch, market, access reviews or "this already exists"; the SecOps report leaves out access and drills for it.

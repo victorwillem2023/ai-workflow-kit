@@ -234,7 +234,7 @@
   },
   "go": {
     "name": "Go",
-    "needs": "go 1.23 or newer (the unused check runs go mod tidy -diff)",
+    "needs": "go 1.26 or newer (the pinned staticcheck and govulncheck need it)",
     "config": {
       "code": [
         ".go",
@@ -306,12 +306,12 @@
       "checks": [
         {
           "name": "unused",
-          "command": "go mod tidy -diff && go run honnef.co/go/tools/cmd/staticcheck@latest -checks U1000 ./...",
+          "command": "go mod tidy -diff && go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 -checks U1000 ./...",
           "all": true
         },
         {
           "name": "audit",
-          "command": "go run golang.org/x/vuln/cmd/govulncheck@latest ./...",
+          "command": "go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...",
           "all": true
         }
       ],
