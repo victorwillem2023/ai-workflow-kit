@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.9.x` tag** (now `v2.9.3`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
+> **Build on the latest `v2.9.x` tag** (now `v2.9.4`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
 > what that project taught (the docs in folders, and in 2.9.1 a folder only once its stage is reached). The same rule holds: a new
 > part, guide or skill comes from a real project running into its lack, never ahead of one.
 
@@ -206,6 +206,11 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.9.4**, from updating Training Coach: a stage not reached yet keeps the kit docs the project's own pages still point at
+  (its filled-in deploy page at the infra guide), a few references deep, so nothing it keeps leads nowhere; and an update rewrites
+  old doc paths in the project's text every time, not only when it moved a file (one an earlier update left is fixed too). The
+  self-test's older project has its own deploy page pointing at the infra guide, and after the update every doc pointed at
+  must be there.
 - **2.9.3**, fixes from updating a real project (Training Coach) from 2.8.4. **An update no longer takes kit files for the
   project's own work** when the only change is the doc paths it rewrote itself (a file that matches the kit's stamp once the
   paths are put back is the kit's, and gets the new version). **`docs/PRODUCTION.md` is a build-stage doc again**: it describes

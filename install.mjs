@@ -169,7 +169,7 @@ if (args.includes('--check')) {
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
-const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], helpers: [] };
+const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], stageNamed: [], helpers: [] };
 // what a stage not reached yet would have written: an update takes away the untouched copies an older kit wrote there
 const stageSkipped = new Map();
 const shipped = new Set(); // every machinery file this run of the kit ships, to find the ones an older kit wrote and this one dropped
@@ -207,7 +207,8 @@ if (update) {
     for (const m of [written, stamp]) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
     movedDocs.push(from);
   }
-  if (movedDocs.length) {
+  {
+    // on every update, not only when a file moved: a path an earlier update left (a doc already moved, or since corrected) is fixed too
     const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
     const specs = existsSync(join(target, 'specs')) ? readdirSync(join(target, 'specs')).map((f) => `specs/${f}`) : [];
     let rewritten = 0;
@@ -217,7 +218,7 @@ if (update) {
       const was = readFileSync(p, 'utf8'), now = movePaths(was);
       if (now !== was) { writeFileSync(p, now); rewritten++; if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was); }
     }
-    done.movedDocs = { count: movedDocs.length, rewritten };
+    if (movedDocs.length || rewritten) done.movedDocs = { count: movedDocs.length, rewritten };
   }
 }
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
@@ -246,7 +247,7 @@ function copyTree(from, overwrite) {
     // a part left out: its machinery is not shipped, and its starter pages (docs/market/MARKET.md, docs/company/ROADMAP.md) are not made
     if (skippedPart(key)) continue;
     // a stage the project has not reached: not written (and not an orphan either: it comes back when the stage is entered)
-    if (skippedStage(key)) { stageSkipped.set(key, next); if (machinery) shipped.add(key); continue; }
+    if (skippedStage(key)) { stageSkipped.set(key, { next, machinery }); if (machinery) shipped.add(key); continue; }
     if (machinery) shipped.add(key);
     if (exists && machinery && update && !overwrite) {
       // --update: the same already, or untouched since the kit wrote it (then the kit's new one is taken), or the project's own
@@ -290,7 +291,7 @@ if (update) {
 // --update: a stage the project has not reached loses the copies an older kit wrote there and nobody changed since (the same text
 // as the kit's, or as the kit's stamp says it wrote); a changed one is the project's own work, so it stays and is named
 if (update) {
-  for (const [key, want] of stageSkipped) {
+  for (const [key, { next: want }] of stageSkipped) {
     const path = join(target, key);
     if (!existsSync(path)) continue;
     const now = hash(readFileSync(path, 'utf8'));
@@ -299,6 +300,25 @@ if (update) {
     stamp.delete(key);
     done.staged.push(key);
     for (let dir = dirname(path); dir.startsWith(target) && dir !== target && readdirSync(dir).length === 0; dir = dirname(dir)) rmSync(dir, { recursive: true });
+  }
+}
+// A stage not entered can still be partly in use: a page of the project's own there (the deploy page /setup filled) or CLAUDE.md
+// pointing into it. A kit doc of that stage that what stays still names is put back (and what it names, a few rounds deep), so
+// nothing the project keeps leads nowhere.
+if (stageSkipped.size) {
+  const mdUnder = (d) => (existsSync(d) ? readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? mdUnder(join(d, e.name)) : e.name.endsWith('.md') ? [join(d, e.name)] : [])) : []);
+  for (let round = 0; round < 5; round++) {
+    const texts = [...mdUnder(join(target, 'docs')), join(target, 'CLAUDE.md')].filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8')).join('\n');
+    const named = [...stageSkipped.keys()].filter((key) => !existsSync(join(target, key)) && texts.includes(`\`${key}\``));
+    if (!named.length) break;
+    for (const key of named) {
+      const { next, machinery } = stageSkipped.get(key);
+      mkdirSync(dirname(join(target, key)), { recursive: true });
+      writeFileSync(join(target, key), next);
+      if (machinery) stamp.set(key, hash(next));
+      done.staged = done.staged.filter((k) => k !== key);
+      done.stageNamed.push(key);
+    }
   }
 }
 
@@ -542,6 +562,7 @@ if (update) {
   if (lfHint) console.log(lfHint);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
+  if (done.stageNamed.length) console.log(`  kept from a stage not reached yet, because the project's own pages point at them: ${done.stageNamed.join(', ')}`);
   if (done.helpers.length) console.log(`  helpers the kit's rules name, added (never replacing one): ${done.helpers.join(', ')}`);
   if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);

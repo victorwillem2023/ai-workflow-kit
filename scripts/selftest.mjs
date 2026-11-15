@@ -68,6 +68,8 @@ function asOlderKitLeftIt(dir) {
   // the stamps as that older kit wrote them: of every kit file as it is now (nobody changed them since the kit wrote them)
   const hash = (t) => createHash('sha1').update(String(t).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
   writeFileSync(mark, readFileSync(mark, 'utf8').replace(/^sha (\S+) (.+)$/gm, (line, h, f) => (existsSync(join(dir, f)) ? `sha ${hash(readFileSync(join(dir, f), 'utf8'))} ${f}` : line)));
+  // a run-stage page of the project's own (a deploy page /setup filled), pointing at a kit guide of that stage: it must keep leading somewhere
+  writeFileSync(join(dir, 'docs', 'DEPLOY.md'), "# Deploying (the project's own page)\n\nThe edge and its certificates: `docs/INFRA.md`.\n");
   // the helpers an older kit did not have (src/server/trace.ts ...): the update adds them
   for (const h of HELPERS) if (existsSync(join(dir, h))) rmSync(join(dir, h));
   // CLAUDE.md exactly at its budget, as a project near it is: the move's longer paths must not fail its gate
@@ -197,13 +199,20 @@ async function runVariant(name) {
     git('commit', '-q', '-m', 'As a kit from before 2.9 left it');
     const updated = await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
     // nothing of the kit's may be taken for the project's own work: the move rewrote paths in kit files, nobody changed them
-    const claimed = /kept, because the project changed them[\s\S]*?(?=\n {2}\S|\n\S|$)/.exec(updated)?.[0];
+    // (only the kit's own files: "the kit's version differs"; a project page kept in a stage not reached is rightly its own)
+    const claimed = /kept, because the project changed them \(\d+\); the kit's version differs[\s\S]*?(?=\n {2}\S|\n\S|$)/.exec(updated)?.[0];
     console.log(`${claimed ? 'FAIL' : 'ok  '} ${name}: the update takes no kit file for the project's own${claimed ? `:\n${claimed}` : ''}`);
     if (claimed) throw new Error('kit files taken for the project');
     const left = [...oldDocPaths(dir), ...[...MOVES, ...CORRECTIONS].filter(([from]) => existsSync(join(dir, from))).map(([from]) => `${from} was not moved`),
       ...(v.args.includes('--lang') || !existsSync(join(dir, 'src', 'server', 'log.ts')) ? [] : HELPERS.filter((h) => !existsSync(join(dir, h))).map((h) => `${h} was not added back`))];
     console.log(`${left.length ? 'FAIL' : 'ok  '} ${name}: the update moved the docs into their folders${left.length ? `:\n${left.slice(0, 20).join('\n')}` : ''}`);
     if (left.length) throw new Error('docs not moved');
+    // and nothing the project keeps points at a doc the update took away (its own run page at the kit's guide)
+    const after = missingDocPointers(dir);
+    console.log(`${after.length ? 'FAIL' : 'ok  '} ${name}: after the update every doc pointed at is there${after.length ? `:\n${after.slice(0, 20).join('\n')}` : ''}`);
+    if (after.length) throw new Error('doc pointers after the update');
+    // what the update's own last lines ask for: the map (the docs index changed with the docs)
+    await step('file map after the update', process.execPath, ['tools/workflow/map.mjs']);
     await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
     return 'passed';
   } catch {
