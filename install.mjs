@@ -212,7 +212,15 @@ if (update && !done.added.includes('workflow.config.json')) {
   const mine = JSON.parse(readFileSync(cfgPath, 'utf8'));
   const kits = { ...JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8'))), ...(LANGS[lang].config ?? {}) };
   for (const [k, v] of Object.entries(kits)) {
-    if (!(k in mine)) { mine[k] = k === 'checks' ? v.filter((c) => c.name !== 'lint') : v; addedSettings.push(k); continue; }
+    if (!(k in mine)) {
+      mine[k] = k === 'checks' ? v.filter((c) => c.name !== 'lint') : v;
+      // a project that has a UI framework draws its /ui variants as components, as a new install would set it
+      if (k === 'ui' && framework) mine.ui = { ...v, boards: 'components' };
+      addedSettings.push(k === 'ui' && framework ? 'ui (boards: components, because the project has a UI framework)' : k);
+      continue;
+    }
+    // an import rule the kit has and the project lacks, by its name (a folder the project does not have matches nothing)
+    if (k === 'boundaries') for (const r of v) if (!mine.boundaries.some((x) => x.name === r.name)) { mine.boundaries.push(r); addedSettings.push(`import rule: ${r.name}`); }
     if (k === 'checks') for (const c of v) if (c.name !== 'lint' && !mine.checks.some((x) => x.name === c.name)) { mine.checks.push(c); addedSettings.push(`checks: ${c.name}`); }
     if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; addedSettings.push(`${k}.${kk}`); }
   }

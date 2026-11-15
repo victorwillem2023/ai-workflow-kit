@@ -64,7 +64,9 @@ written:
 - Steps 1 and 4 to 6 as above. Instead of step 2: write A, B and C as components in `src/variants/<topic>/` (the folder is
   `ui.variants` in the config), from the project's own tokens and parts, with made-up data, and show them side by side, each
   with its letter, name, cost and states, on a page that exists only while developing (the dev server's `/variants`; it must not
-  be in the built app).
+  be in the built app). The page is `src/variants/index.tsx` (or the framework's equivalent), inside the variants folder, and
+  only the app's start file loads it, behind the framework's development switch (with Vite:
+  `if (import.meta.env.DEV) import('./variants')`). Never put it in `src/web`: the app may not import a variant.
 - Step 3's four pictures are taken of that page (`node scripts/shots.mjs http://127.0.0.1:<port>/variants ...`). The pictures
   and the notes file are the record: the README row links the pictures, there is no board file.
 - Stage 2 moves the picked variant into `src/web` and deletes `src/variants/<topic>/`. `npm run gate:all` fails while a variant
