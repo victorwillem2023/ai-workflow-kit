@@ -130,14 +130,22 @@ for (const m of modules) {
   if (existsSync(join(kit, 'modules', m, `starter-${lang}`))) copyTree(join(kit, 'modules', m, `starter-${lang}`), false);
 }
 
-// a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end
+// a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end. "Once" is remembered in
+// .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
+// record is recognised by the heading or by the first file or command the section names.
+const sectionsDone = new Set((/^sections=(.*)$/m.exec(existsSync(markFile) ? readFileSync(markFile, 'utf8') : '')?.[1] ?? '').split(',').filter(Boolean));
 for (const m of modules) {
   const part = join(kit, 'modules', m, 'claude-section.md');
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(part) || !existsSync(claude)) continue;
   const text = fill(readFileSync(part, 'utf8'));
   const title = /^## .+$/m.exec(text)?.[0];
-  if (title && !readFileSync(claude, 'utf8').includes(title)) writeFileSync(claude, readFileSync(claude, 'utf8').replace(/\n*$/, '\n') + text);
+  // (the files and commands the section names: when most of them are in CLAUDE.md already, the section is there under another heading)
+  const names = [...text.matchAll(/`([^`]+)`/g)].map((x) => x[0]);
+  const has = readFileSync(claude, 'utf8');
+  const there = names.length > 0 && names.filter((n) => has.includes(n)).length * 2 >= names.length;
+  if (title && !sectionsDone.has(m) && !has.includes(title) && !there) writeFileSync(claude, has.replace(/\n*$/, '\n') + text);
+  sectionsDone.add(m);
 }
 // the gate's baseline, empty, so the docs can name it from the first day
 const basePath = join(target, 'tools', 'workflow', 'baseline.json');
@@ -236,7 +244,7 @@ if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(pr
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
-writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nmodules=${modules.join(',')}\n${[...stamp].sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nmodules=${modules.join(',')}\nsections=${[...sectionsDone].join(',')}\n${[...stamp].sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (modules: ${modules.join(', ') || 'none'})` : `Installed kit ${kitVersion} into ${target} (modules: ${modules.join(', ') || 'none'})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);

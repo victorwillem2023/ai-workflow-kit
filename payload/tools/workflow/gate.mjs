@@ -126,6 +126,13 @@ if (flag('--update-baseline')) {
   }
   if (copies) next.copies = copies;
   next.cycles = cycles;
+  // a rules file over its budget is only taken as it is the first time; one that grew past what was recorded is refused
+  const fatter = overBudget.filter(([f, , size]) => size > (baseline.budget?.[f] ?? 0));
+  if (fatter.length && !reason) {
+    console.log('baseline not written: these rules files are over their budget and grew (every agent reads them in every chat: turn a rule into a check, move what only some work needs into a doc they point to, or --allow-growth "<reason>"):');
+    for (const [f, max, size] of fatter) console.log(`  ${f} is ${size} bytes, the budget is ${max}${baseline.budget?.[f] ? `, it was ${baseline.budget[f]}` : ''}`);
+    process.exit(1);
+  }
   if (overBudget.length) next.budget = Object.fromEntries(overBudget.map(([f, , size]) => [f, size]));
   if (untested) next.untested = untested;
   if (depths) {
