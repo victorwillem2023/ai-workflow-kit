@@ -1,0 +1,68 @@
+# The release pipeline: after the gate passes on main, the app's image is built once, named after the commit, scanned, given a
+# bill of materials (SBOM), and kept in GitHub's registry (ghcr.io). Production only runs images built here (docs/PRODUCTION.md).
+# Third-party actions are pinned to a commit (a tag can be moved by whoever controls it); Dependabot keeps the pins current.
+name: release
+on:
+  workflow_run:
+    workflows: [gate]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Name the image after the commit
+        id: name
+        run: |
+          if [ ! -f Dockerfile ]; then echo "no Dockerfile: nothing to release"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          sha="${{ github.event.workflow_run.head_sha }}"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${sha:0:12}" >> "$GITHUB_OUTPUT"
+          echo "version=${sha:0:12}" >> "$GITHUB_OUTPUT"
+      - if: steps.name.outputs.skip != '1'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - if: steps.name.outputs.skip != '1'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (not pushed yet)
+        if: steps.name.outputs.skip != '1'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: ${{ steps.name.outputs.image }}
+          build-args: APP_VERSION=${{ steps.name.outputs.version }}
+      - name: Scan the image (known vulnerabilities that have a fix)
+        if: steps.name.outputs.skip != '1'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.name.outputs.image }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the Dockerfile and the infrastructure files (mistakes in how they are set up)
+        if: steps.name.outputs.skip != '1'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+      - name: Bill of materials (every library in the image)
+        if: steps.name.outputs.skip != '1'
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ steps.name.outputs.image }}
+          artifact-name: sbom-${{ steps.name.outputs.version }}.spdx.json
+      - name: Keep it in the registry
+        if: steps.name.outputs.skip != '1'
+        run: docker push "${{ steps.name.outputs.image }}"

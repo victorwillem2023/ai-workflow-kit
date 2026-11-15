@@ -74,6 +74,13 @@ Only real decisions; never ask what the code already says.
 - **Checks that follow from the stack** (`workflow.config.json`; `tools/workflow/README.md`, *What it checks*): with a database,
   `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);
   with screens, the `e2e` entry of `stack.md` part 7 in `checks`; `knip.json` when the app starts somewhere else than `src/index.ts`.
+  With personal data (answer 4 of the product questions), `together` also keeps the tables and `docs/PRIVACY.md` in one change
+  (`{ "name": "privacy", "when": ["<the schema file>"], "needs": ["docs/PRIVACY.md"] }`).
+- When the production module is installed (`docs/PRODUCTION.md`): fill the first rows of `docs/PRIVACY.md` from the product
+  answers (what is kept, why, where; "not decided" where it is not), and the logger's `personal` list from them. Don't ask
+  about hosts, clusters or queues now: `docs/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
+  Another language than TypeScript: write the same three parts (checked settings, safe logs, health and stopping) in the
+  language's own way when the server is first built, and point `docs/PRODUCTION.md` at those files.
 - When the deploy module is installed (`docs/DEPLOY.md`): fill it, and `deploy` in the config for the host chosen in `stack.md`
   part 6 (`url`, `command`, `rollback`; `{version}` is the commit); fit the `Dockerfile` to the app and write `.env.example`.
   An app with no server: take out `Dockerfile`, `.dockerignore`, `docs/DEPLOY.md` and the *Deploying* section of `CLAUDE.md`.

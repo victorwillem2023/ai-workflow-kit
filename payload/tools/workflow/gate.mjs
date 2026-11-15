@@ -28,6 +28,7 @@ import { specPaths, outsideSpec } from './lib/scope.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
+import { unlisted } from './lib/envcheck.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs';
 
@@ -109,6 +110,15 @@ if (flag('--update-baseline')) {
     process.exit(1);
   }
   if (upd.message) console.log(upd.message);
+  // a new broken import rule or a doc naming a file that does not exist is fixed, not accepted (after the first baseline)
+  const newRules = newViolations(violations, baseline.boundaries ?? []);
+  const newRefs = newStaleRefs(staleRefs, baseline.docs ?? []);
+  if ((newRules.length || newRefs.length) && !reason) {
+    console.log('baseline not written: fix these instead of accepting them (or --allow-growth "<reason>"):');
+    for (const v of newRules) console.log(`  ${v.rule}: ${v.file} imports ${v.target}`);
+    for (const s of newRefs) console.log(`  ${s.doc}:${s.line} names ${s.ref}, which does not exist: write it, or take the name out`);
+    process.exit(1);
+  }
   const next = { boundaries: violations.map((v) => v.key).sort(), sizes: upd.next, docs: staleRefs.map(staleKey).sort() };
   if (funcs) {
     const fu = updateSizes(funcs, baseline.functions ?? {}, reason);
@@ -267,6 +277,15 @@ const steps = [
     for (const f of git('ls-files', '--others', '--exclude-standard').split('\n').filter((x) => x && existsSync(x) && statSync(x).size < 300_000)) added.set(f, readFileSync(f, 'utf8').split('\n'));
     const found = [...secretsIn(added).map((x) => `${x.file} holds ${x.kind}`), ...envFiles(git('ls-files').split('\n')).map((f) => `${f} is in git: env files with real values stay out of it`)];
     if (found.length) return { ok: false, out: found.join('\n') + '\nTake it out, read it from the environment (.env, never committed), and change the key if it was ever pushed. A made-up value: put "not a secret" in a comment on that line.' };
+    return { ok: true };
+  }],
+  existsSync('.env.example') && ['settings', () => {
+    // every setting the code reads is in .env.example, so a new server or a new person knows every name it needs
+    const include = config.settings?.include ?? ['src/**'];
+    const files = new Map(git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
+      .filter((f) => f && isCode(f) && matchesAny(f, include) && existsSync(f) && statSync(f).size < 1_000_000).map((f) => [f, readFileSync(f, 'utf8')]));
+    const missing = unlisted(files, readFileSync('.env.example', 'utf8'), config.settings?.ignore ?? []);
+    if (missing.length) return { ok: false, out: missing.map((m) => `${m.file} reads ${m.name}, which .env.example does not list: add it there with a comment (what it is, an example value, never a real secret)`).join('\n') };
     return { ok: true };
   }],
   config.together?.length && ['together', () => {

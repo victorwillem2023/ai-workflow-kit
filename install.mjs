@@ -32,7 +32,7 @@ const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefin
 const force = args.includes('--force');
 const update = args.includes('--update');
 const take = (opt('--take') ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
-const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy'];
+const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy', 'production'];
 const lang = opt('--lang') ?? 'ts';
 const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
 if (!LANGS[lang]) { console.error(`Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)`); process.exit(1); }

@@ -1,8 +1,9 @@
-# AI workflow kit
+# AI workflow kit: from idea to product
 
-A way of working with an AI coding agent (Claude Code and OpenCode, from one set of skills), packaged so a new project can start
-with it on day one: the skills, the rules, the checks, the doc layout and the habits that keep sessions cheap.
-It is the step from vibe coding to engineering: plans you approve, tests first, scripts that check, one commit when you say done.
+Everything a project needs to go from an idea to a product people use, built with an AI coding agent (Claude Code and
+OpenCode, from one set of skills): the way of working, the checks, the doc layout, and the basis for running it in production
+and bringing it to people. It is the step from vibe coding to engineering, all the way through: plans you approve, tests
+first, scripts that check, one commit when you say done, and an app that can be deployed without going down.
 
 ```sh
 git clone https://github.com/victorwillem2023/ai-workflow-kit
@@ -10,6 +11,21 @@ cd my-project && node ../ai-workflow-kit/install.mjs . --project "My App" --repo
 # then in Claude Code or OpenCode: /setup
 ```
 You steer, Claude plans, builds and checks; scripts do the checking so the AI does not have to; nothing is committed until you say so.
+
+## The lifecycle
+| Stage | What the kit gives it |
+|---|---|
+| **Idea** | `/idea`: one card per idea, bug or wish on a GitHub board |
+| **Plan** | `/setup`: the product questions, then the stack and the layers it proposes; `/spec`: a plan with named tests, per card |
+| **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
+| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit |
+| **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data. When the first deploy card comes, `/launch` asks the infrastructure questions: one app or services, server, container host, cluster or serverless, infrastructure as code, secrets, data, queues, monitoring |
+| **Grow** | `/market`: positioning, a landing page, pricing, analytics, a launch checklist, feedback as cards |
+
+The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.1 naming checks, setup
+docs that are proven, SecOps reports, pinned versions with Renovate; 2.2 `/launch` with network and firewall, OpenTofu, Ansible,
+the cloud choice and on-prem; 2.3 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
 
 ## The idea in ten rules
 1. **The board is the only backlog.** One GitHub Projects card per idea, bug or wish. Claude reads one card, never the list.
@@ -40,6 +56,7 @@ payload/                  CORE machinery (copied; overwritten only with --force)
   tests/workflow/         tests for the gate, map, docrefs and board code
   docs/WORKFLOW.md        how to use it day to day, written for you
   docs/TOKENS.md          why the flow and the docs are shaped to keep sessions cheap
+  docs/LIFECYCLE.md       the whole path from idea to product: what each stage needs, what is laid now, what /launch decides later
 starter/                  CORE files that are YOURS (copied only when missing, then edited)
   CLAUDE.md               the rules every agent reads first (skeleton; /setup fills the <...> from an interview):
                           code structure, reading the code cheaply, never read, security, parallel work
@@ -61,7 +78,11 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
   dev/       dev.cmd, start.cmd (Windows: install on first run, check packages and port), scripts/dev-check.mjs, .env.example
   map/       docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
   deploy/    a Dockerfile per language, scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
-             npm run smoke; npm run rollback), docs/DEPLOY.md
+             npm run smoke; npm run rollback), docs/DEPLOY.md, .github/workflows/release.yml (after the gate: one image per commit,
+             scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit)
+  production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
+             src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
+             docs/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
 ```
 
 ## The commands you type
@@ -140,6 +161,12 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.0.0**: from idea to product. The README and `docs/LIFECYCLE.md` tell the whole lifecycle. The `production` module: settings
+  checked at start-up, JSON logs that hide secrets and personal fields, `/health` and `/ready`, a stop that lets open requests
+  finish, `docs/PRODUCTION.md` and `docs/PRIVACY.md`. The gate's *settings* check (every name the code reads is in `.env.example`).
+  The release pipeline (deploy module): one image per commit after the gate, scanned (Trivy: vulnerabilities and configuration),
+  with an SBOM, in ghcr.io, third-party actions pinned to a commit. The gate pipeline on the current GitHub actions.
+  `--update-baseline` refuses a new broken import rule or a doc naming a missing file (it accepted them before), unless `--allow-growth`.
 - **1.6.2**: a `.gitattributes` (LF everywhere, CRLF only for `.cmd` and `.bat`) written into every project, and in the kit itself:
   Git for Windows sets `core.autocrlf=true`, so every `git add` warned "LF will be replaced by CRLF". The `.cmd` files are written with CRLF.
 - **1.6.1**: `npm run harness` (and so `--update`) adds to an `opencode.jsonc` written earlier the shell rules

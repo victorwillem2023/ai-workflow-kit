@@ -50,6 +50,9 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **secrets**: a key or password in the added lines of a change (cloud and API keys, a private key, `password = "..."` with a
   real-looking value) fails with the file and the kind, never the value; so does a tracked `.env`. A made-up value in a test
   passes with `not a secret` in a comment on its line.
+- **settings** (when `.env.example` exists): every setting the code reads from the environment is listed there (commented out
+  is fine for an optional one), in any language the kit knows, and the keys of a `defineSettings({ ... })` call. Reads
+  `settings.include` (default `src/**`); `settings.ignore` names any to leave out. A new server then knows every name it needs.
 - **together** (when `together` is in the config): files that change together.
   `{ "name": "migration", "when": ["src/db/schema.ts"], "needs": ["migrations/**"] }` fails a change to the tables that adds no migration.
 - **your own checks** (`checks` in the config), after the tests, each a command that must pass:
