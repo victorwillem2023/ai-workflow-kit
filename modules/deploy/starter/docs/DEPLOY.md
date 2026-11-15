@@ -1,4 +1,5 @@
 # {{PROJECT}}: deploying
+<!-- covers: Dockerfile, .env.example -->
 
 `/setup` fills the `<...>`. A deploy happens only when the owner says so.
 

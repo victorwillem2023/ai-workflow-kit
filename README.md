@@ -23,8 +23,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Grow** | `/market`: positioning, a landing page, pricing, analytics, a launch checklist, feedback as cards |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.1 naming checks, setup
-docs that are proven, SecOps reports, pinned versions with Renovate; 2.2 `/launch` with network and firewall, OpenTofu, Ansible,
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.2 `/launch` with network and firewall, OpenTofu, Ansible,
 the cloud choice and on-prem; 2.3 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
 
 ## The idea in ten rules
@@ -49,13 +48,15 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /work /spec /build /ship, and the cheap helpers /check /find /docs
+  .claude/skills/         /setup /idea /work /spec /build /ship /review /lesson /secops, and the cheap helpers /check /find /docs
   tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
-                          spec template, README (the reference)
+                          updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
+                          (SETUP.md proven on a fresh clone), spec template, README (the reference)
   scripts/session.mjs     one worktree + port per card; --finish, --push, --list, --check-main, --remove
   tests/workflow/         tests for the gate, map, docrefs and board code
   docs/WORKFLOW.md        how to use it day to day, written for you
   docs/TOKENS.md          why the flow and the docs are shaped to keep sessions cheap
+  .github/workflows/      gate (every push), secops (Mondays: the security report), setup (SETUP.md proven)
   docs/LIFECYCLE.md       the whole path from idea to product: what each stage needs, what is laid now, what /launch decides later
 starter/                  CORE files that are YOURS (copied only when missing, then edited)
   CLAUDE.md               the rules every agent reads first (skeleton; /setup fills the <...> from an interview):
@@ -64,7 +65,9 @@ starter/                  CORE files that are YOURS (copied only when missing, t
   docs/ARCHITECTURE.md    layers and flow, read by the section
   docs/code/core.md, src/core/CLAUDE.md   the pattern for every big folder: rules in the folder note, "where things are" in docs/code
   tsconfig.json
-  workflow.config.json    roots, test commands, layer rules, security folders, session ports, board columns, harness models
+  workflow.config.json    roots, test commands, layer rules, naming rules, security folders, session ports, board columns, harness models
+  renovate.json, .tool-versions   the update policy (one repository, or moved to a config repository for several) and the pinned tools
+  docs/SETUP.md, docs/CONVENTIONS.md   the setup guide whose marked steps are run, and the conventions with their reasons
   gitignore.txt, package-scripts.json, settings.local.json    merged into the project by the installer
 modules/                  OPTIONAL parts, each with payload/ (machinery) and starter/ (yours)
   ui/        .claude/skills/ui (the board route), scripts/shots.mjs (screenshots via Chrome/Edge),
@@ -95,6 +98,8 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
 | `/spec`, `/ship` | The steps underneath. |
 | `/check`, `/find`, `/docs` | Cheap helpers on a small model: explain a failing gate, answer "where is X" from the map, a small docs edit. Read-only or no commit. |
 | `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
+| `/secops` | Reads the weekly security report (an issue every Monday), says what each finding means, proposes the fix; a yes makes it a fix or a card. |
+| `npm run setup-check` | Runs `docs/SETUP.md`'s marked steps on a fresh clone: the setup guide is proven, not hoped. |
 | `npm run updates` | What Dependabot found: security alerts first, then each update with a verdict (take it, look first, hold). `/work` starts with its one line. |
 
 ## Install into a new project
@@ -161,6 +166,27 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.1.0**: kept up to date, checked and written down. The gate's *naming* check (files and exported names, from the
+  language's norms) and `docs/CONVENTIONS.md`; *versions* (every tool pinned in `.tool-versions`, Node one version everywhere,
+  OpenTofu stacks pinned with their lock file). Renovate (`renovate.json`: grouped small updates, majors alone, Node only between
+  LTS versions, nothing younger than 7 days except security fixes; one policy per repository, or a config repository of your own
+  for several) instead of Dependabot's version updates; `npm run updates` reads both. SecOps without hands: a weekly scan
+  (OSV-Scanner, Trivy, Semgrep, gitleaks) as one report issue in plain words, `/secops` to act on it, `npm run secops -- --enable`
+  for Dependabot alerts and security updates. `docs/SETUP.md` and `npm run setup-check` (its steps run on a fresh clone, on GitHub
+  too). New projects on Node 26 (the active LTS; 22 ends in April 2027). Every pipeline action pinned to a commit, event values
+  reach shell steps only through env, and the kit's own by-design shell and pattern uses are marked with their reason. Found by
+  running all of it on Training Coach.
+  Sensitive work (money, health, legal texts, personal data): `sensitive.paths`, every value from a source the spec names, and the
+  gate's *signoff* check, which needs the owner's own `npm run signoff` for the exact files (`docs/SENSITIVE.md`). Names of things
+  in the system (`<app>-<env>-<place>-<part>`, checked in infrastructure files), alphabetical lists (`naming.sorted`) and commits
+  (one per feature) in `docs/CONVENTIONS.md`. `docs/ACCESS.md` and `npm run access`; the weekly report also watches certificates
+  and the 90-day access review. New docs: `docs/ENVIRONMENTS.md`, `docs/RECOVERY.md` (backups, expand-and-contract migrations,
+  cutovers, the runbook), `docs/INFRA.md` (proxy, load balancer, CDN, WAF, API gateway, service mesh, DNS, private networks,
+  certificates), `docs/TOOLS.md` (the current open-source tool per job and what it replaced), and a small-company stage in
+  `docs/LIFECYCLE.md`. Models by job: plans and reviews on Opus, building on Sonnet, small jobs on Haiku, a script before any model.
+  Docs that cannot go stale: `docs/INFRA-MAP.md` made from the infrastructure files by `npm run map`, generated blocks in the docs
+  (layers, versions, settings, sensitive files, naming) made from the config, and the gate's *covers* check (a doc that names what
+  it covers changes with it, or the spec says why not).
 - **2.0.1**: the TypeScript `Dockerfile` runs without npm, npx, corepack or yarn (the first release scan of Training Coach failed on known
   vulnerabilities in the npm that `node:22-slim` ships, never used by the running app), starts `node` directly so the app gets the stop
   signal, and has a health check that uses Node's own fetch.

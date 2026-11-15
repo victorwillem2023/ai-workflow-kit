@@ -19,7 +19,8 @@ const KNOWN = {
 };
 
 export const DEFAULTS = {
-  model: 'deepseek/deepseek-v4-pro',          // the flow: Plan, Build, every command that plans, builds or ships, subagents
+  model: 'deepseek/deepseek-v4-pro',          // the flow: Build, every command that builds or ships, subagents
+  planModel: 'deepseek/deepseek-v4-pro',      // the skills whose front matter says `model: opus` (they plan or judge: /setup /spec /work /review)
   cheapModel: 'opencode/glm-5.3-flash-free',  // only the skills whose front matter says `model: haiku` (jobs you start and can rerun)
   smallModel: 'opencode/deepseek-v4.1-flash-free', // session titles
   exploreModel: 'deepseek/deepseek-flash',    // code searches by the explore subagent
@@ -58,7 +59,7 @@ export function commandFile(name, skillText, cfg = {}) {
     '---',
     `description: ${says}`,
     `agent: ${readOnly ? 'plan' : 'build'}`,
-    `model: ${cheap ? models.cheapModel : models.model}`,
+    `model: ${cheap ? models.cheapModel : fm.model === 'opus' ? models.planModel ?? models.model : models.model}`,
     '---',
     '',
     `Load the skill \`${name}\` with the skill tool (it is \`.claude/skills/${name}/SKILL.md\`) and follow it step by step, exactly as written, with CLAUDE.md's rules. Arguments: $ARGUMENTS`,

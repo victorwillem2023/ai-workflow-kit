@@ -4,6 +4,22 @@ Why the flow and the docs are shaped the way they are. An agent pays for every t
 the same chat, so the cost of a session is mostly what it read early and carried along. Each rule below cuts one of those.
 The binding rules are in `CLAUDE.md` (*Reading the code cheaply*, *Never read*); this page is the reasoning, for the owner.
 
+## A tool before a model
+A model is paid per token and can be wrong; a script is free to rerun and is the same every time. So everything that can be
+checked or produced by an existing tool is: the gate (layers, sizes, names, sorted lists, secrets, versions, settings,
+sign-offs), the scanners and the weekly report, Renovate's updates, the board, the file map, the access review, the setup
+proof. A model is asked only for what needs judgement or writing: the plan, the code, the review, the words for the owner.
+A model that is asked the same mechanical question twice is a sign a script is missing: `/lesson` turns it into a check.
+
+## Which model for which job
+| Job | Model (Claude Code / OpenCode) | Why |
+|---|---|---|
+| Plans and judgements: `/setup`, `/spec`, `/work` up to the yes, `/review`, the `/ship` reviewer, sensitive builds | Opus / `planModel` | a wrong plan or a missed flaw costs every later step; it is a small part of the tokens |
+| Building an approved spec, `/ship`, `/secops`, `/build`'s lead | Sonnet / `model` | the plan decided the seams, files and tests; building it is coding, at a fraction of the price |
+| Small jobs you start and can rerun: `/idea`, `/docs`, `/check`, `/find` | Haiku / `cheapModel` | easy to check; a wrong answer costs a rerun |
+| Searching the code | the agent's explore helper on a small model / `exploreModel` | reads a lot, decides little |
+Each skill's front matter carries its `model:` line; `npm run harness` turns it into the OpenCode command's model.
+
 ## Chats
 | Rule | Why |
 |---|---|

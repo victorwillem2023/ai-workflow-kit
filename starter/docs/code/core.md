@@ -1,4 +1,5 @@
 # src/core: where things are
+<!-- covers new files: src/core/** -->
 
 Kept out of `src/core/CLAUDE.md` so it isn't loaded with every file read in that folder; the rules stay there.
 Read it by the section: `grep -n` the feature or name you touch; read it whole only for work across the area.

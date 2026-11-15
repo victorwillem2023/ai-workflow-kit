@@ -1,6 +1,8 @@
 # The release pipeline: after the gate passes on main, the app's image is built once, named after the commit, scanned, given a
 # bill of materials (SBOM), and kept in GitHub's registry (ghcr.io). Production only runs images built here (docs/PRODUCTION.md).
-# Third-party actions are pinned to a commit (a tag can be moved by whoever controls it); Dependabot keeps the pins current.
+# Every action is pinned to a commit (a tag can be moved by whoever controls it); Renovate or Dependabot keeps the pins current.
+# It checks out the commit of the gate run that triggered it, and only for a push to main (never a pull request's code, which
+# would run here with the right to write packages): the `if` below. Values from the event reach shell steps only through env.
 name: release
 on:
   workflow_run:
@@ -15,14 +17,18 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      # nosemgrep: yaml.github-actions.security.workflow-run-target-code-checkout.workflow-run-target-code-checkout
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
       - name: Name the image after the commit
         id: name
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           if [ ! -f Dockerfile ]; then echo "no Dockerfile: nothing to release"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
-          sha="${{ github.event.workflow_run.head_sha }}"
+          sha="$HEAD_SHA"
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${sha:0:12}" >> "$GITHUB_OUTPUT"
           echo "version=${sha:0:12}" >> "$GITHUB_OUTPUT"
       - if: steps.name.outputs.skip != '1'
@@ -65,4 +71,6 @@ jobs:
           artifact-name: sbom-${{ steps.name.outputs.version }}.spdx.json
       - name: Keep it in the registry
         if: steps.name.outputs.skip != '1'
-        run: docker push "${{ steps.name.outputs.image }}"
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: docker push "$IMAGE"

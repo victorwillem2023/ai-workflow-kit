@@ -1,0 +1,24 @@
+# Proves docs/SETUP.md: its marked commands, run as written on a fresh copy (tools/workflow/setupcheck.mjs), whenever the guide
+# or what it installs changes, and every week (a library or tool that moved can break a setup nobody touched).
+name: setup
+on:
+  push:
+    branches: [main]
+    paths: [docs/SETUP.md, package.json, package-lock.json, .tool-versions, .env.example, Dockerfile, pyproject.toml, uv.lock, Cargo.toml, Cargo.lock, go.mod]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .tool-versions
+      - run: node tools/workflow/setupcheck.mjs

@@ -58,6 +58,8 @@ async function main() {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   if (depsStale(root)) {
     console.log('Checking the installed packages against package.json (npm install)...');
+    // a fixed command; the shell is needed on Windows, where npm is a .cmd file
+    // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
     const r = spawnSync('npm', ['install'], { cwd: root, stdio: 'inherit', shell: true });
     if (r.status !== 0) { console.error('npm install failed: fix that and run dev.cmd again.'); process.exit(1); }
     markDeps(root);

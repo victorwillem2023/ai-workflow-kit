@@ -82,6 +82,18 @@
       ],
       "copies": {
         "minLines": 6
+      },
+      "naming": {
+        "files": [
+          {
+            "glob": "src/**/*.rs",
+            "style": "snake"
+          },
+          {
+            "glob": "tests/**/*.rs",
+            "style": "snake"
+          }
+        ]
       }
     },
     "scripts": {
@@ -179,6 +191,26 @@
         "minLines": 6,
         "tests": [
           "tests/**/test_*.py"
+        ]
+      },
+      "naming": {
+        "files": [
+          {
+            "glob": "src/**/*.py",
+            "style": "snake",
+            "except": [
+              "__init__.py",
+              "__main__.py"
+            ]
+          },
+          {
+            "glob": "tests/**/*.py",
+            "style": "snake",
+            "except": [
+              "__init__.py",
+              "conftest.py"
+            ]
+          }
         ]
       }
     },
@@ -302,6 +334,14 @@
       ],
       "copies": {
         "minLines": 6
+      },
+      "naming": {
+        "files": [
+          {
+            "glob": "**/*.go",
+            "style": "snake"
+          }
+        ]
       }
     },
     "scripts": {

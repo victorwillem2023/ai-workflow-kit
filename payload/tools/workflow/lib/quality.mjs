@@ -4,6 +4,8 @@ const DEFAULT = '(\\d+)\\s*(?:of|/|out of)\\s*(\\d+)';
 
 /** The last "79 of 106" in the output (or the config's own pattern: first group passed, second the total). */
 export function parseScore(out, pattern = DEFAULT) {
+  // the pattern comes from workflow.config.json, the project's own file
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   const all = [...String(out).matchAll(new RegExp(pattern, 'g'))];
   const m = all[all.length - 1];
   return m ? { pass: +m[1], total: m[2] != null ? +m[2] : null } : null;

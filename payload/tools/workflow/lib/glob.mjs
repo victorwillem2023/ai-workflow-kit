@@ -14,6 +14,8 @@ export function globToRegExp(glob) {
     else if (c === ',' && depth) re += '|';
     else re += '.+^${}()|[]\\'.includes(c) ? '\\' + c : c;
   }
+  // built only from glob characters escaped above, and the globs come from the project's own config
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   return new RegExp('^' + re + '$');
 }
 

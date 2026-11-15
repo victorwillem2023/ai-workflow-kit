@@ -18,9 +18,18 @@
       "Bash(git worktree:*)",
       "Bash(node scripts/session.mjs:*)",
       "Bash(npm run updates:*)",
-      "Bash(node tools/workflow/updates.mjs:*)"
+      "Bash(node tools/workflow/updates.mjs:*)",
+      "Bash(npm run secops:*)",
+      "Bash(node tools/workflow/secops.mjs:*)",
+      "Bash(npm run setup-check:*)",
+      "Bash(npm run access:*)",
+      "Bash(node tools/workflow/access.mjs:*)"
     ],
     "deny": [
+      "Bash(npm run signoff:*)",
+      "Bash(node tools/workflow/signoff.mjs:*)",
+      "Edit(docs/SIGNOFFS.md)",
+      "Write(docs/SIGNOFFS.md)",
       "Bash(git push --no-verify:*)",
       "Bash(git push * --no-verify*)",
       "Bash(git push --force:*)",

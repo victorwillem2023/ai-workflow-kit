@@ -1,6 +1,7 @@
 ---
 name: ship
 description: Finish a {{PROJECT}} feature after the owner says it is done: full gate, docs check against the spec, security review if flagged, one commit, session finish. Never run before the owner says done.
+model: sonnet
 ---
 
 # /ship <topic>
@@ -15,8 +16,11 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
 2. `npm run gate:all` must pass. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.
    For anything bigger than a small fix, have fresh eyes review it before the commit: start a subagent that has not seen this
-   chat (the Task tool), with only this as its task: "Follow `.claude/skills/review/SKILL.md` for <topic>, in <the session
+   chat (the Task tool, on Opus: judging needs the strong model), with only this as its task: "Follow `.claude/skills/review/SKILL.md` for <topic>, in <the session
    folder>. Change no file. Report the list." Fix what it finds that the spec backs, and show the owner the rest.
+   **A sensitive file changed** (the gate's *signoff* line): the review is not optional. Then stop and hand the owner the check:
+   the files, the spec's *Sources*, and `cd <session folder> && npm run signoff` to run in their own terminal. You never run it,
+   never write `docs/SIGNOFFS.md`, and never call the change checked before the gate passes with their row.
 3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first.
 4. Security: if "Security triggers" says yes, run the `security-review` skill and fix findings first.
 5. Delete `specs/<topic>.md` in the session folder and in the main folder (`/build` copied it from there; it is ignored, so nothing else removes it).

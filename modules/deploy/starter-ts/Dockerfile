@@ -4,14 +4,14 @@
 # It starts `node` directly, so the app itself gets the stop signal and can finish open requests (docs/PRODUCTION.md):
 # set the last line to the app's server entry.
 #   docker build --build-arg APP_VERSION=$(git rev-parse --short=12 HEAD) -t {{PREFIX}} .
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-slim
+FROM node:26-slim
 # what only installs packages goes: npm, npx, corepack and yarn
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
   /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg

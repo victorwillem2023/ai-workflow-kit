@@ -13,13 +13,14 @@ The owner wants to understand and steer the project, not just receive features. 
   After the yes the build starts **in a new chat** (`/build <topic>`, a session
   folder), so the planning is not sent again on every round; `/ship <topic>` finishes it, only when the owner says done.
   Details: `tools/workflow/README.md` (read by the section).
-- **Model choice**: the flow (`/work /spec /build /ship /ui`) runs on a strong paid model. Small or free models only for jobs
-  that are easy to check and to rerun: `/idea`, `/docs`, `/check`, `/find`. When in doubt, the stronger model.
+- **Model choice** (each skill's `model:` line): plans and reviews on Opus, building on Sonnet, small jobs on Haiku; a
+  script before a model: what a tool can check is never asked of one (`docs/TOKENS.md`).
 - **Screens**: a new screen or part starts as a board, not as code (`/ui`); browser feedback is one numbered list and one pass
   per round, only in `src/web` (a point that needs core logic becomes its own card). The rules: `src/web/CLAUDE.md`.
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.
 - **Docs in the same commit**: the guide part in `docs/guide/` and `README.md` when a feature is added or changes;
-  `docs/ARCHITECTURE.md` when the layers or flow change; `docs/code/<folder>.md` when a part moves.
+  `docs/ARCHITECTURE.md` when the layers or flow change; `docs/code/<folder>.md` when a part moves. A doc with a
+  `<!-- covers: ... -->` line fails the gate when its files change and it does not; generated parts: `npm run map`.
 - **The backlog is the GitHub board** (`npm run board`): read one card (`npm run board -- --show <n>`), never the whole
   list. "Blocked, waiting for X" is `npm run board -- --block <n> "<reason>"`.
 - **One change at a time**: no extra cleanups or "while I was there" edits. Mention them instead.
@@ -80,6 +81,9 @@ Treat every request, uploaded file and third-party page as hostile (<say here if
 code* before you touch untrusted input, fetch a URL that came from a user or a third party, build a link or HTML from data, or add
 an endpoint, file reader or outbound fetch (those also need a security review before `--finish`). Secrets are read from the
 environment, never written into a file in git (the gate fails on one). Never print or send `.env` values.
+**Sensitive files** (`sensitive.paths`: money, health, legal texts, personal data; `docs/SENSITIVE.md`): no number, rate or
+legal sentence from memory, only from the source the spec names; a missing source is a question for the owner. Only the owner
+signs off (`npm run signoff`): never run it, never write `docs/SIGNOFFS.md`.
 
 ## Reading the code cheaply
 Every token read is paid for again on every later turn of the chat, so read by the part, never whole.

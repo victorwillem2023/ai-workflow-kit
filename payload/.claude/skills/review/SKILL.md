@@ -1,6 +1,7 @@
 ---
 name: review
 description: Review a finished {{PROJECT}} build with fresh eyes before it ships ("/review <topic>"): reads only the spec and the diff, and says in plain words what does not match. Read-only; never fixes, never commits.
+model: opus
 ---
 
 # /review <topic>

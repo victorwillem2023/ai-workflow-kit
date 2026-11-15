@@ -19,8 +19,21 @@ export function parseUpdates(pr) {
     out.push({ name: m[1], from: m[2], to: m[3] });
   }
   if (out.length) return out;
+  // Renovate: a table row per library, "| [vite](https://...) | devDependencies | minor | `8.3.6` -> `8.4.0` |"
+  for (const row of String(pr.body ?? '').split('\n')) {
+    const m = /^\|\s*\[?([^\]|(]+?)\]?(?:\([^)]*\))?\s*\|.*?`[\^~]?v?([\w.+-]+)`\s*(?:->|→)\s*`[\^~]?v?([\w.+-]+)`/.exec(row);
+    if (m && !seen.has(m[1].trim())) { seen.add(m[1].trim()); out.push({ name: m[1].trim(), from: m[2], to: m[3] }); }
+  }
+  if (out.length) return out;
   const t = /^Bump (\S+) from ([\w.+-]+) to ([\w.+-]+)/.exec(String(pr.title ?? ''));
   return t ? [{ name: t[1], from: t[2], to: t[3] }] : [];
+}
+
+/** Which update tools are on: { renovate, dependabot, both, renovateIdle } from what is in the repository and on GitHub. */
+export function updateTools({ renovateJson, dependabotYml, dashboard }) {
+  const renovate = Boolean(renovateJson);
+  const dependabot = /package-ecosystem/.test(String(dependabotYml ?? ''));
+  return { renovate, dependabot, both: renovate && dependabot && Boolean(dashboard), renovateIdle: renovate && !dashboard };
 }
 
 const parts = (v) => String(v).replace(/^v/, '').split(/[.+-]/).map((x) => Number.parseInt(x, 10) || 0);
@@ -44,9 +57,11 @@ export function checksState(rollup) {
   return 'green';
 }
 
-/** The major version of Node the app runs on: package.json `engines.node`, else the Dockerfile's `FROM node:<n>`, else
- *  `.nvmrc`; null when none says. Each text may be missing. */
-export function runtimeNode({ pkg, dockerfile, nvmrc } = {}) {
+/** The major version of Node the app runs on: `.tool-versions` (the pin), else package.json `engines.node`, else the
+ *  Dockerfile's `FROM node:<n>`, else `.nvmrc`; null when none says. Each text may be missing. */
+export function runtimeNode({ pkg, dockerfile, nvmrc, toolVersions } = {}) {
+  const pinned = /^\s*(?:nodejs|node)\s+v?(\d+)/m.exec(String(toolVersions ?? ''));
+  if (pinned) return { major: Number(pinned[1]), from: '.tool-versions' };
   const fromEngines = /(\d+)/.exec(String(pkg?.engines?.node ?? ''));
   if (fromEngines) return { major: Number(fromEngines[1]), from: 'package.json engines' };
   const fromDocker = /^\s*FROM\s+node:(\d+)/im.exec(String(dockerfile ?? ''));

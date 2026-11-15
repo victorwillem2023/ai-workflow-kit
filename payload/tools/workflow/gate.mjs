@@ -29,6 +29,10 @@ import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
 import { unlisted } from './lib/envcheck.mjs';
+import { nodeOutOfStep, tofuUnpinned, unpinnedTools } from './lib/versions.mjs';
+import { namingProblems } from './lib/naming.mjs';
+import { signoffVerdict } from './lib/signoff.mjs';
+import { parseNameStatus, staleDocs } from './lib/doccovers.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs';
 
@@ -85,6 +89,9 @@ const untested = config.untested && config.testPicking !== false ? untestedFiles
 const copies = config.copies ? copiedFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.copies.include ?? config.functions?.include ?? config.size.include))), config.copies.minLines ?? 6).map((g) => [...g].sort().join(' = '))
   .concat(config.copies.tests ? copiedTests(only(config.copies.tests), config.copies.minLines ?? 6).map((g) => g.join(' ~ ')) : []).sort() : null;
 const violations = findViolations(graph, config.boundaries);
+// names that break the project's conventions (only when `naming` is set): one key per name, a new one fails
+const readText = (f) => (existsSync(f) && statSync(f).size < 2_000_000 ? readFileSync(f, 'utf8') : null);
+const naming = config.naming ? namingProblems(config.naming, git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter((f) => f && existsSync(f)), files, matchesAny, readText) : null;
 
 const docFiles = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
   .filter((f) => f && matchesAny(f, config.docs.include) && !matchesAny(f, config.docs.exclude) && existsSync(f));
@@ -113,13 +120,16 @@ if (flag('--update-baseline')) {
   // a new broken import rule or a doc naming a file that does not exist is fixed, not accepted (after the first baseline)
   const newRules = newViolations(violations, baseline.boundaries ?? []);
   const newRefs = newStaleRefs(staleRefs, baseline.docs ?? []);
-  if ((newRules.length || newRefs.length) && !reason) {
+  const newNames = naming && 'naming' in baseline ? naming.filter((n) => !baseline.naming.includes(n.key)) : [];
+  if ((newRules.length || newRefs.length || newNames.length) && !reason) {
     console.log('baseline not written: fix these instead of accepting them (or --allow-growth "<reason>"):');
     for (const v of newRules) console.log(`  ${v.rule}: ${v.file} imports ${v.target}`);
     for (const s of newRefs) console.log(`  ${s.doc}:${s.line} names ${s.ref}, which does not exist: write it, or take the name out`);
+    for (const n of newNames) console.log(`  ${n.line}`);
     process.exit(1);
   }
   const next = { boundaries: violations.map((v) => v.key).sort(), sizes: upd.next, docs: staleRefs.map(staleKey).sort() };
+  if (naming) next.naming = naming.map((n) => n.key).sort();
   if (funcs) {
     const fu = updateSizes(funcs, baseline.functions ?? {}, reason);
     if (!fu.ok) {
@@ -152,6 +162,8 @@ if (flag('--update-baseline')) {
   }
   if (config.quality?.command) {
     // the score now becomes the number that may not drop; a lower one needs a reason, like a file that grew
+    // the command comes from workflow.config.json, the project's own file, never from outside input
+    // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
     const score = parseScore(spawnSync(config.quality.command, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20 }).stdout ?? '', config.quality.pattern);
     if (score && baseline.quality?.pass != null && score.pass < baseline.quality.pass && !reason) { console.log(`baseline not written: the quality score dropped ${baseline.quality.pass} -> ${score.pass} (fix the cases, or --allow-growth "<reason>")`); process.exit(1); }
     next.quality = score ?? baseline.quality;
@@ -200,7 +212,7 @@ function scopeLines() {
   if (config.scope === 'off' || !existsSync('specs')) return [];
   const specs = readdirSync('specs').filter((f) => f.endsWith('.md'));
   if (specs.length !== 1) return [];
-  const ignore = ['specs/**', config.map?.out, config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', ...(config.scopeIgnore ?? [])].filter(Boolean);
+  const ignore = ['specs/**', config.map?.out, config.map?.infraOut ?? 'docs/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', ...(config.scopeIgnore ?? [])].filter(Boolean);
   return outsideSpec(changed, specPaths(readFileSync(`specs/${specs[0]}`, 'utf8')), ignore)
     .map((f) => `scope: ${f} changed, but specs/${specs[0]} does not name it (add it to the spec or take the change out)`);
 }
@@ -212,6 +224,8 @@ if (flag('--list')) {
 let suiteSeconds = 0;
 const tail = (text) => text.trim().split('\n').slice(-config.failTailLines).join('\n');
 function run(cmd) {
+  // the commands come from workflow.config.json, the project's own file, never from outside input
+  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
   const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20 });
   return { ok: r.status === 0, out: (r.stdout ?? '') + (r.stderr ?? '') };
 }
@@ -266,6 +280,11 @@ const steps = [
     if (grown.length) return { ok: false, out: grown.map(([f, max, size]) => `${f} is ${size} bytes, its budget is ${max}${baseline.budget?.[f] ? ` (it was ${baseline.budget[f]})` : ''}: every agent reads it in every chat. Turn a rule into a check, or move what only some work needs into a doc it points to`).join('\n') };
     return { ok: true, note: overBudget.length ? `${overBudget.length} over budget, none grown` : '' };
   }],
+  naming && ['naming', () => {
+    const fresh = naming.filter((n) => !(baseline.naming ?? []).includes(n.key));
+    if (fresh.length) return { ok: false, out: `${fresh.map((n) => n.line).join('\n')}\nRename it to follow docs/CONVENTIONS.md (the rules are "naming" in workflow.config.json).` };
+    return { ok: true, note: `${naming.length} known` };
+  }],
   copies && ['copies', () => {
     const fresh = copies.filter((k) => !(baseline.copies ?? []).includes(k));
     const say = (k) => (k.includes(' ~ ') ? `${k.replaceAll(' ~ ', ' and ')} are the same test with other values: make it one test over a list of cases` : `${k.replaceAll(' = ', ' and ')} have the same body: keep one and call it from both places`);
@@ -288,6 +307,23 @@ const steps = [
     if (missing.length) return { ok: false, out: missing.map((m) => `${m.file} reads ${m.name}, which .env.example does not list: add it there with a comment (what it is, an example value, never a real secret)`).join('\n') };
     return { ok: true };
   }],
+  ['versions', () => {
+    // every tool pinned in .tool-versions, Node one version everywhere, OpenTofu stacks pinned with their lock file in git
+    const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : undefined);
+    let pkg = null;
+    try { pkg = JSON.parse(read('package.json') ?? 'null'); } catch { pkg = null; }
+    const tracked = new Set(git('ls-files').split('\n').filter(Boolean));
+    const tf = new Map([...tracked, ...git('ls-files', '--others', '--exclude-standard').split('\n')].filter((f) => f && /\.tf$/.test(f) && existsSync(f)).map((f) => [f, readFileSync(f, 'utf8')]));
+    const problems = [...unpinnedTools(read('.tool-versions')), ...nodeOutOfStep({ toolVersions: read('.tool-versions'), dockerfile: read('Dockerfile'), pkg }), ...tofuUnpinned(tf, tracked)];
+    if (problems.length) return { ok: false, out: problems.join('\n') };
+    return { ok: true, note: existsSync('.tool-versions') ? '' : 'no .tool-versions yet' };
+  }],
+  config.sensitive?.paths?.length && ['signoff', () => {
+    // a change to money, health, legal or personal-data files needs a person's sign-off for this exact version (npm run signoff)
+    const all = [...git('diff', '--name-only', base).split('\n'), ...git('ls-files', '--others', '--exclude-standard').split('\n')].filter(Boolean);
+    const v = signoffVerdict({ changed: all, paths: config.sensitive.paths, matches: matchesAny, read: (f) => readText(f) ?? undefined, signoffs: readText('docs/SIGNOFFS.md') });
+    return v.ok ? { ok: true, note: v.files.length ? `${v.files.length} signed` : '' } : { ok: false, out: v.line };
+  }],
   config.together?.length && ['together', () => {
     const m = missingPartners(config.together, changed);
     if (m.length) return { ok: false, out: m.map((r) => `${r.name}: ${r.changed.join(', ')} changed and nothing under ${r.needs.join(', ')} did. These change together`).join('\n') };
@@ -302,6 +338,15 @@ const steps = [
     const fresh = newStaleRefs(staleRefs, baseline.docs ?? []);
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
     return { ok: true, note: `${docTexts.size} docs, ${staleRefs.length} known stale` };
+  }],
+  ['covers', () => {
+    // a doc that names what it covers (<!-- covers: infra/** -->) changes with it, or the spec or a commit says why not
+    const changes = parseNameStatus(gitOk('diff', '--name-status', '-M', base) ?? '', git('ls-files', '--others', '--exclude-standard').split('\n'));
+    const specs = existsSync('specs') ? readdirSync('specs').filter((f) => f.endsWith('.md')).map((f) => readFileSync(`specs/${f}`, 'utf8')).join('\n') : '';
+    const waivers = `${specs}\n${gitOk('log', `${base}..HEAD`, '--format=%B') ?? ''}`;
+    const stale = staleDocs({ docs: docTexts, changes, matches: matchesAny, waivers, ignore: [config.map?.out, config.map?.infraOut ?? 'docs/INFRA-MAP.md', config.baseline].filter(Boolean) });
+    if (stale.length) return { ok: false, out: `${stale.map((s) => `${s.doc} covers ${s.files.slice(0, 5).join(', ')}${s.files.length > 5 ? ` and ${s.files.length - 5} more` : ''}, which changed; the doc did not`).join('\n')}\nUpdate the doc in the same change. If it truly needs nothing, write in the spec (or the commit body) one line: "Docs: no change to <doc> (<why>)".` };
+    return { ok: true };
   }],
   ['typecheck', () => run(config.commands.typecheck)],
   ['tests', () => {

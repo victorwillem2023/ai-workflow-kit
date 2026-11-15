@@ -7,6 +7,8 @@ import { matchesAny } from './glob.mjs';
 export function countPatterns(files, ratchets = []) {
   const out = {};
   for (const r of ratchets) {
+    // the patterns come from workflow.config.json, the project's own file
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
     const res = r.patterns.map((p) => new RegExp(p, 'g'));
     let n = 0;
     for (const [file, text] of files) if (matchesAny(file, r.include)) for (const re of res) n += (text.match(re) ?? []).length;

@@ -181,6 +181,8 @@ const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON
 function mapFile(dir) {
   try { return JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8')).map?.out ?? 'docs/MAP.md'; } catch { return 'docs/MAP.md'; }
 }
+// a shell only on Windows, where npm is a .cmd file; the arguments are fixed script names, never outside input
+// nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 const npmRun = (dir, step, quiet) => spawnSync('npm', ['run', step], { cwd: dir, stdio: quiet ? 'ignore' : 'inherit', shell: process.platform === 'win32' }).status === 0;
 
 /** Rebases the checked-out branch of `dir` on `upstream`. A conflict only in the file map is solved by writing the map again; any other stops it, with the rebase put back. */

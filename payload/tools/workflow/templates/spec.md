@@ -30,9 +30,18 @@ The guide part (`docs/guide/<part>.md`), `README.md`, `docs/ARCHITECTURE.md`, or
 ## Security triggers
 New endpoint, file reader or outbound fetch? yes/no. If yes: limits (body size, count, rate) and run a security review before finish.
 Untrusted input read? yes/no.
+Sensitive file touched (`sensitive.paths`: money, health, legal texts, personal data)? yes/no. If yes: fill *Sources*; the owner
+signs off with `npm run signoff` before the commit.
+
+## Sources (only when a sensitive file is touched)
+One line per number, rate, limit, rule or legal sentence the code will hold: what it is, its value, and where it comes from (a
+law and its article, a contract clause, a price list with its date, a file in `docs/sources/`). No source: an open question for
+the owner, never a value from memory.
 
 ## Suggested model for the build
-One line: **Free/cheap model** for low-risk, mechanical edits (docs, copy, comments, small renames, formatting) when the change is obvious and easy to verify; **Sonnet/DeepSeek-class fast coder** when the work is mechanical or additive and the spec already decides every seam, file and test name; **Opus/DeepSeek-class strong reasoner** when the build still needs a design decision (unclear seam, new shared type, tricky algorithm). Add one reason and, if helpful, note the preferred Claude or DeepSeek model name for the current agent. Avoid free models for security-sensitive, cross-cutting, or ambiguous changes.
+One line: **Sonnet** (or the OpenCode `model`) by default: the plan decides every seam, file and test name, so the build is coding;
+**Opus** when the build still needs a design decision (unclear seam, new shared type, tricky algorithm) or touches a sensitive
+file. A free model only for docs and copy that are easy to check. Add one reason.
 
 ## Out of scope
 Things noticed but not part of this change.

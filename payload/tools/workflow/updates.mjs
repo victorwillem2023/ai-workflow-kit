@@ -5,7 +5,7 @@
 // Reads GitHub through gh and changes nothing. GitHub that cannot be reached is one line, never a failure (exit 0).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { holdSnippet, judgePr, readAlerts, runtimeNode, shortLine } from './lib/updates.mjs';
+import { holdSnippet, judgePr, readAlerts, runtimeNode, shortLine, updateTools } from './lib/updates.mjs';
 
 const short = process.argv.includes('--short');
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
@@ -22,35 +22,50 @@ function gh(args) {
 }
 const json = (res) => { try { return JSON.parse(res.stdout); } catch { return null; } };
 
-const prsRes = gh(['pr', 'list', '--repo', repo, '--author', 'app/dependabot', '--state', 'open', '--limit', '50', '--json', 'number,title,body,url,statusCheckRollup']);
+const list = (author) => gh(['pr', 'list', '--repo', repo, '--author', author, '--state', 'open', '--limit', '50', '--json', 'number,title,body,url,statusCheckRollup']);
+const prsRes = list('app/dependabot');
 if (prsRes.error || prsRes.status !== 0) {
   const why = prsRes.error ? 'gh is not installed (https://cli.github.com)' : String(prsRes.stderr || prsRes.stdout).trim().split('\n').pop().slice(0, 160);
   console.log(`updates: GitHub could not be reached (${why}); nothing checked`);
   process.exit(0);
 }
+const renovateRes = list('app/renovate');
 let pkg;
 try { pkg = JSON.parse(read('package.json') ?? 'null'); } catch { pkg = null; }
-const node = runtimeNode({ pkg, dockerfile: read('Dockerfile'), nvmrc: read('.nvmrc') });
-const prs = (json(prsRes) ?? []).map((pr) => judgePr(pr, { node, hold: config.updates?.hold ?? {} }));
+const node = runtimeNode({ pkg, toolVersions: read('.tool-versions'), dockerfile: read('Dockerfile'), nvmrc: read('.nvmrc') });
+const prs = [...(json(prsRes) ?? []), ...(renovateRes.status === 0 ? json(renovateRes) ?? [] : [])].map((pr) => judgePr(pr, { node, hold: config.updates?.hold ?? {} }));
+
+// Renovate runs once its app is installed: it keeps a "Dependency Dashboard" issue
+const dash = gh(['issue', 'list', '--repo', repo, '--state', 'open', '--search', 'Dependency Dashboard in:title', '--json', 'number', '--limit', '1']);
+const tools = updateTools({ renovateJson: read('renovate.json'), dependabotYml: read('.github/dependabot.yml'), dashboard: dash.status === 0 && (json(dash) ?? []).length > 0 });
+const toolLine = tools.renovateIdle ? 'Renovate is not running yet: install its GitHub app for this repository (https://github.com/apps/renovate)'
+  : tools.both ? 'Renovate and Dependabot both open version updates: take the version updates out of .github/dependabot.yml (keep the file only if it has other settings)' : null;
 
 const alertsRes = gh(['api', `repos/${repo}/dependabot/alerts?state=open&per_page=100`]);
 const alerts = alertsRes.status === 0 ? readAlerts(json(alertsRes)) : [];
 const alertsOff = alertsRes.status !== 0 ? (/disabled|not enabled|403/i.test(alertsRes.stdout + alertsRes.stderr)
-  ? 'security alerts: off for this repository (GitHub: Settings, Advanced Security, Dependabot alerts)'
+  ? 'security alerts: off for this repository (npm run secops -- --enable turns them on)'
   : 'security alerts: could not be read') : null;
 
-if (short) { console.log(shortLine(prs, alerts) + (alertsOff ? `; ${alertsOff}` : '')); process.exit(0); }
+if (short) { console.log([shortLine(prs, alerts), alertsOff, toolLine].filter(Boolean).join('; ')); process.exit(0); }
 
 const say = { take: 'take it', look: 'look first', hold: 'hold' };
-if (alertsOff) console.log(alertsOff);
+for (const line of [alertsOff, toolLine]) if (line) console.log(line);
 for (const a of alerts) console.log(`ALERT ${a.severity.padEnd(8)} ${a.name}: ${a.summary}${a.fixed ? ` (fixed in ${a.fixed})` : ' (no fixed version yet)'}  ${a.url ?? ''}`);
-if (!prs.length) console.log('updates: no Dependabot pull request waiting');
+if (!prs.length) console.log('updates: no pull request from Dependabot or Renovate waiting');
 for (const p of prs) {
   console.log(`#${p.number} ${say[p.verdict]}: ${p.title}  ${p.url}`);
   for (const u of p.updates) console.log(`    ${u.name} ${u.from} -> ${u.to}: ${say[u.verdict]}, ${u.why}`);
 }
 const held = [...new Set(prs.flatMap((p) => p.updates.filter((u) => u.verdict === 'hold').map((u) => u.name)))];
 if (held.length) {
-  console.log(`\nTo stop these coming back every week, close the pull request and add under the npm entry of .github/dependabot.yml:\n${holdSnippet(held)}`);
+  console.log(tools.renovate
+    ? `
+To stop these coming back, close the pull request and add to packageRules in renovate.json:
+    { "matchPackageNames": ${JSON.stringify(held)}, "matchUpdateTypes": ["major"], "enabled": false }`
+    : `
+To stop these coming back every week, close the pull request and add under the npm entry of .github/dependabot.yml:
+${holdSnippet(held)}`);
 }
-console.log(`\n${shortLine(prs, alerts)}`);
+console.log(`
+${shortLine(prs, alerts)}`);

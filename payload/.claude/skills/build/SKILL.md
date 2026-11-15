@@ -1,6 +1,7 @@
 ---
 name: build
 description: Build an approved {{PROJECT}} spec without the owner changing folders: sets up the session folder, copies the spec, and starts a subagent that builds it there. Run from the main folder after /spec is approved.
+model: sonnet
 ---
 
 # /build <topic> [<topic> ...]
@@ -17,7 +18,11 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
      tell the owner if it already has changes (it may be half built).
 3. Copy `specs/<topic>.md` into `../{{PREFIX}}-<topic>/specs/` (the spec is untracked, so the worktree does not have it).
    Overwrite only if the main folder's copy is newer or the folder's copy is missing.
-4. Start one subagent (use your agent's task/subagent tool). Choose a model that matches the spec's "Suggested model" and the risk: for low-risk mechanical work (especially docs/copy) a free/cheap model is fine if your agent supports it; for normal implementation use a fast coding model (Claude Sonnet or a DeepSeek-class coder); for design-heavy or tricky work use a stronger reasoning model (Claude Opus or a DeepSeek-class reasoner). If no equivalent/suitable free model is available, use the best available coding model. Name it `build-<topic>`.
+4. Start one subagent (use your agent's task/subagent tool), named `build-<topic>`. The plan was made by the strong model, so
+   building it is coding: **Sonnet** (in Claude Code `model: "sonnet"`; in OpenCode the config's `model`). **Opus** only when the
+   spec's "Suggested model" says so (a design decision left open) or a sensitive file is in it (`sensitive.paths`). Never a free model for a build.
+   Add to the prompt below, when the spec touches a sensitive file: "A failing *signoff* check is the owner's step, not yours:
+   leave it failing and say so in the report."
    Give it this prompt, with the real absolute folder:
    > Build the approved spec `<folder>/specs/<topic>.md`. Read it first, and the CLAUDE.md of each folder you touch; read
    > `<folder>/tools/workflow/README.md`, *What it checks*, only if a gate failure is unclear.

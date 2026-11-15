@@ -53,6 +53,22 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **settings** (when `.env.example` exists): every setting the code reads from the environment is listed there (commented out
   is fine for an optional one), in any language the kit knows, and the keys of a `defineSettings({ ... })` call. Reads
   `settings.include` (default `src/**`); `settings.ignore` names any to leave out. A new server then knows every name it needs.
+- **versions**: every tool in `.tool-versions` pinned to an exact version (read by mise, asdf, GitHub's setup-node and Renovate);
+  Node one major version in `.tool-versions`, the `Dockerfile` and `engines.node`, and `@types/node` never newer; every
+  OpenTofu/Terraform folder with a `terraform` block names `required_version`, a version per provider, and has its
+  `.terraform.lock.hcl` in git.
+- **naming** (when `naming` is in the config): file names by glob (`kebab`, `camel`, `pascal`, `snake`, `upper`; `except` for
+  `main.tsx` and the like), and in TypeScript and JavaScript what a file exports (functions and values camelCase or UPPER_CASE,
+  types and classes PascalCase, components in a `.tsx` file PascalCase). What breaks a rule today is in the baseline and may
+  only shrink. The reasons are in `docs/CONVENTIONS.md`. `naming.sorted` keeps listed parts of JSON files alphabetical
+  (`{ "file": "package.json", "keys": ["dependencies"] }`, a dotted path to an object or a list of strings); `naming.resources`
+  checks the names given in infrastructure files (`name = "..."`, `name: ...`) against a pattern, so a server or bucket name says
+  what, which environment and where (`<app>-<env>-<place>-<part>`); a name built from variables is left alone.
+- **signoff** (when `sensitive.paths` is set): a change to a sensitive file (money, health, legal texts, personal data) passes
+  only when `docs/SIGNOFFS.md` holds a row whose fingerprint matches those files as they are now. The owner writes it with
+  `npm run signoff` in their own terminal after checking the change against its sources: it refuses input from a pipe, an agent
+  or CI, asks the checklist (`sensitive.checklist` replaces the kit's four questions) and a typed-back code, and agents are
+  denied the command and the file. Any later edit needs a new sign-off. Why: `docs/SENSITIVE.md`.
 - **together** (when `together` is in the config): files that change together.
   `{ "name": "migration", "when": ["src/db/schema.ts"], "needs": ["migrations/**"] }` fails a change to the tables that adds no migration.
 - **your own checks** (`checks` in the config), after the tests, each a command that must pass:
@@ -68,7 +84,15 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **requests** (with the map module): `docs/flow/requests.js` must be what the request pages say now (`node docs/flow/build-requests.mjs`).
 - **testsNaming** (optional): a changed file that is not code picks the tests that name it; `{ "src/web/css/**": "css-parts.mjs" }`
   makes every file under that folder pick the tests that name that word instead.
-- **map**: `docs/MAP.md` must be what `npm run map` writes now; a stale map fails the gate.
+- **map**: everything `npm run map` makes must be what it would write now; a stale one fails the gate. That is `docs/MAP.md`;
+  `docs/INFRA-MAP.md` once there are infrastructure files (one row per OpenTofu resource and module and per Kubernetes object:
+  kind, name, place, size; `map.k8s` lists the manifest globs); and the generated blocks in the docs, the parts made from the
+  config so they cannot disagree with it: `<!-- generated: layers -->` (the import rules), `versions` (`.tool-versions`),
+  `settings` (`.env.example` with each name's comment), `sensitive`, `naming`, each closed by `<!-- /generated -->`.
+- **covers**: a hand-written doc names what it describes in a comment, `<!-- covers: infra/**, Dockerfile -->` (any change) or
+  `<!-- covers new files: src/server/** -->` (a file added, removed or renamed there). When those files change and the doc does
+  not, the gate fails, unless the spec or a commit body says on purpose `Docs: no change to <doc> (<why>)`. Keeping a doc as it is
+  is then a decision written down, never forgotten. The starter docs carry the first covers lines; `/setup` adds the rest.
 - **docs**: a backticked repo path (`src/…`, `config/…`, `tests/…`, `scripts/…`, `tools/…`, `docs/…`) or an `npm run <name>` in the docs listed under `docs` in the config that no longer exists fails, with the doc, line and thing. Globs, `<placeholders>` and bare names (`service.ts`) are skipped. Known stale ones are in `baseline.json`; fixing one and re-running `--update-baseline` shortens the list.
 - **typecheck**: the config's `commands.typecheck`.
 - **test time** (advice, when `testSeconds` is set): the whole suite took longer than that. `npm run health` shows how much test
@@ -103,14 +127,45 @@ none until `npm run protect -- --local` runs there; the gate prints an `advice:`
 What it cannot stop: a person who removes the hook, and a merge by hand on GitHub's website.
 
 ## Dependency updates
-`.github/dependabot.yml` (written at install) asks GitHub for one pull request a week per kind of dependency; the gate runs on it.
-`npm run updates` reads what waits (security alerts first, then each pull request) and gives every library a verdict: **take it**
-(a fix or a new feature, checks green), **look first** (a new major version, a 0.x minor, or checks red or still running) or
-**hold** (it clashes with a decision: `@types/node` for a newer Node than the app runs on, from `engines.node`, the `Dockerfile` or
-`.nvmrc`; or a library in `updates.hold` of the config, `{ "<library>": "<why>" }`). For a hold it prints the ignore lines for
-`.github/dependabot.yml`, so the same pull request does not come back. `--short` is one line: `/work` starts with it and
-`npm run health` shows it (`--offline` skips it). GitHub that cannot be reached is one line, never a failure. Security alerts
-must be on for the repository (GitHub: Settings, Advanced Security, Dependabot alerts; free for private repositories too).
+**Renovate** keeps versions current: libraries, Docker images, GitHub actions (pinned to a commit), the tools in `.tool-versions`,
+OpenTofu providers and modules, Helm charts, and the scanner images of the security run. Its policy is `renovate.json` (written at
+install, then yours): small updates grouped once a week, a new major version on its own, Node only between long-term-support
+versions, and nothing published less than 7 days ago (a new release can be a supply-chain attack), except security fixes, which
+come at once. One repository: that file is the whole policy. Several: put it in a config repository of your own
+(`owner/renovate-config`, as `default.json`) and leave `{ "extends": ["github>owner/renovate-config"] }` in each. Renovate runs
+once its GitHub app is installed for the repository (https://github.com/apps/renovate); a project made before 2.1 still has
+`.github/dependabot.yml`, whose version updates come out once Renovate runs (`npm run updates` says when).
+
+`npm run updates` reads what waits from both (security alerts first, then each pull request) and gives every library a verdict:
+**take it** (a fix or a new feature, checks green), **look first** (a new major version, a 0.x minor, or checks red or still
+running) or **hold** (it clashes with a decision: `@types/node` for a newer Node than `.tool-versions` pins; or a library in
+`updates.hold` of the config, `{ "<library>": "<why>" }`), with the lines that stop a held one coming back. `--short` is one
+line: `/work` starts with it and `npm run health` shows it (`--offline` skips it). GitHub that cannot be reached is one line.
+
+## Security without hands (SecOps)
+Every Monday `.github/workflows/secops.yml` scans: libraries with known vulnerabilities (OSV-Scanner, Trivy), our own code
+(Semgrep, the p/default rules), the `Dockerfile` and infrastructure files (Trivy), and secrets anywhere in git's history (gitleaks),
+and writes one report in plain words: an issue labelled `security-report` (last week's is closed). It never fails on a finding.
+- **What comes by itself**: a library fix that exists, as a pull request (Renovate, and Dependabot security updates:
+  `npm run secops -- --enable` turns those and the alerts on).
+- **What needs a decision**: `/secops` in a session reads the report, says what each finding means, proposes the fix, and on a yes
+  makes it a fix or a card. A finding that is safe by design gets `nosemgrep: <rule>` with the reason on the line before.
+- **Findings in the kit's own files** (`tools/workflow`, the kit's scripts and pipelines) are listed apart: they are fixed in the kit.
+- **By hand**: `npm run secops -- --scan` (Docker). The scanner versions live only in `SCANNERS` of `tools/workflow/secops.mjs`.
+- **What no scanner sees**: the certificate of each public address (`security.domains`, else the host of `deploy.url`), raised
+  when it ends within 21 days or cannot be read (renewal is meant to be automatic, so that is a broken renewal); and the access
+  review, raised when the "Last review" date in `docs/ACCESS.md` is over 90 days old.
+
+## Access review
+`npm run access` (the owner, `gh` signed in as an admin): the people, deploy keys and Actions secret names GitHub shows, against
+the table in `docs/ACCESS.md`: what nobody listed, what is listed but gone, a role that differs, and a checklist of the places no
+script sees (the cloud console, the registrar, the database, the providers). `--publish` makes it an issue labelled
+`access-review`; `--done` sets the date once every line is settled.
+
+## A setup guide that is proven
+`docs/SETUP.md` marks its steps ```sh setup``` (must finish) and one ```sh start``` with `<!-- ready: http://127.0.0.1:<port>/ -->`
+below it (must answer). `npm run setup-check` runs them on a fresh clone of the committed repository; `.github/workflows/setup.yml`
+does the same when the guide or what it installs changes, and every week. A step that stops working fails it.
 
 ## Spec and ship (the flow around the gate)
 `/work <card number>` plans one card and stops for a yes; the build then starts in a new chat with `/build <topic>`, so the

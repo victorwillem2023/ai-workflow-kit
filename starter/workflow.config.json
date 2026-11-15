@@ -26,6 +26,19 @@
   "testSeconds": 120,
   "scope": "advice",
   "copies": { "minLines": 6, "tests": ["tests/**/*.test.ts"] },
+  "naming": {
+    "files": [
+      { "glob": "src/**/*.tsx", "style": "pascal", "except": ["main.tsx", "index.tsx"] },
+      { "glob": "src/**/*.ts", "style": "kebab" },
+      { "glob": "tests/**/*.ts", "style": "kebab" }
+    ],
+    "exports": ["src/**/*.ts", "src/**/*.tsx"],
+    "sorted": [{ "file": "package.json", "keys": ["dependencies", "devDependencies"] }],
+    "resources": [{ "glob": "infra/**/*.tf", "pattern": "^{{PREFIX}}-(dev|test|uat|staging|prod)-[a-z]+[0-9]*-[a-z0-9-]+$", "say": "<app>-<env>-<place>-<part> (docs/CONVENTIONS.md)" }]
+  },
+  "sensitive": {
+    "paths": []
+  },
   "checks": [
     { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] },
     { "name": "unused", "command": "npx --no-install knip --no-progress", "all": true },
@@ -33,7 +46,7 @@
   ],
   "docs": {
     "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/guide/*.md", "docs/code/*.md"],
-    "exclude": ["docs/MAP.md"]
+    "exclude": ["docs/MAP.md", "docs/INFRA-MAP.md"]
   },
   "boundaries": [
     {
@@ -48,7 +61,8 @@
   "security": {
     "code": "src/",
     "server": "src/server/",
-    "inputFolders": ["src/core/", "src/server/"]
+    "inputFolders": ["src/core/", "src/server/"],
+    "domains": []
   },
   "session": {
     "prefix": "{{PREFIX}}",

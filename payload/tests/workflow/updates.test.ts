@@ -2,7 +2,7 @@
 // the verdict on each (take, look at, hold), and the lines a session or the health screen prints.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { bump, checksState, holdSnippet, judgePr, parseUpdates, readAlerts, runtimeNode, shortLine } from '../../tools/workflow/lib/updates.mjs';
+import { bump, checksState, holdSnippet, judgePr, parseUpdates, readAlerts, runtimeNode, shortLine, updateTools } from '../../tools/workflow/lib/updates.mjs';
 
 const green = [{ status: 'COMPLETED', conclusion: 'SUCCESS' }];
 
@@ -43,6 +43,18 @@ describe('the verdict', () => {
     const pr = { title: 'Bump the all group', body: 'Updates `zod` from 4.6.7 to 4.6.9\nUpdates `hono` from 4.13.18 to 4.14.0', statusCheckRollup: green };
     assert.equal(judgePr(pr, { node }).verdict, 'take');
     assert.equal(judgePr(pr, { node, hold: { hono: 'waiting for the new router' } }).verdict, 'hold');
+  });
+  it('reads the libraries of a Renovate pull request from its table', () => {
+    const body = '| Package | Type | Update | Change |\n|---|---|---|---|\n| [vite](https://vite.dev) | devDependencies | minor | `8.3.6` -> `8.4.0` |\n| node | final | major | `22-slim` -> `26-slim` |';
+    assert.deepEqual(parseUpdates({ title: 'Update small updates', body }), [{ name: 'vite', from: '8.3.6', to: '8.4.0' }, { name: 'node', from: '22-slim', to: '26-slim' }]);
+  });
+  it('says when Renovate is set up but not running, and when it and Dependabot both open version updates', () => {
+    assert.equal(updateTools({ renovateJson: '{}', dashboard: false }).renovateIdle, true);
+    assert.equal(updateTools({ renovateJson: '{}', dependabotYml: 'updates:\n  - package-ecosystem: npm', dashboard: true }).both, true);
+    assert.equal(updateTools({ dependabotYml: 'updates:\n  - package-ecosystem: npm' }).both, false);
+  });
+  it('takes the Node version from .tool-versions first, the pin', () => {
+    assert.deepEqual(runtimeNode({ toolVersions: 'nodejs 26.13.1\n', dockerfile: 'FROM node:22-slim' }), { major: 26, from: '.tool-versions' });
   });
   it('finds the Node the app runs on in package.json first, then the Dockerfile, then .nvmrc', () => {
     assert.deepEqual(runtimeNode({ pkg: { engines: { node: '>=22.13' } }, dockerfile: 'FROM node:24' }), { major: 22, from: 'package.json engines' });

@@ -1,0 +1,15 @@
+export function fromCerts(certs: { host: string; validTo?: string | Date; error?: string }[] | null | undefined, now?: Date): Finding[];
+export function accessDue(text: string | null | undefined, now?: Date): Finding[];
+export type Finding = { area: 'library' | 'code' | 'setup' | 'secret' | 'certificate' | 'access'; severity: string; what: string; where: string; id?: string; pkg?: string; version?: string; fixed?: string | null; fix?: string | null; url?: string | null };
+export const SEVERITIES: string[];
+export function fromOsv(json: unknown): Finding[];
+export function fromTrivy(json: unknown): Finding[];
+export function fromSemgrep(json: unknown): Finding[];
+export function fromGitleaks(json: unknown): Finding[];
+export function combine(...lists: Finding[][]): Finding[];
+export function fixFor(f: Finding): string;
+export function inKit(f: Finding): boolean;
+export function isoWeek(date: Date): { year: number; week: number };
+export function report(findings: Finding[], o?: { date?: Date; ran?: string[]; failed?: string[] }): { title: string; body: string };
+export function pickFixed(fixed: string | null | undefined, installed: string | undefined): string | null;
+export function byLibrary(findings: Finding[]): Finding[];

@@ -23,6 +23,8 @@ const url = healthUrl(cfg.url, cfg.health);
 const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(10_000) }); return { status: r.status, body: await r.text() }; };
 const pauseMs = Number(process.env.WORKFLOW_DEPLOY_PAUSE_MS ?? 3000); // tests shorten it
 const waiting = { tries: Math.max(1, Math.ceil(((cfg.waitSeconds ?? 120) * 1000) / Math.max(pauseMs, 1))), pause: () => new Promise((r) => setTimeout(r, pauseMs)) };
+// deploy.command and deploy.rollback come from workflow.config.json, the project's own file, never from outside input
+// nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 const run = (command) => spawnSync(command, { shell: true, stdio: 'inherit' }).status === 0;
 // the versions deployed from this computer, oldest first (kept beside the repository's git data, never committed)
 const logFile = join(resolve(root, git('rev-parse', '--git-common-dir')), 'deploys.log');

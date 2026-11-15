@@ -9,5 +9,9 @@
   "harness": "node tools/workflow/harness.mjs",
   "health": "node tools/workflow/health.mjs",
   "protect": "node tools/workflow/protect.mjs",
-  "updates": "node tools/workflow/updates.mjs"
+  "updates": "node tools/workflow/updates.mjs",
+  "secops": "node tools/workflow/secops.mjs",
+  "setup-check": "node tools/workflow/setupcheck.mjs",
+  "signoff": "node tools/workflow/signoff.mjs",
+  "access": "node tools/workflow/access.mjs"
 }

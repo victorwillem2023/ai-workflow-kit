@@ -1,6 +1,7 @@
 ---
 name: spec
 description: Write the spec for a new {{PROJECT}} feature (what the user sees, files, tests, docs, security) in specs/<topic>.md and wait for the owner's approval. Use before any feature bigger than a small fix.
+model: opus
 ---
 
 # /spec <card number>  or  /spec <card numbers>  or  /spec <topic>
@@ -25,7 +26,12 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
      order, so `/build` can run them as waves. Small or tangled work: leave the section out. The owner approves the split with the spec.
    - Security: any new endpoint, file reader or outbound fetch gets limits listed and a `security-review` before finish.
-4. Fill in "Suggested model for the build" (Sonnet if mechanical and fully decided, Opus if a design decision is left, with one reason).
+   - Sensitive (a file under `sensitive.paths`: money, health, legal texts, personal data): a *Sources* list. Every number, rate,
+     limit or legal sentence the code will hold names where it comes from (a law with its article, a contract, a price list, a
+     file in `docs/sources/`), and the tests' expected values come from there, worked out by the owner. Anything with no source
+     is an open question for the owner, never filled in from what the model remembers (`docs/SENSITIVE.md`).
+4. Fill in "Suggested model for the build" (Sonnet by default: the plan is decided, building it is coding; Opus only if a design
+   decision is left or a sensitive file is touched, with one reason).
    Show the owner a summary, including that line, and stop.
 5. When the owner approves: set "Owner approval" and move the card to Ready: `npm run board -- --move <n> "Ready"`.
    If the board cannot be reached, say so in one line and carry on; the owner moves it by hand.

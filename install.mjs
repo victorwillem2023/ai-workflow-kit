@@ -263,11 +263,12 @@ if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replac
 
 // Dependabot: one grouped pull request a week per kind of dependency, so versions never fall far behind (written once, then yours)
 const botPath = join(target, '.github', 'dependabot.yml');
-if (!existsSync(botPath)) {
+// with Renovate (renovate.json, from the starter) Dependabot's version updates would double every pull request: alerts need no file
+if (!existsSync(botPath) && !existsSync(join(target, 'renovate.json'))) {
   const kinds = [LANGS[lang].dependabot ?? 'npm', 'github-actions', ...(modules.includes('deploy') ? ['docker'] : [])];
   mkdirSync(dirname(botPath), { recursive: true });
   writeFileSync(botPath, '# Dependency updates: one small pull request a week per kind; the gate runs on each. Merge it on GitHub when it is green.\nversion: 2\nupdates:\n'
-    + kinds.map((k) => `  - package-ecosystem: ${k}\n    directory: /\n    schedule:\n      interval: weekly\n    groups:\n      all:\n        patterns: ["*"]\n`).join(''));
+    + kinds.map((k) => `  - package-ecosystem: ${k}\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 7\n    groups:\n      all:\n        patterns: ["*"]\n`).join(''));
   done.added.push('.github/dependabot.yml');
 }
 

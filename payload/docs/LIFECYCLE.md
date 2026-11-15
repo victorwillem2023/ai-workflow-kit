@@ -12,6 +12,7 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit | `/ship`, `.github/workflows/` | per card |
 | 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
 | 6. Grow | a launch, people finding it, feedback becoming cards | `/market` and a launch page in docs (kit 2.3) | when it works for its first users |
+| 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |
 
 ## 5. Run: what is laid from the first day
 Without a question, in every project (`docs/PRODUCTION.md`):
@@ -46,22 +47,58 @@ Each with a recommendation fitted to how big the app is, and what would make it 
 | TLS and DNS | Caddy or the host's own | cert-manager and an ingress on a cluster, a firewall in front |
 | Cluster rules | not needed | Kyverno or OPA policies, Velero backups |
 
+The network edge (proxy, load balancer, CDN, firewall, API gateway, service mesh), DNS (public and private), private networks and
+certificates: `docs/INFRA.md`, each with where to start and what makes it grow. Environments (dev, test, uat, staging, prod):
+`docs/ENVIRONMENTS.md`. Backups, migrations, cutovers and disaster recovery, each with its drill: `docs/RECOVERY.md`.
+
 What `/launch` writes: `infra/` (the infrastructure as code), the deploy settings, the environments (staging, then
 production), a runbook (what to do when it breaks), and checks on the infrastructure files in the pipeline.
 `/launch` comes with kit 2.2 (network and firewall, one server, container hosts, on-prem) and 2.3 (cluster, serverless, queues).
 
-## Every stage: kept up to date, checked and written down (kit 2.1)
-- **Names**: a gate check per kind of thing (files, components, constants), from the language's norms, and a conventions page in docs that says why.
-- **Setup that is proven**: the commands of a setup page in docs (from a fresh clone to a running app, and the infrastructure) run on
-  GitHub against a fresh copy.
-- **Security without hands**: a weekly run finds known vulnerabilities in libraries (Dependabot alerts, OSV-Scanner), in our own
-  code (Semgrep), in images and infrastructure files (Trivy) and secrets in the history (gitleaks); a fix that exists comes as a
-  pull request by itself; the rest is one report card a week in plain words, and `/secops` proposes the fixes.
-- **Versions**: every tool pinned in one file (`mise.toml`), OpenTofu stacks with their versions and lock file, and Renovate with
-  one shared policy for every repository, so nothing falls far behind.
-- **One repository or several**: one by default (one product, one team, one gate); several when teams, release rhythms or
-  access rules differ (kit 2.3 has the guide).
+## Every stage: kept up to date, checked and written down
+- **Names**: the gate's *naming* check per kind of thing (files, exported functions, types, components), from the language's
+  norms; `docs/CONVENTIONS.md` says why, and holds the conventions a script cannot check.
+- **A setup that is proven**: `docs/SETUP.md`'s marked commands (from a fresh clone to a running app) run on a fresh copy
+  (`npm run setup-check`, and on GitHub when the guide or what it installs changes, and weekly).
+- **Security without hands**: every Monday a scan of libraries (OSV-Scanner, Trivy), our own code (Semgrep), images and
+  infrastructure files (Trivy) and secrets in the history (gitleaks) becomes one report issue in plain words; a library fix that
+  exists comes as a pull request by itself; `/secops` proposes the rest (`tools/workflow/README.md`, *Security without hands*).
+- **Versions**: every tool pinned in `.tool-versions`, Node one version everywhere, OpenTofu stacks pinned with their lock file
+  (the gate's *versions* check); Renovate (`renovate.json`) keeps them current, nothing younger than 7 days but security fixes.
+- **Names of things in the system** (`<app>-<env>-<place>-<part>`, checked in the infrastructure files) and **order** (lists
+  with no meaning in their order are alphabetical, checked where configured); **commits**: one per feature on `main`, squashed,
+  a subject that says what changed for the user (`docs/CONVENTIONS.md`).
+- **Sensitive work** (money, health, legal texts, personal data): every value from a named source, tests worked out by a person,
+  a fresh-eyes review, and the owner's own sign-off for the exact files, which the gate requires (`docs/SENSITIVE.md`).
+- **Access**: who has access to what, and why (`docs/ACCESS.md`); `npm run access` checks GitHub against it and lists the rest;
+  the weekly report says when the 90-day review is due.
+- **Tools that moved on**: `docs/TOOLS.md` lists the current open-source choice per job and what it replaced (uv over pyenv and
+  pip, Biome over ESLint and Prettier, OpenTofu over Terraform), reviewed with each kit release.
+- **Models**: plans on the strong model, building on the fast one, small jobs on the small one, and a script before any model
+  (`docs/TOKENS.md`).
+- **One repository or several**: one by default (one product, one team, one gate); several when teams, release rhythms or access
+  rules differ (kit 2.3 has the guide). With several, the Renovate policy moves to a config repository of your own.
 
 ## 6. Grow
 Positioning, a landing page, pricing, privacy-friendly analytics, a launch checklist, and every piece of feedback as a card on
 the board: `/market` and a launch page in docs, with kit 2.3.
+
+## 7. A small company
+When the first person pays, or a second person works on it, the product needs a business around it. The kit does not give
+legal or tax advice: each line below names who to ask. A checklist, in about the order it comes:
+- **The entity and the money**: a sole trader or a company (an accountant, before the first invoice); a business bank account;
+  invoices with the legally required fields and VAT handled by the payment provider where it can (Stripe Tax, Paddle or Lemon
+  Squeezy as merchant of record, which takes on EU VAT); bookkeeping from day one.
+- **The texts**: terms of service, a privacy notice built from `docs/PRIVACY.md`, a cookie banner only if something needs
+  consent (cookieless analytics need none), a processing agreement (DPA) with every provider that touches personal data, and
+  one you can give your customers. A lawyer reads them once; they are sensitive files (`docs/SENSITIVE.md`).
+- **Support**: one address people can write to, an answer time you can keep, a status page (Uptime Kuma or Gatus), and every
+  question that comes twice becoming a guide part or a card.
+- **People**: each person their own accounts, the least access their work needs (`docs/ACCESS.md`), a review every 90 days,
+  offboarding the same day; with pull requests, a second person reviews sensitive changes.
+- **Running it**: an on-call rule (who answers at night, or that nobody does and the status page says so), the runbook in
+  `docs/RECOVERY.md`, an incident note after each outage, and goals for how often it may fail once customers pay.
+- **Money it costs**: a monthly look at the bills (servers, email, providers), the tags on every resource say which part costs
+  what (`docs/CONVENTIONS.md`), and an alert before a bill doubles.
+- **Insurance and contracts**: professional liability when customers rely on it; written agreements with anyone who builds part
+  of it, saying who owns the code.

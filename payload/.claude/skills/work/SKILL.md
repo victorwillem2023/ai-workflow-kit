@@ -1,6 +1,7 @@
 ---
 name: work
 description: Work on one {{PROJECT}} board card from start to finish ("work on card 42 today"): reads the card, picks the route from its type label (ui goes to /ui; feature, bug, workflow here), plans and stops for a yes, builds in a session folder, stops while the owner tries it, and ships only when the owner says done. Run from the main folder.
+model: opus
 ---
 
 # /work <card number>

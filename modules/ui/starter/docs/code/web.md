@@ -1,4 +1,5 @@
 # src/web: where things are
+<!-- covers new files: src/web/** -->
 
 Kept out of `src/web/CLAUDE.md` so it isn't loaded with every file read in that folder; the rules stay there.
 Read it by the section: `grep -n` the feature or name you touch. Keep it current when a part moves (in the same commit).

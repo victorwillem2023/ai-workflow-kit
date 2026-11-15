@@ -1,0 +1,91 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "How this project's versions are kept current: libraries, Docker images, GitHub actions, the tools in .tool-versions, OpenTofu providers and modules, Helm charts. One repository: this file is the whole policy. Several repositories: move it to a config repository of your own (owner/renovate-config, as default.json) and leave here only { \"extends\": [\"github>owner/renovate-config\"] }.",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests",
+    ":pinDevDependencies"
+  ],
+  "timezone": "Europe/Brussels",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "labels": [
+    "dependencies"
+  ],
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ],
+    "schedule": [
+      "at any time"
+    ],
+    "minimumReleaseAge": null
+  },
+  "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on the first day of the month"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Small updates of everything in one pull request a week; each gets the gate",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "groupName": "small updates"
+    },
+    {
+      "description": "A new major version is its own pull request: read what changes before taking it",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major"
+      ]
+    },
+    {
+      "description": "Node only moves between long-term-support versions (the even ones), and in step everywhere it is named",
+      "matchPackageNames": [
+        "node",
+        "nodejs",
+        "@types/node"
+      ],
+      "allowedVersions": "/^v?\\d*[02468]([.-]|$)/",
+      "groupName": "Node",
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "OpenTofu providers and modules together, so a stack moves as one",
+      "matchManagers": [
+        "terraform"
+      ],
+      "groupName": "OpenTofu providers and modules"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "The scanner images of the weekly security run (tools/workflow/secops.mjs), marked with a renovate: docker comment",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)tools/workflow/secops\\.mjs$/"
+      ],
+      "matchStrings": [
+        "'(?<depName>[a-z0-9][a-z0-9./_-]*):(?<currentValue>v?[0-9][\\w.-]*)',\\s*// renovate: docker"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}
