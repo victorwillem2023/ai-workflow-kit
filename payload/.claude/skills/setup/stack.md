@@ -124,7 +124,9 @@ back; the app's part is `GET /health` answering with its version (`docs/DEPLOY.m
 ## 6b. AI inside the app (only when question 9 says so)
 Every call goes through one file of our own (model name, prompt, limits), so the model can be swapped in a line; name it
 as `ai.wrapper` in the config (the gate's *ai* check fails a model call anywhere else). What that file must hold, and the rules
-against prompt injection and the rest of the OWASP list: `docs/AI-SECURITY.md`. Choose by the job,
+against prompt injection and the rest of the OWASP list: `docs/AI-SECURITY.md`. The kit's ai module is that file, ready:
+`node ../ai-workflow-kit/install.mjs . --update --with ai` adds `src/server/ai.ts`, its tests and `cases/`. Tools, MCP servers and
+agents: `docs/AI-AGENTS.md`. Choose by the job,
 and look the prices and limits up that day: they change every few months.
 - **Small or occasional** (a few calls a day, a personal tool, a first version): a free tier is enough. In November 2026:
   Google's Gemini API (Flash models), OpenRouter's free models, Groq, Cloudflare Workers AI. Say the catch: daily limits, and

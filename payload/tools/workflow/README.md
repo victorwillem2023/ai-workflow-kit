@@ -98,6 +98,8 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out).
 - **quality** (when `quality.command` is in the config): the command prints "79 of 106"; fewer passing than the baseline fails.
   It runs when a changed file matches `quality.when` (default `src/**`) and with `--all`. `--update-baseline` stores the score.
+  A command that cannot run on this computer prints `quality skipped: <why>` (the AI cases with no API key): the gate shows it as
+  skipped, never as a pass, and the stored score stays.
 - **requests** (with the map module): `docs/flow/requests.js` must be what the request pages say now (`node docs/flow/build-requests.mjs`).
 - **testsNaming** (optional): a changed file that is not code picks the tests that name it; `{ "src/web/css/**": "css-parts.mjs" }`
   makes every file under that folder pick the tests that name that word instead.

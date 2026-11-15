@@ -1,0 +1,5 @@
+{
+  "ai": { "wrapper": "src/server/ai.ts" },
+  "quality": { "command": "npm run cases --silent", "when": ["src/server/ai.ts", "cases/**"] },
+  "egress": ["api.anthropic.com"]
+}

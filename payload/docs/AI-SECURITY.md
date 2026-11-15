@@ -15,6 +15,10 @@ or API used anywhere else, and any use with no wrapper named). That file holds:
 - the **log** of each call: who, which feature, tokens, cost, time, and the outcome, never the personal content of the prompt.
 The rest of the app calls a function of that file with plain data ("summarise this workout") and gets typed data back.
 
+The kit's ai module (`install.mjs --with ai`) is this file, built and tested: src/server/ai.ts with `createAi` and `ai.ask`,
+and a cases folder with the cases command (once the module is installed). Tools, MCP servers and agents that talk to agents:
+`docs/AI-AGENTS.md`.
+
 ## The ten risks and the rule for each
 | Risk | What happens | The rule |
 |---|---|---|

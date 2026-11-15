@@ -28,8 +28,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Grow** | the loop back: feedback, errors and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, feature flags, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. **Not yet**: `/market` (positioning, a landing page, pricing, a launch checklist): kit 2.6 |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.4 the AI module (a model wrapper, real cases, a spend cap, an
-injection guard); 2.5 `/launch` with network and firewall, OpenTofu, Ansible, the cloud choice and on-prem, and deploying from
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.5 `/launch` with network and firewall, OpenTofu, Ansible, the cloud choice and on-prem, and deploying from
 GitHub; 2.6 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
 
 ## The idea in ten rules
@@ -92,6 +91,9 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
   production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
              src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
              docs/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
+  ai/        (optional, --with ai) src/server/ai.ts (the one file that calls a model: spend caps, limits, untrusted text as marked
+             data, a canary against leaked instructions, answers checked by a zod schema, a log without content; the Anthropic
+             SDK by default, a fake provider for tests), cases/ (real and hostile cases; npm run cases is the quality score)
 ```
 
 ## The commands you type
@@ -117,8 +119,8 @@ the kit into that folder. `/setup` recommends the framework when you haven't pic
 ```sh
 cd my-new-project            # a git repo with package.json
 node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
-# only some parts:  ... --modules security,testing
-npm i -D tsx typescript @types/node knip @biomejs/biome # + @happy-dom/global-registrator with the ui module
+# only some parts:  ... --modules security,testing      an app that calls a language model:  ... --with ai
+npm i -D tsx typescript @types/node@^26 knip @biomejs/biome # + @happy-dom/global-registrator with the ui module; the installer prints the exact line
 ```
 The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
@@ -172,6 +174,16 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.4.0**: the AI module, for an app that calls a language model (`--with ai`; optional modules are new, and an update now
+  keeps the modules a project was installed with). `src/server/ai.ts` is the one file allowed to call a model: a monthly and a
+  per-user daily spend cap counted before the call, limits on input, output and time, untrusted text passed as marked data that
+  cannot close its own tag, a canary that shows when the instructions leak, the answer checked by a zod schema (the Anthropic
+  SDK's structured output by default, `claude-opus-5-5`), answers that would send data out through an image refused, and one log
+  line per call without the content; a fake provider for tests. `npm run cases`: real and hostile cases (instruction leaks,
+  tag breaking, data sent out) judged by code, "N of M" for the quality score, which shows *skipped* when no API key is there.
+  `docs/AI-AGENTS.md`: tools for a model, MCP servers (using them, offering one, and the ones that help the coding agent),
+  agent-to-agent with A2A, and when not to build an agent at all. A module can carry its own settings (`config.json`). The
+  self-test installs every module, the optional ones too.
 - **2.3.1**: performance and load testing. Goals in the config (`performance.goals`: 95% of requests within 300 ms, under 1%
   errors; `performance.load`: the paths and the expected users), and `npm run load -- smoke|load|stress|spike|soak`: k6 in Docker
   (pinned, kept current by Renovate) against the dev server or staging, never production unplanned, judged against the goals in

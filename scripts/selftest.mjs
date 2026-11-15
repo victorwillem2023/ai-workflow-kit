@@ -38,12 +38,15 @@ const git = (...a) => execFileSync('git', a, { cwd: dir, stdio: 'ignore' });
 git('init', '-q', '-b', 'main');
 git('config', 'user.name', 'Kit selftest');
 git('config', 'user.email', 'selftest@example.invalid');
-const install = [join(kit, 'install.mjs'), dir, '--project', 'Selftest App', '--repo', 'example/selftest-app', '--prefix', 'selftest'];
+// every module, the optional ones too (--with ai), so each is proven in a real project
+const install = [join(kit, 'install.mjs'), dir, '--project', 'Selftest App', '--repo', 'example/selftest-app', '--prefix', 'selftest', '--with', 'ai'];
 const said = step('install', process.execPath, install);
-// what the installer's "step 1" asks a person to add: the line it prints, so the test proves that line too
-const stepOne = /npm i -D ([^\n]+)/.exec(said)?.[1]?.trim().split(/\s+/);
-if (!stepOne) { console.log(`FAIL the installer printed no "npm i -D" step:\n${said}`); finish(1); }
-step('dev libraries (the installer\'s step 1)', 'npm', ['install', '--no-audit', '--no-fund', '--silent', '-D', ...stepOne]);
+// what the installer's "step 1" asks a person to run: the line it prints (one or more "npm i" joined by &&), so the test proves that line too
+const line = /^\s*(?:1\.|step 1:)\s*(npm i [^\n]+)$/m.exec(said)?.[1];
+if (!line) { console.log(`FAIL the installer printed no "npm i" step:\n${said}`); finish(1); }
+for (const part of line.split('&&').map((p) => p.trim().split(/\s+/).slice(2))) {
+  step(`libraries: npm i ${part.join(' ')}`, 'npm', ['install', '--no-audit', '--no-fund', '--silent', ...part]);
+}
 git('add', '-A');
 git('commit', '-q', '-m', 'Start from the kit');
 step('file map', 'npm', ['run', 'map', '--silent']);
@@ -52,7 +55,7 @@ step('the kit\'s own tests', 'npm', ['test', '--silent']);
 step('full gate', 'npm', ['run', 'gate:all', '--silent']);
 git('add', '-A');
 git('commit', '-q', '-m', 'The first baseline');
-step('update over itself', process.execPath, [...install, '--update']);
+step('update over itself', process.execPath, [...install.filter((a) => a !== '--with' && a !== 'ai'), '--update']);
 step('full gate after the update', 'npm', ['run', 'gate:all', '--silent']);
 console.log(`selftest: all ${steps.length} steps passed`);
 finish(0);

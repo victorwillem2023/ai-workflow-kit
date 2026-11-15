@@ -350,7 +350,11 @@ const steps = [
   config.quality?.command && ['quality', () => {
     const q = config.quality;
     if (!flag('--all') && !changed.some((f) => matchesAny(f, q.when ?? ['src/**']))) return { ok: true, note: 'not reached by this change' };
-    return qualityVerdict(parseScore(run(q.command).out, q.pattern), baseline.quality);
+    const r = run(q.command);
+    // a command that cannot run here says why ("quality skipped: no ANTHROPIC_API_KEY"): shown as skipped, never as a pass
+    const skipped = /^quality skipped: (.+)$/m.exec(r.out)?.[1];
+    if (skipped) return { ok: true, note: `skipped: ${skipped}` };
+    return qualityVerdict(parseScore(r.out, q.pattern), baseline.quality);
   }],
 ].filter(Boolean);
 

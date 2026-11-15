@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Installs the workflow kit into a project.
-//   node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--lang rust] [--force]
+//   node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--with ai] [--lang rust] [--force]
 //   node install.mjs <target-folder> --project ... --repo ... --check     list the machinery files that differ from the kit; changes nothing
 //   node install.mjs <target-folder> --project ... --repo ... --update    bring an existing project up to this kit without losing its own changes:
 //       a machinery file the project never changed is replaced, one it changed is kept and listed (--take <path,path> takes the kit's
@@ -36,8 +36,13 @@ const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy', 'production'];
 const lang = opt('--lang') ?? 'ts';
 const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
 if (!LANGS[lang]) { console.error(`Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)`); process.exit(1); }
-const modules = opt('--modules') ? opt('--modules').split(',').map((m) => m.trim()).filter(Boolean) : ALL;
-for (const m of modules) if (!ALL.includes(m)) { console.error(`Unknown module "${m}". Modules: ${ALL.join(', ')}`); process.exit(1); }
+// modules only some apps need: added with --with <name> (an app that calls a language model: --with ai)
+const OPTIONAL = ['ai'];
+const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
+// an update keeps the modules the project was installed with (.workflow-kit remembers them), plus any --with
+const remembered = target && existsSync(join(target, '.workflow-kit')) ? list(/^modules=(.*)$/m.exec(readFileSync(join(target, '.workflow-kit'), 'utf8'))?.[1]) : [];
+const modules = [...new Set([...(opt('--modules') ? list(opt('--modules')) : update && remembered.length ? remembered : ALL), ...list(opt('--with'))])];
+for (const m of modules) if (![...ALL, ...OPTIONAL].includes(m)) { console.error(`Unknown module "${m}". Modules: ${ALL.join(', ')}; and with --with: ${OPTIONAL.join(', ')}`); process.exit(1); }
 const repo = opt('--repo');
 const project = opt('--project');
 if (!target || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || !project) {
@@ -84,6 +89,8 @@ const done = { added: [], kept: [], replaced: [], yours: [] };
 const pkgBefore = existsSync(join(target, 'package.json')) ? JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')) : {};
 const framework = ['react', 'preact', 'vue', 'svelte', 'solid-js', 'next', '@angular/core'].some((d) => d in { ...(pkgBefore.dependencies ?? {}), ...(pkgBefore.devDependencies ?? {}) });
 const happyDom = modules.includes('ui') && !framework ? ' @happy-dom/global-registrator' : '';
+// the ai module's wrapper uses the official Anthropic SDK and checks answers with zod (step 1 adds them; they run in production)
+const aiLibs = modules.includes('ai') ? ' && npm i @anthropic-ai/sdk zod' : '';
 // the Node types of the Node the project runs (.tool-versions), never newer: the gate's *versions* check holds that
 const nodeMajor = (/^nodejs\s+(\d+)/m.exec(readFileSync(existsSync(join(target, '.tool-versions')) ? join(target, '.tool-versions') : join(kit, 'starter', '.tool-versions'), 'utf8')) ?? [])[1];
 const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
@@ -255,6 +262,22 @@ if (update && !done.added.includes('workflow.config.json')) {
   if (addedSettings.length) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
 }
 
+// a module's own settings (modules/<name>/config.json), on a new install and an update alike: a key the project lacks is added
+// whole; "egress" adds its hosts to security.egress when the project keeps an outbound allowlist
+{
+  const cfgPath = join(target, 'workflow.config.json');
+  const mine = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  let changed = false;
+  for (const m of modules) {
+    const file = join(kit, 'modules', m, 'config.json');
+    if (!existsSync(file)) continue;
+    const { egress = [], ...rest } = JSON.parse(readFileSync(file, 'utf8'));
+    for (const [k, v] of Object.entries(rest)) if (!(k in mine)) { mine[k] = v; addedSettings.push(`${k} (the ${m} module)`); changed = true; }
+    if (Array.isArray(mine.security?.egress)) for (const h of egress) if (!mine.security.egress.includes(h)) { mine.security.egress.push(h); addedSettings.push(`security.egress: ${h} (the ${m} module)`); changed = true; }
+  }
+  if (changed) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
+}
+
 // the GitHub workflow, when this run wrote it (new, or replaced by --force): the language's own setup steps (`ci` in starter/lang.json) go where the
 // file says "another language: add its toolchain here"
 const ciPath = join(target, '.github', 'workflows', 'gate.yml');
@@ -317,10 +340,10 @@ if (update) {
   if (framework && JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).ui?.boards === 'html') console.log('  not changed: "ui": { "boards": "html" } although the project has a UI framework. Set it to "components" to have /ui draw its variants as real components.');
   console.log('  then: step 1 below, npm run map, node tools/workflow/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
 }
-if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip${happyDom}` : LANGS[lang].needs}`); process.exit(0); }
+if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip${happyDom}${aiLibs}` : LANGS[lang].needs}`); process.exit(0); }
 console.log(`
 Next, in ${target}:
-  1. ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip @biomejs/biome${happyDom}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
+  1. ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip @biomejs/biome${happyDom}${aiLibs}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
   3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
      the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)
