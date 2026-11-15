@@ -25,6 +25,15 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   rewrite), and the reason is printed. Splitting a file and re-running `--update-baseline` shrinks the list. An optional `reasons`
   map in `baseline.json` (`"<file>": "<why it stays>"`) is kept for files still in the list and dropped for the rest; a reason
   for a file not in the list fails as a stale reason.
+- **functions** (when `functions` is in the config): a new function of `functions.maxLines` lines or more fails, and a long one in
+  the baseline may not grow. Found by counting braces, so it reads TypeScript, JavaScript, Rust, Go and the like.
+- **ratchets** (when `ratchets` is in the config): each counts patterns in some files, for example checks on what kind a thing is
+  (`{ "name": "kind checks", "include": ["src/plan/**"], "patterns": ["shape === '", "isBike\\("] }`); a count above the baseline fails.
+- **scope**: with one spec in `specs/`, a changed file the spec never names is printed as a `scope:` line (`"scope": "fail"` makes
+  it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out).
+- **quality** (when `quality.command` is in the config): the command prints "79 of 106"; fewer passing than the baseline fails.
+  It runs when a changed file matches `quality.when` (default `src/**`) and with `--all`. `--update-baseline` stores the score.
+- **requests** (with the map module): `docs/flow/requests.js` must be what the request pages say now (`node docs/flow/build-requests.mjs`).
 - **map**: `docs/MAP.md` must be what `npm run map` writes now; a stale map fails the gate.
 - **docs**: a backticked repo path (`src/…`, `config/…`, `tests/…`, `scripts/…`, `tools/…`, `docs/…`) or an `npm run <name>` in the docs listed under `docs` in the config that no longer exists fails, with the doc, line and thing. Globs, `<placeholders>` and bare names (`service.ts`) are skipped. Known stale ones are in `baseline.json`; fixing one and re-running `--update-baseline` shortens the list.
 - **typecheck**: the config's `commands.typecheck`.

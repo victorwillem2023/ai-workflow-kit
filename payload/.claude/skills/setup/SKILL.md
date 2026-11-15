@@ -16,6 +16,14 @@ A new, empty project: skip to the questions and say the answers will become the 
 
 ## 2. Ask the owner (AskUserQuestion, at most two rounds, each with your best guess as the recommended option)
 1. **What the app does**, in one or two sentences, and for whom.
+   - **A new project: the language.** Recommend one from the answer and say why in a sentence; the owner confirms or picks another.
+     Rust by default (the compiler catches most of an agent's mistakes before a test runs); TypeScript when most of the work is a
+     browser screen; Python for data, notebooks or machine-learning libraries; Go for a small network service the team already
+     runs in Go. An existing project keeps its language. `starter/lang.json` in the kit has each one's commands; another language
+     works too with its own check and test commands.
+   - **A new project: the architecture.** Propose the folders and what each may import, fitted to the app, and show it before
+     writing anything: a pure core (the rules, no files or network), a folder per outside service, the app on top (server,
+     command line or screen). Two or three lines per folder. The owner confirms or changes it; it becomes answer 2.
 2. **The layers**: show the folders you found and the import rules you'd propose ("`src/core` imports nothing with I/O; `src/web`
    never imports `src/server`"). The owner confirms or corrects.
 3. **Untrusted input**: where does outside data come in (requests, uploads, third-party pages, webhooks)? Will the server ever be
@@ -23,14 +31,17 @@ A new, empty project: skip to the questions and say the answers will become the 
 4. **The dev loop**: the command the owner runs while working, its port, and whether it restarts by itself.
 5. **The board**: the area labels (offer 3 to 6 from the folders and the app's parts), and whether the GitHub project exists already.
 6. **Files every feature touches** (the shared files for parallel work), if any beyond `README.md` and the guide.
-7. **Agents and models**: Claude Code only, or OpenCode too (and which paid and free models; the kit's defaults are in
+7. **The quality score**: is there a set of real cases whose pass count should never drop (typed requests and what must come
+   out, sample files, recorded inputs)? If yes: the command that runs them and prints "N of M", for `quality` in the config.
+8. **Agents and models**: Claude Code only, or OpenCode too (and which paid and free models; the kit's defaults are in
    `workflow.config.json` under `harness`)? Which folders hold private data that must never be read or sent to a model provider?
 Only real decisions; never ask what the code already says.
 
 ## 3. Write (show a short summary of each before writing it)
-- **`workflow.config.json`**: `roots`, `tests`, `commands` (typecheck, testAll, testFiles), `boundaries` from answer 2,
+- **`workflow.config.json`**: `roots`, `tests`, `commands` (typecheck, testAll, testFiles), `code` and `testPicking` for a language
+  other than TypeScript, `functions`, `quality` from answer 7 (`{ "command": "npm run cases", "when": ["src/**"] }`), `boundaries` from answer 2,
   `security.inputFolders` and `security.server` from answer 3, `session.mainPort` from answer 4, `board.labels.areas` from answer 5
-  (keep the effort and feasibility lists unless the owner changes them), `harness` from answer 7 (`"opencode": false` for
+  (keep the effort and feasibility lists unless the owner changes them), `harness` from answer 8 (`"opencode": false` for
   Claude Code only; `private`: the data folders), `docs.include` with any other doc folder.
 - **`CLAUDE.md`**: replace every `<...>` with the answers, short. *How a request flows*: one line per step with the file that does it.
   *Layout rules*: the same rules as `boundaries`, in words. *Security*: name the real places outside data comes in, and the guard
@@ -42,11 +53,14 @@ Only real decisions; never ask what the code already says.
   read by `grep -n`. A new project: headings only; they fill as code arrives.
 - **The guide** (for users): `docs/GUIDE.md` is the index, one line per part; each part is a file in `docs/guide/` with a
   link back to the index (`docs/guide/getting-started.md` is the pattern). A new project: one or two parts. And
-  **`docs/ARCHITECTURE.md`** (the layers, the flow of a request, where state lives). Both short; they grow with each feature.
+  **`docs/ARCHITECTURE.md`** (the layers, the flow of a request, where state lives, and *Rules and where each lives*: the kinds of case this app has and
+  the three to six rules every feature must keep, each with its home file; an empty table on a new project). Both short; they grow with each feature.
 - When the ui module is installed: in `src/web/CLAUDE.md` fill *New feature here* and *Rules here*, and `docs/code/web.md`; leave `docs/STYLE.md` for the first `/ui` board
   (its tokens come from there), unless the owner already has a brand: then put its colours in `src/web/styles.css` and `docs/STYLE.md`.
 - When the ui module is **not** installed (no `src/web/CLAUDE.md`): take the *UI style* section, the board and picture lines and
   the `docs/design` paths out of `CLAUDE.md`, and the `ui` type out of `workflow.config.json`.
+- When the map module is installed (`docs/flow/`): the questions and the kinds in `docs/REQUESTS.md` from answer 1, the first
+  real parts in `docs/flow/map.js` (an end not built yet is `gap`), then `node docs/flow/build-requests.mjs`.
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
 
 ## 4. Make it real

@@ -1,0 +1,19 @@
+# The same checks as `npm run gate:all`, on every push and pull request, so main cannot break when a step was skipped locally.
+name: gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # another language: add its toolchain here (for Rust: dtolnay/rust-toolchain@stable with clippy)
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - run: node tools/workflow/gate.mjs --all

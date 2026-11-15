@@ -21,3 +21,4 @@ export function checkBoard(board: Board, run: GhRunner, cache?: BoardCache): { c
 export function labelGroups(board: Board): { types: string[]; areas: string[]; effort: string[]; feasibility: string[] };
 /** Makes what the config describes and the board lacks: labels, the project itself (when `project` is not a number), the columns. */
 export function initBoard(board: Board, run: GhRunner, cache?: BoardCache, opts?: { title?: string }): { project: number; created: boolean; labelsMade: string[]; columnsAdded: string[] };
+export function listCards(board: Board, run: GhRunner): { number: number; title: string; state: string; labels: string[]; column: string | null }[];

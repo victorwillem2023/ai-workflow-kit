@@ -3,6 +3,7 @@
 //   --init                       makes what the config describes and GitHub lacks: labels, the project (when board.project is not set; the number is
 //                                written into the config), the columns. Safe to run again.
 //   --labels                     the labels the config allows, grouped (types, areas, effort, feasibility); /idea reads this
+//   --map [--all]                the worksheet (with the map module): open cards by column with the app map ends they are on, and the map's hygiene problems
 //   --check                      which columns from the config the project lacks, open cards with no type label, and config labels the repo lacks
 //   --add "<title>" --label <type> [--label <name>]... [--body-file <file>] [--column "<column>"]   a new card (Backlog by default)
 //   --move <number> "<column>"   move a card          --block <number> "<reason>"   to Blocked, the reason as a comment
@@ -10,10 +11,10 @@
 //   --search "<words>"           cards (open and closed) whose title or text has the words: number, title, column
 // A failure prints one plain sentence and exits 1.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, BoardError } from './lib/board.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WINDOWS_GH = 'C:\\Program Files\\GitHub CLI\\gh.exe';
@@ -30,7 +31,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number> or --search "<words>".';
+const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number> or --search "<words>".';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -38,7 +39,7 @@ function cardNumber(s) {
   return n;
 }
 
-function main() {
+async function main() {
   const configFile = join(root, 'workflow.config.json');
   const config = JSON.parse(readFileSync(configFile, 'utf8'));
   const board = config.board;
@@ -53,6 +54,12 @@ function main() {
     console.log(`board: ${r.labelsMade.length ? 'labels made: ' + r.labelsMade.join(', ') : 'every label exists'}`);
     console.log(`board: ${r.columnsAdded.length ? 'columns added: ' + r.columnsAdded.join(', ') : 'every column exists'}`);
     console.log(`board: https://github.com/${board.owner.includes('/') ? board.owner : 'users/' + board.owner}/projects/${r.project}`);
+  } else if (argv.includes('--map')) {
+    // the worksheet lives with the app map (the map module): without it there is nothing to map the cards to
+    const lib = join(root, 'tools', 'workflow', 'lib', 'worksheet.mjs');
+    if (!existsSync(lib)) throw new BoardError('--map needs the app map (the kit\'s map module: docs/flow and tools/workflow/lib/worksheet.mjs).');
+    const { loadFlow, worksheet } = await import(pathToFileURL(lib).href);
+    console.log(worksheet(loadFlow(root), listCards(board, run), board.columns, { all: argv.includes('--all') }).text);
   } else if (argv.includes('--labels')) {
     const g = labelGroups(board);
     for (const [k, names] of Object.entries(g)) console.log(`${k}: ${names.join(' | ') || '(none in the config)'}`);
@@ -98,7 +105,7 @@ function main() {
   }
 }
 
-try { main(); } catch (e) {
+try { await main(); } catch (e) {
   console.error(e instanceof BoardError ? e.message : `board: ${e?.message ?? e}`.split('\n')[0]);
   process.exit(1);
 }

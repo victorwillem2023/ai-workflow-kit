@@ -18,6 +18,8 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
 2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation).
 3. Copy `tools/workflow/templates/spec.md` to `specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
+   - The rule and who shares it: `grep -n` the rule's row in `docs/ARCHITECTURE.md`, *Rules and where each lives*; the change goes in
+     the file that row names, and the spec lists the kinds of case that share it (CLAUDE.md, 11 to 14).
    - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one.
    - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`

@@ -11,6 +11,8 @@
   },
   "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
   "size": { "maxLines": 400, "include": ["src/**/*.ts", "tools/**/*.mjs"] },
+  "functions": { "maxLines": 60, "include": ["src/**/*.ts"] },
+  "scope": "advice",
   "docs": {
     "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/guide/*.md", "docs/code/*.md"],
     "exclude": ["docs/MAP.md"]

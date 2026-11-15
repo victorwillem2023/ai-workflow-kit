@@ -87,6 +87,9 @@ data comes in and the board's areas, then writes `CLAUDE.md`, `workflow.config.j
 runs `npm run board -- --init` (labels, the GitHub project, its columns) and the gate, and stops for your yes before one commit.
 After that: `/idea <the first thing to build>`, then `/work <n>`.
 
+**Is a project behind the kit, or ahead of it?** `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --check` lists
+the machinery files that differ or are missing and changes nothing.
+
 **Updating** a project to a newer kit: `git pull` in the kit, then `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --force`.
 It replaces the machinery (skills, tools, scripts) and never your starter files; `.workflow-kit` in the project says which version it has.
 
@@ -105,8 +108,13 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 ## Good to know
 - **Windows first**: `dev.cmd` and `start.cmd` (dev module) are Windows scripts; everything else is plain Node and works anywhere.
   `session.mjs` links `node_modules` into each session folder with a junction on Windows and a symlink elsewhere.
-- **JS and TS get the fast gate**: `npm run gate` picks the tests a change reaches from JS/TS imports. Another language still gets
-  every other check; set `commands` to its typecheck and test commands and use `gate:all` (the whole suite) as the test step.
+- **Any language** (Python through [uv](https://docs.astral.sh/uv/): the install writes a `pyproject.toml`, `uv sync` gets pytest, mypy and ruff, the gate runs them with `uv run`): `--lang rust|python|go` at install (or `/setup` on a new project, which recommends one) sets the check and test
+  commands. TypeScript and Rust also get the layer rules and the file map from their imports; only TypeScript and JavaScript get
+  tests picked by file, the others run the whole suite. The kit's own tools stay Node scripts, so Node is always needed.
+- **The modules' code examples** are TypeScript, except the input guards of the security module, which also come in Rust, Python
+  and Go. The fake clock and the screen helpers have no other-language version.
+- **Tests must run where the agent runs**: `node_modules` installed on Windows does not run in a Linux sandbox (and the other way
+  round). An agent working remotely needs its own install (`npm ci`) or it can only read.
 - **The board is GitHub Projects**, reached only through `tools/workflow/lib/board.mjs` and `gh`. A board that cannot be reached is
   one warning line, never a stop.
 
@@ -118,6 +126,15 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.3.0**: from Trailsmith's 15 Nov audit. *Fix it where the rule lives* (rules 11 to 14 in the starter `CLAUDE.md`, a
+  *Rules and where each lives* table in the starter `docs/ARCHITECTURE.md`, a section in the spec template, a line in `/spec` and `/setup`).
+  Three gate checks: function length, the scope guard, the quality score. `/review` (fresh eyes before shipping) and `/lesson`
+  (a correction becomes a check or one line). The gate on GitHub (`.github/workflows/gate.yml`). `install.mjs --check` and `--lang`;
+  Rust, Python and Go in the import graph, `forbidUse` in a layer rule; the `map` module (the app map and the request pages, with a gate check); `/setup` recommends a language and proposes an architecture. Plain words to the owner.
+  Counts that may not rise (`ratchets`, for checks on what kind a thing is) and `npm run health` (the code-health numbers on one
+  screen). The input guards as Rust, Python and Go examples in the security module. From Trailsmith: finishing a session stops its
+  dev server and names a folder that is still open (`scripts/session-stop.mjs`), and `npm run board -- --map` (the worksheet:
+  which cards sit on which ends of the app map; with the map module).
 - **1.2.0**: from Trailsmith's 12-13 Nov work. OpenCode support (`npm run harness`, a gate step); `/check /find /docs`; a new chat
   per build and per ui stage 2; `/build` reads its rare cases from `build/several.md`; the quiet test reporter (`npm test` prints
   failures and one total); the guide as index + parts, `docs/code/<folder>.md`, folder notes with rules only, a *Never read*

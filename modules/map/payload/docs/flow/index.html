@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PROJECT}} app map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Bitter:wght@600&display=swap" rel="stylesheet">
+<style>
+/* layout idea: a left rail of stages, one stage at a time as an indented yes/no tree with status pills */
+:root{
+  --bg:#eef1ee; --panel:#ffffff; --ink:#17251f; --muted:#5b6b64; --line:#c5cec8; --accent:#1d5fa8;
+  --ask:#6b3fa0; --ask-bg:#ece2f7; --ok:#1f7a4d; --ok-bg:#dff1e6; --weak:#8a5a00; --weak-bg:#fbeecb; --gap:#a3312b; --gap-bg:#f9dedb; --un:#55606b; --un-bg:#e3e7ea;
+  --display:'Bitter',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121815; --panel:#1b2420; --ink:#e6ede9; --muted:#9aaba3; --line:#39463f; --accent:#7db4f0;
+  --ask:#c9a8f0; --ask-bg:#33264a; --ok:#7fd3a4; --ok-bg:#1d3a2b; --weak:#f0c661; --weak-bg:#3d3215; --gap:#f09a93; --gap-bg:#44201d; --un:#aab4bd; --un-bg:#2a3136; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#121815; --panel:#1b2420; --ink:#e6ede9; --muted:#9aaba3; --line:#39463f; --accent:#7db4f0;
+  --ask:#c9a8f0; --ask-bg:#33264a; --ok:#7fd3a4; --ok-bg:#1d3a2b; --weak:#f0c661; --weak-bg:#3d3215; --gap:#f09a93; --gap-bg:#44201d; --un:#aab4bd; --un-bg:#2a3136; color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 64px;display:grid;grid-template-columns:230px 1fr;gap:28px}
+header{grid-column:1/-1}
+h1{font:600 26px/1.2 var(--display);margin:0 0 6px;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:70ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;font:500 12px/1 var(--body);padding:4px 8px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-built{color:var(--ok);background:var(--ok-bg)} .s-weak{color:var(--weak);background:var(--weak-bg)}
+.s-gap{color:var(--gap);background:var(--gap-bg)} .s-unmapped{color:var(--un);background:var(--un-bg)}
+.s-open{color:var(--ask);background:var(--ask-bg)} .s-decided{color:var(--un);background:var(--un-bg)} .s-building{color:var(--accent);background:var(--un-bg)}
+.go{display:block;font-size:13px;color:var(--muted);margin-top:2px} a{color:var(--accent)} .src a{color:var(--accent)}
+.legend span.t{color:var(--muted);font-size:13px}
+nav{position:sticky;top:16px;align-self:start;display:flex;flex-direction:column;gap:2px;max-height:calc(100vh - 32px);overflow-y:auto}
+nav a{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;font-size:14px;border-radius:8px;color:var(--ink);text-decoration:none;border:1px solid transparent}
+nav a:hover{border-color:var(--line)} nav a:focus-visible, button:focus-visible, input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav a.on{background:var(--panel);border-color:var(--line);font-weight:600}
+nav a small{color:var(--muted);font:400 12px var(--mono);font-variant-numeric:tabular-nums}
+nav a small b{color:var(--weak);font-weight:500} nav a small i{color:var(--un);font-style:normal}
+.grp{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:12px 0 2px 10px} .grp:first-child{margin-top:0}
+main{min-width:0}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 20px 24px}
+.stage h2{font:600 20px/1.25 var(--display);margin:0 0 4px}
+.stage > p{margin:0 0 4px;color:var(--muted);max-width:75ch}
+.stage .src{font:400 12px var(--mono);color:var(--muted);margin-bottom:14px;overflow-wrap:anywhere}
+.tools{display:flex;gap:8px;margin:0 0 10px}
+button{font:500 13px var(--body);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+.tree{overflow-x:auto;padding-bottom:4px}
+ul{list-style:none;margin:0;padding:0}
+ul ul{margin-left:13px;padding-left:20px;border-left:2px solid var(--line)}
+li{position:relative;padding:5px 0}
+ul ul > li::before{content:"";position:absolute;left:-20px;top:20px;width:16px;border-top:2px solid var(--line)}
+.q{display:inline-flex;align-items:center;gap:8px;font-weight:600;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px;max-width:62ch}
+.q::before{content:"?";flex:none;width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--panel);font:600 12px/18px var(--mono);text-align:center}
+.ans{display:inline-block;font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-right:8px;min-width:34px;text-align:center}
+.ans.yes{color:var(--ok);border-color:var(--ok)} .ans.no{color:var(--gap);border-color:var(--gap)}
+.leaf{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 10px;max-width:78ch;vertical-align:top}
+.leaf .what{flex:1 1 320px}
+.leaf .what.plain{color:var(--muted);flex:0 1 auto}
+.note{display:block;color:var(--muted);font-size:13px;margin:2px 0 0}
+.file{font:400 11.5px var(--mono);color:var(--muted);overflow-wrap:anywhere}
+label.chk{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+label.chk input{accent-color:var(--ok);width:15px;height:15px;margin:0}
+li.done > .row .what{color:var(--muted)}
+.row{display:flex;align-items:flex-start;gap:0}
+.foot{margin-top:18px;color:var(--muted);font-size:13px;max-width:75ch}
+@media (max-width:820px){.wrap{grid-template-columns:1fr}nav{position:static;max-height:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>{{PROJECT}} app map</h1>
+  <p>Every decision the app makes, as yes or no, and what it does at each end. Drawn from <span class="file" id="asof"></span>. Tick a box when you have seen that branch do the right thing.</p>
+  <div class="legend" id="sum"></div>
+  <div class="legend">
+    <span class="t"><b>Built</b>: the code exists. <b>Known weak spot</b>: built, with a problem on record. <b>Being built</b>: a session is on it. <b>Decided, not built</b> and <b>Not decided</b>: from the request pages. <b>Not built</b>. <b>Not mapped yet</b>: no page or tree for it.</span>
+  </div>
+</header>
+<nav id="nav" aria-label="Stages"></nav>
+<main id="main"></main>
+</div>
+<script src="requests.js"></script>
+<script src="map.js"></script>
+<script>
+// The viewer. The trees are in map.js (window.FLOW); this file only draws them.
+const FLOW=window.FLOW;
+// the request pages (requests.js, made by build-requests.mjs) come first
+if(window.FLOW_REQUESTS)FLOW.groups.unshift(window.FLOW_REQUESTS);
+const STAGES=FLOW.groups.flatMap(g=>g.stages);
+const ISSUE='https://github.com/{{REPO}}/issues/';
+const KEY='{{PREFIX}}-flow-checked';
+let checked={};
+try{checked=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){checked={}}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(checked))}catch(e){}};
+const LABEL={built:'Built',weak:'Known weak spot',building:'Being built',decided:'Decided, not built',open:'Not decided',gap:'Not built',unmapped:'Not mapped yet'};
+const ORDER=['built','weak','building','decided','open','gap','unmapped'];
+const BASIS={requests:'From the request pages',code:'Read from the code',guide:'From the guide, not checked against the code',notes:'From the notes, not checked line by line'};
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
+const hash=(s)=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))>>>0;return h.toString(36)};
+const keyOf=(st,n)=>st.id+'-'+hash(n.t);
+function leaves(nodes,out=[]){for(const n of nodes){if(n.t)out.push(n);for(const k of ['yes','no'])if(n[k])leaves(n[k],out);if(n.opts)for(const o of n.opts)leaves(o[1],out)}return out}
+// a short pass-through end ("Goes on.", "Skipped.") gets no pill, no tick and is not counted
+const plain=(n)=>n.s==='none'||(!n.s&&!n.f&&!n.n&&n.t.length<24);
+const tickable=(n)=>!plain(n)&&(!n.s||n.s==='built'||n.s==='weak');
+
+function renderNode(st,n,ans){
+  const li=el('li');const row=el('div','row');li.append(row);
+  if(ans)row.append(el('span','ans'+(ans==='yes'?' yes':ans==='no'?' no':''),ans));
+  if(n.q){
+    const box=el('div');box.append(el('span','q',n.q));
+    if(n.f){box.append(document.createElement('br'));box.append(el('span','file',n.f))}
+    row.append(box);
+    const ul=el('ul');
+    if(n.yes)n.yes.forEach((c,i)=>ul.append(renderNode(st,c,i===0?'yes':'')));
+    if(n.no)n.no.forEach((c,i)=>ul.append(renderNode(st,c,i===0?'no':'')));
+    if(n.opts)n.opts.forEach((o)=>o[1].forEach((c,i)=>ul.append(renderNode(st,c,i===0?o[0]:''))));
+    li.append(ul);
+  }else{
+    const s=n.s||'built';const leaf=el('div','leaf');const k=keyOf(st,n);
+    const what=el('span','what',n.t);
+    if(n.n)what.append(el('span','note',n.n));
+    if(n.f){what.append(document.createElement('br'));what.append(el('span','file',n.f))}
+    leaf.append(what);
+    // a kind of outing: its own page, and the parts of the flow it runs through
+    if(n.kind){const ids=[STAGES.some(x=>x.id==='k-'+n.kind)?'k-'+n.kind:null,...((FLOW.kinds||{})[n.kind]||[])].filter(Boolean);
+      if(ids.length){const go=el('span','go','See: ');ids.forEach((id,i)=>{const t=STAGES.find(x=>x.id===id);if(!t)return;if(i)go.append(document.createTextNode(' · '));const a=el('a','',t.name);a.href='#'+id;go.append(a)});what.append(go)}}
+    if(n.card&&n.card.length){const cs=el('span','go','Cards: ');n.card.forEach((c,i)=>{if(i)cs.append(document.createTextNode(' '));const a=el('a','','#'+c);a.href=ISSUE+c;a.target='_blank';a.rel='noopener';cs.append(a)});what.append(cs)}
+    if(plain(n)){if(n.s!=='none')what.classList.add('plain')}else leaf.append(el('span','pill s-'+s,LABEL[s]));
+    if(tickable(n)){
+      const lab=el('label','chk');const cb=el('input');cb.type='checkbox';cb.id='c-'+k;cb.checked=!!checked[k];
+      if(cb.checked)li.classList.add('done');
+      cb.addEventListener('change',()=>{if(cb.checked)checked[k]=1;else delete checked[k];li.classList.toggle('done',cb.checked);save();drawNav();drawSummary()});
+      lab.append(cb,document.createTextNode('I checked this'));leaf.append(lab);
+    }
+    row.append(leaf);
+  }
+  return li;
+}
+
+const main=document.getElementById('main'),nav=document.getElementById('nav'),sum=document.getElementById('sum');
+function current(){const h=location.hash.slice(1);return STAGES.some(s=>s.id===h)?h:STAGES[0].id}
+function drawSummary(){
+  const all=STAGES.flatMap(st=>leaves(st.tree).map(n=>[st,n]));
+  const c={};ORDER.forEach(k=>c[k]=0);all.forEach(([,n])=>{if(!plain(n))c[n.s||'built']++});
+  const done=all.filter(([st,n])=>tickable(n)&&checked[keyOf(st,n)]).length;
+  sum.textContent='';
+  for(const k of ORDER){if(!c[k])continue;sum.append(el('span','pill s-'+k,c[k]+' '+LABEL[k].toLowerCase()))}
+  sum.append(el('span','t',done+' of '+(c.built+c.weak)+' checked by you'));
+}
+function drawNav(){
+  nav.textContent='';const cur=current();
+  for(const g of FLOW.groups){
+    nav.append(el('div','grp',g.name));
+    for(const st of g.stages){
+      const ls=leaves(st.tree);const can=ls.filter(tickable);
+      const done=can.filter(l=>checked[keyOf(st,l)]).length;const weak=ls.filter(l=>l.s==='weak'||l.s==='gap'||l.s==='open'||l.s==='decided'||l.s==='building').length;const un=ls.filter(l=>l.s==='unmapped').length;
+      const a=el('a',st.id===cur?'on':'');a.href='#'+st.id;a.append(el('span','',st.name));
+      const sm=el('small');sm.append(document.createTextNode(can.length?done+'/'+can.length:''));
+      if(weak){sm.append(document.createTextNode(' '));sm.append(el('b','','!'+weak))}
+      if(un){sm.append(document.createTextNode(' '));sm.append(el('i','','?'+un))}
+      a.append(sm);a.title=(can.length?done+' of '+can.length+' checked by you. ':'')+(weak?weak+' weak, undecided or not built. ':'')+(un?un+' not mapped yet.':'');nav.append(a);
+    }
+  }
+}
+function draw(){
+  const st=STAGES.find(s=>s.id===current());main.textContent='';
+  const sec=el('section','stage');sec.append(el('h2','',st.name),el('p','',st.intro));
+  sec.append(el('div','src',(BASIS[st.basis]||'')+(st.src?' · '+st.src:'')));
+  if(st.kind&&(FLOW.kinds||{})[st.kind]){const go=el('div','src');go.append(document.createTextNode('In the flow: '));FLOW.kinds[st.kind].forEach((id,i)=>{const t=STAGES.find(x=>x.id===id);if(!t)return;if(i)go.append(document.createTextNode(' · '));const a=el('a','',t.name);a.href='#'+id;go.append(a)});sec.append(go)}
+  const tree=el('div','tree');const ul=el('ul');st.tree.forEach((n)=>ul.append(renderNode(st,n,'')));tree.append(ul);sec.append(tree);
+  sec.append(el('p','foot','Built means the code for the branch exists. It does not mean the routes are good: that is what your tick is for. Ticks are kept in this browser only.'));
+  main.append(sec);drawNav();drawSummary();
+}
+document.getElementById('asof').textContent='main at '+FLOW.commit+', '+FLOW.asof;
+addEventListener('hashchange',()=>{draw();scrollTo(0,0)});draw();
+</script>
+</body>
+</html>

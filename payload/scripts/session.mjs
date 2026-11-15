@@ -8,13 +8,15 @@
 //                                               first commit's message; --keep-commits for a big rework that is several), rebase it on main (a
 //                                               conflict only in the file map is solved by making the map again), re-make the map into the same
 //                                               commit, typecheck and test, move main forward, take the session away, move the card to
-//                                               "Waiting for your check"; with --partial the card is only partly done: it stays in "In progress"
+//                                               "Waiting for your check" (with --no-checks the folder and branch stay until --clean --yes); with --partial the card is only partly done: it stays in "In progress"
 //                                               (moved there if it was elsewhere) and the comment adds "Still open: <what is left>"
 //   node scripts/session.mjs --push [--no-checks]  send every finished feature to origin/main in one go (fast-forward only; when someone pushed
 //                                               meanwhile the unpushed commits are replayed on top of that and checked again first)
-//   node scripts/session.mjs --remove <topic>   take it away again (refuses while it has uncommitted work or is not merged)
+//   node scripts/session.mjs --remove <topic>   take it away again (refuses while it has uncommitted work or is not merged); first stops its
+//                                               own dev server (the port in its .env, never the main folder's); a folder still open elsewhere is named and kept
 //   node scripts/session.mjs --clean [--yes]    the sessions whose branch is on main and that have no uncommitted work: lists them; with --yes removes
-//                                               them (through --remove's own checks). Other <prefix>-* folders are only named, never deleted
+//                                               them (through --remove's own checks). Other <prefix>-* folders are only named, never deleted, except
+//                                               completely empty ones, which --yes removes
 //   node scripts/session.mjs --check-main     is the main folder clean? fast-forwards it when it is only behind origin/main; fails (and says why) when it
 //                                               has uncommitted files or has unpushed features while origin moved (ignored files such as waiting specs don't count)
 //   node scripts/session.mjs --list             the sessions, their ports and cards, and how many finished features are not pushed
@@ -27,6 +29,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkS
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { heldMessage, removeEmptyStrangers, removeFolder, stopMessage, stopSessionServer } from './session-stop.mjs';
 
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const gitQuiet = (cwd, ...args) => { try { return git(cwd, ...args); } catch { return ''; } };
@@ -160,12 +163,13 @@ function remove(topic) {
   if (looseWork(dir)) throw new Error(`${dir} has uncommitted work. Commit it (or ask the owner) first.`);
   try { git(main, 'merge-base', '--is-ancestor', topic, 'main'); }
   catch { throw new Error(`Branch "${topic}" is not merged into main yet. Finish it first: node scripts/session.mjs --finish ${topic}`); }
-  rmSync(join(dir, 'node_modules'), { force: true }); // the link only, not the main folder's modules
-  git(main, 'worktree', 'remove', dir);
+  stopServer(dir);
+  const held = removeFolder(main, dir) === 'held';
   // -D: "-d" asks whether it is merged into the branch the main folder has checked out, which may be another session's; main was checked above
-  git(main, 'branch', '-D', topic);
-  console.log(`Session "${topic}" is removed.`);
+  try { git(main, 'branch', '-D', topic); } catch (e) { if (!held) throw e; console.log(`Branch "${topic}" is kept: git still sees it in use.`); }
+  console.log(held ? heldMessage(dir) : `Session "${topic}" is removed.`);
 }
+const stopServer = (dir) => { const said = stopMessage(stopSessionServer(dir, { mainPort: MAIN_PORT, firstPort: FIRST_PORT })); if (said) console.log(said); };
 
 /** The file map is written by a script (`map` in package.json); its path comes from the config. */
 const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts?.map);
@@ -251,7 +255,11 @@ async function finish(topic, o) {
   const subject = git(dir, 'log', '-1', '--format=%s');
   if (git(main, 'branch', '--show-current') === 'main') git(main, 'merge', '--ff-only', topic);
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone
-  remove(topic);
+  if (!o.noChecks) remove(topic);
+  else {
+    stopServer(dir);
+    console.log(`The checks were skipped (--no-checks), so ../${basename(dir)} is kept. After npm run gate:all passes on main, remove it with: node scripts/session.mjs --clean --yes`);
+  }
   if (card && o.partial !== undefined) await sayPartial(card, `Finished on the local main: ${subject}. Still open: ${o.partial.trim()}`);
   else if (card) await moveAndSay(card, 'Waiting for your check', `Finished on the local main: ${subject}`);
   const n = Number(git(main, 'rev-list', '--count', 'origin/main..main'));
@@ -337,7 +345,13 @@ function clean(yes) {
       try { remove(s.branch); } catch (e) { console.log(`Kept "${s.branch}": ${(e.stderr?.toString().trim() || e.message).split('\n')[0]}`); }
     }
   }
-  console.log(strangerNote(strangers(all)).trimStart());
+  let odd = strangers(all);
+  if (yes) {
+    const { removed, kept } = removeEmptyStrangers(odd);
+    for (const d of removed) console.log(`Removed the empty leftover folder ${d}.`);
+    odd = kept;
+  }
+  console.log(strangerNote(odd).trimStart());
 }
 
 function list() {

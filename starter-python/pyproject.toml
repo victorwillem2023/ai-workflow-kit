@@ -1,0 +1,15 @@
+[project]
+name = "{{PREFIX}}"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+
+# the tools the gate runs: uv sync installs them, uv run uses them
+[dependency-groups]
+dev = ["pytest", "mypy", "ruff"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.mypy]
+mypy_path = "src"

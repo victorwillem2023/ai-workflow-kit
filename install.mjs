@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 // Installs the workflow kit into a project.
-//   node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--force]
+//   node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--lang rust] [--force]
+//   node install.mjs <target-folder> --project ... --repo ... --check     list the machinery files that differ from the kit; changes nothing
+//   --lang ts (default) | rust | python | go: the check and test commands of starter/lang.json; a language other than ts
+//   leaves the TypeScript starter files out (tsconfig.json, the .ts examples of the modules).
 // 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/WORKFLOW.md, docs/TOKENS.md): the generic machinery. Copied as is, with
 //    {{PROJECT}} {{REPO}} {{OWNER}} {{PREFIX}} filled in. Existing files are kept unless --force.
 // 2. starter/  (CLAUDE.md, workflow.config.json, tsconfig.json, the guide, docs/code, folder CLAUDE.md files, STYLE.md ...): YOUR files to edit.
 //    Copied only when missing, never overwritten (not even with --force).
 // 3. modules/<name>/{payload,starter}  (ui, security, testing, dev; all by default, or pick with --modules): the same two kinds.
 //    ui = /ui skill, screenshots, style sheet, DOM helper, board template, STYLE.md; security = network guard, safe fetch, input guards,
-//    debug-handle gate and their tests, SECURITY.md; testing = fake clock, fakes pattern; dev = dev.cmd, start.cmd, dev-check.
+//    debug-handle gate and their tests, SECURITY.md; testing = fake clock, fakes pattern; dev = dev.cmd, start.cmd, dev-check;
+//    map = the app map (docs/flow: a page of yes/no trees of what the app decides) and the request pages (docs/REQUESTS.md).
 // 4. package.json gets the test/test:full/typecheck/gate/gate:all/map/board/harness scripts (the project's own win, except npm's
 //    placeholder test); .gitignore gets the kit's lines. The OpenCode commands are written last (`npm run harness` again after a skill changes).
 //    Nothing is committed.
@@ -21,7 +25,10 @@ const args = process.argv.slice(2);
 const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefined;
 const force = args.includes('--force');
-const ALL = ['ui', 'security', 'testing', 'dev'];
+const ALL = ['ui', 'security', 'testing', 'dev', 'map'];
+const lang = opt('--lang') ?? 'ts';
+const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
+if (!LANGS[lang]) { console.error(`Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)`); process.exit(1); }
 const modules = opt('--modules') ? opt('--modules').split(',').map((m) => m.trim()).filter(Boolean) : ALL;
 for (const m of modules) if (!ALL.includes(m)) { console.error(`Unknown module "${m}". Modules: ${ALL.join(', ')}`); process.exit(1); }
 const repo = opt('--repo');
@@ -32,9 +39,13 @@ if (!target || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || !project) {
 }
 if (!existsSync(target)) { console.error(`${target} does not exist. Make the project folder (and git init) first.`); process.exit(1); }
 const prefix = opt('--prefix') ?? repo.split('/')[1].toLowerCase().replace(/[^a-z0-9-]/g, '-');
-const vars = { PROJECT: project, REPO: repo, OWNER: repo.split('/')[0], PREFIX: prefix };
-const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX)\}\}/g, (_, k) => vars[k]);
-const TEXT = /\.(md|mjs|ts|json|mts|txt|html|css)$/;
+const vars = {
+  PROJECT: project, REPO: repo, OWNER: repo.split('/')[0], PREFIX: prefix,
+  TESTS: LANGS[lang].config?.tests ?? LANGS[lang].tests ?? 'tests/*.test.ts',
+  TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
+};
+const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
+const TEXT = /\.(md|mjs|js|ts|json|mts|txt|html|css|toml)$/;
 
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
@@ -43,13 +54,32 @@ function* walk(dir) {
   }
 }
 
+// --check: which machinery files differ from this kit (line endings aside)? Nothing is written.
+if (args.includes('--check')) {
+  const same = (a, b) => a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
+  const roots = [join(kit, 'payload'), ...modules.map((m) => join(kit, 'modules', m, 'payload')).filter(existsSync)];
+  const lines = [];
+  for (const from of roots) for (const src of walk(from)) {
+    const rel = relative(from, src).replace(/\\/g, '/');
+    const dest = join(target, rel);
+    if (!existsSync(dest)) lines.push(`missing  ${rel}`);
+    else if (TEXT.test(src) && !same(fill(readFileSync(src, 'utf8')), readFileSync(dest, 'utf8'))) lines.push(`differs  ${rel}`);
+  }
+  console.log(lines.length ? lines.join('\n') + `\n${lines.length} machinery files differ from the kit (--force takes the kit's; a change worth keeping goes into the kit first)` : 'the machinery is the kit\'s');
+  process.exit(lines.length ? 1 : 0);
+}
+
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
 const done = { added: [], kept: [], replaced: [] };
+const overwriteOnly = (from) => from.endsWith('payload');
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {
     const rel = relative(from, src);
+    // another language: the TypeScript starter files stay out (the machinery's own tests are payload and stay in)
+    if (lang !== 'ts' && !overwriteOnly(from) && (/\.tsx?$/.test(rel) || rel === 'tsconfig.json')) continue;
+    if (rel === 'lang.json') continue;
     const dest = join(target, rel);
     const exists = existsSync(dest);
     if (exists && !overwrite) { done.kept.push(rel); continue; }
@@ -62,10 +92,27 @@ function copyTree(from, overwrite) {
 
 copyTree(join(kit, 'payload'), force);
 copyTree(join(kit, 'starter'), false);
+// the language's own starter files (starter-python: a pyproject.toml for uv)
+if (existsSync(join(kit, `starter-${lang}`))) copyTree(join(kit, `starter-${lang}`), false);
 for (const m of modules) {
   if (existsSync(join(kit, 'modules', m, 'payload'))) copyTree(join(kit, 'modules', m, 'payload'), force);
   if (existsSync(join(kit, 'modules', m, 'starter'))) copyTree(join(kit, 'modules', m, 'starter'), false);
+  // the same examples in the project's language, where the module has them (modules/<name>/starter-<lang>)
+  if (existsSync(join(kit, 'modules', m, `starter-${lang}`))) copyTree(join(kit, 'modules', m, `starter-${lang}`), false);
 }
+
+// a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end
+for (const m of modules) {
+  const part = join(kit, 'modules', m, 'claude-section.md');
+  const claude = join(target, 'CLAUDE.md');
+  if (!existsSync(part) || !existsSync(claude)) continue;
+  const text = fill(readFileSync(part, 'utf8'));
+  const title = /^## .+$/m.exec(text)?.[0];
+  if (title && !readFileSync(claude, 'utf8').includes(title)) writeFileSync(claude, readFileSync(claude, 'utf8').replace(/\n*$/, '\n') + text);
+}
+// the gate's baseline, empty, so the docs can name it from the first day
+const basePath = join(target, 'tools', 'workflow', 'baseline.json');
+if (!existsSync(basePath)) writeFileSync(basePath, JSON.stringify({ boundaries: [], sizes: {}, docs: [] }, null, 2) + '\n');
 
 // starter files that are not meant to live at their own name
 const rename = [['gitignore.txt', null], ['package-scripts.json', null], ['settings.local.json', '.claude/settings.local.json']];
@@ -84,16 +131,34 @@ const pkgPath = join(target, 'package.json');
 const scripts = JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'));
 const pkg = existsSync(pkgPath) ? JSON.parse(readFileSync(pkgPath, 'utf8')) : { name: prefix, private: true, type: 'module' };
 // the project's own scripts win, except npm's placeholder test script ("echo \"Error: no test specified\" && exit 1")
+Object.assign(scripts, LANGS[lang].scripts ?? {});
 const own = { ...(pkg.scripts ?? {}) };
 if (/no test specified/.test(own.test ?? '')) delete own.test;
 pkg.scripts = { ...scripts, ...own };
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
+// another language: its commands and file endings into the config, when the config is the one just written
+if (LANGS[lang].config && done.added.includes('workflow.config.json')) {
+  const cfgPath = join(target, 'workflow.config.json');
+  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(readFileSync(cfgPath, 'utf8')), ...LANGS[lang].config }, null, 2) + '\n');
+}
+
+// the GitHub workflow, when this run wrote it (new, or replaced by --force): the language's own setup steps (`ci` in starter/lang.json) go where the
+// file says "another language: add its toolchain here"
+const ciPath = join(target, '.github', 'workflows', 'gate.yml');
+if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replace(/\\/g, '/') === '.github/workflows/gate.yml')) {
+  const steps = (LANGS[lang].ci ?? []).map((l) => `      ${l}\n`).join('');
+  writeFileSync(ciPath, readFileSync(ciPath, 'utf8').replace(/^[ \t]*# another language: add its toolchain here.*\r?\n/m, steps));
+}
+
 // .gitignore lines
 const giPath = join(target, '.gitignore');
 const have = new Set((existsSync(giPath) ? readFileSync(giPath, 'utf8') : '').split(/\r?\n/).map((l) => l.trim()));
-const add = readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/).filter((l) => l.trim() && !have.has(l.trim()));
+const add = [...readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/), ...(LANGS[lang].gitignore ?? [])].filter((l) => l.trim() && !have.has(l.trim()));
 if (add.length) writeFileSync(giPath, (existsSync(giPath) ? readFileSync(giPath, 'utf8').replace(/\n?$/, '\n') : '') + add.join('\n') + '\n');
+
+// the map module: the request pages' file, so the map opens and the gate's check passes from the start
+if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(process.execPath, ['docs/flow/build-requests.mjs'], { cwd: target, encoding: 'utf8' });
 
 // the OpenCode commands (and, when missing, opencode.jsonc), so every agent can run /setup at once
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
@@ -106,7 +171,7 @@ console.log(`  added ${done.added.length} files, replaced ${done.replaced.length
 console.log(`  ${harnessLine}`);
 console.log(`
 Next, in ${target}:
-  1. npm i -D tsx typescript @types/node${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}
+  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
   3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
      the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)

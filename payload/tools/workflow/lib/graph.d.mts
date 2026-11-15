@@ -4,13 +4,19 @@ export interface Graph {
   imports: Map<string, string[]>;
   nodeImports: Map<string, string[]>;
   importedBy: Map<string, Set<string>>;
+  /** what each file names from outside the project, as written (`express`, `std::fs`) */
+  uses: Map<string, string[]>;
 }
 export function importsOf(text: string): string[];
 export function isNodeModule(spec: string): boolean;
 export function resolveImport(from: string, spec: string, known: Set<string>): string | null;
+export function rustUses(text: string): string[];
+export function resolveRust(from: string, text: string, known: Set<string>): string[];
+export function resolvePython(from: string, text: string, known: Set<string>): { files: string[]; uses: string[] };
+export function resolveGo(from: string, text: string, known: Set<string>): { files: string[]; uses: string[] };
 export function buildGraph(files: Map<string, string>, others?: string[]): Graph;
 export function affectedTests(
   graph: Graph,
   changed: string[],
-  opts: { isTest: (file: string) => boolean; ignore?: string[] },
+  opts: { isTest: (file: string) => boolean; ignore?: string[]; isCode?: (file: string) => boolean },
 ): { tests: string[]; all: boolean };

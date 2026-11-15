@@ -6,5 +6,6 @@
   "gate:all": "node tools/workflow/gate.mjs --all",
   "map": "node tools/workflow/map.mjs",
   "board": "node tools/workflow/board.mjs",
-  "harness": "node tools/workflow/harness.mjs"
+  "harness": "node tools/workflow/harness.mjs",
+  "health": "node tools/workflow/health.mjs"
 }

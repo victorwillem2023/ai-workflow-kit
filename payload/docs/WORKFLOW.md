@@ -107,7 +107,7 @@ Columns, left to right: Backlog, Needs a board or decision, Ready, In progress, 
 
 ## Two servers, don't mix them up
 - The **main** folder runs on the main port (`session.mainPort` in `workflow.config.json`, e.g. 8787): it shows what is finished.
-- A session's work is on **its own port** (8788 and up): `npm run dev` in that folder.
+- A session's work is on **its own port** (8788 and up): start the dev server in that folder.
 
 ## When something goes wrong
 - **Board unreachable** (gh missing, not signed in, no network): The agent says so in one line and carries on. Move the card by hand.

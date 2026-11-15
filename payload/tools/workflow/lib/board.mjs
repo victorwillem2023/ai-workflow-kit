@@ -190,6 +190,15 @@ export function searchCards(board, run, words) {
       column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null }));
 }
 
+
+/** Every card (open and closed, at most 1000): number, title, state (lower case), labels and column, for the worksheet. */
+export function listCards(board, run) {
+  return ghJson(run, 'reading the cards', ['issue', 'list', '--repo', board.repo, '--state', 'all', '--limit', '1000',
+    '--json', 'number,title,state,labels,projectItems'])
+    .map((c) => ({ number: c.number, title: c.title, state: String(c.state).toLowerCase(), labels: (c.labels ?? []).map((l) => l.name),
+      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null }));
+}
+
 /** Which columns from the config the project lacks (empty when it has them all), the ones it has, and the
  *  open cards with no type label from the config (`untyped`, empty when the config lists no types), and the labels the config
  *  names (types, areas, effort, feasibility) that the repo does not have (`unknownLabels`). */

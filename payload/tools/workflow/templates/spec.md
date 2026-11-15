@@ -8,6 +8,10 @@ Session: `node scripts/session.mjs <topic>` (folder `../{{PREFIX}}-<topic>`)
 ## What the user sees
 Plain words: what changes on screen or in the results. No file names here.
 
+## The rule and who shares it
+A fix, or a change to a rule every feature keeps to: the rule in one line, its row in `docs/ARCHITECTURE.md` (*Rules and where
+each lives*), and the kinds of case that share it. The change goes in the rule's home. Anything else: "none".
+
 ## Files that change
 One line per file: what changes in it. Look in `docs/MAP.md` first.
 

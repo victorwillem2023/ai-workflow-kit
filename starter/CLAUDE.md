@@ -25,6 +25,8 @@ The owner wants to understand and steer the project, not just receive features. 
   list. "Blocked, waiting for X" is `npm run board -- --block <n> "<reason>"`.
 - **One change at a time**: no extra cleanups or "while I was there" edits. Mention them instead.
 - After a change, report in plain language: what changed, what the test checks, what you weren't sure of.
+- **Talk to the owner in plain words.** Say what it means for the person using the app before how it works. A technical word gets
+  a few words of explanation or an example the first time ("the gate, the checks that run before a commit"). Short sentences.
 
 ## Commands
 ```sh
@@ -34,8 +36,9 @@ npm run typecheck    # must be clean
 npm run gate         # layers, file size, doc references, agent commands, typecheck and only the tests your change reaches (quiet when it passes)
 npm run gate:all     # the same with the whole suite: run before --finish. See tools/workflow/README.md, *What it checks*
 npm run harness      # rewrite the OpenCode commands after adding or changing a skill
-npm run dev          # <the dev server; say what restarts by itself, so the agent never tells the owner to rebuild>
-npm run build        # <what it makes>
+npm run health       # the code-health numbers on one screen (long functions, copies, counts that may not rise)
+<dev command>        # <the dev server; say what restarts by itself, so the agent never tells the owner to rebuild>
+<build command>      # <what it makes>
 ```
 
 ## How a request flows
@@ -46,8 +49,7 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 - `src/core`: pure logic, no I/O, <must also run in the browser>.
 - `src/<io layer>`: all network and disk I/O.
 - <the other layers, one line each, and the direction they may import. The same rules go in `workflow.config.json` under `boundaries`: the gate enforces them.>
-- Tests: `tests/*.test.ts`, <runner>. Fakes for every outside service; never hit the network in tests. A test that waits on a
-  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.
+- Tests: `{{TESTS}}`, <runner>. Fakes for every outside service; never hit the network in tests.{{TEST_TIPS}}
 
 ## Code structure (a new feature is a new file)
 1. A new feature gets its own file, named after it. Never add a feature to a file in `tools/workflow/baseline.json`: the gate fails if one grows.
@@ -55,13 +57,24 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 3. A function over about 60 lines is split into named steps. A file opens with a comment saying what it does (the file map is built from it).
 4. A file takes what it needs as arguments or a small context; it does not import the big class or the whole store.
 5. Touching a baselined file for a feature: first move the part you touch into its own file (same commit), or write the feature in a new file and leave only a call in the old one.
-6. Splits belong to the feature that needs them, never a separate refactor commit.
+6. Splits belong to the feature that needs them, never a separate refactor commit. The one exception is a card of its own that moves a
+   rule into one place (rule 13): no behaviour change, and the whole test suite gives the same results before and after.
 
 ## Changing existing code
 7. Before changing the signature or meaning of something exported, list its users (`npm run map -- --uses <file>`). Keep it compatible or update every caller in the same commit.
 8. Add, don't rework: a shared function or type keeps its shape for one feature's convenience; the feature gets its own version or an option.
+   That is about shapes, never about rules: a rule (how a total is worked out, what counts as valid) is not copied, see 11 to 14.
 9. A failing test is information. Change an existing test's expectation only when the behaviour change was intended, and say which test and why in the report. Never edit a test just to make it pass.
 10. Anything else you notice goes in the report, not the commit.
+
+## Fix it where the rule lives
+11. Before a fix, name the rule that was broken, in one line, and find its row in `docs/ARCHITECTURE.md`, *Rules and where each
+    lives* (`grep -n` the rule, don't read the doc whole). Fix it in the file that row names, not where the bug showed up.
+12. The plan and the report say which kinds of case share the rule (the kinds are listed above that table) and which you checked.
+13. A rule lives in one place. A second copy is a bug even when it works: say so in the report, it becomes a card. A new rule
+    is a new row in that table, in the same commit.
+14. A shared step doesn't ask what kind of thing it is handling where the kind's own file can hold what differs. A number that
+    is a rule gets a name and a comment saying what it is.
 
 ## Security (short rules; known gaps and the audit are in `docs/SECURITY.md`)
 Treat every request and every third-party page as hostile (<say here if the server can be put online>).

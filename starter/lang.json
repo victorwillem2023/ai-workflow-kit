@@ -1,0 +1,214 @@
+{
+  "ts": {
+    "name": "TypeScript",
+    "needs": "npm i -D tsx typescript @types/node",
+    "tests": "tests/*.test.ts"
+  },
+  "rust": {
+    "name": "Rust",
+    "needs": "rustup (cargo, clippy)",
+    "config": {
+      "code": [
+        ".rs",
+        ".mjs"
+      ],
+      "tests": "tests/**/*.rs",
+      "testPicking": false,
+      "commands": {
+        "typecheck": "cargo check --all-targets && cargo clippy --all-targets -- -D warnings",
+        "testAll": "cargo test",
+        "testFiles": "cargo test"
+      },
+      "size": {
+        "maxLines": 400,
+        "include": [
+          "src/**/*.rs",
+          "tools/**/*.mjs"
+        ]
+      },
+      "functions": {
+        "maxLines": 60,
+        "include": [
+          "src/**/*.rs"
+        ]
+      },
+      "boundaries": [
+        {
+          "name": "core is pure",
+          "from": "src/core/**",
+          "forbid": [
+            "src/web/**",
+            "src/server/**"
+          ],
+          "forbidUse": [
+            "std::fs",
+            "std::net::TcpStream",
+            "std::net::TcpListener",
+            "std::net::UdpSocket",
+            "std::process",
+            "tokio",
+            "reqwest"
+          ]
+        }
+      ]
+    },
+    "scripts": {
+      "test": "cargo test",
+      "test:full": "cargo test -- --nocapture",
+      "typecheck": "cargo check --all-targets && cargo clippy --all-targets -- -D warnings"
+    },
+    "gitignore": [
+      "target/"
+    ],
+    "ci": [
+      "- uses: dtolnay/rust-toolchain@stable",
+      "  with:",
+      "    components: clippy"
+    ]
+  },
+  "python": {
+    "name": "Python",
+    "needs": "uv (https://docs.astral.sh/uv/), then: uv sync",
+    "config": {
+      "code": [
+        ".py",
+        ".mjs"
+      ],
+      "tests": "tests/**/test_*.py",
+      "testPicking": false,
+      "commands": {
+        "typecheck": "uv run ruff check . && uv run mypy src",
+        "testAll": "uv run pytest -q",
+        "testFiles": "uv run pytest -q"
+      },
+      "size": {
+        "maxLines": 400,
+        "include": [
+          "src/**/*.py",
+          "tools/**/*.mjs"
+        ]
+      },
+      "boundaries": [
+        {
+          "name": "core is pure",
+          "from": "src/**/core/**",
+          "forbid": [
+            "src/**/web/**",
+            "src/**/server/**"
+          ],
+          "forbidUse": [
+            "socket",
+            "subprocess",
+            "requests",
+            "httpx",
+            "urllib"
+          ]
+        }
+      ],
+      "functions": {
+        "maxLines": 60,
+        "include": [
+          "src/**/*.py"
+        ]
+      }
+    },
+    "scripts": {
+      "test": "uv run pytest -q",
+      "test:full": "uv run pytest",
+      "typecheck": "uv run ruff check . && uv run mypy src"
+    },
+    "gitignore": [
+      ".venv/",
+      "__pycache__/",
+      ".mypy_cache/",
+      ".ruff_cache/",
+      ".pytest_cache/"
+    ],
+    "ci": [
+      "- uses: astral-sh/setup-uv@v5",
+      "- run: uv sync"
+    ]
+  },
+  "go": {
+    "name": "Go",
+    "needs": "go",
+    "config": {
+      "code": [
+        ".go",
+        ".mjs"
+      ],
+      "tests": "**/*_test.go",
+      "testPicking": false,
+      "commands": {
+        "typecheck": "go vet ./...",
+        "testAll": "go test ./...",
+        "testFiles": "go test ./..."
+      },
+      "size": {
+        "maxLines": 400,
+        "include": [
+          "cmd/**/*.go",
+          "internal/**/*.go",
+          "pkg/**/*.go",
+          "tools/**/*.mjs"
+        ]
+      },
+      "functions": {
+        "maxLines": 60,
+        "include": [
+          "cmd/**/*.go",
+          "internal/**/*.go",
+          "pkg/**/*.go"
+        ]
+      },
+      "boundaries": [
+        {
+          "name": "core is pure",
+          "from": "internal/core/**",
+          "forbid": [
+            "internal/server/**",
+            "cmd/**"
+          ],
+          "forbidUse": [
+            "net/http",
+            "os",
+            "database/sql"
+          ]
+        }
+      ],
+      "roots": [
+        "cmd",
+        "internal",
+        "pkg",
+        "scripts",
+        "tools"
+      ],
+      "map": {
+        "out": "docs/MAP.md",
+        "folders": [
+          "cmd/**",
+          "internal/**",
+          "pkg/**"
+        ]
+      },
+      "security": {
+        "code": "internal/",
+        "server": "internal/server/",
+        "inputFolders": [
+          "internal/core/",
+          "internal/server/"
+        ]
+      }
+    },
+    "scripts": {
+      "test": "go test ./...",
+      "test:full": "go test -v ./...",
+      "typecheck": "go vet ./..."
+    },
+    "ci": [
+      "- uses: actions/setup-go@v5",
+      "  with:",
+      "    go-version-file: go.mod"
+    ]
+  }
+}

@@ -9,11 +9,18 @@ export function summaryOf(text) {
   let body = '';
   if (t.startsWith('//')) {
     body = t.split('\n').filter((_, i, a) => a.slice(0, i + 1).every((l) => l.trimStart().startsWith('//')))
-      .map((l) => l.trimStart().replace(/^\/\/+\s?/, '').trim()).join(' ');
+      .map((l) => l.trimStart().replace(/^\/\/[/!]*\s?/, '').trim()).join(' ');
+  } else if (t.startsWith('#') && !t.startsWith('#!') && !t.startsWith('#[')) {
+    // Python, Ruby, shell: the lines that start with #
+    body = t.split('\n').filter((_, i, a) => a.slice(0, i + 1).every((l) => l.trimStart().startsWith('#')))
+      .map((l) => l.trimStart().replace(/^#+\s?/, '').trim()).join(' ');
   } else if (t.startsWith('/*')) {
     const end = t.indexOf('*/');
     body = t.slice(2, end < 0 ? 300 : end).split('\n').map((l) => l.replace(/^\s*\*+\s?/, '').trim()).join(' ');
   }
+  // Python: a docstring at the top of the file
+  const doc = /^(?:[rRuU]?)("""|''')([\s\S]*?)\1/.exec(t);
+  if (!body && doc) body = doc[2].split('\n').map((l) => l.trim()).join(' ');
   body = body.replace(/[=\-*_#~]{4,}/g, ' ').replace(/\s+/g, ' ').trim();
   if (!body) return '(no opening comment)';
   const m = body.match(/^(.*?[.!?])(?:\s|$)/);
@@ -23,7 +30,7 @@ export function summaryOf(text) {
 
 // Short name of an imported file: same folder -> `b`, elsewhere -> `core/b` (path from src/ or the root).
 function short(from, to) {
-  const strip = (p) => p.replace(/\.(?:ts|tsx|mjs|js)$/, '').replace(/\/index$/, '');
+  const strip = (p) => p.replace(/\.\w+$/, '').replace(/\/(?:index|mod)$/, '');
   if (posix.dirname(from) === posix.dirname(to)) return strip(posix.basename(to));
   return strip(to.replace(/^src\//, ''));
 }
