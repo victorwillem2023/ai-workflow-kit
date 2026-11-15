@@ -12,6 +12,7 @@ import { renderMap, sameMap, findInMap, usesInMap, withoutImports } from './lib/
 import { matchesAny } from './lib/glob.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { parseK8s, parseTf, renderInfraMap } from './lib/infra.mjs';
+import { networkPolicy } from './lib/netpolicy.mjs';
 import { blockMakers, fillBlocks, hasBlocks } from './lib/docblocks.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
@@ -45,6 +46,9 @@ if (tf.length || k8s.length || existsSync(infraOut)) {
   const resources = [...tf.flatMap((f) => parseTf(f, readFileSync(f, 'utf8'))), ...k8s.flatMap((f) => parseK8s(f, readFileSync(f, 'utf8')))];
   pages.push([infraOut, renderInfraMap(resources)]);
 }
+// the network policy every infrastructure tool reads, once there is an infra folder (lib/netpolicy.mjs)
+const infraDir = config.map.infraDir ?? 'infra';
+if (existsSync(infraDir)) pages.push([`${infraDir}/network.json`, networkPolicy(config)]);
 const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : '');
 const makers = blockMakers({ config, toolVersions: read('.tool-versions'), envExample: read('.env.example') });
 for (const f of listed.filter((x) => x.endsWith('.md') && matchesAny(x, config.docs?.include ?? ['docs/*.md']))) {

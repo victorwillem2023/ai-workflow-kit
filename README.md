@@ -24,7 +24,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Plan** | `/setup`: the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to build next, by value for the effort, at any point; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
 | **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned, distroless release image per commit; smoke and accessibility tests and a page-weight budget once there are screens |
-| **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data; `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). **Not yet**: deploying from GitHub, the infrastructure code and `/launch`, which will ask the infrastructure questions (one app or services, server, container host, cluster or serverless, secrets, data, queues, monitoring): kit 2.5. The guides for those decisions are there today (`docs/INFRA.md`, `docs/RECOVERY.md`, `docs/ENVIRONMENTS.md`) |
+| **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data; `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/IAC.md`); deploys go from GitHub to staging, then production after your approval; `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
 | **Grow** | the loop back: feedback, errors and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, feature flags, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. **Not yet**: `/market` (positioning, a landing page, pricing, a launch checklist): kit 2.6 |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
@@ -53,7 +53,8 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops, and the cheap helpers /next /check /find /docs
+  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch, and the cheap helpers /next /check /find /docs
+                          infracheck and infraplan (infrastructure checked, planned, reviewed, applied), drill (the restore drill)
   tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
                           (SETUP.md proven on a fresh clone), spec template, README (the reference)
@@ -86,8 +87,9 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
   dev/       dev.cmd, start.cmd (Windows: install on first run, check packages and port), scripts/dev-check.mjs, .env.example
   map/       docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
   deploy/    a Dockerfile per language, scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
-             npm run smoke; npm run rollback), docs/DEPLOY.md, .github/workflows/release.yml (after the gate: one image per commit,
-             scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit)
+             npm run smoke; npm run rollback; --env staging|production), docs/DEPLOY.md, .github/workflows/release.yml (after the gate: one image per commit,
+             scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit), .github/workflows/deploy.yml
+             (after a release: staging by itself, production after an approval)
   production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
              src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
              docs/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
@@ -107,6 +109,10 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
 | `/check`, `/find`, `/docs` | Cheap helpers on a small model: explain a failing gate, answer "where is X" from the map, a small docs edit. Read-only or no commit. |
 | `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
 | `/secops` | Reads the weekly security report (an issue every Monday), says what each finding means, proposes the fix; a yes makes it a fix or a card. |
+| `/launch` | Before the first real deploy: the platform, shape, database, load balancer, sizes and infrastructure tool, one decision at a time with prices that day; writes the record, `infra/`, the environments and the run docs. Never applies. |
+| `/arch <question>` | The architecture board: four AI reviewers (cost, operations, security, product) answer apart; a proposed decision record; you decide. |
+| `npm run infra-plan -- infra/<env>` then `npm run infra-apply -- infra/<env>` | The plan, reviewed against the stack's `plan.expect` (names, labels, nothing holding data destroyed); then you apply exactly that plan, typing a code. |
+| `npm run drill` | The restore drill: the latest backup restored into a new place, the app started on it and asked; the date goes in `docs/RECOVERY.md`. |
 | `npm run setup-check` | Runs `docs/SETUP.md`'s marked steps on a fresh clone: the setup guide is proven, not hoped. |
 | `npm run updates` | What Dependabot found: security alerts first, then each update with a verdict (take it, look first, hold). `/work` starts with its one line. |
 
@@ -174,6 +180,19 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.5.0**: `/launch` and the Run stage, for any platform and tool. `docs/LAUNCH.md` walks the choices (cloud or on-prem;
+  one server, a container host, serverless or a cluster; the database; the load balancer; server type and size; OpenTofu,
+  Terraform, Pulumi or Ansible; analytics and a warehouse). Infrastructure changes go out in four steps (`docs/IAC.md`):
+  `npm run infra-check` (in the gate when `infra/` changes: format, validate, the stack's own tests with mocked providers,
+  startup scripts without secrets or `curl | sh` and passing cloud-init's schema, Trivy), a `plan.expect` written from the
+  spec before the plan, `npm run infra-plan` (the plan reviewed against it: nothing unexpected, nothing missing, no database or
+  volume destroyed without `--allow-destroy`, the final names and labels checked against the conventions), and
+  `npm run infra-apply`, only at a terminal with a typed code, applying exactly the saved plan. `infra/network.json` is made
+  from the config. The deploy script takes `--env`; the deploy workflow takes each release to staging, then production after an
+  approval. `npm run drill` restores the latest backup into a new place and proves the app runs on it; SecOps flags a drill
+  older than 3 months. New guides: CI/CD and monitoring (options, prices, what fits, how each works with AI agents), releases
+  and user testing, the service mesh (Istio ambient and sidecar, Linkerd, Cilium, Consul, Kuma), and scaling (repositories,
+  the platform repository for shared config, ownership, when to split a service). `/arch`: the architecture board.
 - **2.4.0**: the AI module, for an app that calls a language model (`--with ai`; optional modules are new, and an update now
   keeps the modules a project was installed with). `src/server/ai.ts` is the one file allowed to call a model: a monthly and a
   per-user daily spend cap counted before the call, limits on input, output and time, untrusted text passed as marked data that

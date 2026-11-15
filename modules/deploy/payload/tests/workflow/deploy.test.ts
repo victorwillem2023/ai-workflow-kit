@@ -64,6 +64,15 @@ describe('deploy, end to end', () => {
     assert.match(r.out, /Live: .* runs [0-9a-f]{12}, and stayed healthy through the watch\./);
     assert.match((await deploy('--smoke')).out, /^up: .* runs [0-9a-f]{12}/);
   });
+  it('deploys to a named environment with its own settings, and refuses one the config does not have', async () => {
+    const put = `node -e "require('fs').writeFileSync(process.argv[1], process.argv[2])" "${join(dir, 'version.txt').replaceAll('\\', '/')}" {version}`;
+    writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ deploy: { url: 'http://127.0.0.1:1', waitSeconds: 0.3, environments: { staging: { url: `http://127.0.0.1:${port}`, command: put, rollback: put, watch: { seconds: 0 } } } } }));
+    git('add', '.'); git('commit', '-m', 'staging'); git('push', 'origin', 'main');
+    const r = await deploy('--env', 'staging');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, new RegExp(`Live: http://127\\.0\\.0\\.1:${port} runs [0-9a-f]{12}\\.`));
+    assert.match((await deploy('--env', 'uat')).out, /No "uat" under deploy\.environments.*The environments: staging/);
+  });
   it('a deploy that does not come up is rolled back to the version that ran before, and says so', async () => {
     const good = live();
     config('broken');

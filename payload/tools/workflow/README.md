@@ -188,6 +188,24 @@ with `performance.load.users`, and judges k6's summary against `performance.goal
 exit 1 when a goal is missed. Production (`deploy.url`) is refused without `--yes-production`. `--script-only` prints the k6
 script; a file `load/<kind>.js` of your own replaces the made one. Why and when each kind: `docs/PERFORMANCE.md`.
 
+## Infrastructure: check, plan, apply
+- `npm run infra-check`: every stack under `infra/` (one per folder; the tool from its files, or `launch.iac`), in Docker:
+  OpenTofu or Terraform `fmt -check`, `init -backend=false`, `validate`, and `test` when the stack has `*.tftest.hcl` files
+  (with `mock_provider`, no cloud account); Ansible's syntax check; startup scripts (`cloud-init*.yaml`, `user-data*`,
+  `startup*.sh`) without secrets or `curl | sh`, cloud-config files through `cloud-init schema`; Trivy's configuration scan.
+  The `infra` entry of `checks` runs it in the gate when `infra/**` changes. The images live in `IMAGES`; Renovate moves them.
+- `npm run infra-plan -- infra/<env> [--allow-destroy <address>]`: the plan against the real state (read-only credentials from
+  the environment, passed by name), saved beside git's data, and reviewed (`lib/infraplan.mjs`) against the stack's
+  `plan.expect`, the protected kinds (`launch.protect`), `naming.resources` (the final names) and `launch.labels`.
+- `npm run infra-apply -- infra/<env>`: only at a terminal, with a typed code (agents are denied it in the settings), only a
+  plan that passed, only while no file of the stack changed since, and once. The why and the order: `docs/IAC.md`.
+
+## The restore drill
+`npm run drill` runs `recovery.drill.restore` into a new temporary folder (`{dir}`), starts the app with `recovery.drill.start`
+on `{port}`, asks it `recovery.drill.paths` (the first one until it answers, within `waitSeconds`), stops it, deletes the folder,
+and writes the date and timings into the *Last restore drill* row of `docs/RECOVERY.md`; `pingEnv` names an environment
+variable with a dead man's switch address to call on success. SecOps flags a drill older than 90 days.
+
 ## A setup guide that is proven
 `docs/SETUP.md` marks its steps ```sh setup``` (must finish) and one ```sh start``` with `<!-- ready: http://127.0.0.1:<port>/ -->`
 below it (must answer). `npm run setup-check` runs them on a fresh clone of the committed repository; `.github/workflows/setup.yml`

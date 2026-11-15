@@ -1,0 +1,102 @@
+# The deploy pipeline: after a release built the image, it goes to staging by itself (the deploy script: health check, the watch,
+# a rollback if it fails), then to production only after a person approves the "production" environment (Settings, Environments,
+# Required reviewers: on public repositories, or private ones from GitHub's Team plan; on Free or Pro, run this workflow by hand
+# for production instead). Each environment is skipped while deploy.environments in workflow.config.json does not name it.
+# The host's credentials live in that environment's secrets: DEPLOY_SSH_KEY (a private key for an SSH deploy, Kamal, Compose)
+# and DEPLOY_TOKEN (a platform's API token), read by deploy.environments.<name>.command. Production's never reach staging.
+# docs/CICD.md says how this fits; the infrastructure under it changes only through the plan and review in docs/IAC.md.
+name: deploy
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy the commit this runs on
+        type: choice
+        options: [staging, production]
+permissions:
+  contents: read
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  staging:
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      # nosemgrep: yaml.github-actions.security.workflow-run-target-code-checkout.workflow-run-target-code-checkout
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .tool-versions
+      - name: Is this environment set up?
+        id: env
+        env:
+          TARGET: ${{ github.job }}
+        run: |
+          node -e "const e=(JSON.parse(require('fs').readFileSync('workflow.config.json','utf8')).deploy||{}).environments||{}; console.log(e[process.env.TARGET] ? 'go=1' : 'go=0')" >> "$GITHUB_OUTPUT"
+      - name: Load the SSH key
+        if: steps.env.outputs.go == '1'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          [ -z "$DEPLOY_SSH_KEY" ] && exit 0
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          eval "$(ssh-agent -s)" && echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | ssh-add -
+      - name: Deploy, check, watch (rolls back by itself if it fails)
+        if: steps.env.outputs.go == '1'
+        env:
+          TARGET: ${{ github.job }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: node scripts/deploy.mjs --env "$TARGET"
+      - name: Not set up
+        if: steps.env.outputs.go != '1'
+        run: echo "No ${{ github.job }} under deploy.environments in workflow.config.json yet (/launch sets it up). Skipped."
+  production:
+    needs: staging
+    if: always() && ((github.event_name == 'workflow_run' && needs.staging.result == 'success') || inputs.environment == 'production')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # nosemgrep: yaml.github-actions.security.workflow-run-target-code-checkout.workflow-run-target-code-checkout
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .tool-versions
+      - name: Is this environment set up?
+        id: env
+        env:
+          TARGET: ${{ github.job }}
+        run: |
+          node -e "const e=(JSON.parse(require('fs').readFileSync('workflow.config.json','utf8')).deploy||{}).environments||{}; console.log(e[process.env.TARGET] ? 'go=1' : 'go=0')" >> "$GITHUB_OUTPUT"
+      - name: Load the SSH key
+        if: steps.env.outputs.go == '1'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          [ -z "$DEPLOY_SSH_KEY" ] && exit 0
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          eval "$(ssh-agent -s)" && echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | ssh-add -
+      - name: Deploy, check, watch (rolls back by itself if it fails)
+        if: steps.env.outputs.go == '1'
+        env:
+          TARGET: ${{ github.job }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: node scripts/deploy.mjs --env "$TARGET"
+      - name: Not set up
+        if: steps.env.outputs.go != '1'
+        run: echo "No ${{ github.job }} under deploy.environments in workflow.config.json yet (/launch sets it up). Skipped."

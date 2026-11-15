@@ -8,3 +8,8 @@ NEXT-SESSION.md
 !.env.example
 node_modules/
 dist/
+# infrastructure tools' working folders and state (the lock file .terraform.lock.hcl stays in git)
+.terraform/
+*.tfstate
+*.tfstate.*
+.pulumi/

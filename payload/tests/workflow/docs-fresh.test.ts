@@ -90,3 +90,26 @@ describe('parts of docs made from the config', () => {
     assert.match(makers.naming(), /\| `src\/\*\*\/\*\.ts` \| kebab \|/);
   });
 });
+
+describe('the infra stacks and the network policy', async () => {
+  const { stacks, toolOf } = await import('../../tools/workflow/lib/infracheck.mjs');
+  const { networkPolicy } = await import('../../tools/workflow/lib/netpolicy.mjs');
+  it('knows each tool by its files, and OpenTofu over Terraform unless the project chose Terraform', () => {
+    assert.equal(toolOf(['infra/prod/main.tf']), 'tofu');
+    assert.equal(toolOf(['infra/prod/main.tf'], 'terraform'), 'terraform');
+    assert.equal(toolOf(['infra/Pulumi.yaml', 'infra/index.ts']), 'pulumi');
+    assert.equal(toolOf(['infra/ansible/site.yml', 'infra/ansible/ansible.cfg']), 'ansible');
+    assert.equal(toolOf(['infra/README.md']), null);
+  });
+  it('finds one stack per folder and leaves shared modules to the stacks that use them', () => {
+    const paths = ['infra/prod/main.tf', 'infra/staging/main.tf', 'infra/modules/server/main.tf', 'infra/network.json', 'infra/ansible/site.yml'];
+    assert.deepEqual(stacks(paths), [{ dir: 'infra/ansible', tool: 'ansible' }, { dir: 'infra/prod', tool: 'tofu' }, { dir: 'infra/staging', tool: 'tofu' }]);
+  });
+  it('makes one network file from the config: the safe ingress by default, the lists sorted', () => {
+    const p = JSON.parse(networkPolicy({ security: { egress: ['b.example', 'a.example'], ipRules: [{ cidr: '203.0.113.0/24', action: 'allow', for: 'admin', why: 'office', until: '2027-01-31' }, { cidr: '198.51.100.7', action: 'block', why: 'abuse', until: '2026-12-31' }] } }));
+    assert.deepEqual(p.ingress.map((r: { port: number }) => r.port), [443, 80]);
+    assert.deepEqual(p.egress, ['a.example', 'b.example']);
+    assert.deepEqual(p.allow, [{ cidr: '203.0.113.0/24', for: 'admin', until: '2027-01-31', why: 'office' }]);
+    assert.equal(p.block[0].cidr, '198.51.100.7');
+  });
+});

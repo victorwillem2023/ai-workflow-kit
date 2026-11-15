@@ -18,8 +18,9 @@ section.
 - **Encrypted** before they leave the server; the key is kept apart from the backups (a password manager and on paper).
 - **Tools**: SQLite: Litestream (streams every change to object storage, seconds of loss) or `sqlite3 .backup` on a timer.
   Postgres: pgBackRest or the managed database's point-in-time restore. Files and the rest: restic.
-- **A drill every 3 months**, scripted: restore the latest backup into a new place, start the app on it, run its health check
-  and a few read-only requests, write the date above. A drill that needed a step not written here adds the step.
+- **A drill every 3 months**, scripted: `npm run drill` restores the latest backup into a new place, starts the app on it,
+  runs its health check and a few read-only requests, and writes the date and timings above (`recovery.drill` in the config
+  holds the project's restore and start commands; the weekly SecOps report flags a drill older than 3 months). A drill that needed a step not written here adds the step.
 
 ## Database changes without downtime (expand and contract)
 1. **Expand**: add the new column or table; the old code still works (new columns are nullable or have a default).

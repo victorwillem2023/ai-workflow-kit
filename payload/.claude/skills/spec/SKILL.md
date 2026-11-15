@@ -19,7 +19,10 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    Its type label (`ui`, `feature`, `bug`, `workflow`) goes on the spec's "Card:" line; a card with none: ask which.
    Find what the feature does now in the guide part for it (`docs/GUIDE.md` lists them; open only that file in `docs/guide/`) and the files in `docs/MAP.md` (search them, don't read them
    whole) and open only the ranges you need.
-2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation).
+2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation). A card that adds a
+   service or a datastore, a platform or provider, changes a boundary, or is otherwise hard to undo: suggest `/arch` first
+   (the architecture board, `docs/SCALING.md`), and write the spec on its accepted decision. A change under `infra/` names
+   what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/IAC.md`).
 3. Copy `tools/workflow/templates/spec.md` to `specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
    - The rule and who shares it: `grep -n` the rule's row in `docs/ARCHITECTURE.md`, *Rules and where each lives*; the change goes in

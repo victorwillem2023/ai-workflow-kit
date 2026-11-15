@@ -53,9 +53,13 @@ certificates: `docs/INFRA.md`, each with where to start and what makes it grow. 
 images (distroless, Docker Hardened Images and the rest), traffic in and out, IP allow and block lists, and SFTP: `docs/INFRA.md`;
 the project's own lists: `docs/NETWORK.md`. APIs and their docs: `docs/API.md`. Frameworks and a CMS: `docs/FRONTEND.md`.
 
-What `/launch` writes: `infra/` (the infrastructure as code), the deploy settings, the environments (staging, then
-production), a runbook (what to do when it breaks), and checks on the infrastructure files in the pipeline.
-`/launch` comes with kit 2.5 (network and firewall, one server, container hosts, on-prem, deploying from GitHub) and 2.6 (cluster, serverless, queues). Until then the kit ends at a scanned image in the registry and `npm run deploy` from your computer.
+`/launch` walks through every choice in `docs/LAUNCH.md` (platform, cloud or on-prem; one server to a cluster; the database;
+the load balancer; server sizes; the infrastructure tool: OpenTofu, Terraform, Pulumi or Ansible; analytics), then writes
+`infra/` (one stack per environment), the deploy settings for staging and production, the restore drill, and the run docs.
+Every infrastructure change goes out the same way (`docs/IAC.md`): checked offline with mocked providers, the expected change
+written first, a plan reviewed against it, and the saved plan applied by the owner. CI/CD choices: `docs/CICD.md`; monitoring:
+`docs/MONITORING.md`; releases and user testing: `docs/RELEASES.md`; a service mesh: `docs/MESH.md`; scaling, repositories,
+the platform repository and the architecture board (`/arch`): `docs/SCALING.md`.
 
 ## Every stage: kept up to date, checked and written down
 - **Names**: the gate's *naming* check per kind of thing (files, exported functions, types, components), from the language's

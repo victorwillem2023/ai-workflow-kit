@@ -40,7 +40,7 @@ The proxy holds the timeouts, body-size limits and security headers; the app tru
 ## Service mesh
 | Start | Grow when |
 |---|---|
-| none. Services on one private network call each other over TLS with a token | many services, a team per service, and a need for mutual TLS, retries and traffic splitting everywhere: Linkerd (simplest) or Istio's ambient mode, only on a cluster. A mesh is a large thing to run: it waits for a real need |
+| none. Services on one private network call each other over TLS with a token | many services, a team per service, and a need for mutual TLS, retries and traffic splitting everywhere: Istio's ambient mode or Linkerd, only on a cluster. A mesh is a large thing to run: it waits for a real need. The questions, the choices and how to run Istio: `docs/MESH.md` |
 
 ## DNS
 - **Public DNS** at a provider with an API and DNSSEC (Cloudflare, deSEC, Bunny DNS, or the cloud's), written as code with

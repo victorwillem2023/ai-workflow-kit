@@ -6,6 +6,7 @@
 //                                                "watch" in the config: 5 minutes by default); if it never comes up or fails the watch, roll back
 //   node scripts/deploy.mjs --smoke              only ask the running app: is it up, and which version
 //   node scripts/deploy.mjs --rollback [<commit>]  put an older version back (default: the one deployed before, from this computer's list)
+//   --env <name>                                 any of the above for that environment (deploy.environments.<name>: staging, production)
 // Only when the owner says so. Refuses uncommitted files and a commit that is not on origin/main: what runs is a commit you can find again.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
@@ -16,8 +17,13 @@ const args = process.argv.slice(2);
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 const root = git('rev-parse', '--show-toplevel');
 process.chdir(root);
-const cfg = JSON.parse(readFileSync('workflow.config.json', 'utf8')).deploy ?? {};
+const all = JSON.parse(readFileSync('workflow.config.json', 'utf8')).deploy ?? {};
 const stop = (line) => { console.log(line); process.exit(1); };
+// --env <name>: that environment's settings (deploy.environments.<name>: url, command, rollback, watch) over the shared ones
+const envName = args.includes('--env') ? args[args.indexOf('--env') + 1] : null;
+if (envName && !all.environments?.[envName]) stop(`No "${envName}" under deploy.environments in workflow.config.json. The environments: ${Object.keys(all.environments ?? {}).join(', ') || 'none yet (/launch sets them)'}.`);
+const { environments: _envs, ...shared } = all;
+const cfg = envName ? { ...shared, ...all.environments[envName] } : shared;
 if (!cfg.url) stop('Not set up yet: put "deploy": { "url": ..., "command": ..., "rollback": ... } in workflow.config.json (docs/DEPLOY.md says how).');
 
 const url = healthUrl(cfg.url, cfg.health);
@@ -28,7 +34,7 @@ const waiting = { tries: Math.max(1, Math.ceil(((cfg.waitSeconds ?? 120) * 1000)
 // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 const run = (command) => spawnSync(command, { shell: true, stdio: 'inherit' }).status === 0;
 // the versions deployed from this computer, oldest first (kept beside the repository's git data, never committed)
-const logFile = join(resolve(root, git('rev-parse', '--git-common-dir')), 'deploys.log');
+const logFile = join(resolve(root, git('rev-parse', '--git-common-dir')), `deploys${envName ? `-${envName}` : ''}.log`);
 const log = () => (existsSync(logFile) ? readFileSync(logFile, 'utf8').split('\n').filter(Boolean) : []);
 
 async function rollback(to, why) {

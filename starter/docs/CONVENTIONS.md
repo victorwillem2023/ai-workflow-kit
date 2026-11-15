@@ -39,6 +39,22 @@ So `{{PREFIX}}-prod-hel1-db-01`, `{{PREFIX}}-staging-fsn1-backups`. Where a prov
 storage accounts), drop the dashes in the same order. Tags or labels carry the same facts (`app`, `env`, `owner`, `cost-centre`),
 so costs and alerts can be sorted by them.
 
+**Decided before the first resource exists.** Most names cannot be changed later without destroying the thing (a server, a
+bucket, a database, a DNS zone), so `/setup` fixes the app code and `/launch` fixes the rest before anything is made. Leave room
+from the start, even if it looks like too much for one server:
+- the **env** and **place** parts are there on day one, so a second environment or region is a new value, not a rename;
+- the **nn** number has two digits from the first one (`web-01`), so the tenth server sorts after the ninth;
+- a name is never built by hand in each file: one place builds it (a naming module or `locals` in OpenTofu, a function in
+  Pulumi), from `app`, `env`, `place`, `part` and the index, so a new environment is a new variables file and `count` or
+  `for_each` makes the next one;
+- the same names carry into everything around the resource: the DNS name (`db-01.prod.hel1.internal`), the secret
+  (`{{PREFIX}}/prod/db`), the dashboard and the alert ("{{PREFIX}}-prod-hel1-db-01: disk 90% full").
+
+The plan review (`npm run infra-plan`, `docs/IAC.md`) checks the **final** names of everything it would create, whatever built
+them, against `naming.resources`, and that each carries the labels in `launch.labels` (for example `app`, `env`,
+`managed-by`). A kind with stricter rules (a globally unique bucket, a key without dashes) gets an `except` entry with the
+reason, never a second style made up on the spot.
+
 **Themed names** (planets, Harry Potter characters, cities) are fine for things people talk about and that live long: a team,
 a release, a long-lived machine you would miss (a "pet"). They are wrong for anything code creates, scales or replaces (the
 "cattle": app servers, containers, buckets, databases), and for anything whose name must say what it is when an alert wakes

@@ -16,5 +16,9 @@
   "access": "node tools/workflow/access.mjs",
   "changelog": "node tools/workflow/changelog.mjs",
   "retro": "node tools/workflow/retro.mjs",
-  "load": "node tools/workflow/load.mjs"
+  "load": "node tools/workflow/load.mjs",
+  "infra-check": "node tools/workflow/infracheck.mjs",
+  "infra-plan": "node tools/workflow/infraplan.mjs",
+  "infra-apply": "node tools/workflow/infraplan.mjs --apply",
+  "drill": "node tools/workflow/drill.mjs"
 }

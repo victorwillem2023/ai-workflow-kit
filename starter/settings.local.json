@@ -30,11 +30,21 @@
       "Bash(npm run retro:*)",
       "Bash(node tools/workflow/retro.mjs:*)",
       "Bash(npm run load:*)",
-      "Bash(node tools/workflow/load.mjs:*)"
+      "Bash(node tools/workflow/load.mjs:*)",
+      "Bash(npm run infra-check:*)",
+      "Bash(node tools/workflow/infracheck.mjs:*)",
+      "Bash(npm run infra-plan:*)",
+      "Bash(npm run drill:*)",
+      "Bash(node tools/workflow/drill.mjs:*)"
     ],
     "deny": [
       "Bash(npm run signoff:*)",
       "Bash(node tools/workflow/signoff.mjs:*)",
+      "Bash(npm run infra-apply:*)",
+      "Bash(node tools/workflow/infraplan.mjs --apply:*)",
+      "Bash(tofu apply:*)",
+      "Bash(terraform apply:*)",
+      "Bash(pulumi up:*)",
       "Edit(docs/SIGNOFFS.md)",
       "Write(docs/SIGNOFFS.md)",
       "Bash(git push --no-verify:*)",
