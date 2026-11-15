@@ -16,16 +16,28 @@ export function stageNudges(f) {
     const first = f.beforeDeploy.map((c) => `#${c.number} ${c.title}`).join('; ');
     out.push(first
       ? `The first version is built. Before it goes online: ${first} (it says it comes before the first deploy), then /launch.${add('launch')}`
-      : `The first version is built and nothing says yet where it runs: next is /launch (where it runs, the database, the deploy).${add('launch')}`);
+      : `The first version is built and nothing says yet where it runs: next is /launch (where it runs, the database, the deploy; it starts the run stage, which brings docs/run/).${add('launch')}`);
   }
   if (f.launched && f.beforeDeploy.length) {
     out.push(`It has a launch plan, but ${f.beforeDeploy.map((c) => `#${c.number}`).join(', ')} says it comes before the first deploy: do that before the deploy goes out.`);
   }
-  if (f.launched && !f.marketPage) out.push(`It has a launch plan and nothing yet on who it is for and how they find it: /market when you want users.${add('market')}`);
+  if (f.launched && !f.marketPage) out.push(`It has a launch plan and nothing yet on who it is for and how they find it: /market when you want users (it starts the market stage, which brings docs/market/).${add('market')}`);
+  // the project's own roadmap (docs/company/ROADMAP.md): its stage and the sign it watches, so the owner's plan steers too
+  if (f.roadmap && (!f.roadmap.stage || !f.roadmap.sign)) {
+    out.push('The roadmap does not say yet which stage the project is at and which sign you are watching: /advise roadmap (a few minutes).');
+  } else if (f.roadmap && f.roadmap.daysSinceChange >= 30) {
+    out.push(`The roadmap says stage ${f.roadmap.stage}, watching for: ${f.roadmap.sign}. Is that there yet? Then /advise roadmap for the next stage (unchanged for ${f.roadmap.daysSinceChange} days).`);
+  }
   if (f.installed.retro !== false && f.shippedThisWeek > 0 && (f.daysSinceRetro === null || f.daysSinceRetro >= 7)) {
     out.push(`${f.shippedThisWeek} change${f.shippedThisWeek === 1 ? '' : 's'} shipped this week and no retro for ${f.daysSinceRetro === null ? 'ever' : `${f.daysSinceRetro} days`}: /retro (about 10 minutes).`);
   }
   return out;
+}
+
+/** The stage and the sign from the roadmap's *Now* lines; a value still in <angle brackets> is the template's, so not set. */
+export function readRoadmap(text) {
+  const value = (re) => { const v = re.exec(text)?.[1]?.trim(); return v && !/^</.test(v) ? v.replace(/[.,]$/, '') : null; };
+  return { stage: value(/^Stage:\s*([^,\n]+)/m), sign: value(/^The sign we are watching:\s*(.+)$/m) };
 }
 
 /** The cards that say they come before the first deploy (or going live), in their title or text. */

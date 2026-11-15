@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.9.x` tag** (now `v2.9.0`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
+> **Build on the latest `v2.9.x` tag** (now `v2.9.1`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
 > what that project taught (the docs in folders, and in 2.9.1 a folder only once its stage is reached). The same rule holds: a new
 > part, guide or skill comes from a real project running into its lack, never ahead of one.
 
@@ -206,6 +206,16 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.9.1**: **a stage's docs come with the stage.** A new project has no `docs/run/` or `docs/market/`: `/launch` and `/market`
+  start their stage (`node tools/workflow/stage.mjs --enter run|market`, from the kit on this computer, which `.workflow-kit`
+  now records), and `.workflow-kit` remembers it (`stages=`). Mentions of a doc not there yet say where it comes from ("comes with
+  the run stage: /launch"; a lean project's "with the security module, not installed"), and CLAUDE.md gets them back as links once
+  the stage starts. `--update` takes away the untouched copies a stage not reached yet had, and keeps (and names) the ones the
+  project changed; a project from before 2.9.1 keeps a stage it already went into. **The roadmap steers**: the stage nudge reads
+  `docs/company/ROADMAP.md`'s stage and sign (unfilled: `/advise roadmap`; a month unchanged: has the sign come?). **Every doc
+  has a reader**: `/launch` reads the production and cluster pages, `/advise roadmap` the stages page, and every self-test variant
+  fails on a doc no skill, tool or CLAUDE.md names, and on a doc pointer that leads nowhere (which found a lean project's skills
+  pointing at the security, ui and production modules' docs).
 - **2.9.0**: **the docs in folders.** The top of `docs/` keeps the product and how it is built (product, guide, architecture,
   stack, conventions, style, security, setup, requests, the file map and the index); the rest is in a folder per subject:
   `docs/workflow/` (how the kit works with the AI), `docs/run/` (deploy, environments, network, production, recovery and the

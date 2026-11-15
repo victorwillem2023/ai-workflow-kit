@@ -11,6 +11,8 @@ start where `docs/market/MARKET.md` is still empty, in `docs/market/GROWTH.md`'s
 
 0. **Only when it is wanted.** For `project.audience` other than `customers`, say in one line that marketing is optional for
    this project and stop unless the owner goes on (an internal tool may still want a short "how to start" page: offer that).
+   **Start the market stage** when `docs/market/` is not there yet: `node tools/workflow/stage.mjs --enter market` brings the
+   guide and the project's market page. Say so in one line.
 1. **What we know.** Read `docs/PRODUCT.md` (the problem, the first users, how we will know it worked) and `docs/market/MARKET.md`.
    An empty `docs/PRODUCT.md`: run `/shape` first; marketing a product without a problem written down is guessing.
 2. **positioning**: draft the five answers (`docs/market/GROWTH.md`, *Positioning*) from `docs/PRODUCT.md` and what the owner says,

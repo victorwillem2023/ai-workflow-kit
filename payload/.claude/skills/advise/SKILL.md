@@ -13,7 +13,7 @@ The panels and the docs servers: `docs/company/ADVISORS.md`; the docs rule: `CLA
 panel looks at the project as it is and names the three changes it would make first.
 
 1. **The brief**, once, short, with file paths: the question and the options on the table (add "do nothing yet" when it is
-   real); `docs/PRODUCT.md`, `docs/company/ROADMAP.md` (the stage), `project.audience` and `launch` in the config, `docs/company/COSTS.md` (via
+   real); `docs/PRODUCT.md`, `docs/company/ROADMAP.md` (the stage; for the `roadmap` panel also `docs/company/STAGES.md`, what each stage needs and its sign), `project.audience` and `launch` in the config, `docs/company/COSTS.md` (via
    `npm run costs`), `docs/STACK.md`, earlier records in `docs/decisions/`, the last load test and SecOps numbers when they bear
    on it. Never secrets, `.env`, or personal or health data in the brief.
 2. **The advisors, in parallel and apart**: at most three, chosen from the panel's roles (`docs/company/ADVISORS.md`) for what this

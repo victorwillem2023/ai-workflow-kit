@@ -114,10 +114,10 @@ Only real decisions; never ask what the code already says.
   answers (what is kept, why, where; "not decided" where it is not), and the logger's `personal` list from them. Don't ask
   about hosts, clusters or queues now: `docs/workflow/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
   Another language than TypeScript: write the same three parts (checked settings, safe logs, health and stopping) in the
-  language's own way when the server is first built, and point `docs/run/PRODUCTION.md` at those files.
-- When the deploy module is installed (`docs/run/DEPLOY.md`): fill it, and `deploy` in the config for the host chosen in `stack.md`
-  part 6 (`url`, `command`, `rollback`; `{version}` is the commit); fit the `Dockerfile` to the app and write `.env.example`.
-  An app with no server: take out `Dockerfile`, `.dockerignore`, `docs/run/DEPLOY.md` and the *Deploying* section of `CLAUDE.md`.
+  language's own way when the server is first built, and point `docs/run/PRODUCTION.md` at those files when the run stage starts.
+- The deploy is the run stage's (`/launch` starts it and brings `docs/run/`): do not fill deploy pages now. Write `.env.example`;
+  the host chosen in `stack.md` part 6 goes into `docs/STACK.md`, so `/launch` starts from it. An app with no server: take out
+  `Dockerfile`, `.dockerignore` and the *Deploying* section of `CLAUDE.md`.
 
 ## 4. Make it real
 ```sh

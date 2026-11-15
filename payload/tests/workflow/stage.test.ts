@@ -2,7 +2,7 @@
 // nothing to say.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { BEFORE_DEPLOY, stageNudges, type StageFacts } from '../../tools/workflow/lib/stage.mjs';
+import { BEFORE_DEPLOY, readRoadmap, stageNudges, type StageFacts } from '../../tools/workflow/lib/stage.mjs';
 
 const quiet: StageFacts = { firstVersion: { total: 4, open: 2 }, beforeDeploy: [], launched: false, marketPage: false,
   installed: { launch: true, market: true, retro: true }, shippedThisWeek: 0, daysSinceRetro: 3 };
@@ -30,6 +30,19 @@ describe('the stage nudge', () => {
     assert.match(lines[0], /\/market when you want users/);
     assert.match(lines[1], /2 changes shipped this week and no retro for ever: \/retro/);
     assert.deepEqual(stageNudges({ ...quiet, launched: true, marketPage: true, shippedThisWeek: 2, daysSinceRetro: 2 }), [], 'a recent retro is enough');
+  });
+
+  it('reads the roadmap\'s stage and sign, and a template value is not a value', () => {
+    assert.deepEqual(readRoadmap('## Now\nStage: 1 first users, since 2026-11-01.\nThe sign we are watching: most of the ten use it every week.\n'),
+      { stage: '1 first users', sign: 'most of the ten use it every week' });
+    assert.deepEqual(readRoadmap('Stage: <0 idea / 1 first users>, since <date>.\nThe sign we are watching: <what would show it>.\n'), { stage: null, sign: null });
+  });
+
+  it('the roadmap steers: unfilled asks for it once; a month unchanged asks whether its sign has come', () => {
+    assert.match(stageNudges({ ...quiet, roadmap: { stage: null, sign: null, daysSinceChange: 0 } })[0], /does not say yet which stage .* \/advise roadmap/);
+    const [line] = stageNudges({ ...quiet, roadmap: { stage: '1 first users', sign: 'most of the ten use it every week', daysSinceChange: 31 } });
+    assert.match(line, /stage 1 first users, watching for: most of the ten use it every week\. Is that there yet\?/);
+    assert.deepEqual(stageNudges({ ...quiet, roadmap: { stage: '1', sign: 'x', daysSinceChange: 3 } }), [], 'a fresh roadmap is left alone');
   });
 
   it('knows a card that comes before the first deploy, in the ways people write it', () => {

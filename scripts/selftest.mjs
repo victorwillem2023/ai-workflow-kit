@@ -25,7 +25,8 @@ const win = process.platform === 'win32';
 const has = (cmd) => [['--version'], ['version']].some((a) => spawnSync(cmd, a, { stdio: 'ignore', shell: win }).status === 0);
 
 const VARIANTS = {
-  full: { args: ['--with', 'ai'] },
+  // full: the run stage entered (docs/run/ there); every other variant without it, as a new project starts
+  full: { args: ['--with', 'ai', '--stage', 'run'] },
   // lean: no installed text may name a command that is not installed without saying so
   lean: { args: ['--lean'], check: unmarkedMentions },
   cluster: { args: ['--with', 'cluster'], needs: ['docker'] },
@@ -54,6 +55,33 @@ function oldDocPaths(dir) {
 function asOlderKitLeftIt(dir) {
   for (const [from, to] of MOVES) if (existsSync(join(dir, to))) execFileSync('git', ['mv', to, from], { cwd: dir, stdio: 'ignore' });
   for (const f of projectText(dir)) { const was = readFileSync(join(dir, f), 'utf8'); const back = movePathsBack(was); if (back !== was) writeFileSync(join(dir, f), back); }
+}
+
+/**
+ * Every doc the installed skills, docs and CLAUDE.md point at in backticks is there: a stage not reached yet, or a part left out,
+ * says so instead of pointing at nothing. (A path with a placeholder, a glob, or a page a tool writes on demand is not counted.)
+ */
+function missingDocPointers(dir) {
+  const onDemand = new Set(['docs/run/INFRA-MAP.md', 'docs/MAP.md', 'docs/README.md']);
+  const files = [...walkMd(join(dir, '.claude')), ...walkMd(join(dir, 'docs')), join(dir, 'CLAUDE.md')];
+  const out = [];
+  for (const f of files) readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+    for (const m of line.matchAll(/`(docs\/[\w/-]+\.md)`/g)) if (!onDemand.has(m[1]) && !existsSync(join(dir, m[1]))) out.push(`${f.slice(dir.length + 1)}:${i + 1}: ${m[1]}`);
+  });
+  return out;
+}
+
+/**
+ * Every installed doc has a reader: a skill, a tool, a script or CLAUDE.md names it, so it is read at the moment it steers the
+ * owner and is not just there. (Folder notes, generated pages and the project's own content folders are not counted.)
+ */
+function docsWithoutReader(dir) {
+  const docs = walkMd(join(dir, 'docs')).map((f) => f.slice(dir.length + 1).replace(/\\/g, '/'))
+    .filter((d) => !/^docs\/(MAP|README)\.md$|\/README\.md$|^docs\/(guide|code|design|decisions|requests|sources|flow)\//.test(d));
+  const walkAll = (d) => (existsSync(d) ? readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walkAll(join(d, e.name)) : [join(d, e.name)])) : []);
+  const readers = [...walkAll(join(dir, '.claude')), ...walkAll(join(dir, 'tools')), ...walkAll(join(dir, 'scripts')), join(dir, 'CLAUDE.md')]
+    .filter((f) => /\.(md|mjs|js|ts)$/.test(f) && existsSync(f)).map((f) => readFileSync(f, 'utf8')).join('\n');
+  return docs.filter((d) => !readers.includes(d));
 }
 
 function unmarkedMentions(dir) {
@@ -121,6 +149,12 @@ async function runVariant(name) {
       console.log(`${found.length ? 'FAIL' : 'ok  '} ${name}: no command named that is not installed${found.length ? `:\n${found.slice(0, 20).join('\n')}` : ''}`);
       if (found.length) throw new Error('mentions');
     }
+    const pointers = missingDocPointers(dir);
+    console.log(`${pointers.length ? 'FAIL' : 'ok  '} ${name}: every doc pointed at is there${pointers.length ? `:\n${pointers.slice(0, 20).join('\n')}` : ''}`);
+    if (pointers.length) throw new Error('doc pointers');
+    const unread = docsWithoutReader(dir);
+    console.log(`${unread.length ? 'FAIL' : 'ok  '} ${name}: every doc has a skill, tool or CLAUDE.md that reads it${unread.length ? `: ${unread.join(', ')}` : ''}`);
+    if (unread.length) throw new Error('docs without a reader');
     const stale = oldDocPaths(dir);
     console.log(`${stale.length ? 'FAIL' : 'ok  '} ${name}: no doc named by its old path${stale.length ? `:\n${stale.slice(0, 20).join('\n')}` : ''}`);
     if (stale.length) throw new Error('old doc paths');

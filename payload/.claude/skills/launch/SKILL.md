@@ -12,8 +12,12 @@ in `docs/run/IAC.md`, releases and user testing in `docs/run/RELEASES.md`. Nothi
 
 0. **Only when it is wanted.** For `project.audience: me` with no wish to put it online for others, say in one line that
    `/launch` is optional (a home server or the computer it runs on is fine) and stop unless the owner goes on.
+   **Start the run stage** when `docs/run/` is not there yet: `node tools/workflow/stage.mjs --enter run` brings its guides and
+   the project's run pages (deploy, environments, production, recovery). Say so in one line.
 1. **What we know.** Read `docs/PRODUCT.md` (who uses it, how many, where), `docs/STACK.md`, `docs/workflow/SENSITIVE.md` and
-   `sensitive.paths`, `docs/run/ENVIRONMENTS.md`, `launch` in `workflow.config.json` if it is set, and the card if one was named.
+   `sensitive.paths`, `docs/run/ENVIRONMENTS.md`, `docs/run/PRODUCTION.md` (what the app already does for production: settings,
+   logs, health, stopping), `launch` in `workflow.config.json` if it is set, and the card if one was named. A cluster chosen:
+   `docs/run/CLUSTER.md` too.
    Say back in five lines: the users and load expected in the first year, where the data may live, what must never be lost,
    how long it may be down, and the budget a month if the owner said one. Ask for what is missing, in one message.
 2. **The decisions, one message each, in `docs/run/LAUNCH.md`'s order** (1 to 9). For each: the usual start from the doc, what it

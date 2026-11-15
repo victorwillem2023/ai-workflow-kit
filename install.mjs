@@ -73,13 +73,18 @@ const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.i
 // which part brings it. Done when the file is written, so an update with --with <part> writes it back unmarked.
 const absent = Object.entries(PARTS).filter(([p]) => !parts.includes(p));
 const absentSkills = absent.flatMap(([, paths]) => paths.map((x) => /^\.claude\/skills\/([\w-]+)\/$/.exec(x)?.[1]).filter(Boolean));
-const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^docs\/[\w-]+\.md$/.test(x)).map((x) => [x, p]));
+// (a guide in a subject folder too: docs/run/LAUNCH.md since kit 2.9)
+const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^docs\/([\w-]+\/)?[\w-]+\.md$/.test(x)).map((x) => [x, p]));
 // npm scripts that run a tool of a part left out (launch-check without market): not added to package.json, and not pointed at
 const scriptTool = (cmd) => /node (tools\/workflow\/[\w./-]+\.mjs)/.exec(cmd)?.[1];
 const absentScripts = Object.entries(JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'))).filter(([, cmd]) => scriptTool(cmd) && skippedPart(scriptTool(cmd))).map(([name]) => name);
 function markAbsent(text) {
-  if (!absent.length) return text;
+  if (!absent.length && !stageDocs.length && !moduleDocs.length) return text;
   let t = text;
+  // a doc of a stage not reached yet: no backticks (the docs check would take it for a missing file), and the command that brings it
+  for (const [doc, stage, by] of stageDocs) t = t.replaceAll(`\`${doc}\``, `${doc} (comes with the ${stage} stage: ${by})`);
+  // a doc of a module left out (a lean project has no security, ui or production module): the same, with the module that brings it
+  for (const [doc, m] of moduleDocs) t = t.replaceAll(`\`${doc}\``, `${doc} (with the ${m} module, not installed)`);
   if (absentSkills.length) {
     const names = absentSkills.join('|');
     t = t.replace(new RegExp(`\`/(${names})\\b([^\`\\n]*)\``, 'g'), (m) => `${m} (not installed)`);
@@ -103,6 +108,39 @@ const vars = {
   TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
 };
 const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
+
+// Stage folders (kit 2.9.1): a stage's docs are not written until the project reaches it, so a new project shows what it needs
+// now. docs/run/ comes with the run stage (/launch), docs/market/ with the market stage (/market). `--stage <name>` enters one
+// (`node tools/workflow/stage.mjs --enter <name>` runs that update) and .workflow-kit remembers it (stages=). A project from before
+// 2.9.1 keeps a stage it already went into: a launch decision record (run), a market page it wrote (market).
+const STAGE_FOLDERS = { run: { folder: 'docs/run/', by: '/launch' }, market: { folder: 'docs/market/', by: '/market' } };
+for (const s of list(opt('--stage'))) if (!(s in STAGE_FOLDERS)) { console.error(`Unknown stage "${s}". Stages: ${Object.keys(STAGE_FOLDERS).join(', ')}`); process.exit(1); }
+function stagesAlreadyEntered() {
+  const out = [];
+  const decisions = join(target, 'docs', 'decisions');
+  if (existsSync(decisions) && readdirSync(decisions).some((f) => /-launch\.md$/.test(f))) out.push('run');
+  const page = ['docs/market/MARKET.md', 'docs/MARKET.md'].map((p) => join(target, p)).find((p) => existsSync(p));
+  const template = join(kit, 'starter', 'docs', 'market', 'MARKET.md');
+  const plain = (t) => t.replace(/\r\n/g, '\n').trim();
+  if (page && existsSync(template) && plain(readFileSync(page, 'utf8')) !== plain(fill(readFileSync(template, 'utf8')))) out.push('market');
+  return out;
+}
+const stages = [...new Set([...(/^stages=/m.test(mark) ? list(/^stages=(.*)$/m.exec(mark)?.[1]) : update ? stagesAlreadyEntered() : []), ...list(opt('--stage'))])];
+const skippedStage = (key) => Object.entries(STAGE_FOLDERS).some(([s, { folder }]) => !stages.includes(s) && key.startsWith(folder));
+// every doc a stage not reached yet would bring, from the kit's sources (and the infra map, which npm run map writes there)
+const kitRoots = [join(kit, 'payload'), join(kit, 'starter'), ...[...ALL, ...OPTIONAL].flatMap((m) => ['payload', 'starter'].map((d) => join(kit, 'modules', m, d)))];
+const stageDocs = Object.entries(STAGE_FOLDERS).filter(([s]) => !stages.includes(s)).flatMap(([s, { folder, by }]) => [...new Set([
+  ...kitRoots.flatMap((r) => (existsSync(join(r, folder)) ? readdirSync(join(r, folder)).filter((f) => f.endsWith('.md')).map((f) => `${folder}${f}`) : [])),
+  ...(s === 'run' ? ['docs/run/INFRA-MAP.md'] : []),
+])].map((doc) => [doc, s, by]));
+// every doc a module left out would have brought (its payload and starter docs, folders included), unless another source brings it
+const docsUnder = (root, rel = 'docs') => (existsSync(join(root, rel)) ? readdirSync(join(root, rel), { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? docsUnder(root, `${rel}/${e.name}`) : e.name.endsWith('.md') ? [`${rel}/${e.name}`] : [])) : []);
+const installedRoots = [join(kit, 'payload'), join(kit, 'starter'), ...modules.flatMap((m) => ['payload', 'starter'].map((d) => join(kit, 'modules', m, d)))];
+const broughtAnyway = new Set(installedRoots.flatMap((r) => docsUnder(r)));
+const moduleDocs = [...ALL, ...OPTIONAL].filter((m) => !modules.includes(m))
+  .flatMap((m) => ['payload', 'starter'].flatMap((d) => docsUnder(join(kit, 'modules', m, d)).map((doc) => [doc, m])))
+  .filter(([doc]) => !broughtAnyway.has(doc));
 // files whose {{PROJECT}}-style placeholders are filled in (Helm's and GitHub's own {{ ... }} are left alone: only the names in `fill`)
 const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml|cmd|ya?ml|tpl)|Dockerfile)$/;
 
@@ -131,7 +169,9 @@ if (args.includes('--check')) {
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
-const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [] };
+const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [] };
+// what a stage not reached yet would have written: an update takes away the untouched copies an older kit wrote there
+const stageSkipped = new Map();
 const shipped = new Set(); // every machinery file this run of the kit ships, to find the ones an older kit wrote and this one dropped
 // a project that already has a UI framework builds its screens with components: the ui module's own DOM helper and its test stay out
 const pkgBefore = existsSync(join(target, 'package.json')) ? JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')) : {};
@@ -196,6 +236,8 @@ function copyTree(from, overwrite) {
     const machinery = overwriteOnly(from);
     // a part left out: its machinery is not shipped, and its starter pages (docs/market/MARKET.md, docs/company/ROADMAP.md) are not made
     if (skippedPart(key)) continue;
+    // a stage the project has not reached: not written (and not an orphan either: it comes back when the stage is entered)
+    if (skippedStage(key)) { stageSkipped.set(key, next); if (machinery) shipped.add(key); continue; }
     if (machinery) shipped.add(key);
     if (exists && machinery && update && !overwrite) {
       // --update: the same already, or untouched since the kit wrote it (then the kit's new one is taken), or the project's own
@@ -235,6 +277,30 @@ if (update) {
   }
 }
 
+// --update: a stage the project has not reached loses the copies an older kit wrote there and nobody changed since (the same text
+// as the kit's, or as the kit's stamp says it wrote); a changed one is the project's own work, so it stays and is named
+if (update) {
+  for (const [key, want] of stageSkipped) {
+    const path = join(target, key);
+    if (!existsSync(path)) continue;
+    const now = hash(readFileSync(path, 'utf8'));
+    if (now !== hash(want) && written.get(key) !== now) { done.stageKept.push(key); continue; }
+    rmSync(path);
+    stamp.delete(key);
+    done.staged.push(key);
+    for (let dir = dirname(path); dir.startsWith(target) && dir !== target && readdirSync(dir).length === 0; dir = dirname(dir)) rmSync(dir, { recursive: true });
+  }
+}
+
+// a stage now entered: CLAUDE.md (the project's own, never replaced) gets its "comes with the ... stage" mentions back as plain links
+for (const s of stages) {
+  const claude = join(target, 'CLAUDE.md');
+  if (!existsSync(claude)) continue;
+  const was = readFileSync(claude, 'utf8');
+  const now = was.replace(new RegExp(`(docs/${s}/[\\w-]+\\.md) \\(comes with the ${s} stage: [^)]*\\)`, 'g'), '`$1`');
+  if (now !== was) writeFileSync(claude, now);
+}
+
 // a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end. "Once" is remembered in
 // .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
 // record is recognised by the heading or by the first file or command the section names.
@@ -243,7 +309,7 @@ for (const m of modules) {
   const part = join(kit, 'modules', m, 'claude-section.md');
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(part) || !existsSync(claude)) continue;
-  const text = fill(readFileSync(part, 'utf8'));
+  const text = markAbsent(fill(readFileSync(part, 'utf8')));
   const title = /^## .+$/m.exec(text)?.[0];
   // (the files and commands the section names: when most of them are in CLAUDE.md already, the section is there under another heading)
   const names = [...text.matchAll(/`([^`]+)`/g)].map((x) => x[0]);
@@ -423,7 +489,7 @@ if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(pr
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
-writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nmodules=${modules.join(',')}\n${lean ? `lean=1\nparts=${parts.join(',')}\n` : ''}sections=${[...sectionsDone].join(',')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nkit=${kit.replace(/\\/g, '/')}\nmodules=${modules.join(',')}\nstages=${stages.join(',')}\n${lean ? `lean=1\nparts=${parts.join(',')}\n` : ''}sections=${[...sectionsDone].join(',')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 const shape = `modules: ${modules.join(', ') || 'none'}${lean ? `; lean, parts: ${parts.join(', ') || 'none'} (add one later: --update --with <part>; every part: --update --full)` : ''}`;
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (${shape})` : `Installed kit ${kitVersion} into ${target} (${shape})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
@@ -435,6 +501,8 @@ if (update) {
   if (lfHint) console.log(lfHint);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
+  if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
+  if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
   if (done.movedDocs) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git, and the old paths rewritten in ${done.movedDocs.rewritten} of the project's files`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
