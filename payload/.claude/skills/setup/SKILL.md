@@ -91,6 +91,7 @@ Only real decisions; never ask what the code already says.
   in `docs/ACCESS.md` a row for the owner and every account the app already depends on (GitHub, the cloud, the domain, the sign-in
   provider), then `npm run access` must list nothing unexpected. **`docs/ENVIRONMENTS.md`**: the *This project* row for `dev`;
   the rest waits for `/launch`. `security.domains`: the app's public addresses once it has any (their certificates are watched).
+  `security.egress`: every outside host the code calls today (the gate's *network* check), and `docs/NETWORK.md` from answer 3.
 - **Tools**: for each tool the project uses that `docs/TOOLS.md` lists under *Leaving*, one line to the owner with what replaced it
   and what moving costs; never change it without a yes (it becomes a card).
 - **Versions**: `.tool-versions` with the exact Node (and any other tool) the app uses, the same Node in the `Dockerfile` and

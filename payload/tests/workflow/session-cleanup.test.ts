@@ -103,6 +103,22 @@ describe('cleaning up after a session', () => {
       assert.deepEqual(calls, [], `port ${port}: no process was looked up or stopped`);
     }
   });
+  it('walks up through a watcher that Node 26 names "node-MainThread" on Linux and macOS', async () => {
+    const { stopSessionServer } = await import(pathToFileURL(resolve('scripts/session-stop.mjs')).href);
+    const r = makeRepo();
+    const dir = join(r.root, 'env-mainthread');
+    mkdirSync(dir);
+    writeFileSync(join(dir, '.env'), 'PORT=8960\n');
+    let looks = 0;
+    const stopped: number[] = [];
+    const deps = {
+      listeners: () => (looks++ ? [] : [200]),
+      table: () => [{ pid: 200, ppid: 100, name: 'node-MainThread' }, { pid: 100, ppid: 1, name: 'node-MainThread' }],
+      stop: (top: number) => stopped.push(top),
+    };
+    assert.equal(stopSessionServer(dir, deps).stopped, 2);
+    assert.deepEqual(stopped, [100], 'the watcher above the listener is stopped, so it cannot start the server again');
+  });
 
   it('a folder still held open is named, with what to close, while the feature still goes on main and the branch is deleted', () => {
     const r = makeRepo();

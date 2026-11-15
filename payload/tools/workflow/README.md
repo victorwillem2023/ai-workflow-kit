@@ -64,6 +64,14 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   (`{ "file": "package.json", "keys": ["dependencies"] }`, a dotted path to an object or a list of strings); `naming.resources`
   checks the names given in infrastructure files (`name = "..."`, `name: ...`) against a pattern, so a server or bucket name says
   what, which environment and where (`<app>-<env>-<place>-<part>`); a name built from variables is left alone.
+- **image** (when there is a `Dockerfile`): every base pinned to a version (no bare name, no `:latest`); the image that runs
+  has a `USER` that is not root (or a `:nonroot` base) and copies only what runs, never `COPY . .` or a whole earlier stage;
+  no `ARG`/`ENV` named like a secret (they stay in the image's history: `RUN --mount=type=secret` instead); no `ADD` from a URL;
+  a `.dockerignore` that leaves out `.git` and `.env`. Which base to run on: `docs/INFRA.md`, *Container images*.
+- **network** (when `security.egress` or `security.ipRules` is set): every `https://` host the code calls (strings in the code
+  under `settings.include`, not tests, comments, local or schema addresses) is in `security.egress` (exact, or `*.domain`); every
+  IP rule is a real address or range, has a `why` and an `until`, and no allowlist lets all of the internet in. A rule past its
+  `until` is raised by the weekly security report, not the gate. `docs/NETWORK.md` shows both lists (generated blocks).
 - **signoff** (when `sensitive.paths` is set): a change to a sensitive file (money, health, legal texts, personal data) passes
   only when `docs/SIGNOFFS.md` holds a row whose fingerprint matches those files as they are now. The owner writes it with
   `npm run signoff` in their own terminal after checking the change against its sources: it refuses input from a pipe, an agent

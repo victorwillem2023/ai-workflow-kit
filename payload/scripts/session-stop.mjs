@@ -12,7 +12,8 @@ import { basename, join } from 'node:path';
 // how many ports a project's sessions may use, counted from its first session port (`session.firstPort` in the config)
 const PORT_SPAN = 212;
 const WAIT_MS = 3000;
-const SERVER_NAMES = /^(node|npm|npx|tsx)(\.exe|\.cmd)?$/i;
+// Node 26 names its main thread, so on Linux and macOS `ps` shows a node process as "node-MainThread"
+const SERVER_NAMES = /^(node|npm|npx|tsx)(-MainThread)?(\.exe|\.cmd)?$/i;
 const isWindows = process.platform === 'win32';
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, maxBuffer: 32 << 20 });
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);

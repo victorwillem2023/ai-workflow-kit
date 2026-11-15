@@ -23,8 +23,8 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Grow** | `/market`: positioning, a landing page, pricing, analytics, a launch checklist, feedback as cards |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.2 `/launch` with network and firewall, OpenTofu, Ansible,
-the cloud choice and on-prem; 2.3 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.3 `/launch` with network and firewall, OpenTofu, Ansible,
+the cloud choice and on-prem; 2.4 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
 
 ## The idea in ten rules
 1. **The board is the only backlog.** One GitHub Projects card per idea, bug or wish. Claude reads one card, never the list.
@@ -166,6 +166,16 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.2.0**: images that hold only what runs, traffic rules as code, APIs and frontends. The TypeScript `Dockerfile` runs on
+  distroless Node 26 as nonroot and copies only the built app, its production libraries and `package.json`; the gate's *image*
+  check (pinned bases, a non-root user, no whole-repository copy, no secret in the history, a `.dockerignore`); `docs/INFRA.md`
+  compares distroless, Docker Hardened Images, Chainguard, Wolfi, Chiseled and UBI. The gate's *network* check: every outside
+  host the code calls is in `security.egress`, every IP allow or block rule has a reason and an end date (the weekly report
+  raises one that ended), shown in `docs/NETWORK.md`. `docs/API.md` (OpenAPI from the code, versions, errors, paging, keys,
+  webhooks, breaking-change checks, docs with Swagger UI, Scalar or Redoc behind sign-in), SFTP when a partner needs it,
+  `docs/FRONTEND.md` (Vite, Next.js, React Router, TanStack Start, Astro, Expo; Storyblok, Payload and other CMSs), and AI
+  security and deploy tools with their cost and what they see in `docs/TOOLS.md`. Fixed: on Node 26 a session's dev server
+  watcher was not stopped on Linux and macOS (Node names its main thread "node-MainThread"), found by the gate on GitHub.
 - **2.1.0**: kept up to date, checked and written down. The gate's *naming* check (files and exported names, from the
   language's norms) and `docs/CONVENTIONS.md`; *versions* (every tool pinned in `.tool-versions`, Node one version everywhere,
   OpenTofu stacks pinned with their lock file). Renovate (`renovate.json`: grouped small updates, majors alone, Node only between

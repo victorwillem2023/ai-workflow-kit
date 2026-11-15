@@ -33,6 +33,8 @@ import { nodeOutOfStep, tofuUnpinned, unpinnedTools } from './lib/versions.mjs';
 import { namingProblems } from './lib/naming.mjs';
 import { signoffVerdict } from './lib/signoff.mjs';
 import { parseNameStatus, staleDocs } from './lib/doccovers.mjs';
+import { imageProblems } from './lib/dockercheck.mjs';
+import { ipRuleProblems, unlistedEgress } from './lib/network.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs';
 
@@ -317,6 +319,18 @@ const steps = [
     const problems = [...unpinnedTools(read('.tool-versions')), ...nodeOutOfStep({ toolVersions: read('.tool-versions'), dockerfile: read('Dockerfile'), pkg }), ...tofuUnpinned(tf, tracked)];
     if (problems.length) return { ok: false, out: problems.join('\n') };
     return { ok: true, note: existsSync('.tool-versions') ? '' : 'no .tool-versions yet' };
+  }],
+  existsSync('Dockerfile') && ['image', () => {
+    // the image holds only what runs, as a user who is not root, from a pinned base; no secret in its history
+    const p = imageProblems(readText('Dockerfile'), existsSync('.dockerignore') ? readText('.dockerignore') : null);
+    return p.length ? { ok: false, out: `${p.join('\n')}\nThe rules and why: docs/INFRA.md, *Container images*.` } : { ok: true };
+  }],
+  (Array.isArray(config.security?.egress) || config.security?.ipRules?.length) && ['network', () => {
+    // every outside host the code calls is on the allowlist; every IP rule is a real range with a reason and an end date
+    const code = new Map([...files].filter(([f]) => !isTest(f) && matchesAny(f, config.settings?.include ?? ['src/**'])));
+    const p = [...(Array.isArray(config.security.egress) ? unlistedEgress(code, config.security.egress) : []),
+      ...ipRuleProblems(config.security.ipRules).filter((x) => !/^ended on/.test(x.what)).map((x) => `${x.where} ${x.what}`)];
+    return p.length ? { ok: false, out: p.join('\n') } : { ok: true, note: Array.isArray(config.security.egress) ? `${config.security.egress.length} hosts allowed out` : '' };
   }],
   config.sensitive?.paths?.length && ['signoff', () => {
     // a change to money, health, legal or personal-data files needs a person's sign-off for this exact version (npm run signoff)

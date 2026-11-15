@@ -17,6 +17,8 @@ describe('the versions check', () => {
     assert.equal(lines.length, 1);
     assert.match(lines[0], /\.tool-versions says 26, the Dockerfile says 22/);
     assert.deepEqual(nodeOutOfStep({ toolVersions: 'nodejs 26.13.1', dockerfile: 'FROM node:26-slim' }), []);
+    assert.deepEqual(nodeOutOfStep({ toolVersions: 'nodejs 26.13.1', dockerfile: 'FROM node:26-slim AS build\nFROM gcr.io/distroless/nodejs26-debian13:nonroot' }), []);
+    assert.match(nodeOutOfStep({ toolVersions: 'nodejs 26.13.1', dockerfile: 'FROM gcr.io/distroless/nodejs24-debian13' })[0], /the Dockerfile says 24/);
   });
   it('refuses type definitions for a newer Node than the one that runs, and allows older ones', () => {
     assert.match(nodeOutOfStep({ dockerfile: 'FROM node:22-slim', pkg: { devDependencies: { '@types/node': '^24.19.2' } } })[0], /@types\/node is 24, Node is 22/);

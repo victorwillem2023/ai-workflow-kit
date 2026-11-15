@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { connect as tlsConnect } from 'node:tls';
 import { accessDue, combine, fromCerts, fromGitleaks, fromOsv, fromSemgrep, fromTrivy, report } from './lib/secops.mjs';
+import { ipRuleProblems } from './lib/network.mjs';
 
 const args = process.argv.slice(2);
 const opt = (n) => (args.includes(n) ? args[args.indexOf(n) + 1] : undefined);
@@ -59,10 +60,12 @@ async function build(dir) {
   const hosts = domains();
   const certs = await Promise.all(hosts.map(certOf));
   const access = existsSync('docs/ACCESS.md') ? readFileSync('docs/ACCESS.md', 'utf8') : null;
-  const findings = combine(fromOsv(got.osv), fromTrivy(got.trivy), fromSemgrep(got.semgrep), fromGitleaks(got.gitleaks), fromCerts(certs), accessDue(access));
-  const ran = Object.keys(got).filter((k) => got[k] != null).map((k) => COVERS[k]);
+  // IP rules past their end date (the gate already refuses a bad one; dates run out on their own)
+  const ipRules = ipRuleProblems(config.security?.ipRules).map((x) => ({ area: 'network', severity: x.severity, id: 'ip-rule', what: x.what, where: x.where, fix: 'take the entry out, or renew it in workflow.config.json with a reason and a new end date' }));
+  const findings = combine(fromOsv(got.osv), fromTrivy(got.trivy), fromSemgrep(got.semgrep), fromGitleaks(got.gitleaks), fromCerts(certs), accessDue(access), ipRules);  const ran = Object.keys(got).filter((k) => got[k] != null).map((k) => COVERS[k]);
   const failed = Object.keys(got).filter((k) => got[k] == null).map((k) => COVERS[k]);
   if (hosts.length) ran.push(`the certificates of ${hosts.join(', ')} (ending within 21 days)`);
+  if (config.security?.ipRules?.length) ran.push(`the ${config.security.ipRules.length} IP allow and block rules (an end date that passed)`);
   if (access != null) ran.push('when the access review was last done (docs/ACCESS.md, every 90 days)');
   return report(findings, { ran, failed });
 }

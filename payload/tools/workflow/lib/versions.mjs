@@ -28,6 +28,8 @@ export function nodeVersions({ toolVersions, dockerfile, pkg }) {
   const tv = readToolVersions(toolVersions).find((t) => t.tool === 'nodejs' || t.tool === 'node');
   if (tv && major(tv.version) != null) out.push({ where: '.tool-versions', major: major(tv.version) });
   for (const m of String(dockerfile ?? '').matchAll(/^\s*FROM\s+(?:docker\.io\/)?(?:library\/)?node:(\d+)/gim)) out.push({ where: 'the Dockerfile', major: Number(m[1]) });
+  // distroless and hardened images carry the major in the name: gcr.io/distroless/nodejs26-debian13, dhi.io/node:26
+  for (const m of String(dockerfile ?? '').matchAll(/^\s*FROM\s+\S*\/nodejs(\d+)-/gim)) out.push({ where: 'the Dockerfile', major: Number(m[1]) });
   const engines = pkg?.engines?.node;
   if (engines && major(engines) != null) out.push({ where: 'package.json engines.node', major: major(engines) });
   return out;

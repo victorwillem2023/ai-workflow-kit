@@ -72,3 +72,64 @@ The proxy holds the timeouts, body-size limits and security headers; the app tru
 | Inside (service to service, the database) | the cloud's private certificate authority, or step-ca; a mesh does it by itself | short lives, renewed by a tool |
 Never pay for a certificate for a website: the free ACME ones are as trusted. Renewal is always automatic; one renewed by hand
 is a broken automation hidden. The private key never leaves the server or the secret store.
+
+## Container images
+The image that runs holds only what runs: the built app, its production libraries and the runtime. No shell, no package
+manager, no compilers, no source, tests, docs or git history; it runs as a user that is not root, from a base pinned to a
+version (Renovate moves it). The gate's *image* check holds these rules; Trivy scans the image at each release.
+
+| Base for the running image | What it is | Cost and catch |
+|---|---|---|
+| **Distroless** (`gcr.io/distroless/nodejs26-debian13:nonroot`, and for Java, Python, static binaries) | Google's: the runtime and its libraries, nothing else; no shell | free; few tags, so no shell to debug with (a `:debug` tag has busybox, only for looking) |
+| **Docker Hardened Images** (`dhi.io`) | Docker's minimal images, rebuilt quickly when a fix appears, signed, with SBOM and provenance, near-zero known vulnerabilities; Debian or Alpine based, drop-in names | free and open source for the images; an enterprise plan adds longer support, FIPS images and fix-time promises; a Docker account to pull |
+| **Chainguard Images** (`cgr.dev/chainguard/node`) | built on Wolfi, minimal, zero-CVE focus, signed | free only for the latest tag; pinned versions and older lines are paid |
+| **Wolfi with apko** | build your own minimal image from Wolfi packages, as code | free; you own the build |
+| **Ubuntu Chiseled** | Canonical's sliced Ubuntu, no shell | free; for teams standardised on Ubuntu, best for .NET and Java |
+| **Red Hat UBI micro** | minimal Red Hat base | free to redistribute; for RHEL shops and OpenShift |
+| `node:26-trixie-slim` | Debian slim with Node | fine for the build step; as the running image it carries a shell and apt (remove npm at least) |
+| Alpine | very small | musl instead of glibc: some native libraries break or run slower; a hardened Alpine (DHI) is the safer form |
+The kit's TypeScript `Dockerfile` builds on `node:26-trixie-slim` and runs on distroless nonroot (the same Debian 13 under
+both, so native libraries match). Switch the last `FROM` to a DHI or Chainguard image when you want faster fixes or signed
+provenance; the rules stay the same.
+- **A frontend only** (no server code): build it, then serve the files from a small web server image: Caddy, or
+  `nginxinc/nginx-unprivileged`, or the host's static hosting or a CDN with no container at all.
+- **Next.js**: `output: 'standalone'` in `next.config`, then copy only `.next/standalone`, `.next/static` and `public` into the
+  running image; it starts with `node server.js`.
+- **Other languages**: Go and Rust build one static binary for `gcr.io/distroless/static:nonroot` (or `scratch`); Python with
+  uv into a virtual environment copied onto a distroless or DHI Python image.
+- **Run it read-only**: `read_only: true` (Compose) or `readOnlyRootFilesystem` (Kubernetes), a temp folder mounted for what
+  must be written, all Linux capabilities dropped, no privilege escalation.
+
+## Traffic in and out (ingress and egress)
+- **In**: only the proxy is reachable from the internet, on 443 (and 80 to redirect); everything else listens on the private
+  network or on 127.0.0.1. Admin pages, metrics and the database are never public: over the VPN, or limited by IP rules.
+- **Out**: the app may call only the hosts it needs. `security.egress` in the config lists them (the gate fails on a call in the
+  code to a host not listed), and the same list becomes the firewall's outbound rules (Hetzner and every cloud firewall have
+  them), a Kubernetes NetworkPolicy (default deny, then allow DNS and the listed hosts; Cilium can match by name), or an egress
+  proxy (Squid, Envoy) on a bigger setup. In the app, fetches of addresses that come from users go through the guard
+  (`safeFetch` in the security module): no private ranges, no metadata address (169.254.169.254).
+- Why it matters: when the app is broken into, egress rules stop the data leaving and the attacker downloading tools; and a
+  list of every outside host is what the privacy record (who gets which data) needs anyway.
+The project's own lists: `docs/NETWORK.md`.
+
+## IP allow and block lists
+| Use | How | Watch |
+|---|---|---|
+| Admin pages, SFTP, the database console: **allowlist** | the VPN first; IP rules in the firewall or the proxy for a partner's fixed addresses | every entry in `security.ipRules` has a reason and an end date; the weekly report raises one past its date |
+| Known bad addresses: **blocklist** | CrowdSec (open source, a community list, a bouncer for Caddy or the firewall), Spamhaus DROP and FireHOL level 1 lists on the firewall, fail2ban for SSH-style logins | lists from the provider, refreshed by a timer; your own blocks with an end date |
+| Abuse of one endpoint | rate limits per user and per IP in the app or the proxy, then the WAF | a block for hours, not forever |
+| Countries | only when the law or a contract asks: geo lists are coarse, VPNs pass them, and real users are blocked | |
+Blocking by IP alone is weak (addresses change hands, attackers rotate); allowing by IP is strong only together with sign-in.
+Lists live in code (the config, the firewall's OpenTofu file), never as hand edits in a console.
+
+## Files from partners: SFTP
+Avoid it when you can: an upload over HTTPS to object storage with a short-lived signed address, or an API, is simpler and
+safer. When a partner, bank or old system requires it:
+- **SFTP only** (over SSH), never FTP or FTPS. A managed service (AWS Transfer Family, Azure Blob SFTP) or **SFTPGo** (open
+  source, storage in S3-compatible buckets, users per partner, its own web admin) instead of OpenSSH on the app server.
+- One account per partner, key-only sign-in (no passwords), each in its own folder (chroot), read or write as needed, an IP
+  allowlist with the partner's addresses (`security.ipRules`), keys rotated yearly and on any staff change on their side.
+- Every file is hostile input: size and type limits, a virus scan (ClamAV) before use, parsed by the same guards as uploads,
+  moved out of the inbox after processing, kept only as long as `docs/PRIVACY.md` says. PGP encryption on top when the data is
+  sensitive or the partner asks.
+- A job picks files up (a queue or a timer), never the partner's upload starting code directly; every pick-up is logged.

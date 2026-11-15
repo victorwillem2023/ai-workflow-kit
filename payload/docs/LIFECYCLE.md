@@ -11,7 +11,7 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 3. Build | tests first, a session per card, checks by scripts | `/work`, `/build`, the gate | per card |
 | 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit | `/ship`, `.github/workflows/` | per card |
 | 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
-| 6. Grow | a launch, people finding it, feedback becoming cards | `/market` and a launch page in docs (kit 2.3) | when it works for its first users |
+| 6. Grow | a launch, people finding it, feedback becoming cards | `/market` and a launch page in docs (kit 2.4) | when it works for its first users |
 | 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |
 
 ## 5. Run: what is laid from the first day
@@ -49,11 +49,13 @@ Each with a recommendation fitted to how big the app is, and what would make it 
 
 The network edge (proxy, load balancer, CDN, firewall, API gateway, service mesh), DNS (public and private), private networks and
 certificates: `docs/INFRA.md`, each with where to start and what makes it grow. Environments (dev, test, uat, staging, prod):
-`docs/ENVIRONMENTS.md`. Backups, migrations, cutovers and disaster recovery, each with its drill: `docs/RECOVERY.md`.
+`docs/ENVIRONMENTS.md`. Backups, migrations, cutovers and disaster recovery, each with its drill: `docs/RECOVERY.md`. Container
+images (distroless, Docker Hardened Images and the rest), traffic in and out, IP allow and block lists, and SFTP: `docs/INFRA.md`;
+the project's own lists: `docs/NETWORK.md`. APIs and their docs: `docs/API.md`. Frameworks and a CMS: `docs/FRONTEND.md`.
 
 What `/launch` writes: `infra/` (the infrastructure as code), the deploy settings, the environments (staging, then
 production), a runbook (what to do when it breaks), and checks on the infrastructure files in the pipeline.
-`/launch` comes with kit 2.2 (network and firewall, one server, container hosts, on-prem) and 2.3 (cluster, serverless, queues).
+`/launch` comes with kit 2.3 (network and firewall, one server, container hosts, on-prem) and 2.4 (cluster, serverless, queues).
 
 ## Every stage: kept up to date, checked and written down
 - **Names**: the gate's *naming* check per kind of thing (files, exported functions, types, components), from the language's
@@ -77,11 +79,11 @@ production), a runbook (what to do when it breaks), and checks on the infrastruc
 - **Models**: plans on the strong model, building on the fast one, small jobs on the small one, and a script before any model
   (`docs/TOKENS.md`).
 - **One repository or several**: one by default (one product, one team, one gate); several when teams, release rhythms or access
-  rules differ (kit 2.3 has the guide). With several, the Renovate policy moves to a config repository of your own.
+  rules differ (kit 2.4 has the guide). With several, the Renovate policy moves to a config repository of your own.
 
 ## 6. Grow
 Positioning, a landing page, pricing, privacy-friendly analytics, a launch checklist, and every piece of feedback as a card on
-the board: `/market` and a launch page in docs, with kit 2.3.
+the board: `/market` and a launch page in docs, with kit 2.4.
 
 ## 7. A small company
 When the first person pays, or a second person works on it, the product needs a business around it. The kit does not give

@@ -62,7 +62,9 @@
     "code": "src/",
     "server": "src/server/",
     "inputFolders": ["src/core/", "src/server/"],
-    "domains": []
+    "domains": [],
+    "egress": [],
+    "ipRules": []
   },
   "session": {
     "prefix": "{{PREFIX}}",

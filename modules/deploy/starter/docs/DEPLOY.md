@@ -7,6 +7,7 @@
 |---|---|
 | Where it runs | <the host, the region, the plan> |
 | Address | <https://...> (`deploy.url` in `workflow.config.json`) |
+| The image | distroless Node 26, nonroot, holding only the built app, its production libraries and `package.json` (the `Dockerfile`; why: `docs/INFRA.md`, *Container images*) |
 | Deploy | `npm run deploy` |
 | Is it up? | `npm run smoke` |
 | Put the old version back | `npm run rollback` (the version before; or `npm run rollback -- <commit>`) |

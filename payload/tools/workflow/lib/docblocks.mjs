@@ -4,7 +4,8 @@
 //   (filled by npm run map; the gate fails when it is out of date)
 //   <!-- /generated -->
 // Blocks: layers (the import rules, from `boundaries`), versions (`.tool-versions`), settings (`.env.example`, each name with
-// its comment), sensitive (`sensitive.paths`), naming (the file-name rules and the infrastructure name pattern).
+// its comment), sensitive (`sensitive.paths`), naming (the file-name rules and the infrastructure name pattern), egress
+// (`security.egress`, the hosts the app may call) and iprules (`security.ipRules`).
 
 const list = (xs) => xs.map((x) => `\`${x}\``).join(', ');
 
@@ -42,6 +43,16 @@ export function blockMakers({ config = {}, toolVersions = '', envExample = '' })
     sensitive: () => {
       const p = config.sensitive?.paths ?? [];
       return p.length ? p.map((x) => `- \`${x}\``).join('\n') : '_None yet: no file needs a sign-off (`sensitive.paths` in workflow.config.json)._';
+    },
+    egress: () => {
+      const e = config.security?.egress;
+      if (!Array.isArray(e)) return '_No outbound allowlist yet (`security.egress` in workflow.config.json)._';
+      return e.length ? e.map((h) => `- \`${h}\``).join('\n') : '_None: the app calls no outside host._';
+    },
+    iprules: () => {
+      const r = config.security?.ipRules ?? [];
+      if (!r.length) return '_No IP rules yet (`security.ipRules` in workflow.config.json)._';
+      return ['| Range | Rule | For | Why | Until |', '|---|---|---|---|---|', ...r.map((x) => `| \`${x.cidr}\` | ${x.action ?? ''} | ${x.for ?? 'everything'} | ${String(x.why ?? '').replace(/\|/g, '\\|')} | ${x.until ?? ''} |`)].join('\n');
     },
     naming: () => {
       const n = config.naming ?? {};

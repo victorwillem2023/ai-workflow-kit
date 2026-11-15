@@ -26,6 +26,8 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
      order, so `/build` can run them as waves. Small or tangled work: leave the section out. The owner approves the split with the spec.
    - Security: any new endpoint, file reader or outbound fetch gets limits listed and a `security-review` before finish.
+     A new endpoint follows `docs/API.md` (schema, errors, paging, limits, who may call it); a new outside host goes in
+     `security.egress` (the owner says yes: what data goes there).
    - Sensitive (a file under `sensitive.paths`: money, health, legal texts, personal data): a *Sources* list. Every number, rate,
      limit or legal sentence the code will hold names where it comes from (a law with its article, a contract, a price list, a
      file in `docs/sources/`), and the tests' expected values come from there, worked out by the owner. Anything with no source

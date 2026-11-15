@@ -69,6 +69,7 @@ installed. With Bun: `testAll` and `testFiles` in the config are `bun test`, the
 `Dockerfile` starts from `oven/bun` with a pinned version. Deno only when the owner asks for it.
 
 ## 2. Screens (web apps)
+Which framework for which app, what server rendering asks for, and content from a CMS (Storyblok, Payload): `docs/FRONTEND.md`.
 - **UI framework**: React with TypeScript by default (agents know it best). Svelte when the owner wants less code per screen.
   No framework only for a single page or a tool with one or two screens. A map or canvas app still uses one for the panels
   around the map (MapLibre in React: react-map-gl).
