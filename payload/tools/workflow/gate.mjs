@@ -235,6 +235,13 @@ const steps = [
     if (fresh.length) return { ok: false, out: fresh.map((f) => `${f}: no test reaches it. Add a test that uses it (a file that only starts the app goes in "untested.ignore" in the config)`).join('\n') };
     return { ok: true, note: `${untested.length} known` };
   }],
+  config.ui?.boards === 'components' && config.ui.variants && ['variants', () => {
+    // /ui's variants A, B, C are real components while the owner picks; once the pick is built they go (their pictures are the record)
+    if (!flag('--all')) return { ok: true, note: 'only with --all' };
+    const left = git('ls-files', '--cached', '--others', '--exclude-standard', '--', config.ui.variants).split('\n').filter(Boolean);
+    if (left.length) return { ok: false, out: `${config.ui.variants} still holds ${left.length} file${left.length === 1 ? '' : 's'} (${left.slice(0, 5).join(', ')}): the pick is built, so delete the variants. Their pictures in docs/design/png are the record` };
+    return { ok: true };
+  }],
   config.budget && ['budget', () => {
     const grown = overBudget.filter(([f, , size]) => size > (baseline.budget?.[f] ?? 0));
     if (grown.length) return { ok: false, out: grown.map(([f, max, size]) => `${f} is ${size} bytes, its budget is ${max}${baseline.budget?.[f] ? ` (it was ${baseline.budget[f]})` : ''}: every agent reads it in every chat. Turn a rule into a check, or move what only some work needs into a doc it points to`).join('\n') };

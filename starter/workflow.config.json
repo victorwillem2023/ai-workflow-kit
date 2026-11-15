@@ -12,7 +12,8 @@
   "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
   "size": { "maxLines": 400, "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.mjs"] },
   "functions": { "maxLines": 60, "maxDepth": 4, "include": ["src/**/*.ts", "src/**/*.tsx"] },
-  "untested": { "include": ["src/**/*.ts", "src/**/*.tsx"], "ignore": ["src/**/main.ts", "src/**/index.ts", "src/**/*.d.ts"] },
+  "untested": { "include": ["src/**/*.ts", "src/**/*.tsx"], "ignore": ["src/**/main.ts", "src/**/index.ts", "src/**/*.d.ts", "src/variants/**"] },
+  "ui": { "boards": "html", "variants": "src/variants" },
   "ratchets": [
     {
       "name": "escape hatches",

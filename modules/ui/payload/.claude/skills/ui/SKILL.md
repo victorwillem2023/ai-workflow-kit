@@ -58,6 +58,21 @@ part or a second screen, stop and go to stage 1.
    folder and run `/ui <n>` again. The build starts from the spec and the pictures, so the board's HTML (often 35 to 100 KB)
    isn't sent again on every build and feedback round.
 
+### Stage 1 with a UI framework (`"ui": { "boards": "components" }` in `workflow.config.json`)
+The same stops and the same record, but the variants are real components, so the pick is already half built and no HTML board is
+written:
+- Steps 1 and 4 to 6 as above. Instead of step 2: write A, B and C as components in `src/variants/<topic>/` (the folder is
+  `ui.variants` in the config), from the project's own tokens and parts, with made-up data, and show them side by side, each
+  with its letter, name, cost and states, on a page that exists only while developing (the dev server's `/variants`; it must not
+  be in the built app).
+- Step 3's four pictures are taken of that page (`node scripts/shots.mjs http://127.0.0.1:<port>/variants ...`). The pictures
+  and the notes file are the record: the README row links the pictures, there is no board file.
+- Stage 2 moves the picked variant into `src/web` and deletes `src/variants/<topic>/`. `npm run gate:all` fails while a variant
+  file is left.
+
+**A picture from outside** (a sketch from a chat, a design tool's export, a photo of paper): the owner may bring one to any stage 1.
+It is a brief, not the design: redraw it on the project's tokens and parts as variant A, and still offer B and C.
+
 ## Stage 2: build (a new chat, in the session folder; no `/build` subagent)
 1. Read the spec and copy it into `../{{PREFIX}}-<topic>/specs/` (as `/build` step 3). Then read only `src/web/CLAUDE.md`, the core
    of `docs/STYLE.md`, the board's notes file and its four pictures. Open the board's HTML only with

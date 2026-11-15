@@ -37,6 +37,8 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   file both import.
 - **untested** (when `untested` is in the config; TypeScript and JavaScript): a source file no test reaches through imports fails,
   unless it is in the baseline. A file that only starts the app goes in `untested.ignore`.
+- **variants** (with `"ui": { "boards": "components" }`, only with `--all`): a file left in `ui.variants` (`src/variants`) fails. With a
+  UI framework `/ui` draws its variants A, B, C there as real components; once the pick is built they are deleted.
 - **budget** (when `budget` is in the config): `{ "CLAUDE.md": 14000 }` in bytes. A rules file over its budget fails: every agent
   reads it in every chat, so a new rule becomes a check or replaces a line.
 - **lint** (TypeScript, a `checks` entry): Biome's recommended rules and its formatter on `src` and `tests` (`biome.json`;

@@ -68,7 +68,8 @@ Only real decisions; never ask what the code already says.
 - **After a framework starter** (Vite, Next.js, SvelteKit): `package.json` needs the scripts `dev.cmd` and `start.cmd` call
   (`dev`, `build`, `start`; with Vite `start` is `vite preview`). The installer wrote `tsconfig.gate.json` for `npm run typecheck`
   when the starter's own `tsconfig.json` checks nothing by itself: keep its `include` on every folder with code. Keep one
-  linter: with Biome, take the starter's ESLint config and packages out.
+  linter: with Biome, take the starter's ESLint config and packages out. With a UI framework, `ui.boards` in the config is
+  `components`: `/ui` draws its variants as real components (the installer sets it when it finds the framework).
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
 - **Checks that follow from the stack** (`workflow.config.json`; `tools/workflow/README.md`, *What it checks*): with a database,
   `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);

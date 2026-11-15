@@ -192,6 +192,13 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
   }
 }
 
+// a project with a UI framework: /ui draws its variants as real components, not as an HTML board
+if (framework && done.added.includes('workflow.config.json')) {
+  const cfgPath = join(target, 'workflow.config.json');
+  const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  if (cfg.ui) { cfg.ui.boards = 'components'; writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n'); }
+}
+
 // another language: its commands and file endings into the config, when the config is the one just written
 if (LANGS[lang].config && done.added.includes('workflow.config.json')) {
   const cfgPath = join(target, 'workflow.config.json');
