@@ -2,7 +2,7 @@
 // Every test uses a fake `gh` runner that answers from memory and records the argument lists; no network.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createCard, moveCard, commentCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, boardCache, BoardError } from '../../tools/workflow/lib/board.mjs';
+import { createCard, moveCard, rateCard, commentCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, boardCache, BoardError } from '../../tools/workflow/lib/board.mjs';
 import type { Board, GhResult } from '../../tools/workflow/lib/board.mjs';
 
 const COLUMNS = ['Backlog', 'Needs a board or decision', 'Ready', 'In progress', 'Waiting for your check', 'Done'];
@@ -346,5 +346,24 @@ describe('searching the board', () => {
 
   it('a search that finds nothing returns an empty list', () => {
     assert.deepEqual(searchCards(board, searchGh([]).run, 'nothing here'), []);
+  });
+});
+
+describe('rating a card (--rate)', () => {
+  const rated: Board = { ...board, labels: { value: ['value: high', 'value: medium', 'value: low'], effort: ['effort: small', 'effort: medium'] } };
+  it('sets the label and takes the group\'s other one off, so a card never holds two values', () => {
+    const gh = fakeGh();
+    const run = (a: string[], i?: string) => (a.slice(0, 2).join(' ') === 'issue view'
+      ? ok({ number: 7, title: 'x', body: '', state: 'OPEN', url: 'u', labels: [{ name: 'value: low' }, { name: 'effort: small' }], projectItems: [] })
+      : a.slice(0, 2).join(' ') === 'issue edit' ? (gh.calls.push({ args: a }), ok('')) : gh.run(a, i));
+    assert.equal(rateCard(rated, run, 7, 'value', 'High'), 'value: high');
+    const edit = call(gh.calls, 'issue edit')!.args;
+    assert.equal(flag(edit, '--add-label'), 'value: high');
+    assert.equal(flag(edit, '--remove-label'), 'value: low');
+    assert.ok(!edit.includes('effort: small'), 'another group is left alone');
+  });
+  it('refuses a word or group the config does not have, naming the ones it has', () => {
+    assert.throws(() => rateCard(rated, fakeGh().run, 7, 'value', 'huge'), /value is one of: high, medium, low/);
+    assert.throws(() => rateCard(rated, fakeGh().run, 7, 'colour', 'red'), /Rate value, effort or feasibility/);
   });
 });

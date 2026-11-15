@@ -14,6 +14,7 @@
 //                                cards without a value, likely duplicates, an old backlog to prune; and the focus (lib/triage.mjs)
 //   --graph                      which card needs which, as a tree (a "Depends on: #n" line in a card's text; lib/cardgraph.mjs)
 //   --depends <number> <n,m>     card <number> needs #n and #m done first: writes or extends its "Depends on:" line
+//   --rate <number> value high   set one label of a group (value, effort, feasibility) and take off its others
 //   --undepend <number> <n,m>    takes #n and #m off that line (both print the full list the card ends up with)
 //   --close <number> "<reason>"  close a card the owner decided against, the reason as its last comment
 //   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
@@ -23,8 +24,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
-import { adoptCard, closeCard, createCard, dependCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
-import { inbox, rankCards, STARTABLE, TOOL_ISSUES, waitingCards } from './lib/rank.mjs';
+import { adoptCard, closeCard, createCard, dependCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
+import { inbox, rankCards, STARTABLE, TOOL_ISSUES, topTie, waitingCards } from './lib/rank.mjs';
 import { renderTree } from './lib/cardgraph.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -42,7 +43,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --undepend <number> <n,m>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
+const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --graph, --depends <number> <n,m>, --undepend <number> <n,m>, --rate <number> value|effort <word>, --triage, --close <number> "<reason>", --inbox or --adopt <number> --label <type>.';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -119,14 +120,18 @@ async function main() {
     const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)) });
     const n = Number(value('--next')) || 5;
     if (!ranked.length) console.log('board: no open card can be started (Backlog, Needs a board or decision, Ready), or each waits for another');
-    for (const c of ranked.slice(0, n)) console.log(`#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
+    // a tie at the top is said as one, never dressed up as an order (the card number is no reason): the owner picks, once
+    const tie = topTie(ranked);
+    if (tie.length) console.log(`board: ${tie.map((c) => `#${c.number}`).join(', ')} are equal: nothing in the graph or the labels puts one first, so which comes first is yours to say (/next asks once and keeps it: npm run board -- --rate <n> value high)`);
+    const tied = new Set(tie.map((c) => c.number));
+    for (const c of ranked.slice(0, Math.max(n, tie.length))) console.log(`${tied.has(c.number) ? '= ' : ''}#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
     // the graph first: cards that wait for an open card are not offered, but said, with what they wait for
     const { waiting: held, loops } = waitingCards(all, { columns: board.columns.filter((c) => STARTABLE.includes(c)) });
     if (held.length) console.log(`(waiting for other cards: ${held.map((c) => `#${c.number} for ${c.waitsFor.map((d) => `#${d}`).join(', ')}`).join('; ')}; the tree: npm run board -- --graph)`);
     for (const l of loops) console.log(`(LOOP: ${l.map((x) => `#${x}`).join(' -> ')} -> #${l[0]} wait for each other, so none can start)`);
     const noEdges = all.filter((c) => c.state === 'open' && c.column).every((c) => !c.body);
     if (noEdges && ranked.length > 1) console.log('(no card says what it depends on: a card that needs another first gets "Depends on: #n" (npm run board -- --depends <n> <m>), or the order can start one too early)');
-    const unvalued = ranked.filter((c) => /value not set/.test(c.why)).length;
+    const unvalued = ranked.filter((c) => /value not set/.test(c.why) && !tied.has(c.number)).length;
     if (unvalued) console.log(`(${unvalued} startable card${unvalued === 1 ? ' has' : 's have'} no value label: set one, the order is only as good as the labels)`);
     const waiting = inbox(all, undefined, toolIssues).length;
     if (waiting) console.log(`(${waiting} open issue${waiting === 1 ? ' is' : 's are'} not on the board yet: npm run board -- --inbox)`);
@@ -144,6 +149,10 @@ async function main() {
     const on = String(argv[argv.indexOf(flag) + 2] ?? '').split(/[\s,]+/).filter(Boolean).map(cardNumber);
     const now = dependCard(board, run, number, on, { remove: flag === '--undepend' });
     console.log(`board: #${number} ${now.length ? `now depends on ${now.map((x) => `#${x}`).join(', ')}` : 'depends on no card now'} (written in its text)`);
+  } else if (argv.includes('--rate')) {
+    const number = cardNumber(value('--rate'));
+    const at = argv.indexOf('--rate');
+    console.log(`board: #${number} is ${rateCard(board, run, number, argv[at + 2], argv[at + 3])} now`);
   } else if (argv.includes('--triage')) {
     // the view for /tidy: what needs a decision so nothing piles up, and the focus (lib/triage.mjs)
     console.log(renderTriage(triage(listCards(board, run), triageOptions())));

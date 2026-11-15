@@ -1,0 +1,32 @@
+// Where the project is, from facts (no I/O here; tools/workflow/stage.mjs gathers them): the board's first-version cards, the
+// launch decision record, the market page, the last retro. Each rule gives one line naming the next stage's command, so /next
+// can nudge the owner at the right moment instead of waiting to be asked. Nothing here stops anything.
+
+/**
+ * @param {{ firstVersion: { total: number, open: number } | null, beforeDeploy: { number: number, title: string }[],
+ *   launched: boolean, marketPage: boolean, installed: Record<string, boolean>, shippedThisWeek: number,
+ *   daysSinceRetro: number | null }} f
+ * @returns {string[]} the nudges, most urgent first
+ */
+export function stageNudges(f) {
+  const out = [];
+  const add = (part) => (f.installed[part] === false ? ` (/${part} is not installed: node <kit>/install.mjs . --update --with ${part} adds it)` : '');
+  const built = f.firstVersion && f.firstVersion.total > 0 && f.firstVersion.open === 0;
+  if (built && !f.launched) {
+    const first = f.beforeDeploy.map((c) => `#${c.number} ${c.title}`).join('; ');
+    out.push(first
+      ? `The first version is built. Before it goes online: ${first} (it says it comes before the first deploy), then /launch.${add('launch')}`
+      : `The first version is built and nothing says yet where it runs: next is /launch (where it runs, the database, the deploy).${add('launch')}`);
+  }
+  if (f.launched && f.beforeDeploy.length) {
+    out.push(`It has a launch plan, but ${f.beforeDeploy.map((c) => `#${c.number}`).join(', ')} says it comes before the first deploy: do that before the deploy goes out.`);
+  }
+  if (f.launched && !f.marketPage) out.push(`It has a launch plan and nothing yet on who it is for and how they find it: /market when you want users.${add('market')}`);
+  if (f.installed.retro !== false && f.shippedThisWeek > 0 && (f.daysSinceRetro === null || f.daysSinceRetro >= 7)) {
+    out.push(`${f.shippedThisWeek} change${f.shippedThisWeek === 1 ? '' : 's'} shipped this week and no retro for ${f.daysSinceRetro === null ? 'ever' : `${f.daysSinceRetro} days`}: /retro (about 10 minutes).`);
+  }
+  return out;
+}
+
+/** The cards that say they come before the first deploy (or going live), in their title or text. */
+export const BEFORE_DEPLOY = /before (the |our |any )?(first )?(deploy|going live|go-live|launch)|must be done before .*deploy/i;

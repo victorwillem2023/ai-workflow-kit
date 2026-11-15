@@ -29,8 +29,10 @@ answered on the card or in `docs/PRODUCT.md`.
    assumption and whether a spike (`/spike`) should test it first. The owner decides.
 4. **Write it down**, on the owner's yes:
    - A card: a comment that starts with **Pitch** (`/spec` looks for it before a large card) with the answers (`npm run board` has no edit; use `gh issue comment <n> --repo <board.repo> --body-file <file>`),
-     and the labels: one `value: ...`, and `first version` when it belongs in the smallest useful version
-     (`gh issue edit <n> --repo <board.repo> --add-label "<label>"`).
+     and the labels: one `value: ...` (the owner's, from the answers), one `effort: ...` you estimate from the smallest version
+     and the code it touches (`npm run map -- --find <word>`), and `first version` when it belongs in the smallest useful version
+     (`npm run board -- --rate <n> value <word>` and `--rate <n> effort <word>` replace any old one; `gh issue edit <n> --repo
+     <board.repo> --add-label "first version"`).
    - A new product (from `/setup`): the answers become `docs/PRODUCT.md`, and the smallest version becomes the first cards,
      each with its `Depends on: #n` line where it needs another first (the rules before the screen that shows them, the store
      and sign-in before anything is saved), then `npm run board -- --graph` shown to the owner: the order of work is that tree.

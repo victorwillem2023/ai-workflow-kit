@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
-import { commitIn, makeRepo, roots, run, type Repo } from './session-repo';
+import { commitIn, makeRepo, PORTS, roots, run, type Repo } from './session-repo';
 
 const SERVER = `const fs=require('fs');const port=Number(/^PORT=(\\d+)\\s*$/m.exec(fs.readFileSync('.env','utf8'))[1]);
 fs.writeFileSync(process.argv[2],String(process.pid));require('http').createServer((q,s)=>s.end('ok')).listen(port,'127.0.0.1');`;
@@ -16,7 +16,7 @@ const isFree = (port: number) => new Promise<boolean>((ok) => {
   const s = createServer().once('error', () => ok(false)).once('listening', () => s.close(() => ok(true)));
   s.listen(port, '127.0.0.1');
 });
-let nextPort = 8970;
+let nextPort = 8970 + PORTS;
 /** A session `a` with a dev script that serves "ok" on a free port of its own. */
 async function withDev(dev: boolean): Promise<Repo> {
   const r = makeRepo();

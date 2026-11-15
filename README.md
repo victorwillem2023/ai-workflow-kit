@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.8.x` tag** (now `v2.8.4`). The kit is frozen at 2.8: until a real project has shipped its first cards on it, only
+> **Build on the latest `v2.8.x` tag** (now `v2.8.5`). The kit is frozen at 2.8: until a real project has shipped its first cards on it, only
 > fixes land (2.8.x: a bug, a wrong doc, a check that lies), never a new part, guide or skill. New work waits for 2.9, which
 > starts from what that project taught.
 
@@ -206,6 +206,19 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.8.5**: **no order by guesswork.** `board --next` says a tie at the top as one ("#11, #12, #14 are equal", marked `=`)
+  instead of ranking by card number; `/next` then estimates any missing effort from the code, lets `docs/PRODUCT.md` decide
+  what it can, and asks the owner one question whose answer is kept as value labels (`npm run board -- --rate <n> value high`,
+  which also replaces an old one). `/idea` always sets value and effort (the card command left the value out), the value from
+  the product doc or, when the doc does not decide it, as its one question; `/shape` estimates the effort too.
+  The kit's self-test runs its variants side by side (`--jobs`, default 4; each project in its own port range through
+  `WORKFLOW_TEST_PORTS`, so one's `--finish` never stops another's test server), runs each project's test suite twice instead of
+  three times (the gate runs it; the separate run is gone), and `--quick` checks full and lean only for a routine change (GitHub still runs every variant).
+  **The kit nudges at each stage**: `/next` first runs `tools/workflow/stage.mjs`, which reads facts (the first-version cards all
+  done and no launch decision: `/launch`, after any card that says it comes before the first deploy; a launch plan and no
+  `docs/MARKET.md`: `/market`; a week shipped without a retro: `/retro`), one line each, with the command that adds a skill a
+  lean install left out. `/launch`, `/market` and `/retro` answer to plain words ("ready to deploy", "get users", "how did the
+  week go?"), and CLAUDE.md sends a stage named in plain words through `/next`.
 - **2.8.4**: stacking on a session whose built work is not committed is refused with the commit to make (the new session
   would not have had it); and a repo whose remote was added after `git init` gets `origin/HEAD` (set by `session.mjs` whenever
   it fetches), so Claude Code's `security-review` runs in `/ship` instead of falling back to a review by hand.

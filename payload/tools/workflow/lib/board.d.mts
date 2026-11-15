@@ -1,6 +1,6 @@
 /** `types`: the type labels (ui, feature, bug, workflow); when set, a card needs exactly one. */
 /** `labels`: the area, effort and feasibility labels /idea may use; `--init` makes them and `--check` reports the ones the repo lacks. */
-export interface Board { owner: string; repo: string; project: number; field?: string; columns: string[]; types?: string[]; labelColor?: string; labels?: { areas?: string[]; effort?: string[]; feasibility?: string[] } }
+export interface Board { owner: string; repo: string; project: number; field?: string; columns: string[]; types?: string[]; labelColor?: string; labels?: { areas?: string[]; value?: string[]; effort?: string[]; feasibility?: string[]; milestone?: string[] } }
 export interface GhResult { status: number | null; stdout: string; stderr: string; error?: Error & { code?: string } }
 export type GhRunner = (args: string[], input?: string) => GhResult;
 export interface Card { number: number; title: string; body: string; state: string; url: string; labels: string[]; column: string | null }
@@ -16,10 +16,11 @@ export function commentCard(board: Board, run: GhRunner, number: number, text: s
 /** Moves card #number to the Blocked column and comments "Blocked: <reason>"; an empty reason is refused before any call. */
 export function blockCard(board: Board, run: GhRunner, number: number, reason: string, cache?: BoardCache): void;
 export function readCard(board: Board, run: GhRunner, number: number): Card;
+export function rateCard(board: Board, run: GhRunner, number: number, group: string, word: string): string;
 export function searchCards(board: Board, run: GhRunner, words: string): { number: number; title: string; state: string; column: string | null }[];
 /** `unknownLabels`: labels the config names (types and `labels`) that the repo does not have. */
 export function checkBoard(board: Board, run: GhRunner, cache?: BoardCache): { columns: string[]; missing: string[]; untyped: { number: number; title: string }[]; unknownLabels: string[] };
 export function labelGroups(board: Board): { types: string[]; areas: string[]; value: string[]; effort: string[]; feasibility: string[]; milestone: string[] };
 /** Makes what the config describes and the board lacks: labels, the project itself (when `project` is not a number), the columns. */
 export function initBoard(board: Board, run: GhRunner, cache?: BoardCache, opts?: { title?: string }): { project: number; created: boolean; labelsMade: string[]; columnsAdded: string[] };
-export function listCards(board: Board, run: GhRunner): { number: number; title: string; state: string; labels: string[]; column: string | null }[];
+export function listCards(board: Board, run: GhRunner, o?: { wholeText?: boolean }): { number: number; title: string; state: string; labels: string[]; column: string | null; body?: string }[];

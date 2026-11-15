@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
 import { pathToFileURL } from 'node:url';
-import { commitIn, git, makeRepo, roots, run, type Repo } from './session-repo';
+import { commitIn, git, makeRepo, PORTS, roots, run, type Repo } from './session-repo';
 
 const PARENT = `const {spawn}=require('child_process');const c=spawn(process.execPath,[__dirname+'/child.cjs',process.argv[2]],{stdio:'ignore'});
 require('fs').writeFileSync(__dirname+'/parent.pid',String(process.pid));setInterval(()=>{},1000);c.on('exit',()=>process.exit(0));`;
@@ -29,7 +29,7 @@ const isFree = (port: number) => new Promise<boolean>((ok) => {
   const s = createServer().once('error', () => ok(false)).once('listening', () => s.close(() => ok(true)));
   s.listen(port);
 });
-let nextPort = 8950;
+let nextPort = 8950 + PORTS;
 /**
  * The session gets a port from the top of the session range: the other session tests' throwaway repos hand out ports from 8788
  * up on their own, and one of their --finish runs must not find this test's server on a port its own .env names.

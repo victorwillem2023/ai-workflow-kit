@@ -2,7 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { addDepends, cardGraph, dependsOn, removeDepends, renderTree } from '../../tools/workflow/lib/cardgraph.mjs';
-import { rankCards, waitingCards } from '../../tools/workflow/lib/rank.mjs';
+import { rankCards, topTie, waitingCards } from '../../tools/workflow/lib/rank.mjs';
 
 const card = (number: number, title: string, deps = '', labels: string[] = [], column = 'Backlog', state = 'open') =>
   ({ number, title, state, labels, column, body: deps });
@@ -68,5 +68,15 @@ describe('the card graph', () => {
     assert.deepEqual(ranked[1].on, [1]);
     assert.match(ranked[1].why, /^starts on top of #1 \(built, waiting for your check\)/);
     assert.deepEqual(waitingCards(cards).waiting.map((c) => [c.number, c.waitsFor]), [[4, [3]]], 'only what is not built yet is waited for');
+  });
+
+  it('cards nothing tells apart are a tie at the top, never an order by card number; a label breaks it', () => {
+    const free = [card(11, 'Cycling plans', 'Depends on: #1'), card(12, 'Hiking plans', 'Depends on: #1'), card(14, 'Ultra goals', 'Depends on: #1'),
+      card(1, 'Training rules', '', [], 'Done', 'closed')];
+    assert.deepEqual(topTie(rankCards(free)).map((c) => c.number), [11, 12, 14]);
+    const rated = free.map((c) => (c.number === 14 ? { ...c, labels: ['value: high'] } : c));
+    assert.deepEqual(topTie(rankCards(rated)), [], 'one value label and #14 stands alone at the top');
+    assert.equal(rankCards(rated)[0].number, 14);
+    assert.deepEqual(topTie(rankCards(board)).map((c) => c.number), [1, 5], 'two cards that unlock as much, with the same labels, are a tie too');
   });
 });

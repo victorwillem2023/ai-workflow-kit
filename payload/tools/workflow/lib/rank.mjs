@@ -53,6 +53,17 @@ export function rankCards(cards, { firstVersion, columns = STARTABLE, built = BU
     .sort((a, b) => Number(b.v1) - Number(a.v1) || b.unlocks - a.unlocks || a.on.length - b.on.length || b.score - a.score || (a.column === 'Ready' ? -1 : 0) - (b.column === 'Ready' ? -1 : 0) || a.number - b.number);
 }
 
+/**
+ * The cards at the top of a ranking that nothing tells apart: the same place in the graph (first version, what they unlock,
+ * what they start on) and the same sum of the labels. The order between them would only be the card number: it is the owner's
+ * call, asked once and kept as labels (board --rate). Empty when the first card stands alone.
+ */
+export function topTie(ranked) {
+  const key = (c) => [Number(c.v1), c.unlocks ?? 0, (c.on ?? []).length, c.score].join('|');
+  const tie = ranked.length > 1 ? ranked.filter((c) => key(c) === key(ranked[0])) : [];
+  return tie.length > 1 ? tie : [];
+}
+
 /** The startable open cards that wait for another open card: [{ number, title, waitsFor: [n...] }], and the loops. */
 export function waitingCards(cards, { columns = STARTABLE, built = BUILT } = {}) {
   const { loops, unknown } = cardGraph(cards);

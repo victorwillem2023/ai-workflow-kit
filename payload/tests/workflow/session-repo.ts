@@ -9,6 +9,9 @@ const SCRIPTS = ['session.mjs', 'session-stop.mjs'].map((f) => resolve('scripts'
 export const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
 export const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 export const roots: string[] = [];
+/** Added to every port these tests use (WORKFLOW_TEST_PORTS): the kit's self-test runs projects side by side, each in its own range,
+ *  because a session's --finish stops whatever listens on its port. */
+export const PORTS = Number(process.env.WORKFLOW_TEST_PORTS ?? 0);
 
 export interface Repo { root: string; main: string; origin: string; wt: (t: string) => string; env: Record<string, string>; ghLog: string; checkLog: string }
 
@@ -44,7 +47,7 @@ export function makeRepo(): Repo {
   copyFileSync(resolve('tools/workflow/lib/board.mjs'), join(main, 'tools', 'workflow', 'lib', 'board.mjs'));
   // the project's own config, with the session folders named app-<topic> whatever the project calls its own
   const config = JSON.parse(readFileSync(resolve('workflow.config.json'), 'utf8'));
-  writeFileSync(join(main, 'workflow.config.json'), JSON.stringify({ ...config, session: { prefix: 'app', firstPort: 8788, mainPort: 8787, env: {} } }));
+  writeFileSync(join(main, 'workflow.config.json'), JSON.stringify({ ...config, session: { prefix: 'app', firstPort: 8788 + PORTS, mainPort: 8787 + PORTS, env: {} } }));
   writeFileSync(join(main, 'package.json'), JSON.stringify({ scripts: { map: 'node map.cjs', test: 'node check.cjs' } }));
   writeFileSync(join(main, 'map.cjs'), MAP_SCRIPT); writeFileSync(join(main, 'check.cjs'), CHECK_SCRIPT);
   writeFileSync(join(root, 'fake-gh.cjs'), FAKE_GH);

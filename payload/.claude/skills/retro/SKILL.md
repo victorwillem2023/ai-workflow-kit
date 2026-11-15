@@ -1,6 +1,6 @@
 ---
 name: retro
-description: The weekly {{PROJECT}} retro ("/retro"): reads the numbers a script gathers (what shipped per week and the streak, how the code's health moved, what is next), asks the owner what went well and what got in the way, and turns each lesson into a check or a rule through /lesson. About 10 minutes, once a week.
+description: The weekly {{PROJECT}} retro ("/retro", or in plain words: "how did the week go?", "look back on the week"): reads the numbers a script gathers (what shipped per week and the streak, how the code's health moved, what is next), asks the owner what went well and what got in the way, and turns each lesson into a check or a rule through /lesson. About 10 minutes, once a week.
 model: sonnet
 ---
 

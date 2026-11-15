@@ -33,9 +33,11 @@ describe('deploy, end to end', () => {
   const deploy = (...a: string[]) => new Promise<{ code: number; out: string }>((done) => {
     execFile(process.execPath, [script, ...a], { cwd: work, env: { ...process.env, WORKFLOW_DEPLOY_PAUSE_MS: '50' } }, (err, stdout, stderr) => done({ code: err ? 1 : 0, out: stdout + stderr }));
   });
+  // waitSeconds 3: a good deploy returns as soon as it answers, so this only bounds a slow machine (the kit's self-test checks
+  // several projects at once); only the deploy that never comes up waits it out
   const config = (command: string) => {
     const put = (what: string) => `node -e "require('fs').writeFileSync(process.argv[1], process.argv[2])" "${join(dir, 'version.txt').replaceAll('\\', '/')}" ${what}`;
-    writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ deploy: { url: `http://127.0.0.1:${port}`, waitSeconds: 0.3, command: put(command), rollback: put('{version}') } }));
+    writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ deploy: { url: `http://127.0.0.1:${port}`, waitSeconds: 3, command: put(command), rollback: put('{version}') } }));
     git('add', '.'); git('commit', '-m', 'config ' + command); git('push', 'origin', 'main');
   };
 
@@ -66,7 +68,7 @@ describe('deploy, end to end', () => {
   });
   it('deploys to a named environment with its own settings, and refuses one the config does not have', async () => {
     const put = `node -e "require('fs').writeFileSync(process.argv[1], process.argv[2])" "${join(dir, 'version.txt').replaceAll('\\', '/')}" {version}`;
-    writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ deploy: { url: 'http://127.0.0.1:1', waitSeconds: 0.3, environments: { staging: { url: `http://127.0.0.1:${port}`, command: put, rollback: put, watch: { seconds: 0 } } } } }));
+    writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ deploy: { url: 'http://127.0.0.1:1', waitSeconds: 3, environments: { staging: { url: `http://127.0.0.1:${port}`, command: put, rollback: put, watch: { seconds: 0 } } } } }));
     git('add', '.'); git('commit', '-m', 'staging'); git('push', 'origin', 'main');
     const r = await deploy('--env', 'staging');
     assert.equal(r.code, 0, r.out);

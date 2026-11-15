@@ -6,6 +6,8 @@ part a change touches. Where every other doc is (product, company, build, run, d
 
 ## How we work (the owner decides what gets built)
 The owner wants to understand and steer the project, not just receive features. So:
+- **A stage in plain words** ("ready to deploy", "let's get users", "what now?"): the command comes from `/next` (it reads where
+  the project is, `tools/workflow/stage.mjs`, and `docs/WORKFLOW.md`, *The commands, by stage*), never improvised.
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: what the user will see change, which files, which test proves it,

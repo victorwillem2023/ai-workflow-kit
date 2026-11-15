@@ -3,15 +3,18 @@
 // there: the kit's own tests (they need a real project around them), the file map, the first baseline and the full gate.
 // Then do it again with --update over the result, so an update is proven too. Used by .github/workflows/selftest.yml.
 //   node scripts/selftest.mjs [<variant>...] [--keep]      no variant: full. --keep leaves the folders for a look
+//   node scripts/selftest.mjs --quick                      full and lean only: enough for a routine change (CI still runs them all)
+// Variants run side by side (--jobs <n>, default 4), each with its own port range (WORKFLOW_TEST_PORTS): a session's --finish
+// stops whatever listens on its port, so two projects checked at once must never share one.
 // The variants, each a project made the way its owner would make it:
 //   full      TypeScript, every module and the ai module          lean     TypeScript, --lean: the build loop only
 //   cluster   TypeScript with the cluster module (needs Docker)   vite     a Vite React starter, then the kit (needs the network)
 //   python    uv's project, --lang python (needs uv)              go       go mod init, --lang go (needs go)
 //   rust      cargo init, --lang rust (needs cargo, cargo-machete, cargo-audit)
 // A variant whose tools are missing on this computer says so and is skipped; CI installs them and runs them all.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,7 +57,7 @@ function walkMd(d) {
   return readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walkMd(join(d, e.name)) : e.name.endsWith('.md') ? [join(d, e.name)] : []));
 }
 
-function runVariant(name) {
+async function runVariant(name) {
   const v = VARIANTS[name];
   const missing = (v.needs ?? []).filter((t) => !has(t));
   // the pinned staticcheck and govulncheck (starter/lang.json) need Go 1.26 or newer
@@ -66,22 +69,31 @@ function runVariant(name) {
   const dir = join(tmp, 'selftest-app');
   mkdirSync(dir);
   const steps = [];
-  const step = (label, cmd, args) => {
+  // its own port range, so projects checked side by side never stop each other's test servers
+  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_TEST_PORTS: String(Object.keys(VARIANTS).indexOf(name) * 400) };
+  const step = (label, cmd, args) => new Promise((done, fail) => {
     const t0 = Date.now();
     // npm, uv and cargo can be .cmd files on Windows; the arguments are fixed here, never outside input
     // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-    // input closed (''), so a starter that would ask a question takes its default instead of waiting
-    const r = spawnSync(cmd, args, { cwd: dir, input: '', encoding: 'utf8', shell: win && cmd !== process.execPath, maxBuffer: 256 << 20, env: { ...process.env, CI: process.env.CI ?? '' } });
-    const ok = r.status === 0;
-    steps.push(ok);
-    console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}: ${label} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
-    if (!ok) { console.log(String((r.stdout ?? '') + (r.stderr ?? '')).trim().split('\n').slice(-60).join('\n')); throw new Error(label); }
-    return String(r.stdout ?? '');
-  };
+    // stdin closed, so a starter that would ask a question takes its default instead of waiting
+    const p = spawn(cmd, args, { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'], shell: win && cmd !== process.execPath, env });
+    let out = '';
+    p.stdout.on('data', (d) => { out += d; });
+    p.stderr.on('data', (d) => { out += d; });
+    p.on('error', (e) => { out += e.message; });
+    p.on('close', (code) => {
+      const ok = code === 0;
+      steps.push(ok);
+      // a failure prints its last lines in the same write, so lines of variants running at the same time do not mix into it
+      const tail = ok ? '' : `\n${out.trim().split('\n').slice(-60).join('\n')}`;
+      console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}: ${label} (${((Date.now() - t0) / 1000).toFixed(1)}s)${tail}`);
+      if (ok) done(out); else fail(new Error(label));
+    });
+  });
   const git = (...a) => execFileSync('git', a, { cwd: dir, stdio: 'ignore' });
   try {
     for (const [cmd, args] of v.prepare ?? []) {
-      const said = step(`${cmd} ${args.slice(0, 3).join(' ')}`, cmd, args);
+      const said = await step(`${cmd} ${args.slice(0, 3).join(' ')}`, cmd, args);
       if (cmd === 'npm' && args[0] === 'create' && !existsSync(join(dir, 'package.json'))) { console.log(`FAIL ${name}: npm create made no package.json in ${dir}:\n${said.trim().split('\n').slice(-12).join('\n')}`); throw new Error('create'); }
     }
     for (const [path, text] of Object.entries(v.files ?? {})) { mkdirSync(dirname(join(dir, path)), { recursive: true }); writeFileSync(join(dir, path), text); }
@@ -89,7 +101,7 @@ function runVariant(name) {
     git('config', 'user.name', 'Kit selftest');
     git('config', 'user.email', 'selftest@example.invalid');
     const install = [join(kit, 'install.mjs'), dir, '--project', 'Selftest App', '--repo', 'example/selftest-app', '--prefix', 'selftest', ...v.args];
-    const said = step('install', process.execPath, install);
+    const said = await step('install', process.execPath, install);
     if (v.check) {
       const found = v.check(dir);
       console.log(`${found.length ? 'FAIL' : 'ok  '} ${name}: no command named that is not installed${found.length ? `:\n${found.slice(0, 20).join('\n')}` : ''}`);
@@ -98,19 +110,19 @@ function runVariant(name) {
     // what the installer's "step 1" asks a person to run (TypeScript: one or more "npm i" joined by &&), so that line is proven too
     const line = /^\s*(?:1\.|step 1:)\s*(npm i [^\n]+)$/m.exec(said)?.[1];
     if (!v.args.includes('--lang') && !line) { console.log(`FAIL ${name}: the installer printed no "npm i" step:\n${said}`); throw new Error('step 1'); }
-    for (const part of line ? line.split('&&').map((p) => p.trim().split(/\s+/).slice(2)) : []) step(`npm i ${part.join(' ')}`, 'npm', ['install', '--no-audit', '--no-fund', '--silent', ...part]);
+    for (const part of line ? line.split('&&').map((p) => p.trim().split(/\s+/).slice(2)) : []) await step(`npm i ${part.join(' ')}`, 'npm', ['install', '--no-audit', '--no-fund', '--silent', ...part]);
     for (const [path, change] of Object.entries(v.fix ?? {})) writeFileSync(join(dir, path), change(readFileSync(join(dir, path), 'utf8')));
-    for (const [cmd, args] of v.after ?? []) step(`${cmd} ${args.join(' ')}`, cmd, args);
+    for (const [cmd, args] of v.after ?? []) await step(`${cmd} ${args.join(' ')}`, cmd, args);
     git('add', '-A');
     git('commit', '-q', '-m', 'Start from the kit');
-    step('file map', process.execPath, ['tools/workflow/map.mjs']);
-    step('first baseline', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
-    step('the project\'s tests', 'npm', ['test', '--silent']);
-    step('full gate', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+    await step('file map', process.execPath, ['tools/workflow/map.mjs']);
+    await step('first baseline', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
+    // the full gate runs the project's whole test suite (npm test) itself: no separate run of it
+    await step('full gate', process.execPath, ['tools/workflow/gate.mjs', '--all']);
     git('add', '-A');
     git('commit', '-q', '-m', 'The first baseline');
-    step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
-    step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+    await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
+    await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
     return 'passed';
   } catch {
     return 'failed';
@@ -120,12 +132,19 @@ function runVariant(name) {
   }
 }
 
-const asked = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const asked = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && all[i - 1] !== '--jobs');
 const unknown = asked.filter((a) => !(a in VARIANTS) && a !== 'all');
 if (unknown.length) { console.log(`Unknown variant ${unknown.join(', ')}. Variants: ${Object.keys(VARIANTS).join(', ')}, all`); process.exit(1); }
-const names = asked.includes('all') ? Object.keys(VARIANTS) : asked.length ? asked : ['full'];
-const results = Object.fromEntries(names.map((n) => [n, runVariant(n)]));
+const names = asked.includes('all') ? Object.keys(VARIANTS) : asked.length ? asked : process.argv.includes('--quick') ? ['full', 'lean'] : ['full'];
+// side by side, at most --jobs at once (each runs a whole project's checks, which use several cores themselves)
+const jobsAt = process.argv.indexOf('--jobs');
+const jobs = Math.max(1, Number(jobsAt >= 0 ? process.argv[jobsAt + 1] : 0) || Math.min(4, Math.max(1, Math.floor(availableParallelism() / 2))));
+const results = {};
+const queue = [...names];
+await Promise.all(Array.from({ length: Math.min(jobs, names.length) }, async () => {
+  for (let n = queue.shift(); n; n = queue.shift()) results[n] = await runVariant(n);
+}));
 // on CI every asked variant must really run: a skip there means a tool the workflow should have installed is missing
 const failed = Object.entries(results).filter(([, r]) => r === 'failed' || (process.env.CI && r === 'skipped')).map(([n]) => n);
-console.log(`selftest: ${Object.entries(results).map(([n, r]) => `${n} ${r}`).join(', ')}`);
+console.log(`selftest: ${names.map((n) => `${n} ${results[n]}`).join(', ')}`);
 process.exit(failed.length ? 1 : 0);

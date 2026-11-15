@@ -199,6 +199,22 @@ export function readCard(board, run, number) {
     labels: (c.labels ?? []).map((l) => l.name), column: onBoard?.status.name ?? null };
 }
 
+/**
+ * Rates card #number in one label group (value, effort, feasibility): sets "<group>: <word>" and takes off the group's other
+ * labels, so a card never holds two values. The words are the config's (board.labels.<group>). Returns the label set.
+ */
+export function rateCard(board, run, number, group, word) {
+  const names = labelGroups(board)[group];
+  if (!['value', 'effort', 'feasibility'].includes(group) || !names?.length) throw new BoardError(`Rate value, effort or feasibility, for example --rate ${number} value high.`);
+  const label = names.find((l) => l.toLowerCase() === `${group}: ${String(word ?? '').toLowerCase()}`);
+  if (!label) throw new BoardError(`${group} is one of: ${names.map((l) => l.replace(/^[^:]+:\s*/, '')).join(', ')}.`);
+  const card = readCard(board, run, number);
+  const drop = card.labels.filter((l) => names.includes(l) && l !== label);
+  ensureLabels(board, run, [label], {}, colorFor(board));
+  gh(run, `rating card #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, '--add-label', label, ...drop.flatMap((l) => ['--remove-label', l])]);
+  return label;
+}
+
 /** Card #number depends on the cards `on` (they must be done first): a "Depends on: #a, #b" line in its text, kept in one line. */
 /** Adds (or with remove takes off) what card `number` depends on; returns the full list it ends up with. */
 export function dependCard(board, run, number, on, { remove = false } = {}) {
@@ -222,14 +238,14 @@ export function searchCards(board, run, words) {
 
 
 /** Every card (open and closed, at most 1000): number, title, state (lower case), labels, column, and when it was made and last
- *  changed, for the worksheet, the ranking and the triage. */
-export function listCards(board, run) {
+ *  changed, for the worksheet, the ranking and the triage. `wholeText`: the card's whole text (the stage check reads it). */
+export function listCards(board, run, { wholeText = false } = {}) {
   return ghJson(run, 'reading the cards', ['issue', 'list', '--repo', board.repo, '--state', 'all', '--limit', '1000',
     '--json', 'number,title,state,labels,projectItems,createdAt,updatedAt,body'])
     .map((c) => ({ number: c.number, title: c.title, state: String(c.state).toLowerCase(), labels: (c.labels ?? []).map((l) => l.name),
       column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null,
-      // only the "Depends on: #n" lines are kept from the text (lib/cardgraph.mjs), not the whole body
-      body: dependsOnLines(c.body) }));
+      // otherwise only the "Depends on: #n" lines are kept from the text (lib/cardgraph.mjs), not the whole body
+      body: wholeText ? (c.body ?? '') : dependsOnLines(c.body) }));
 }
 
 /** Closes card #number with the reason as its last comment (a duplicate, out of date, won't do: the owner said so). */
