@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { countPatterns, risen } from '../../tools/workflow/lib/ratchet.mjs';
 import { copiedFunctions } from '../../tools/workflow/lib/funclen.mjs';
+import { buildGraph, affectedTests } from '../../tools/workflow/lib/graph.mjs';
 
 const files = new Map(Object.entries({
   'src/plan/a.ts': "if (shape === 'loop') go();\nif (isBike(x) && shape === 'oneway') stop();\n",
@@ -29,5 +30,13 @@ describe('copied functions', () => {
       'src/b.ts': `function hm(x: number) {\n${body}\n}\nfunction tiny() {\n  return 1;\n}\n`,
     }));
     assert.deepEqual(copiedFunctions(f), [['src/a.ts:hours', 'src/b.ts:hm']]);
+  });
+});
+
+describe('tests named for a group of files', () => {
+  it('a changed file under a testsNaming folder picks the tests that name its word, not its own name', () => {
+    const graph = buildGraph(new Map(Object.entries({ 'tests/style.test.ts': "import('scripts/css-parts.mjs')", 'tests/other.test.ts': 'x' })), ['src/web/css/01-base.css']);
+    const r = affectedTests(graph, ['src/web/css/01-base.css'], { isTest: (f: string) => f.startsWith('tests/'), naming: { 'src/web/css/**': 'css-parts.mjs' } });
+    assert.deepEqual(r, { tests: ['tests/style.test.ts'], all: false });
   });
 });

@@ -18,5 +18,5 @@ export function buildGraph(files: Map<string, string>, others?: string[]): Graph
 export function affectedTests(
   graph: Graph,
   changed: string[],
-  opts: { isTest: (file: string) => boolean; ignore?: string[]; isCode?: (file: string) => boolean },
+  opts: { isTest: (file: string) => boolean; ignore?: string[]; isCode?: (file: string) => boolean; naming?: Record<string, string> },
 ): { tests: string[]; all: boolean };

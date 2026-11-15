@@ -34,6 +34,8 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **quality** (when `quality.command` is in the config): the command prints "79 of 106"; fewer passing than the baseline fails.
   It runs when a changed file matches `quality.when` (default `src/**`) and with `--all`. `--update-baseline` stores the score.
 - **requests** (with the map module): `docs/flow/requests.js` must be what the request pages say now (`node docs/flow/build-requests.mjs`).
+- **testsNaming** (optional): a changed file that is not code picks the tests that name it; `{ "src/web/css/**": "css-parts.mjs" }`
+  makes every file under that folder pick the tests that name that word instead.
 - **map**: `docs/MAP.md` must be what `npm run map` writes now; a stale map fails the gate.
 - **docs**: a backticked repo path (`src/…`, `config/…`, `tests/…`, `scripts/…`, `tools/…`, `docs/…`) or an `npm run <name>` in the docs listed under `docs` in the config that no longer exists fails, with the doc, line and thing. Globs, `<placeholders>` and bare names (`service.ts`) are skipped. Known stale ones are in `baseline.json`; fixing one and re-running `--update-baseline` shortens the list.
 - **typecheck**: the config's `commands.typecheck`.

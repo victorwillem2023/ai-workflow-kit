@@ -125,7 +125,7 @@ function adviceLines() {
 if (flag('--advice')) { const a = adviceLines(); if (a.length) console.log(a.join('\n')); process.exit(0); }
 
 const changed = changedFiles();
-const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode });
+const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming });
 // a language whose tests the gate cannot pick by file (`testPicking: false`): the whole suite, unless only docs changed
 if (config.testPicking === false) { reach.all = changed.some((f) => !matchesAny(f, config.ignoreChanged)); reach.tests = []; }
 
@@ -173,7 +173,8 @@ const steps = [
   }],
   config.scope === 'fail' && ['scope', () => { const s = scopeLines(); return s.length ? { ok: false, out: s.join('\n') } : { ok: true }; }],
   ['map', () => run('node tools/workflow/map.mjs --check')],
-  existsSync('docs/flow/build-requests.mjs') && ['requests', () => run('node docs/flow/build-requests.mjs --check')],
+  // (only a builder that knows --check: an older one would rewrite the file instead of checking it)
+  existsSync('docs/flow/build-requests.mjs') && readFileSync('docs/flow/build-requests.mjs', 'utf8').includes("'--check'") && ['requests', () => run('node docs/flow/build-requests.mjs --check')],
   ['harness', () => run('node tools/workflow/harness.mjs --check')],
   ['docs', () => {
     const fresh = newStaleRefs(staleRefs, baseline.docs ?? []);

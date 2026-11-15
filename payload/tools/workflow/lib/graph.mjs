@@ -149,7 +149,7 @@ export function buildGraph(files, others = []) {
 
 // Tests reached from the changed files through any chain of imports.
 // `all` is true when a change is not understood (so the safe answer is the whole suite).
-export function affectedTests(graph, changed, { isTest, ignore = [], isCode = (f) => CODE.test(f) }) {
+export function affectedTests(graph, changed, { isTest, ignore = [], isCode = (f) => CODE.test(f), naming = {} }) {
   const tests = new Set();
   let all = false;
   const queue = [];
@@ -157,8 +157,9 @@ export function affectedTests(graph, changed, { isTest, ignore = [], isCode = (f
     if (matchesAny(file, ignore)) continue;
     if (graph.files.has(file)) { queue.push(file); continue; }
     if (isCode(file)) { all = true; continue; }
-    // a non-code file: the tests that name it (readFileSync of styles.css), else unknown
-    const name = posix.basename(file);
+    // a non-code file: the tests that name it (readFileSync of styles.css), else unknown. `naming` (testsNaming in the
+    // config) says which word stands for a group of files: { "src/web/css/**": "css-parts.mjs" } for a stylesheet in parts
+    const name = Object.entries(naming).find(([glob]) => matchesAny(file, [glob]))?.[1] ?? posix.basename(file);
     const named = [...graph.files].filter(([f, text]) => isTest(f) && text.includes(name)).map(([f]) => f);
     if (named.length) named.forEach((f) => tests.add(f));
     else all = true;
