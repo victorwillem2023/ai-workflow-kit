@@ -3,7 +3,7 @@
 // and the page's failed calls and uncaught errors told plainly (src/web/report.ts).
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { AppError, answerError, logPageError } from '../../src/server/errors';
+import { AppError, answerError, logPageError, PROBLEM_JSON } from '../../src/server/errors';
 import { createLogger } from '../../src/server/log';
 import { parseTraceparent, startRequest } from '../../src/server/trace';
 import { ApiError, apiError, reportPageErrors } from '../../src/web/report';
@@ -76,14 +76,25 @@ describe('errors that point at the cause', () => {
     });
     assert.deepEqual(answerError(err, { id: 'abc', log }), {
       status: 503,
-      body: { error: 'Your goal could not be saved. Try again in a minute.', code: 'store-down', reference: 'abc' },
+      body: {
+        type: 'about:blank',
+        title: 'It could not be done right now',
+        status: 503,
+        detail: 'Your goal could not be saved. Try again in a minute.',
+        code: 'store-down',
+        reference: 'abc',
+      },
     });
-    const line = lines[0] as { level: string; doing: string; goalId: number; error: { code: string; cause: { message: string } } };
+    const line = lines[0] as { level: string; doing: string; goalId: number; code: string; causes: { message: string }[] };
     assert.equal(line.level, 'error');
     assert.equal(line.doing, 'saving the goal');
     assert.equal(line.goalId, 7);
-    assert.equal(line.error.code, 'store-down');
-    assert.equal(line.error.cause.message, 'SQLITE_BUSY: database is locked', 'the real problem is in the same line');
+    assert.equal(line.code, 'store-down');
+    assert.equal(line.causes[0].message, 'SQLITE_BUSY: database is locked', 'the real problem is in the same line');
+  });
+
+  it('answers as problem details, the web standard (RFC 9457): the content type to send it with', () => {
+    assert.equal(PROBLEM_JSON, 'application/problem+json');
   });
 
   it("a person's mistake (4xx) is a warning; a fault in the code is a 500 whose details stay in the log", () => {
@@ -92,7 +103,7 @@ describe('errors that point at the cause', () => {
     assert.equal(lines[0].level, 'warn');
     const fault = answerError(new TypeError("Cannot read properties of undefined (reading 'weeks')"), { id: 'r2', log });
     assert.equal(fault.status, 500);
-    assert.doesNotMatch(fault.body.error, /undefined|weeks/, 'the person never sees the inside of the code');
+    assert.doesNotMatch(`${fault.body.title} ${fault.body.detail}`, /undefined|weeks/, 'the person never sees the inside of the code');
     assert.match(String((lines[1] as { error: { message: string } }).error.message), /reading 'weeks'/, 'the log does');
   });
 
@@ -115,11 +126,23 @@ describe('errors that point at the cause', () => {
 describe('the page side', () => {
   it("a failed call becomes an ApiError with the server's words and reference, said in one console line", async () => {
     const said: string[] = [];
-    const res = { status: 400, json: async () => ({ error: 'The race date is in the past.', code: 'date-in-past', reference: 'abc' }) };
+    const res = {
+      status: 400,
+      json: async () => ({
+        type: 'about:blank',
+        title: 'It could not be done',
+        status: 400,
+        detail: 'The race date is in the past.',
+        code: 'date-in-past',
+        reference: 'abc',
+      }),
+    };
     const err = await apiError(res, 'POST', '/api/goal', (l) => said.push(l));
     assert.ok(err instanceof ApiError);
     assert.deepEqual([err.message, err.code, err.reference], ['The race date is in the past.', 'date-in-past', 'abc']);
     assert.deepEqual(said, ['POST /api/goal 400: The race date is in the past. (reference abc)']);
+    const older = await apiError({ status: 400, json: async () => ({ error: 'An older body.' }) }, 'GET', '/x', () => {});
+    assert.equal(older.message, 'An older body.', 'an { error } body is read too');
     const plain = await apiError(
       {
         status: 502,

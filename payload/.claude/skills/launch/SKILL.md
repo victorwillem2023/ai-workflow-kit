@@ -15,7 +15,7 @@ in `docs/run/IAC.md`, releases and user testing in `docs/run/RELEASES.md`. Nothi
    **Start the run stage** when `docs/run/` is not there yet: `node tools/workflow/stage.mjs --enter run` brings its guides and
    the project's run pages (deploy, environments, production, recovery). Say so in one line.
 1. **What we know.** Read `docs/PRODUCT.md` (who uses it, how many, where), `docs/STACK.md`, `docs/workflow/SENSITIVE.md` and
-   `sensitive.paths`, `docs/run/ENVIRONMENTS.md`, `docs/run/PRODUCTION.md` (what the app already does for production: settings,
+   `sensitive.paths`, `docs/run/ENVIRONMENTS.md`, `docs/PRODUCTION.md` (what the app already does for production: settings,
    logs, health, stopping), `launch` in `workflow.config.json` if it is set, and the card if one was named. A cluster chosen:
    `docs/run/CLUSTER.md` too.
    Say back in five lines: the users and load expected in the first year, where the data may live, what must never be lost,

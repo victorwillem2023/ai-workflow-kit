@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.9.x` tag** (now `v2.9.2`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
+> **Build on the latest `v2.9.x` tag** (now `v2.9.3`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
 > what that project taught (the docs in folders, and in 2.9.1 a folder only once its stage is reached). The same rule holds: a new
 > part, guide or skill comes from a real project running into its lack, never ahead of one.
 
@@ -95,7 +95,7 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
              scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit), .github/workflows/deploy.yml
              (after a release: staging by itself; production when you run it, or after a required reviewer's approval)
   production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
-             src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/run/PRODUCTION.md,
+             src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
              docs/company/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
   cluster/   (optional, --with cluster) deploy/helm/app (a Helm chart: not root, read-only, no capabilities, a disruption budget,
              autoscaling, a NetworkPolicy, a Gateway API route; values per environment), deploy/gitops/argocd (one Application
@@ -206,6 +206,20 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.9.3**, fixes from updating a real project (Training Coach) from 2.8.4. **An update no longer takes kit files for the
+  project's own work** when the only change is the doc paths it rewrote itself (a file that matches the kit's stamp once the
+  paths are put back is the kit's, and gets the new version). **`docs/PRODUCTION.md` is a build-stage doc again**: it describes
+  code a project has from the first day (settings, logs, health), so it is not taken away before the run stage; an update moves
+  it back from `docs/run/`. **The move does not fail a project's gate**: when the longer doc paths alone take CLAUDE.md over its
+  budget, the budget grows by exactly those bytes, and the update says so. **Errors answer in the web's standard form**: RFC 9457
+  problem details (`type`, `title`, `status`, `detail`) plus `code` and `reference`, as `application/problem+json`; the cause
+  chain is logged as `causes` by `src/server/errors.ts`, so it works with the logger a project already has; the page reads
+  `detail`, and an older `{ error }` body too. **An update adds the helpers a project lacks** (`src/server/trace.ts`,
+  `errors.ts`, `src/web/report.ts` and their test), never replacing one, and names each in the code doc that covers its folder
+  (`docs/code/web.md`, from the helper's own first comment), so the gate's covers check holds; and a CLAUDE.md section can name the folder note it
+  belongs in (the debugging rules go into `src/server/CLAUDE.md` when the project has one). The self-test's update now starts
+  from a project shaped like that one: the older layout with the older kit's stamps, `PRODUCTION.md` where 2.9.0 put it, the
+  helpers missing and CLAUDE.md exactly at its budget, and it fails when the update takes any kit file for the project's own.
 - **2.9.2**: **finding what goes wrong.** Every request has one id (the W3C `traceparent` trace id: kept when a request brings
   one, made when not) on every log line, in the answer (`x-request-id`) and in its calls to other services, and one line when it
   is answered (`POST /api/goal 400 12 ms`): `src/server/trace.ts`. Errors point at the cause: an `AppError` has a code, the words
@@ -427,7 +441,7 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
   signal, and has a health check that uses Node's own fetch.
 - **2.0.0**: from idea to product. The README and `docs/workflow/LIFECYCLE.md` tell the whole lifecycle. The `production` module: settings
   checked at start-up, JSON logs that hide secrets and personal fields, `/health` and `/ready`, a stop that lets open requests
-  finish, `docs/run/PRODUCTION.md` and `docs/company/PRIVACY.md`. The gate's *settings* check (every name the code reads is in `.env.example`).
+  finish, `docs/PRODUCTION.md` and `docs/company/PRIVACY.md`. The gate's *settings* check (every name the code reads is in `.env.example`).
   The release pipeline (deploy module): one image per commit after the gate, scanned (Trivy: vulnerabilities and configuration),
   with an SBOM, in ghcr.io, third-party actions pinned to a commit. The gate pipeline on the current GitHub actions.
   `--update-baseline` refuses a new broken import rule or a doc naming a missing file (it accepted them before), unless `--allow-growth`.

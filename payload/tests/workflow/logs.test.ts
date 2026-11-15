@@ -16,6 +16,11 @@ describe('reading a server log', () => {
       error: { kind: 'AppError', code: 'store-down', message: 'Your goal could not be saved.', at: ['at save (src/server/goal.ts:40)'], cause: { kind: 'Error', message: 'SQLITE_BUSY' } } }));
     assert.match(String(out), /ERROR Your goal could not be saved\.  ref abc  doing=saving the goal\n    AppError \(store-down\): Your goal could not be saved\. at save \(src\/server\/goal\.ts:40\)\n    caused by Error: SQLITE_BUSY/);
   });
+  it('shows the causes list the error helper logs, one "caused by" line each', () => {
+    const out = formatLine(line({ level: 'error', msg: 'Your goal could not be saved.', requestId: 'abc', code: 'store-down',
+      causes: [{ kind: 'Error', code: 'SQLITE_BUSY', message: 'database is locked' }] }));
+    assert.match(String(out), /ref abc  code=store-down\n    caused by Error \(SQLITE_BUSY\): database is locked$/);
+  });
   it('--ref keeps one request\'s lines, --level the ones at least that serious', () => {
     assert.equal(formatLine(line({ level: 'info', msg: 'x', requestId: 'abc123' }), { ref: 'def' }), null);
     assert.notEqual(formatLine(line({ level: 'info', msg: 'x', requestId: 'abc123' }), { ref: 'abc' }), null);

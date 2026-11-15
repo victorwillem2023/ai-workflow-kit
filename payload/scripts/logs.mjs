@@ -13,7 +13,7 @@ import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const LEVELS = ['debug', 'info', 'warn', 'error'];
-const SHOWN_ALREADY = new Set(['time', 'level', 'msg', 'requestId', 'method', 'path', 'error', 'app', 'version']);
+const SHOWN_ALREADY = new Set(['time', 'level', 'msg', 'requestId', 'method', 'path', 'error', 'causes', 'app', 'version']);
 
 /** One log line as a person reads it; a line that is not JSON (the dev server's own words) as it is. Null when filtered out. */
 export function formatLine(raw, { ref, level } = {}) {
@@ -25,7 +25,9 @@ export function formatLine(raw, { ref, level } = {}) {
   const time = String(e.time ?? '').slice(11, 19);
   const fields = Object.entries(e).filter(([k, v]) => !SHOWN_ALREADY.has(k) && v !== undefined)
     .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' ');
-  const err = e.error ? `\n    ${errorText(e.error, '    ')}` : '';
+  // the error, and what caused it: inside the error (cause), or as the `causes` list src/server/errors.ts logs
+  const causes = Array.isArray(e.causes) ? e.causes.map((c) => `\n    caused by ${c.kind ?? 'Error'}${c.code ? ` (${c.code})` : ''}: ${c.message ?? ''}`).join('') : '';
+  const err = `${e.error ? `\n    ${errorText(e.error, '    ')}` : ''}${causes}`;
   return `${time} ${String(e.level ?? '').toUpperCase().padEnd(5)} ${e.msg}${e.requestId ? `  ref ${String(e.requestId).slice(0, 8)}` : ''}${fields ? `  ${fields}` : ''}${err}`;
 }
 function errorText(err, indent) {

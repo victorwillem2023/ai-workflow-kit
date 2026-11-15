@@ -41,26 +41,18 @@ export function redact(value: unknown, personal: ReadonlySet<string> = new Set()
   return out;
 }
 
-/**
- * An error as a log field: its kind, message, code and the first lines of where it happened, and what caused it (`cause`, the
- * error it was wrapping, up to three deep), so one line shows the whole way down to the real problem.
- */
-function errorField(err: unknown, depth = 0): Fields | undefined {
+/** An error as a log field: its kind, message and the first lines of where it happened. */
+function errorField(err: unknown): Fields | undefined {
   if (err == null) return undefined;
-  if (err instanceof Error) {
-    // read as plain fields: `cause` is not on Error in a TypeScript library older than ES2022 (a Vite starter's)
-    const { code, cause } = err as { code?: unknown; cause?: unknown };
+  if (err instanceof Error)
     return {
       kind: err.name,
       message: err.message,
-      ...(code !== undefined ? { code } : {}),
       at: err.stack
         ?.split('\n')
         .slice(1, 6)
         .map((l) => l.trim()),
-      ...(cause !== undefined && depth < 3 ? { cause: errorField(cause, depth + 1) } : {}),
     };
-  }
   return { message: String(err) };
 }
 

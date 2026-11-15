@@ -110,11 +110,11 @@ Only real decisions; never ask what the code already says.
   `@types/node`; the gate's *versions* check must pass. Renovate: say the owner installs its GitHub app for the repository
   (https://github.com/apps/renovate); several repositories: the policy goes to a config repository of their own.
 - **Security**: `npm run secops -- --enable` (Dependabot alerts and security updates); the weekly report starts with the first push.
-- When the production module is installed (`docs/run/PRODUCTION.md`): fill the first rows of `docs/company/PRIVACY.md` from the product
+- When the production module is installed (`docs/PRODUCTION.md`): fill the first rows of `docs/company/PRIVACY.md` from the product
   answers (what is kept, why, where; "not decided" where it is not), and the logger's `personal` list from them. Don't ask
   about hosts, clusters or queues now: `docs/workflow/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
   Another language than TypeScript: write the same three parts (checked settings, safe logs, health and stopping) in the
-  language's own way when the server is first built, and point `docs/run/PRODUCTION.md` at those files when the run stage starts.
+  language's own way when the server is first built, and point `docs/PRODUCTION.md` at those files when the run stage starts.
 - The deploy is the run stage's (`/launch` starts it and brings `docs/run/`): do not fill deploy pages now. Write `.env.example`;
   the host chosen in `stack.md` part 6 goes into `docs/STACK.md`, so `/launch` starts from it. An app with no server: take out
   `Dockerfile`, `.dockerignore` and the *Deploying* section of `CLAUDE.md`.

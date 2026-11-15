@@ -38,7 +38,7 @@ change it, and `npm run load -- load` uses it from then on. Results from a lapto
 staging on the same size of server as production.
 
 ## Code and the database
-- **The slow path first, measured**: the logs carry each request's time (`docs/run/PRODUCTION.md`); sort by the slowest route
+- **The slow path first, measured**: the logs carry each request's time (`docs/PRODUCTION.md`); sort by the slowest route
   before guessing. A benchmark (`tinybench` or `mitata`, or `node:test` timing a loop) for a function that runs often, kept as a
   test when it guards a rule ("plans a year in under 50 ms").
 - **Queries**: one query per screen, not one per row (the N+1 trap: a list that asks the database once per item); an index for

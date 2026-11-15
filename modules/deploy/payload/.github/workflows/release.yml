@@ -1,5 +1,5 @@
 # The release pipeline: after the gate passes on main, the app's image is built once, named after the commit, scanned, given a
-# bill of materials (SBOM), and kept in GitHub's registry (ghcr.io). Production only runs images built here (docs/run/PRODUCTION.md).
+# bill of materials (SBOM), and kept in GitHub's registry (ghcr.io). Production only runs images built here (docs/PRODUCTION.md).
 # Every action is pinned to a commit (a tag can be moved by whoever controls it); Renovate or Dependabot keeps the pins current.
 # It checks out the commit of the gate run that triggered it, and only for a push to main (never a pull request's code, which
 # would run here with the right to write packages): the `if` below. Values from the event reach shell steps only through env.

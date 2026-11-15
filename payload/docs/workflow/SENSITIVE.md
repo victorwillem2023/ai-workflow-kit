@@ -23,7 +23,7 @@ The folders and files listed under `sensitive.paths` in `workflow.config.json`, 
 | 5 | A **fresh-eyes review** on the strong model reads the spec, the sources and the diff | `/ship`, never skipped here | `/review` |
 | 6 | A **person signs off** this exact version: reads every changed line, checks each value against its source, answers the checklist | the owner, `npm run signoff` in their own terminal | `docs/company/SIGNOFFS.md` |
 | 7 | The **gate refuses** the change until that sign-off matches the files as they are; any later edit needs a new one | a script | the gate's *signoff* check |
-| 8 | In production: an **audit log** of who changed what (money moved, data exported, a role given), and a second person for payouts and data exports once there is a team | the app | docs/run/PRODUCTION.md (production module), `docs/company/ACCESS.md` |
+| 8 | In production: an **audit log** of who changed what (money moved, data exported, a role given), and a second person for payouts and data exports once there is a team | the app | docs/PRODUCTION.md (production module), `docs/company/ACCESS.md` |
 
 ## Why a script and a person, not the model
 - The model cannot sign: `npm run signoff` needs a person typing at a terminal (input from a pipe or an agent is refused, and a

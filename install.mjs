@@ -29,7 +29,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { MOVES, movePaths } from './doc-layout.mjs';
+import { CORRECTIONS, MOVES, movePaths, movePathsBack, undoCorrections } from './doc-layout.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -119,7 +119,7 @@ function stagesAlreadyEntered() {
   const out = [];
   const decisions = join(target, 'docs', 'decisions');
   if (existsSync(decisions) && readdirSync(decisions).some((f) => /-launch\.md$/.test(f))) out.push('run');
-  const page = ['docs/market/MARKET.md', 'docs/MARKET.md'].map((p) => join(target, p)).find((p) => existsSync(p));
+  const page = ['docs/market/MARKET.md', 'docs/market/MARKET.md'].map((p) => join(target, p)).find((p) => existsSync(p));
   const template = join(kit, 'starter', 'docs', 'market', 'MARKET.md');
   const plain = (t) => t.replace(/\r\n/g, '\n').trim();
   if (page && existsSync(template) && plain(readFileSync(page, 'utf8')) !== plain(fill(readFileSync(template, 'utf8')))) out.push('market');
@@ -169,7 +169,7 @@ if (args.includes('--check')) {
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
-const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [] };
+const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], helpers: [] };
 // what a stage not reached yet would have written: an update takes away the untouched copies an older kit wrote there
 const stageSkipped = new Map();
 const shipped = new Set(); // every machinery file this run of the kit ships, to find the ones an older kit wrote and this one dropped
@@ -187,14 +187,19 @@ const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
 const hash = (text) => createHash('sha1').update(String(text).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
 const written = new Map((existsSync(markFile) ? readFileSync(markFile, 'utf8') : '').split(/\r?\n/).map((l) => /^sha (\S+) (.+)$/.exec(l)).filter(Boolean).map((m) => [m[2], m[1]]));
 const stamp = new Map(written);
+// A kit file nobody changed: the same as the kit wrote it (its stamp), or so once the doc paths kit 2.9 moved are put back (an update
+// from before 2.9 rewrites them in every file, the kit's too, and that is not the project changing the file).
+const untouched = (key, text) => written.has(key) && [text, movePathsBack(text), undoCorrections(text), movePathsBack(undoCorrections(text))]
+  .some((t) => written.get(key) === hash(t));
 // --update from before kit 2.9: the docs move into their folders (doc-layout.mjs) before anything is copied, with git so their
 // history follows; a kit guide keeps its stamp under the new path (so it is still known as the kit's), and every old path in the
 // project's own text (tracked, untracked, and the waiting specs git ignores) is rewritten
 const movedDocs = [];
+let claudeGrowth = 0; // bytes the longer doc paths added to CLAUDE.md (its budget grows by exactly that, below)
 // every text file a project may name a doc in, whatever its language
 const PROJECT_TEXT = /\.(md|mjs|cjs|js|jsx|ts|tsx|mts|json|txt|html|css|toml|cmd|ps1|sh|ya?ml|tpl|py|go|rs)$|(^|\/)Dockerfile$/;
 if (update) {
-  for (const [from, to] of MOVES) {
+  for (const [from, to] of [...MOVES, ...CORRECTIONS]) {
     const a = join(target, from), b = join(target, to);
     if (!existsSync(a) || existsSync(b)) continue;
     mkdirSync(dirname(b), { recursive: true });
@@ -210,11 +215,14 @@ if (update) {
       const p = join(target, f);
       if (!existsSync(p) || !statSync(p).isFile()) continue;
       const was = readFileSync(p, 'utf8'), now = movePaths(was);
-      if (now !== was) { writeFileSync(p, now); rewritten++; }
+      if (now !== was) { writeFileSync(p, now); rewritten++; if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was); }
     }
     done.movedDocs = { count: movedDocs.length, rewritten };
   }
 }
+// starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
+// does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
+const HELPERS = lang === 'ts' ? ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.ts', 'tests/production/debugging.test.ts'] : [];
 const overwriteOnly = (from) => from.endsWith('payload');
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {
@@ -224,7 +232,8 @@ function copyTree(from, overwrite) {
     if (rel === 'lang.json') continue;
     if (framework && /^(src[\\/]web[\\/]dom\.ts|tests[\\/]dom\.test\.ts)$/.test(rel)) continue;
     // --update: the example code of the starter (src, tests) is for a new project; an existing one gets only docs and settings it lacks
-    if (update && !overwriteOnly(from) && /^(src|tests|cmd|internal|pkg)[\\/]/.test(rel) && !existsSync(join(target, rel))) continue;
+    // (a helper the kit's rules name, like the request id and the error answer, is not an example: it is added when missing, never replaced)
+    if (update && !overwriteOnly(from) && /^(src|tests|cmd|internal|pkg)[\\/]/.test(rel) && !existsSync(join(target, rel)) && !HELPERS.includes(rel.replace(/\\/g, '/'))) continue;
     const dest = join(target, rel);
     const exists = existsSync(dest);
     const raw = readFileSync(src);
@@ -244,12 +253,13 @@ function copyTree(from, overwrite) {
       const now = hash(readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1'));
       const fresh = hash(TEXT.test(src) ? next : raw.toString('latin1'));
       if (now === fresh) { stamp.set(key, fresh); done.kept.push(rel); continue; }
-      if (written.get(key) !== now && !take.includes(key)) { done.yours.push(key); continue; }
+      if (!untouched(key, readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1')) && !take.includes(key)) { done.yours.push(key); continue; }
     } else if (exists && !overwrite) { done.kept.push(rel); continue; }
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, next);
     if (machinery) stamp.set(key, hash(TEXT.test(src) ? next : raw.toString('latin1')));
     (exists ? done.replaced : done.added).push(rel);
+    if (update && !exists && HELPERS.includes(key)) done.helpers.push(key);
   }
 }
 
@@ -269,7 +279,7 @@ if (update) {
   for (const [key, was] of written) {
     const path = join(target, key);
     if (shipped.has(key) || key === '.github/workflows/gate.yml' || !existsSync(path)) continue;
-    if (hash(readFileSync(path, TEXT.test(key) ? 'utf8' : 'latin1')) !== was) { done.orphans.push(key); continue; }
+    if (!untouched(key, readFileSync(path, TEXT.test(key) ? 'utf8' : 'latin1'))) { done.orphans.push(key); continue; }
     rmSync(path);
     stamp.delete(key);
     done.removed.push(key);
@@ -284,11 +294,26 @@ if (update) {
     const path = join(target, key);
     if (!existsSync(path)) continue;
     const now = hash(readFileSync(path, 'utf8'));
-    if (now !== hash(want) && written.get(key) !== now) { done.stageKept.push(key); continue; }
+    if (now !== hash(want) && !untouched(key, readFileSync(path, 'utf8'))) { done.stageKept.push(key); continue; }
     rmSync(path);
     stamp.delete(key);
     done.staged.push(key);
     for (let dir = dirname(path); dir.startsWith(target) && dir !== target && readdirSync(dir).length === 0; dir = dirname(dir)) rmSync(dir, { recursive: true });
+  }
+}
+
+// a helper an update added (src/web/report.ts ...) is a new file in a folder a code doc covers ("covers new files: src/web/**"):
+// that doc gets its line, from the helper's own first comment, so the doc stays true and the gate's covers check holds
+if (done.helpers.length && existsSync(join(target, 'docs', 'code'))) {
+  for (const doc of readdirSync(join(target, 'docs', 'code')).filter((f) => f.endsWith('.md'))) {
+    const path = join(target, 'docs', 'code', doc);
+    const text = readFileSync(path, 'utf8');
+    const globs = [...text.matchAll(/<!-- covers new files: ([^>]+?) -->/g)].flatMap((m) => m[1].split(',').map((g) => g.trim()));
+    const mine = done.helpers.filter((h) => globs.some((g) => h.startsWith(g.replace(/\*\*$/, '').replace(/\*.*$/, ''))) && !text.includes(h));
+    if (!mine.length) continue;
+    const say = (h) => (/^\/\/\s*(.+?)(?:\.\s|$)/m.exec(readFileSync(join(target, h), 'utf8'))?.[1] ?? 'added by the kit').replace(/\.$/, '');
+    writeFileSync(path, `${text.replace(/\n*$/, '\n')}\n## Added by the kit\n${mine.map((h) => `- \`${h}\`: ${say(h)}.`).join('\n')}\n`);
+    done.helpers = done.helpers.map((h) => (mine.includes(h) ? `${h} (named in docs/code/${doc})` : h));
   }
 }
 
@@ -310,9 +335,14 @@ const sectionsDone = new Set((/^sections=(.*)$/m.exec(existsSync(markFile) ? rea
 const sectionFiles = (m) => (existsSync(join(kit, 'modules', m)) ? readdirSync(join(kit, 'modules', m)).filter((f) => /^claude-section(-[\w-]+)?\.md$/.test(f)).sort() : [])
   .map((f) => ({ key: f === 'claude-section.md' ? m : `${m}:${f.slice('claude-section-'.length, -3)}`, part: join(kit, 'modules', m, f) }));
 for (const { key: m, part } of modules.flatMap(sectionFiles)) {
-  const claude = join(target, 'CLAUDE.md');
-  if (!existsSync(part) || !existsSync(claude)) continue;
-  const text = markAbsent(fill(readFileSync(part, 'utf8')));
+  if (!existsSync(part)) continue;
+  // a first line `<!-- into: <folder note> ... -->` puts the section in that folder's CLAUDE.md when the project has it (read when
+  // working there, so the root one, read in every chat, stays inside its budget); else in the root one
+  const raw = readFileSync(part, 'utf8');
+  const into = /^<!-- into: (\S+)/.exec(raw)?.[1];
+  const claude = into && existsSync(join(target, into)) ? join(target, into) : join(target, 'CLAUDE.md');
+  if (!existsSync(claude)) continue;
+  const text = markAbsent(fill(raw.replace(/^<!-- into: .*-->\r?\n/, '')));
   const title = /^## .+$/m.exec(text)?.[0];
   // (the files and commands the section names: when most of them are in CLAUDE.md already, the section is there under another heading)
   const names = [...text.matchAll(/`([^`]+)`/g)].map((x) => x[0]);
@@ -426,6 +456,14 @@ if (update && !done.added.includes('workflow.config.json')) {
     }
     if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; addedSettings.push(`${k}.${kk}`); }
   }
+  // the kit's own doc move made CLAUDE.md longer (its paths): when that takes it over its budget, the budget grows by exactly that
+  // much, so the gate fails a project for what it wrote, never for the kit's move
+  const budget = mine.budget?.['CLAUDE.md'];
+  const claudeSize = existsSync(join(target, 'CLAUDE.md')) ? Buffer.byteLength(readFileSync(join(target, 'CLAUDE.md'), 'utf8')) : 0;
+  if (claudeGrowth > 0 && typeof budget === 'number' && claudeSize > budget && claudeSize - claudeGrowth <= budget) {
+    mine.budget['CLAUDE.md'] = budget + claudeGrowth;
+    addedSettings.push(`budget.CLAUDE.md ${budget} -> ${budget + claudeGrowth} (the ${claudeGrowth} bytes the longer doc paths of kit 2.9 added)`);
+  }
   if (addedSettings.length) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
 }
 
@@ -504,6 +542,7 @@ if (update) {
   if (lfHint) console.log(lfHint);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
+  if (done.helpers.length) console.log(`  helpers the kit's rules name, added (never replacing one): ${done.helpers.join(', ')}`);
   if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
   if (done.movedDocs) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git, and the old paths rewritten in ${done.movedDocs.rewritten} of the project's files`);

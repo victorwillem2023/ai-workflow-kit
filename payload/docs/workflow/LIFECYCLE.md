@@ -10,12 +10,12 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 2. Plan | the product questions, the stack, the layers; a spec per feature | `/setup`, `docs/STACK.md`, `/spec` | at the start; per card |
 | 3. Build | tests first, a session per card, checks by scripts | `/work`, `/build`, the gate | per card |
 | 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit; browser smoke and accessibility tests (**not yet**) | `/ship`, `.github/workflows/` | per card |
-| 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/run/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
+| 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
 | 6. Grow | a launch, people finding it, feedback becoming cards | `/market`, `docs/market/GROWTH.md`, the launch check | when it works for its first users |
 | 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |
 
 ## 5. Run: what is laid from the first day
-Without a question, in a TypeScript project with the default modules (production and deploy, `docs/run/PRODUCTION.md`):
+Without a question, in a TypeScript project with the default modules (production and deploy, `docs/PRODUCTION.md`):
 - settings checked at start-up, every name in `.env.example` (a gate check);
 - structured logs that never hold a secret or personal data;
 - `/health` (alive, which version) and `/ready` (able to serve), and a stop that lets open requests finish;

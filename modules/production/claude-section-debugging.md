@@ -1,3 +1,4 @@
+<!-- into: src/server/CLAUDE.md (the server's folder note, read when working there); the root CLAUDE.md when the project has none -->
 ## Requests, errors and logs
 - Each request: `startRequest` (`src/server/trace.ts`) in, `req.done(status)` out, `x-request-id: req.id` on the answer; log
   through `req.log`, call other services with `req.outbound()`.

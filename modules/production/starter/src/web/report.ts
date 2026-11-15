@@ -1,5 +1,6 @@
-// The page side of finding a problem fast. A failed API call becomes an ApiError with the server's words and its reference (the
-// request id), and one console line says it all: "POST /api/goal 400: The race date is in the past. (reference 4f2a...)". So
+// The page side of finding a problem fast. A failed API call becomes an ApiError with the server's words (a problem details
+// body's detail, RFC 9457) and its reference (the request id), and one console line says it all:
+// "POST /api/goal 400: The race date is in the past. (reference 4f2a...)". So
 // the screen can show the message and the reference, and the reference finds the server's log line. Errors nothing caught on the
 // page (a bug in a click handler, a promise nobody waited for) are sent to the server log too, instead of living only in the
 // console of whoever saw them.
@@ -27,13 +28,15 @@ export async function apiError(
   path: string,
   log: (line: string) => void = (line) => console.error(line),
 ): Promise<ApiError> {
-  let body: { error?: unknown; code?: unknown; reference?: unknown } = {};
+  // a problem details body (RFC 9457: detail, title) as src/server/errors.ts sends it; an older { error } body is read too
+  let body: { detail?: unknown; title?: unknown; error?: unknown; code?: unknown; reference?: unknown } = {};
   try {
     body = ((await res.json()) ?? {}) as typeof body;
   } catch {
     /* not JSON: the status says enough */
   }
-  const message = typeof body.error === 'string' ? body.error : `The server answered ${res.status}.`;
+  const words = [body.detail, body.title, body.error].find((v): v is string => typeof v === 'string' && v.length > 0);
+  const message = words ?? `The server answered ${res.status}.`;
   const reference = typeof body.reference === 'string' ? body.reference : null;
   log(`${method} ${path} ${res.status}: ${message}${reference ? ` (reference ${reference})` : ''}`);
   return new ApiError(message, res.status, typeof body.code === 'string' ? body.code : 'unknown', reference);

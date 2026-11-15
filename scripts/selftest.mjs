@@ -15,9 +15,10 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MOVES, movePathsBack, oldPaths } from '../doc-layout.mjs';
+import { CORRECTIONS, MOVES, movePathsBack, oldPaths } from '../doc-layout.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const win = process.platform === 'win32';
@@ -54,8 +55,26 @@ function oldDocPaths(dir) {
 /** The project as a kit from before 2.9 left it: every doc back at the top of docs/, every path in its text the old one. */
 function asOlderKitLeftIt(dir) {
   for (const [from, to] of MOVES) if (existsSync(join(dir, to))) execFileSync('git', ['mv', to, from], { cwd: dir, stdio: 'ignore' });
-  for (const f of projectText(dir)) { const was = readFileSync(join(dir, f), 'utf8'); const back = movePathsBack(was); if (back !== was) writeFileSync(join(dir, f), back); }
+  const text = () => projectText(dir).filter((x) => x !== '.workflow-kit');
+  for (const f of text()) { const was = readFileSync(join(dir, f), 'utf8'); const back = movePathsBack(was); if (back !== was) writeFileSync(join(dir, f), back); }
+  const mark = join(dir, '.workflow-kit');
+  writeFileSync(mark, movePathsBack(readFileSync(mark, 'utf8')));
+  // PRODUCTION.md where kit 2.9.0 to 2.9.2 put it (docs/run/), so the update's correction is proven too
+  if (existsSync(join(dir, 'docs', 'PRODUCTION.md'))) {
+    mkdirSync(join(dir, 'docs', 'run'), { recursive: true });
+    execFileSync('git', ['mv', 'docs/PRODUCTION.md', 'docs/run/PRODUCTION.md'], { cwd: dir, stdio: 'ignore' });
+    for (const f of text()) { const t = readFileSync(join(dir, f), 'utf8'); const r = t.replaceAll('docs/PRODUCTION.md', 'docs/run/PRODUCTION.md'); if (r !== t) writeFileSync(join(dir, f), r); }
+  }
+  // the stamps as that older kit wrote them: of every kit file as it is now (nobody changed them since the kit wrote them)
+  const hash = (t) => createHash('sha1').update(String(t).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
+  writeFileSync(mark, readFileSync(mark, 'utf8').replace(/^sha (\S+) (.+)$/gm, (line, h, f) => (existsSync(join(dir, f)) ? `sha ${hash(readFileSync(join(dir, f), 'utf8'))} ${f}` : line)));
+  // the helpers an older kit did not have (src/server/trace.ts ...): the update adds them
+  for (const h of HELPERS) if (existsSync(join(dir, h))) rmSync(join(dir, h));
+  // CLAUDE.md exactly at its budget, as a project near it is: the move's longer paths must not fail its gate
+  const cfg = JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8'));
+  if (cfg.budget?.['CLAUDE.md']) { cfg.budget['CLAUDE.md'] = Buffer.byteLength(readFileSync(join(dir, 'CLAUDE.md'), 'utf8')); writeFileSync(join(dir, 'workflow.config.json'), `${JSON.stringify(cfg, null, 2)}\n`); }
 }
+const HELPERS = ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.ts', 'tests/production/debugging.test.ts'];
 
 /**
  * Every doc the installed skills, docs and CLAUDE.md point at in backticks is there: a stage not reached yet, or a part left out,
@@ -176,8 +195,13 @@ async function runVariant(name) {
     asOlderKitLeftIt(dir);
     git('add', '-A');
     git('commit', '-q', '-m', 'As a kit from before 2.9 left it');
-    await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
-    const left = [...oldDocPaths(dir), ...MOVES.filter(([from]) => existsSync(join(dir, from))).map(([from]) => `${from} was not moved`)];
+    const updated = await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
+    // nothing of the kit's may be taken for the project's own work: the move rewrote paths in kit files, nobody changed them
+    const claimed = /kept, because the project changed them[\s\S]*?(?=\n {2}\S|\n\S|$)/.exec(updated)?.[0];
+    console.log(`${claimed ? 'FAIL' : 'ok  '} ${name}: the update takes no kit file for the project's own${claimed ? `:\n${claimed}` : ''}`);
+    if (claimed) throw new Error('kit files taken for the project');
+    const left = [...oldDocPaths(dir), ...[...MOVES, ...CORRECTIONS].filter(([from]) => existsSync(join(dir, from))).map(([from]) => `${from} was not moved`),
+      ...(v.args.includes('--lang') || !existsSync(join(dir, 'src', 'server', 'log.ts')) ? [] : HELPERS.filter((h) => !existsSync(join(dir, h))).map((h) => `${h} was not added back`))];
     console.log(`${left.length ? 'FAIL' : 'ok  '} ${name}: the update moved the docs into their folders${left.length ? `:\n${left.slice(0, 20).join('\n')}` : ''}`);
     if (left.length) throw new Error('docs not moved');
     await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
