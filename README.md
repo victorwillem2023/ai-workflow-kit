@@ -139,6 +139,8 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.5.4**: `npm run protect` asks GitHub about the repository by its full name (`board.repo` is `owner/name`; it put the owner
+  in front a second time, so GitHub answered "not found" and the rule was never set). Its test now uses a config as the installer writes it.
 - **1.5.3**: the import rules see `require('...')`, `import(`...`)` and a folder's `index.tsx`, so no import slips past them; a rule
   can name a stated exception (`except`), used for the start file that loads the variants page; `--update` adds a missing rule
   and sets component variants for a framework project.

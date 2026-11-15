@@ -14,6 +14,12 @@ export function ruleset(flow = 'direct') {
   };
 }
 
+/** The repository as GitHub's API names it, "owner/name". `board.repo` is that already (the installer writes it so); a bare
+ *  name is put after `board.owner`. */
+export function repoName(board) {
+  return String(board.repo).includes('/') ? board.repo : `${board.owner}/${board.repo}`;
+}
+
 /** What GitHub's answer means, in one plain line: { ok, line }. `out` is what gh printed, `status` its exit code. */
 export function verdict(status, out) {
   if (status === 0) return { ok: true, line: 'GitHub: main can no longer be deleted or rewritten' };

@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ruleset, verdict } from '../../tools/workflow/lib/protect.mjs';
+import { repoName, ruleset, verdict } from '../../tools/workflow/lib/protect.mjs';
 
 const script = fileURLToPath(new URL('../../tools/workflow/protect.mjs', import.meta.url));
 
@@ -15,6 +15,10 @@ describe('the GitHub rule', () => {
     const r = ruleset();
     assert.deepEqual(r.rules.map((x) => x.type), ['deletion', 'non_fast_forward']);
     assert.deepEqual((r.conditions as { ref_name: { include: string[] } }).ref_name.include, ['~DEFAULT_BRANCH']);
+  });
+  it('asks GitHub about the repository by its full name, never with the owner twice', () => {
+    assert.equal(repoName({ owner: 'me', repo: 'me/app' }), 'me/app', 'the installer writes board.repo as owner/name');
+    assert.equal(repoName({ owner: 'me', repo: 'app' }), 'me/app', 'a bare name gets the owner in front');
   });
   it('a refusal for a private repository on the free plan is said in plain words, and is not a crash', () => {
     const v = verdict(1, '{"message":"Upgrade to GitHub Pro or make this repository public to enable this feature.","status":"403"}');
@@ -38,10 +42,14 @@ describe('the guard on this computer', () => {
       const commit = (name: string) => { writeFileSync(join(work, name), name); git(work, 'add', '.'); git(work, 'commit', '-m', name); };
       git(work, 'checkout', '-b', 'main');
       commit('one'); commit('two');
-      // gh stands in as a script that answers like GitHub does for a private repository on the free plan
-      writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ board: { owner: 'me', repo: 'app' } }));
+      // gh stands in as a script that answers like GitHub does for a private repository on the free plan, and like GitHub
+      // does for an address that does not exist when it is asked about any other repository
+      writeFileSync(join(work, 'workflow.config.json'), JSON.stringify({ board: { owner: 'me', repo: 'me/app' } }));
       const fakeGh = join(dir, 'gh.mjs');
-      writeFileSync(fakeGh, 'console.log(JSON.stringify({ message: "Upgrade to GitHub Pro or make this repository public to enable this feature.", status: "403" })); process.exit(1);');
+      writeFileSync(fakeGh, [
+        'if (!process.argv.includes("repos/me/app/rulesets")) { console.log("gh: Not Found (HTTP 404)"); process.exit(1); }',
+        'console.log(JSON.stringify({ message: "Upgrade to GitHub Pro or make this repository public to enable this feature.", status: "403" })); process.exit(1);',
+      ].join('\n'));
       const out = execFileSync(process.execPath, [script], { cwd: work, encoding: 'utf8', env: { ...process.env, WORKFLOW_GH: fakeGh } });
       assert.match(out, /refused \(git hook pre-push\)/);
       assert.match(out, /GitHub: not set\. Rules for a private repository need a paid plan/);

@@ -8,7 +8,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { ruleset, verdict, hookText } from './lib/protect.mjs';
+import { ruleset, verdict, hookText, repoName } from './lib/protect.mjs';
 
 const args = process.argv.slice(2);
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
@@ -33,7 +33,7 @@ function local() {
 
 function github(check) {
   const { board } = JSON.parse(readFileSync(join(root, 'workflow.config.json'), 'utf8'));
-  const path = `repos/${board.owner}/${board.repo}/rulesets`;
+  const path = `repos/${repoName(board)}/rulesets`;
   const list = gh(['api', path]);
   if (list.error) return 'GitHub: not set. gh is not installed (https://cli.github.com), then: gh auth login';
   if (list.status === 0 && JSON.parse(list.stdout || '[]').some((r) => r.name === ruleset(flow).name)) return 'GitHub: main is protected already';
