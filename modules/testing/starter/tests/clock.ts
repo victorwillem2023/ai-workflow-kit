@@ -11,7 +11,9 @@ export function clocked<A extends unknown[], T>(fn: (...args: A) => Promise<T>):
     mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.now() });
     try {
       let done = false;
-      const p = fn(...args).finally(() => { done = true; });
+      const p = fn(...args).finally(() => {
+        done = true;
+      });
       p.catch(() => {});
       for (let i = 0; !done; i++) {
         if (i >= MAX_STEPS) throw new Error('the test was still waiting after 1000 s of fake time');

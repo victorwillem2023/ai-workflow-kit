@@ -2,6 +2,9 @@
 // Installs the workflow kit into a project.
 //   node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev] [--lang rust] [--force]
 //   node install.mjs <target-folder> --project ... --repo ... --check     list the machinery files that differ from the kit; changes nothing
+//   node install.mjs <target-folder> --project ... --repo ... --update    bring an existing project up to this kit without losing its own changes:
+//       a machinery file the project never changed is replaced, one it changed is kept and listed (--take <path,path> takes the kit's
+//       for those), missing files are added, and settings the kit has and the project lacks are added to workflow.config.json.
 //   --lang ts (default) | rust | python | go: the check and test commands of starter/lang.json; a language other than ts
 //   leaves the TypeScript starter files out (tsconfig.json, the .ts examples of the modules).
 // 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/WORKFLOW.md, docs/TOKENS.md): the generic machinery. Copied as is, with
@@ -19,6 +22,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const kit = dirname(fileURLToPath(import.meta.url));
@@ -26,6 +30,8 @@ const args = process.argv.slice(2);
 const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefined;
 const force = args.includes('--force');
+const update = args.includes('--update');
+const take = (opt('--take') ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
 const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy'];
 const lang = opt('--lang') ?? 'ts';
 const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
@@ -73,7 +79,12 @@ if (args.includes('--check')) {
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
-const done = { added: [], kept: [], replaced: [] };
+const done = { added: [], kept: [], replaced: [], yours: [] };
+// what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in .workflow-kit), so an update can
+// tell a file the project changed from one only the kit changed
+const hash = (text) => createHash('sha1').update(String(text).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
+const written = new Map((existsSync(markFile) ? readFileSync(markFile, 'utf8') : '').split(/\r?\n/).map((l) => /^sha (\S+) (.+)$/.exec(l)).filter(Boolean).map((m) => [m[2], m[1]]));
+const stamp = new Map(written);
 const overwriteOnly = (from) => from.endsWith('payload');
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {
@@ -83,10 +94,20 @@ function copyTree(from, overwrite) {
     if (rel === 'lang.json') continue;
     const dest = join(target, rel);
     const exists = existsSync(dest);
-    if (exists && !overwrite) { done.kept.push(rel); continue; }
-    mkdirSync(dirname(dest), { recursive: true });
     const raw = readFileSync(src);
-    writeFileSync(dest, TEXT.test(src) ? fill(raw.toString('utf8')) : raw);
+    const next = TEXT.test(src) ? fill(raw.toString('utf8')) : raw;
+    const key = rel.replace(/\\/g, '/');
+    const machinery = overwriteOnly(from);
+    if (exists && machinery && update && !overwrite) {
+      // --update: the same already, or untouched since the kit wrote it (then the kit's new one is taken), or the project's own
+      const now = hash(readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1'));
+      const fresh = hash(TEXT.test(src) ? next : raw.toString('latin1'));
+      if (now === fresh) { stamp.set(key, fresh); done.kept.push(rel); continue; }
+      if (written.get(key) !== now && !take.includes(key)) { done.yours.push(key); continue; }
+    } else if (exists && !overwrite) { done.kept.push(rel); continue; }
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, next);
+    if (machinery) stamp.set(key, hash(TEXT.test(src) ? next : raw.toString('latin1')));
     (exists ? done.replaced : done.added).push(rel);
   }
 }
@@ -146,12 +167,27 @@ if (LANGS[lang].config && done.added.includes('workflow.config.json')) {
   writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(readFileSync(cfgPath, 'utf8')), ...LANGS[lang].config }, null, 2) + '\n');
 }
 
+// --update: settings the kit has and the project's config lacks are added (a whole key, or a check by its name); nothing is changed
+const addedSettings = [];
+if (update && !done.added.includes('workflow.config.json')) {
+  const cfgPath = join(target, 'workflow.config.json');
+  const mine = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  const kits = { ...JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8'))), ...(LANGS[lang].config ?? {}) };
+  for (const [k, v] of Object.entries(kits)) {
+    if (!(k in mine)) { mine[k] = k === 'checks' ? v.filter((c) => c.name !== 'lint') : v; addedSettings.push(k); continue; }
+    if (k === 'checks') for (const c of v) if (c.name !== 'lint' && !mine.checks.some((x) => x.name === c.name)) { mine.checks.push(c); addedSettings.push(`checks: ${c.name}`); }
+    if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; addedSettings.push(`${k}.${kk}`); }
+  }
+  if (addedSettings.length) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
+}
+
 // the GitHub workflow, when this run wrote it (new, or replaced by --force): the language's own setup steps (`ci` in starter/lang.json) go where the
 // file says "another language: add its toolchain here"
 const ciPath = join(target, '.github', 'workflows', 'gate.yml');
 if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replace(/\\/g, '/') === '.github/workflows/gate.yml')) {
   const steps = (LANGS[lang].ci ?? []).map((l) => `      ${l}\n`).join('');
   writeFileSync(ciPath, readFileSync(ciPath, 'utf8').replace(/^[ \t]*# another language: add its toolchain here.*\r?\n/m, steps));
+  stamp.set('.github/workflows/gate.yml', hash(readFileSync(ciPath, 'latin1')));
 }
 
 // Dependabot: one grouped pull request a week per kind of dependency, so versions never fall far behind (written once, then yours)
@@ -177,14 +213,22 @@ if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(pr
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
-writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force updates it)\nversion=${kitVersion}\nmodules=${modules.join(',')}\n`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nmodules=${modules.join(',')}\n${[...stamp].sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (modules: ${modules.join(', ') || 'none'})` : `Installed kit ${kitVersion} into ${target} (modules: ${modules.join(', ') || 'none'})`);
-if (before && !force) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
+if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
 console.log(`  ${harnessLine}`);
+if (update) {
+  if (addedSettings.length) console.log(`  settings added to workflow.config.json: ${addedSettings.join(', ')}`);
+  if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
+  if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
+  if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');
+  console.log('  then: step 1 below, npm run map, node tools/workflow/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
+}
+if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : LANGS[lang].needs}`); process.exit(0); }
 console.log(`
 Next, in ${target}:
-  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
+  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip @biomejs/biome${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
   3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
      the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)

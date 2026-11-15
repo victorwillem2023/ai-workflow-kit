@@ -12,7 +12,10 @@ export interface Props {
 
 function append(el: Node, c: Child): void {
   if (c == null || c === false) return;
-  if (Array.isArray(c)) { for (const x of c) append(el, x); return; }
+  if (Array.isArray(c)) {
+    for (const x of c) append(el, x);
+    return;
+  }
   el.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
 }
 
@@ -23,14 +26,20 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props?: Props |
     for (const [k, v] of Object.entries(props)) {
       if (v == null) continue;
       // enumerated attributes are switched off with "false", not by leaving them out
-      if (k === 'spellcheck' || k === 'draggable' || k === 'contenteditable') { el.setAttribute(k, String(v)); continue; }
+      if (k === 'spellcheck' || k === 'draggable' || k === 'contenteditable') {
+        el.setAttribute(k, String(v));
+        continue;
+      }
       if (v === false) continue;
       if (k === 'style') continue;
       if (k === 'class') el.className = Array.isArray(v) ? v.filter(Boolean).join(' ') : String(v);
       else if (k === 'dataset') Object.assign(el.dataset, v);
       else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v as EventListener);
-      else if (k === 'value' || k === 'checked' || k === 'disabled' || k === 'hidden' || k === 'selected' || k === 'indeterminate') (el as unknown as Record<string, unknown>)[k] = v;
-      else if (k === 'href' || k === 'src') { if (/^(https?:|\/|#|mailto:)/i.test(String(v))) el.setAttribute(k, String(v)); } // no javascript: or data: links
+      else if (k === 'value' || k === 'checked' || k === 'disabled' || k === 'hidden' || k === 'selected' || k === 'indeterminate')
+        (el as unknown as Record<string, unknown>)[k] = v;
+      else if (k === 'href' || k === 'src') {
+        if (/^(https?:|\/|#|mailto:)/i.test(String(v))) el.setAttribute(k, String(v));
+      } // no javascript: or data: links
       else if (v === true) el.setAttribute(k, '');
       else el.setAttribute(k, String(v));
     }
@@ -39,7 +48,9 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props?: Props |
   return el;
 }
 
-export function clear(el: Element): void { while (el.firstChild) el.removeChild(el.firstChild); }
+export function clear(el: Element): void {
+  while (el.firstChild) el.removeChild(el.firstChild);
+}
 
 export function replace(el: Element, ...children: Child[]): void {
   clear(el);
@@ -53,15 +64,36 @@ export function on<T extends Event>(el: EventTarget, type: string, fn: (e: T) =>
 
 export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number): ((...a: A) => void) & { cancel(): void } {
   let t: ReturnType<typeof setTimeout> | null = null;
-  const d = (...a: A) => { if (t) clearTimeout(t); t = setTimeout(() => { t = null; fn(...a); }, ms); };
-  d.cancel = () => { if (t) clearTimeout(t); t = null; };
+  const d = (...a: A) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => {
+      t = null;
+      fn(...a);
+    }, ms);
+  };
+  d.cancel = () => {
+    if (t) clearTimeout(t);
+    t = null;
+  };
   return d;
 }
 
 /** Runs `fn` once per frame however often it is called in between (for things that follow a drag or a scroll). */
-export function perFrame(fn: () => void, schedule: (run: () => void) => void = (run) => { requestAnimationFrame(run); }): () => void {
+export function perFrame(
+  fn: () => void,
+  schedule: (run: () => void) => void = (run) => {
+    requestAnimationFrame(run);
+  },
+): () => void {
   let waiting = false;
-  return () => { if (waiting) return; waiting = true; schedule(() => { waiting = false; fn(); }); };
+  return () => {
+    if (waiting) return;
+    waiting = true;
+    schedule(() => {
+      waiting = false;
+      fn();
+    });
+  };
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,7 +104,9 @@ export function toast(message: string, kind: 'info' | 'error' | 'ok' = 'info', m
   el.textContent = message;
   el.className = `toast show ${kind}`;
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = 'toast'; }, ms);
+  toastTimer = setTimeout(() => {
+    el.className = 'toast';
+  }, ms);
 }
 
 export const isTouch = () => matchMedia('(pointer: coarse)').matches;
@@ -82,17 +116,33 @@ export const isNarrow = () => matchMedia('(max-width: 899px)').matches;
 const NAMESPACE = '{{PREFIX}}';
 export const prefs = {
   get<T>(key: string, fallback: T): T {
-    try { const v = localStorage.getItem(`${NAMESPACE}:${key}`); return v == null ? fallback : (JSON.parse(v) as T); } catch { return fallback; }
+    try {
+      const v = localStorage.getItem(`${NAMESPACE}:${key}`);
+      return v == null ? fallback : (JSON.parse(v) as T);
+    } catch {
+      return fallback;
+    }
   },
   set(key: string, value: unknown): void {
-    try { localStorage.setItem(`${NAMESPACE}:${key}`, JSON.stringify(value)); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(`${NAMESPACE}:${key}`, JSON.stringify(value));
+    } catch {
+      /* ignore */
+    }
   },
 };
 
 /** What tells one control from the others around it: its kind, classes, data attributes and name. */
 function controlKey(el: Element, text: boolean): string {
-  const data = [...el.attributes].filter((a) => a.name.startsWith('data-') || a.name === 'name' || a.name === 'role' || a.name === 'type').map((a) => `${a.name}=${a.value}`).sort().join(',');
-  const cls = [...el.classList].filter((c) => c !== 'on' && c !== 'open' && c !== 'busy').sort().join('.');
+  const data = [...el.attributes]
+    .filter((a) => a.name.startsWith('data-') || a.name === 'name' || a.name === 'role' || a.name === 'type')
+    .map((a) => `${a.name}=${a.value}`)
+    .sort()
+    .join(',');
+  const cls = [...el.classList]
+    .filter((c) => c !== 'on' && c !== 'open' && c !== 'busy')
+    .sort()
+    .join('.');
   return `${el.tagName}|${cls}|${data}|${text ? (el.getAttribute('aria-label') ?? el.textContent ?? '').trim() : ''}`;
 }
 
@@ -103,10 +153,15 @@ function controlKey(el: Element, text: boolean): string {
  */
 export function keepFocus(root: Element, draw: () => void): void {
   const had = document.activeElement;
-  if (!had || had === document.body || !root.contains(had)) { draw(); return; }
+  if (!had || had === document.body || !root.contains(had)) {
+    draw();
+    return;
+  }
   const same = (key: string, text: boolean) => [...root.querySelectorAll(had.tagName)].filter((x) => controlKey(x, text) === key);
-  const full = controlKey(had, true), bare = controlKey(had, false);
-  const iFull = same(full, true).indexOf(had), iBare = same(bare, false).indexOf(had);
+  const full = controlKey(had, true),
+    bare = controlKey(had, false);
+  const iFull = same(full, true).indexOf(had),
+    iBare = same(bare, false).indexOf(had);
   draw();
   if (root.contains(document.activeElement) && document.activeElement !== document.body) return; // the drawing put the focus somewhere itself
   if (had.isConnected) return;

@@ -88,3 +88,61 @@ export function copiedFunctions(files, minLines = 4) {
   }
   return [...byBody.values()].filter((g) => g.length > 1);
 }
+
+const CONTROL = /^\s*(?:\}\s*)?(?:else\s+)?(?:if|for|while|switch|match|loop|try|with)\b/;
+/** The width of one step of indentation in a file: the smallest indent a code line has (1 for tabs). */
+function indentStep(lines) {
+  let step = 0;
+  for (const l of lines) {
+    const lead = /^[ \t]*/.exec(l)[0];
+    if (!lead || !l.trim() || /^\s*(?:\*|\/\*|\/\/|#)/.test(l)) continue;
+    const w = lead.includes('\t') ? lead.replace(/ /g, '').length : lead.length;
+    if (!step || w < step) step = w;
+  }
+  return step || 2;
+}
+
+/**
+ * Every function with an `if`, loop or `try` nested deeper than `max`: `file:name` -> how deep. Read from the indentation (so it
+ * works for any language a formatter keeps tidy): an `if` straight in the function is 1, one inside it 2.
+ */
+export function deepFunctions(files, max) {
+  const out = {};
+  for (const [file, text] of files) {
+    const lines = text.split('\n');
+    const step = indentStep(lines);
+    const width = (l) => { const lead = /^[ \t]*/.exec(l)[0]; return lead.includes('\t') ? lead.replace(/ /g, '').length : lead.length; };
+    const seen = new Map();
+    for (const f of functionsIn(file, text)) {
+      const base = width(lines[f.from]);
+      let deepest = 0;
+      for (let i = f.from + 1; i <= f.to; i++) if (CONTROL.test(lines[i])) deepest = Math.max(deepest, Math.round((width(lines[i]) - base) / step));
+      const n = (seen.get(f.name) ?? 0) + 1;
+      seen.set(f.name, n);
+      if (deepest > max) out[`${file}:${f.name}${n > 1 ? '#' + n : ''}`] = deepest;
+    }
+  }
+  return out;
+}
+
+/**
+ * Tests that are the same test with other values: `it(...)`/`test(...)` bodies that are equal once every text and number in
+ * them is blanked. Groups of `file:"test name"`; bodies under `minLines` lines are not counted.
+ */
+export function copiedTests(files, minLines = 6) {
+  const byBody = new Map();
+  for (const [file, text] of files) {
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const m = /^\s*(?:it|test)(?:\.\w+)?\(\s*(["'`])(.*?)\1/.exec(lines[i]);
+      if (!m) continue;
+      const end = endOf(lines, i);
+      if (end < 0 || end - i + 1 < minLines) continue;
+      const body = lines.slice(i + 1, end).join('\n').replace(/(["'`])(?:\\.|(?!\1).)*\1/g, 'S').replace(/\b\d[\d_.]*\b/g, 'N').replace(/\s+/g, ' ').trim();
+      if (!byBody.has(body)) byBody.set(body, []);
+      byBody.get(body).push(`${file}:"${m[2]}"`);
+      i = end;
+    }
+  }
+  return [...byBody.values()].filter((g) => g.length > 1);
+}

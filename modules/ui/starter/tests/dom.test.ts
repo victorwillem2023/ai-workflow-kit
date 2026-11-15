@@ -1,11 +1,15 @@
 // The DOM helper h(): text is text, links are http(s) only, there are no inline styles. Needs the dev dependency @happy-dom/global-registrator.
-import { describe, it, before } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { before, describe, it } from 'node:test';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 describe('h(): building elements safely', () => {
   let h: typeof import('../src/web/dom').h;
-  before(async () => { GlobalRegistrator.register(); ({ h } = await import('../src/web/dom')); });
+  before(async () => {
+    GlobalRegistrator.register();
+    ({ h } = await import('../src/web/dom'));
+  });
 
   it('puts data in as text, so markup in a name is shown and never runs', () => {
     const el = h('p', null, '<img src=x onerror=alert(1)>');

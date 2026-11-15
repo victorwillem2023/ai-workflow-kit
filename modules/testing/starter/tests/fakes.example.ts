@@ -15,7 +15,9 @@ export interface Deps {
 export function fakeDeps(over: Partial<Deps> = {}): Deps {
   return {
     now: () => NOW,
-    http: async (url) => { throw new Error(`a test tried to reach the network: ${url}`); },
+    http: async (url) => {
+      throw new Error(`a test tried to reach the network: ${url}`);
+    },
     ...over,
   };
 }

@@ -22,7 +22,8 @@ import { securityAdvice, addedLines } from './lib/securityscan.mjs';
 import { hostileAdvice } from './lib/hostilecheck.mjs';
 import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
-import { longFunctions, copiedFunctions } from './lib/funclen.mjs';
+import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
+import { importCycles, untestedFiles } from './lib/structure.mjs';
 import { specPaths, outsideSpec } from './lib/scope.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
@@ -71,8 +72,16 @@ const sizes = oversize(new Map([...files].filter(([f]) => matchesAny(f, config.s
 // long functions (only when `functions` is set in the config): name -> lines, kept by the same ratchet as the file sizes
 const funcs = config.functions ? longFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.functions.include))), config.functions.maxLines) : null;
 const counts = countPatterns(files, config.ratchets);
+const only = (globs) => new Map([...files].filter(([f]) => matchesAny(f, globs)));
+// `if`s and loops nested too deep (only when `functions.maxDepth` is set): name -> depth, the same ratchet as the long functions
+const depths = config.functions?.maxDepth ? deepFunctions(only(config.functions.include), config.functions.maxDepth) : null;
+// files that import each other in a circle: one line per circle
+const cycles = importCycles(graph.imports).map((g) => g.join(' <-> '));
+// source files no test reaches (only when `untested` is set, and only where the gate can follow imports into the tests)
+const untested = config.untested && config.testPicking !== false ? untestedFiles(graph, (f) => matchesAny(f, config.untested.include) && !matchesAny(f, config.untested.ignore ?? []), isTest) : null;
 // functions with the same body in two places (only when `copies` is set): one line per group, a new line fails
-const copies = config.copies ? copiedFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.copies.include ?? config.functions?.include ?? config.size.include))), config.copies.minLines ?? 6).map((g) => [...g].sort().join(' = ')).sort() : null;
+const copies = config.copies ? copiedFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.copies.include ?? config.functions?.include ?? config.size.include))), config.copies.minLines ?? 6).map((g) => [...g].sort().join(' = '))
+  .concat(config.copies.tests ? copiedTests(only(config.copies.tests), config.copies.minLines ?? 6).map((g) => g.join(' ~ ')) : []).sort() : null;
 const violations = findViolations(graph, config.boundaries);
 
 const docFiles = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
@@ -80,6 +89,9 @@ const docFiles = git('ls-files', '--cached', '--others', '--exclude-standard').s
 const docTexts = new Map(docFiles.map((f) => [f, readFileSync(f, 'utf8')]));
 const npmScripts = existsSync('package.json') ? Object.keys(JSON.parse(readFileSync('package.json', 'utf8')).scripts ?? {}) : [];
 const staleRefs = findStaleRefs(docTexts, (p) => existsSync(p), npmScripts);
+
+// rules files over their size budget (`budget`: path or glob -> bytes): [file, budget, size]
+const overBudget = config.budget ? docFiles.map((f) => [f, Object.entries(config.budget).find(([g]) => matchesAny(f, [g]))?.[1], statSync(f).size]).filter(([, max, size]) => max && size > max) : [];
 
 if (flag('--update-baseline')) {
   let reason = null;
@@ -110,6 +122,14 @@ if (flag('--update-baseline')) {
     next.ratchets = counts;
   }
   if (copies) next.copies = copies;
+  next.cycles = cycles;
+  if (overBudget.length) next.budget = Object.fromEntries(overBudget.map(([f, , size]) => [f, size]));
+  if (untested) next.untested = untested;
+  if (depths) {
+    const d = updateSizes(depths, baseline.depths ?? {}, reason);
+    if (!d.ok) { console.log('baseline not written: these functions are nested deeper than before (return early, or move the inner part into a function of its own; or --allow-growth "<reason>"): ' + d.raised.map((x) => `${x.file} ${x.was ?? 'new'} -> ${x.now}`).join('; ')); process.exit(1); }
+    next.depths = d.next;
+  }
   if (config.quality?.command) {
     // the score now becomes the number that may not drop; a lower one needs a reason, like a file that grew
     const score = parseScore(spawnSync(config.quality.command, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20 }).stdout ?? '', config.quality.pattern);
@@ -159,6 +179,7 @@ if (flag('--list')) {
   process.exit(0);
 }
 
+let suiteSeconds = 0;
 const tail = (text) => text.trim().split('\n').slice(-config.failTailLines).join('\n');
 function run(cmd) {
   const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20 });
@@ -184,12 +205,34 @@ const steps = [
   }],
   config.ratchets?.length && ['ratchets', () => {
     const up = risen(counts, baseline.ratchets);
-    if (up.length) return { ok: false, out: up.map((x) => `${x.name}: ${x.now}, the baseline is ${x.was}. One more check on what kind a thing is: put what differs in the kind's own file`).join('\n') };
+    const say = (name) => config.ratchets.find((r) => r.name === name)?.say ?? "One more check on what kind a thing is: put what differs in the kind's own file";
+    if (up.length) return { ok: false, out: up.map((x) => `${x.name}: ${x.now}, the baseline is ${x.was}. ${say(x.name)}`).join('\n') };
     return { ok: true, note: Object.entries(counts).map(([k, n]) => `${k} ${n}`).join(', ') };
+  }],
+  depths && ['nesting', () => {
+    const v = sizeVerdict(depths, baseline.depths ?? {});
+    if (v.failing.length) return { ok: false, out: v.failing.map((x) => `${x.file} is nested ${x.lines} deep${x.was ? ` (was ${x.was})` : ''}, the limit is ${config.functions.maxDepth}: return early, or move the inner part into a function of its own`).join('\n') };
+    return { ok: true, note: `${Object.keys(depths).length} known` };
+  }],
+  ['circles', () => {
+    const fresh = cycles.filter((k) => !(baseline.cycles ?? []).includes(k));
+    if (fresh.length) return { ok: false, out: fresh.map((k) => `${k} import each other in a circle: move what they share into a file both import`).join('\n') };
+    return { ok: true, note: `${cycles.length} known` };
+  }],
+  untested && ['untested', () => {
+    const fresh = untested.filter((f) => !(baseline.untested ?? []).includes(f));
+    if (fresh.length) return { ok: false, out: fresh.map((f) => `${f}: no test reaches it. Add a test that uses it (a file that only starts the app goes in "untested.ignore" in the config)`).join('\n') };
+    return { ok: true, note: `${untested.length} known` };
+  }],
+  config.budget && ['budget', () => {
+    const grown = overBudget.filter(([f, , size]) => size > (baseline.budget?.[f] ?? 0));
+    if (grown.length) return { ok: false, out: grown.map(([f, max, size]) => `${f} is ${size} bytes, its budget is ${max}${baseline.budget?.[f] ? ` (it was ${baseline.budget[f]})` : ''}: every agent reads it in every chat. Turn a rule into a check, or move what only some work needs into a doc it points to`).join('\n') };
+    return { ok: true, note: overBudget.length ? `${overBudget.length} over budget, none grown` : '' };
   }],
   copies && ['copies', () => {
     const fresh = copies.filter((k) => !(baseline.copies ?? []).includes(k));
-    if (fresh.length) return { ok: false, out: fresh.map((k) => `${k.replaceAll(' = ', ' and ')} have the same body: keep one and call it from both places`).join('\n') };
+    const say = (k) => (k.includes(' ~ ') ? `${k.replaceAll(' ~ ', ' and ')} are the same test with other values: make it one test over a list of cases` : `${k.replaceAll(' = ', ' and ')} have the same body: keep one and call it from both places`);
+    if (fresh.length) return { ok: false, out: fresh.map(say).join('\n') };
     return { ok: true, note: `${copies.length} known` };
   }],
   ['secrets', () => {
@@ -216,7 +259,7 @@ const steps = [
   }],
   ['typecheck', () => run(config.commands.typecheck)],
   ['tests', () => {
-    if (flag('--all') || reach.all) { const r = run(config.commands.testAll); return { ...r, note: 'whole suite' + (reach.all ? ' (an unknown file changed)' : '') }; }
+    if (flag('--all') || reach.all) { const t0 = Date.now(); const r = run(config.commands.testAll); suiteSeconds = (Date.now() - t0) / 1000; return { ...r, note: 'whole suite' + (reach.all ? ' (an unknown file changed)' : '') }; }
     if (!reach.tests.length) return { ok: true, note: 'no tests reached by this change' };
     const r = run(`${config.commands.testFiles} ${reach.tests.join(' ')}`);
     return { ...r, note: `${reach.tests.length} test files` };
@@ -234,6 +277,8 @@ const steps = [
   }],
 ].filter(Boolean);
 
+// the whole suite over its time budget (`testSeconds`): advice only, because a slow machine is not a broken change
+const slowLines = () => (config.testSeconds && suiteSeconds > config.testSeconds ? [`advice: the tests took ${Math.round(suiteSeconds)} s, the budget is ${config.testSeconds} s: make the slow ones faster or merge tests that check the same thing (npm run health)`] : []);
 const started = Date.now();
 for (const [name, fn] of steps) {
   const t = Date.now();
@@ -246,5 +291,5 @@ for (const [name, fn] of steps) {
   }
   console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
 }
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines()]) console.log(line);
+for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...slowLines()]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

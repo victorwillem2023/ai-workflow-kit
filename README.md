@@ -27,7 +27,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 
 UI and security are first-class parts of the flow, not extras:
 - **UI**: a new screen is never invented in code. `/ui` draws an HTML board with variants A, B, C on the real style tokens, takes four pictures (desktop/phone, light/dark), and stops for your pick. Then it builds the pick; feedback rounds come with before/after pictures. `docs/STYLE.md` is binding; a done checklist ends every UI reply.
-- **Security**: short rules in `CLAUDE.md` (size caps, bounded loops, hostile-input tests, guarded outbound fetches, safe links/HTML), `docs/SECURITY.md` as the audit trail, and the gate prints an `advice:` line when a change adds a route, a file read or a fetch (run `security-review`), or reads input with no test named for what it refuses.
+- **Security**: the rules for code in `docs/SECURITY.md` (size caps, bounded loops, hostile-input tests, guarded outbound fetches, safe links/HTML), `docs/SECURITY.md` as the audit trail, and the gate prints an `advice:` line when a change adds a route, a file read or a fetch (run `security-review`), or reads input with no test named for what it refuses.
 
 ## What is in the kit
 ```
@@ -85,7 +85,7 @@ the kit into that folder. `/setup` recommends the framework when you haven't pic
 cd my-new-project            # a git repo with package.json
 node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
 # only some parts:  ... --modules security,testing
-npm i -D tsx typescript @types/node knip # + @happy-dom/global-registrator with the ui module
+npm i -D tsx typescript @types/node knip @biomejs/biome # + @happy-dom/global-registrator with the ui module
 ```
 The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
@@ -96,7 +96,14 @@ After that: `/idea <the first thing to build>`, then `/work <n>`.
 **Is a project behind the kit, or ahead of it?** `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --check` lists
 the machinery files that differ or are missing and changes nothing.
 
-**Updating** a project to a newer kit: `git pull` in the kit, then `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --force`.
+**Bringing an existing project up to the kit, keeping its own changes**: `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --update`.
+A machinery file the project never changed is replaced by the kit's new one; one the project changed is kept and listed (compare,
+then `--take <path,path>` takes the kit's); missing files are added; settings the kit has and the project lacks are added to
+`workflow.config.json`, nothing in it is changed. Then `npm run map`, `node tools/workflow/gate.mjs --update-baseline` (what the new
+checks find today becomes the baseline, so only new cases fail) and `npm run gate:all`. A project installed before 1.5 has no
+record of what the kit wrote, so the first time every differing file is listed.
+
+**Updating** a project to a newer kit, taking all of the kit's machinery: `git pull` in the kit, then `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --force`.
 It replaces the machinery (skills, tools, scripts) and never your starter files; `.workflow-kit` in the project says which version it has.
 
 ## Agents and models
@@ -132,6 +139,11 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.5.0**: the rules of the craft as checks, and a diet. Gate: import circles, source files no test reaches, nesting deeper
+  than 4, escape hatches that may not increase (`any`, `@ts-ignore`, an empty `catch`, a `TODO` with no card number; a set per
+  language), Biome (lint and format) for TypeScript, tests that are copies with other values, a time budget for the suite
+  (advice), and a size budget for `CLAUDE.md`. `install.mjs --update` brings an existing project up to the kit and keeps its own changes. The starter `CLAUDE.md` is 1.7 KB smaller: the security rules moved to
+  `docs/SECURITY.md` (*Rules for code*), the screen rules to `src/web/CLAUDE.md`. `npm run health` shows the test numbers.
 - **1.4.0**: built to ship. Gate: a secret in a change fails (`secrets`), a copied function fails (`copies`), files that change
   together (`together`: a changed table needs a migration), and your own checks (`checks`: end-to-end tests, and per language
   `unused` for dead code and unused libraries and `audit` for libraries with a known security problem). `npm run protect` (main can

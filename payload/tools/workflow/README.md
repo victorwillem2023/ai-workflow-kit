@@ -28,9 +28,22 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **functions** (when `functions` is in the config): a new function of `functions.maxLines` lines or more fails, and a long one in
   the baseline may not grow. Found by counting braces, so it reads TypeScript, JavaScript, Rust, Go and the like.
 - **ratchets** (when `ratchets` is in the config): each counts patterns in some files, for example checks on what kind a thing is
-  (`{ "name": "kind checks", "include": ["src/plan/**"], "patterns": ["shape === '", "isBike\\("] }`); a count above the baseline fails.
+  (`{ "name": "kind checks", "include": ["src/plan/**"], "patterns": ["shape === '", "isBike\\("] }`); a count above the baseline fails,
+  with the ratchet's own `say` line. The kit sets one per language, *escape hatches*: `any`, `@ts-ignore`, an empty `catch`,
+  a `TODO` with no card number, and the like.
+- **nesting** (when `functions.maxDepth` is set): an `if`, loop or `try` nested deeper than that inside a function fails (read from
+  the indentation); a deep one in the baseline may not get deeper.
+- **circles**: files that import each other in a circle fail, unless the circle is in the baseline: move what they share into a
+  file both import.
+- **untested** (when `untested` is in the config; TypeScript and JavaScript): a source file no test reaches through imports fails,
+  unless it is in the baseline. A file that only starts the app goes in `untested.ignore`.
+- **budget** (when `budget` is in the config): `{ "CLAUDE.md": 13000 }` in bytes. A rules file over its budget fails: every agent
+  reads it in every chat, so a new rule becomes a check or replaces a line.
+- **lint** (TypeScript, a `checks` entry): Biome's recommended rules and its formatter on `src` and `tests` (`biome.json`;
+  `npx biome check --write src tests` fixes what it can).
 - **copies** (when `copies` is in the config): two functions with the same body (`copies.minLines` lines or more, 6 by default)
-  fail with both names, unless the pair is in the baseline: keep one and call it from both places.
+  fail with both names, unless the pair is in the baseline: keep one and call it from both places. With `copies.tests` (globs),
+  tests that are the same once their texts and numbers are blanked fail too: make it one test over a list of cases.
 - **secrets**: a key or password in the added lines of a change (cloud and API keys, a private key, `password = "..."` with a
   real-looking value) fails with the file and the kind, never the value; so does a tracked `.env`. A made-up value in a test
   passes with `not a secret` in a comment on its line.
@@ -52,6 +65,8 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **map**: `docs/MAP.md` must be what `npm run map` writes now; a stale map fails the gate.
 - **docs**: a backticked repo path (`src/…`, `config/…`, `tests/…`, `scripts/…`, `tools/…`, `docs/…`) or an `npm run <name>` in the docs listed under `docs` in the config that no longer exists fails, with the doc, line and thing. Globs, `<placeholders>` and bare names (`service.ts`) are skipped. Known stale ones are in `baseline.json`; fixing one and re-running `--update-baseline` shortens the list.
 - **typecheck**: the config's `commands.typecheck`.
+- **test time** (advice, when `testSeconds` is set): the whole suite took longer than that. `npm run health` shows how much test
+  code there is per line of code and the biggest test files.
 - **tests**: the import graph (read from the source text) gives every test that reaches a changed file,
   also through `tests/fakes.ts`. A test that reads a non-code file by name (`styles.css`) is picked too.
   A changed file the gate doesn't understand (`package.json`, an unknown data file) runs the whole suite.

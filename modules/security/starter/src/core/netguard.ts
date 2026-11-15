@@ -11,13 +11,18 @@ const v4 = (s: string): number[] | null => {
 
 function privateV4(p: number[]): boolean {
   const [a, b, c] = p as [number, number, number, number];
-  return a === 0 || a === 10 || a === 127 || a >= 224
-    || (a === 100 && b >= 64 && b <= 127)
-    || (a === 169 && b === 254)
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168)
-    || (a === 192 && b === 0 && c === 0)
-    || (a === 198 && (b === 18 || b === 19));
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    a >= 224 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 198 && (b === 18 || b === 19))
+  );
 }
 
 /** An IPv6 address as eight 16-bit groups (an IPv4 tail counts as two), or null when it isn't one. */
@@ -34,7 +39,8 @@ function groups(s: string): number[] | null {
   const halves = t.split('::');
   if (halves.length > 2) return null;
   const part = (x: string) => (x === '' ? [] : x.split(':'));
-  const head = part(halves[0]!), rest = halves.length === 2 ? part(halves[1]!) : [];
+  const head = part(halves[0]!),
+    rest = halves.length === 2 ? part(halves[1]!) : [];
   const fill = halves.length === 2 ? 8 - head.length - rest.length : 0;
   if (fill < 0 || (halves.length === 1 && head.length !== 8)) return null;
   const all = [...head, ...Array<string>(fill).fill('0'), ...rest];
@@ -55,5 +61,11 @@ export function isPrivateAddress(ip: string): boolean {
   if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0xffff || g[5] === 0)) return privateV4(embedded(g[6]!, g[7]!)); // ::ffff:a.b.c.d and ::a.b.c.d
   if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return privateV4(embedded(g[6]!, g[7]!)); // NAT64
   if (g[0] === 0x2002) return privateV4(embedded(g[1]!, g[2]!)); // 6to4
-  return (g[0]! & 0xfe00) === 0xfc00 || (g[0]! & 0xffc0) === 0xfe80 || (g[0]! & 0xffc0) === 0xfec0 || (g[0]! & 0xff00) === 0xff00 || (g[0] === 0x2001 && g[1] === 0xdb8);
+  return (
+    (g[0]! & 0xfe00) === 0xfc00 ||
+    (g[0]! & 0xffc0) === 0xfe80 ||
+    (g[0]! & 0xffc0) === 0xfec0 ||
+    (g[0]! & 0xff00) === 0xff00 ||
+    (g[0] === 0x2001 && g[1] === 0xdb8)
+  );
 }

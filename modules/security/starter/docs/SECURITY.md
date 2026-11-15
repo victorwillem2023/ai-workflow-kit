@@ -1,7 +1,20 @@
 # Security: what is protected, and what is known to be open
 
-The short rules Claude follows are in `CLAUDE.md` (*Security*). This page is the audit trail: what was checked, what is open.
+*Rules for code* is what every agent follows; the rest is the audit trail: what was checked, what is open.
 Update it in the same commit as any change to an endpoint, file reader or outbound fetch.
+
+## Rules for code
+- **Untrusted input** (anything read from a request, an uploaded file or a third-party page): a size cap, a bound on every loop or
+  step count that depends on the input, and a test with a hostile input whose name says what is now refused ("refuses ...",
+  "rejects ...", "caps ...": the gate looks for those words). Name one existing function as the pattern to copy.
+- **Outbound fetches** of a URL that came from a user or a third party: through <one HTTP client> with an `untrusted` flag that refuses
+  private, loopback and link-local addresses at every redirect, caps the answer size and sends no contact details.
+- **Links and HTML**: an `href` built from data must be `http(s)` only; `innerHTML` only for static markup; text goes through a helper.
+- **A new endpoint, file reader or outbound fetch**: run a security review on the branch before `--finish`, and add its
+  limits (body size, count, rate) in the same commit. (`npm run gate` prints an `advice:` line when it sees one.)
+- **Secrets** (keys, passwords, tokens) are read from the environment, never written into a file in git: the gate fails on one in a
+  change, and on a tracked `.env`.
+- **Before sharing a link** (tunnel): password set, empty data folder, stop the tunnel afterwards. Never print `.env` values.
 
 ## How to share a test link safely
 <Password set, empty data folder, background jobs off, stop the tunnel afterwards. Never print `.env` values.>

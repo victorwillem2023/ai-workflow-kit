@@ -1,7 +1,7 @@
 {
   "ts": {
     "name": "TypeScript",
-    "needs": "npm i -D tsx typescript @types/node knip",
+    "needs": "npm i -D tsx typescript @types/node knip @biomejs/biome",
     "tests": "tests/*.test.ts"
   },
   "rust": {
@@ -30,7 +30,8 @@
         "maxLines": 60,
         "include": [
           "src/**/*.rs"
-        ]
+        ],
+        "maxDepth": 4
       },
       "boundaries": [
         {
@@ -62,7 +63,26 @@
           "command": "cargo audit",
           "all": true
         }
-      ]
+      ],
+      "ratchets": [
+        {
+          "name": "escape hatches",
+          "include": [
+            "src/**/*.rs"
+          ],
+          "patterns": [
+            "#\\[allow\\(",
+            "\\bunsafe\\s*\\{",
+            "\\btodo!\\(",
+            "\\bunimplemented!\\(",
+            "\\b(TODO|FIXME)\\b(?!.*#\\d)"
+          ],
+          "say": "One more way around a check (#[allow], unsafe, todo!(), a TODO with no card number): fix what the compiler says, or name the card (TODO #12)"
+        }
+      ],
+      "copies": {
+        "minLines": 6
+      }
     },
     "scripts": {
       "test": "cargo test",
@@ -125,7 +145,8 @@
         "maxLines": 60,
         "include": [
           "src/**/*.py"
-        ]
+        ],
+        "maxDepth": 4
       },
       "checks": [
         {
@@ -138,7 +159,28 @@
           "command": "uv run pip-audit",
           "all": true
         }
-      ]
+      ],
+      "ratchets": [
+        {
+          "name": "escape hatches",
+          "include": [
+            "src/**/*.py"
+          ],
+          "patterns": [
+            "#\\s*type:\\s*ignore",
+            "#\\s*noqa",
+            "\\bexcept\\s*:",
+            "\\b(TODO|FIXME)\\b(?!.*#\\d)"
+          ],
+          "say": "One more way around a check (type: ignore, noqa, a bare except, a TODO with no card number): fix what the tool says, catch the error you mean, or name the card (TODO #12)"
+        }
+      ],
+      "copies": {
+        "minLines": 6,
+        "tests": [
+          "tests/**/test_*.py"
+        ]
+      }
     },
     "scripts": {
       "test": "uv run pytest -q",
@@ -188,7 +230,8 @@
           "cmd/**/*.go",
           "internal/**/*.go",
           "pkg/**/*.go"
-        ]
+        ],
+        "maxDepth": 4
       },
       "boundaries": [
         {
@@ -239,7 +282,27 @@
           "command": "go run golang.org/x/vuln/cmd/govulncheck@latest ./...",
           "all": true
         }
-      ]
+      ],
+      "ratchets": [
+        {
+          "name": "escape hatches",
+          "include": [
+            "cmd/**/*.go",
+            "internal/**/*.go",
+            "pkg/**/*.go"
+          ],
+          "patterns": [
+            "//\\s*nolint",
+            "\\b_ = err\\b",
+            "\\bpanic\\(",
+            "\\b(TODO|FIXME)\\b(?!.*#\\d)"
+          ],
+          "say": "One more way around a check (nolint, a dropped error, panic, a TODO with no card number): handle the error, or name the card (TODO #12)"
+        }
+      ],
+      "copies": {
+        "minLines": 6
+      }
     },
     "scripts": {
       "test": "go test ./...",

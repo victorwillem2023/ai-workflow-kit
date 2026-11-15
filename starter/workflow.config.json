@@ -11,10 +11,22 @@
   },
   "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
   "size": { "maxLines": 400, "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.mjs"] },
-  "functions": { "maxLines": 60, "include": ["src/**/*.ts", "src/**/*.tsx"] },
+  "functions": { "maxLines": 60, "maxDepth": 4, "include": ["src/**/*.ts", "src/**/*.tsx"] },
+  "untested": { "include": ["src/**/*.ts", "src/**/*.tsx"], "ignore": ["src/**/main.ts", "src/**/index.ts", "src/**/*.d.ts"] },
+  "ratchets": [
+    {
+      "name": "escape hatches",
+      "include": ["src/**/*.ts", "src/**/*.tsx"],
+      "patterns": [":\\s*any\\b", "\\bas any\\b", "@ts-ignore", "@ts-expect-error", "catch\\s*(\\([^)]*\\))?\\s*\\{\\s*\\}", "\\b(TODO|FIXME)\\b(?!.*#\\d)"],
+      "say": "One more way around a check (any, @ts-ignore, an empty catch, a TODO with no card number): give it its real type, handle the error, or name the card (TODO #12)"
+    }
+  ],
+  "budget": { "CLAUDE.md": 13000, "src/**/CLAUDE.md": 3500 },
+  "testSeconds": 120,
   "scope": "advice",
-  "copies": { "minLines": 6 },
+  "copies": { "minLines": 6, "tests": ["tests/**/*.test.ts"] },
   "checks": [
+    { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] },
     { "name": "unused", "command": "npx --no-install knip --no-progress", "all": true },
     { "name": "audit", "command": "npm audit --audit-level=high", "all": true }
   ],

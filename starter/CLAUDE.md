@@ -9,17 +9,14 @@ The owner wants to understand and steer the project, not just receive features. 
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: in plain words what the user will see change, which files,
-  which test proves it, which docs; wait for approval. `/work <n>` is the one entry: the card's one type label picks the route
-  (*ui* = `/ui <n>`, a board with variants A, B, C first; *feature* = a plan with named tests; *bug* = a failing test first;
-  *workflow* = like a feature, no app change). After the yes the build starts **in a new chat** (`/build <topic>`, a session
+  which test proves it, which docs; wait for approval. `/work <n>` is the one entry: the card's type label picks the route.
+  After the yes the build starts **in a new chat** (`/build <topic>`, a session
   folder), so the planning is not sent again on every round; `/ship <topic>` finishes it, only when the owner says done.
   Details: `tools/workflow/README.md` (read by the section).
 - **Model choice**: the flow (`/work /spec /build /ship /ui`) runs on a strong paid model. Small or free models only for jobs
   that are easy to check and to rerun: `/idea`, `/docs`, `/check`, `/find`. When in doubt, the stronger model.
-- **New screens and parts start as a board, not as code** (`/ui` stage 1, `.claude/skills/ui/SKILL.md`). A live draft
-  (one pass, no board, the owner tries it) is only for a small tweak to a part that already exists.
-- **Browser-Driven Iteration**: browser feedback comes as one numbered list per round; one pass per round, with before and
-  after pictures (`scripts/shots.mjs`), only in `src/web`, never core logic: a point that needs core logic becomes its own card.
+- **Screens**: a new screen or part starts as a board, not as code (`/ui`); browser feedback is one numbered list and one pass
+  per round, only in `src/web` (a point that needs core logic becomes its own card). The rules: `src/web/CLAUDE.md`.
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.
 - **Docs in the same commit**: the guide part in `docs/guide/` and `README.md` when a feature is added or changes;
   `docs/ARCHITECTURE.md` when the layers or flow change; `docs/code/<folder>.md` when a part moves.
@@ -78,19 +75,11 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 14. A shared step doesn't ask what kind of thing it is handling where the kind's own file can hold what differs. A number that
     is a rule gets a name and a comment saying what it is.
 
-## Security (short rules; known gaps and the audit are in `docs/SECURITY.md`)
-Treat every request and every third-party page as hostile (<say here if the server can be put online>).
-- **Untrusted input** (anything read from a request, an uploaded file or a third-party page): a size cap, a bound on every loop or
-  step count that depends on the input, and a test with a hostile input whose name says what is now refused ("refuses ...",
-  "rejects ...", "caps ...": the gate looks for those words). Name one existing function as the pattern to copy.
-- **Outbound fetches** of a URL that came from a user or a third party: through <one HTTP client> with an `untrusted` flag that refuses
-  private, loopback and link-local addresses at every redirect, caps the answer size and sends no contact details.
-- **Links and HTML**: an `href` built from data must be `http(s)` only; `innerHTML` only for static markup; text goes through a helper.
-- **A new endpoint, file reader or outbound fetch**: run a security review on the branch before `--finish`, and add its
-  limits (body size, count, rate) in the same commit. (`npm run gate` prints an `advice:` line when it sees one.)
-- **Secrets** (keys, passwords, tokens) are read from the environment, never written into a file in git: the gate fails on one in a
-  change, and on a tracked `.env`.
-- **Before sharing a link** (tunnel): password set, empty data folder, stop the tunnel afterwards. Never print `.env` values.
+## Security (the rules for code: `docs/SECURITY.md`, *Rules for code*)
+Treat every request, uploaded file and third-party page as hostile (<say here if the server can be put online>). Read *Rules for
+code* before you touch untrusted input, fetch a URL that came from a user or a third party, build a link or HTML from data, or add
+an endpoint, file reader or outbound fetch (those also need a security review before `--finish`). Secrets are read from the
+environment, never written into a file in git (the gate fails on one). Never print or send `.env` values.
 
 ## Reading the code cheaply
 Every token read is paid for again on every later turn of the chat, so read by the part, never whole.
@@ -132,14 +121,9 @@ Before writing or changing any UI code read `src/web/CLAUDE.md`: it holds the st
 - No session notes in the repo (no PROGRESS.md or NEXT-SESSION.md): keep this file current.
 
 ## Parallel work (several sessions at once)
-One session, one folder, one branch, one port; never a shared working tree. How `scripts/session.mjs` works: its header
-and `tools/workflow/README.md`, *Commits and sessions*.
-- **Start**: `node scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>` (own port). Work only there, never in
-  another session's folder or the main one. Say the folder and URL in your first reply.
-- **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted
-  files in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.
-- **Shared files** (listed below): edit only your own feature's lines, small. A rebase conflict keeps both
-  sides' changes, never drops the other's.
-  Shared files: `README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>.
-- `node scripts/session.mjs --list` shows sessions, ports, cards and how many finished features are not pushed;
-  `--clean` takes the finished ones away.
+- **One session, one folder, one branch, one port**: `node scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>`;
+  work only there and say the folder and URL in your first reply. The rest: `tools/workflow/README.md`, *Commits and sessions*.
+- **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted files
+  in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.
+- **Shared files** (`README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>): edit only your own
+  feature's lines, small. A rebase conflict keeps both sides' changes, never drops the other's.

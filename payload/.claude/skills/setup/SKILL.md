@@ -45,7 +45,7 @@ Only real decisions; never ask what the code already says.
   (keep the effort and feasibility lists unless the owner changes them), `harness` from answer 8 (`"opencode": false` for
   Claude Code only; `private`: the data folders), `docs.include` with any other doc folder.
 - **`CLAUDE.md`**: replace every `<...>` with the answers, short. *How a request flows*: one line per step with the file that does it.
-  *Layout rules*: the same rules as `boundaries`, in words. *Security*: name the real places outside data comes in, and the guard
+  *Layout rules*: the same rules as `boundaries`, in words. *Security* (and *Rules for code* in `docs/SECURITY.md`): name the real places outside data comes in, and the guard
   to copy (`src/core/guards.ts` when the security module is installed). *Reading the code cheaply*: the large files and the big docs to read by the section.
   *Never read*: the data folders, generated files, recorded output, lock files. *Shared files*: answer 6. Keep the rest of the file as it is: those are the working rules.
 - **A folder `CLAUDE.md`** for each layer with its own rules (`src/core/CLAUDE.md` is the pattern): only rules, as bullets, about

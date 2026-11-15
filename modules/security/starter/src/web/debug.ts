@@ -4,5 +4,7 @@
 
 /** `host` is location.hostname; `stored` is localStorage "{{PREFIX}}.debug". */
 export function debugHandleOn(host: string, stored: string | null): boolean {
-  return stored === '1' || host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1' || host === '[::1]' || host === '::1';
+  return (
+    stored === '1' || host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1' || host === '[::1]' || host === '::1'
+  );
 }

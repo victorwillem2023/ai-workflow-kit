@@ -1,0 +1,6 @@
+{
+  "files": { "includes": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "!tests/workflow"] },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  "linter": { "rules": { "preset": "recommended", "style": { "noNonNullAssertion": "off", "useTemplate": "off" } } }
+}

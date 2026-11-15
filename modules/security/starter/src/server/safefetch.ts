@@ -11,7 +11,13 @@ import { isPrivateAddress } from '../core/netguard';
 
 /** Thrown when a link is refused (not a web address, private address, too many redirects, too big). `status` is 0, or 413 for too big. */
 export class RefusedError extends Error {
-  constructor(why: string, readonly status = 0) { super(`Refused: ${why}`); this.name = 'RefusedError'; }
+  constructor(
+    why: string,
+    readonly status = 0,
+  ) {
+    super(`Refused: ${why}`);
+    this.name = 'RefusedError';
+  }
 }
 
 export type Lookup = (host: string) => Promise<{ address: string; family: number }[]>;
@@ -27,7 +33,11 @@ export function dnsGuard(lookup: Lookup = (h) => dnsLookup(h, { all: true, verba
       return;
     }
     let found: { address: string }[];
-    try { found = await lookup(host); } catch { found = []; }
+    try {
+      found = await lookup(host);
+    } catch {
+      found = [];
+    }
     if (!found.length) throw new RefusedError('that site was not found on the public internet');
     if (found.some((f) => isPrivateAddress(f.address))) throw new RefusedError('that address is not on the public internet');
   };
@@ -44,7 +54,11 @@ export interface SafeFetchOptions {
   headers?: Record<string, string>;
 }
 
-export interface SafeResponse { status: number; headers: Headers; body: Uint8Array }
+export interface SafeResponse {
+  status: number;
+  headers: Headers;
+  body: Uint8Array;
+}
 
 const REDIRECTS = [301, 302, 303, 307, 308];
 
@@ -57,14 +71,27 @@ export async function safeFetch(url: string, o: SafeFetchOptions = {}): Promise<
   const timer = setTimeout(() => ctl.abort(), o.timeoutMs ?? 20000);
   try {
     let cur: string;
-    try { cur = new URL(url).href; } catch { throw new RefusedError('that is not a web address'); }
+    try {
+      cur = new URL(url).href;
+    } catch {
+      throw new RefusedError('that is not a web address');
+    }
     for (let hop = 0; hop <= maxRedirects; hop++) {
       await guard(new URL(cur));
-      const res = await doFetch(cur, { method: 'GET', redirect: 'manual', signal: ctl.signal, headers: { 'User-Agent': 'safe-fetch', ...(o.headers ?? {}) } });
+      const res = await doFetch(cur, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: ctl.signal,
+        headers: { 'User-Agent': 'safe-fetch', ...(o.headers ?? {}) },
+      });
       const loc = res.headers.get('location');
       if (!REDIRECTS.includes(res.status) || !loc) return { status: res.status, headers: res.headers, body: await readCapped(res, max) };
       await res.body?.cancel().catch(() => {});
-      try { cur = new URL(loc, cur).href; } catch { throw new RefusedError('a redirect to something that is not a web address'); }
+      try {
+        cur = new URL(loc, cur).href;
+      } catch {
+        throw new RefusedError('a redirect to something that is not a web address');
+      }
     }
     throw new RefusedError('too many redirects');
   } finally {
@@ -75,7 +102,10 @@ export async function safeFetch(url: string, o: SafeFetchOptions = {}): Promise<
 /** The body, refused as soon as it passes the cap (checked as it arrives, not after it is all in memory). */
 async function readCapped(res: Response, max: number): Promise<Uint8Array> {
   const tooBig = () => new RefusedError('that file is too big', 413);
-  if (Number(res.headers.get('content-length')) > max) { await res.body?.cancel().catch(() => {}); throw tooBig(); }
+  if (Number(res.headers.get('content-length')) > max) {
+    await res.body?.cancel().catch(() => {});
+    throw tooBig();
+  }
   if (!res.body) return new Uint8Array();
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -84,11 +114,17 @@ async function readCapped(res: Response, max: number): Promise<Uint8Array> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.length;
-    if (total > max) { await reader.cancel().catch(() => {}); throw tooBig(); }
+    if (total > max) {
+      await reader.cancel().catch(() => {});
+      throw tooBig();
+    }
     chunks.push(value);
   }
   const all = new Uint8Array(total);
   let at = 0;
-  for (const c of chunks) { all.set(c, at); at += c.length; }
+  for (const c of chunks) {
+    all.set(c, at);
+    at += c.length;
+  }
   return all;
 }
