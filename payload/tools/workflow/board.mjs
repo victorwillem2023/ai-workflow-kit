@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
 import { adoptCard, closeCard, createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
-import { inbox, rankCards, STARTABLE } from './lib/rank.mjs';
+import { inbox, rankCards, STARTABLE, TOOL_ISSUES } from './lib/rank.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WINDOWS_GH = 'C:\\Program Files\\GitHub CLI\\gh.exe';
@@ -52,7 +52,11 @@ async function main() {
   const board = config.board;
   if (!board) throw new BoardError('workflow.config.json has no "board" block.');
   // board.wip: how many cards may be in progress at once (2 for one person); board.backlogMax: when the backlog needs pruning
-  const triageOptions = () => ({ wip: board.wip ?? 2, backlogMax: board.backlogMax ?? 30, firstVersion: board.labels?.milestone?.[0], columns: board.columns });
+  // the issues tools keep open (Renovate's dashboard, under the title renovate.json gives it) are never inbox items
+  let renovateTitle;
+  try { renovateTitle = JSON.parse(readFileSync(join(root, 'renovate.json'), 'utf8')).dependencyDashboardTitle; } catch {}
+  const toolIssues = [...TOOL_ISSUES, ...(renovateTitle ? [renovateTitle] : [])];
+  const triageOptions = () => ({ wip: board.wip ?? 2, backlogMax: board.backlogMax ?? 30, firstVersion: board.labels?.milestone?.[0], columns: board.columns, toolIssues });
   if (argv.includes('--init')) {
     const r = initBoard(board, run, undefined, { title: config.name });
     if (r.created) {
@@ -114,7 +118,7 @@ async function main() {
     for (const c of ranked.slice(0, n)) console.log(`#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
     const unvalued = ranked.filter((c) => /value not set/.test(c.why)).length;
     if (unvalued) console.log(`(${unvalued} startable card${unvalued === 1 ? ' has' : 's have'} no value label: set one, the order is only as good as the labels)`);
-    const waiting = inbox(all).length;
+    const waiting = inbox(all, undefined, toolIssues).length;
     if (waiting) console.log(`(${waiting} open issue${waiting === 1 ? ' is' : 's are'} not on the board yet: npm run board -- --inbox)`);
     const line = triageLine(triage(all, triageOptions()));
     if (line) console.log(line);
@@ -126,7 +130,7 @@ async function main() {
     closeCard(board, run, number, argv[argv.indexOf('--close') + 2]);
     console.log(`board: #${number} closed, the reason added as a comment`);
   } else if (argv.includes('--inbox')) {
-    const waiting = inbox(listCards(board, run));
+    const waiting = inbox(listCards(board, run), undefined, toolIssues);
     if (!waiting.length) console.log('board: every open issue is on the board');
     for (const c of waiting) console.log(`#${c.number} ${c.title}${c.labels.length ? ` [${c.labels.join(', ')}]` : ''}`);
     if (waiting.length) console.log('Put one on the board: npm run board -- --adopt <number> --label <type> [--label <name>]...; or close it with a reply.');

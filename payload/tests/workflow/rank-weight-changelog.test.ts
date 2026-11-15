@@ -29,6 +29,12 @@ describe('what to build next', () => {
     const all = [{ ...card(8, ['feedback']), column: null }, { ...card(9, ['security-report']), column: null }, card(10, ['feature'])];
     assert.deepEqual(inbox(all).map((c) => c.number), [8]);
   });
+  it("leaves out Renovate's Dependency Dashboard, under its default title or the one renovate.json gives it", () => {
+    const dash = (n: number, title: string) => ({ ...card(n, []), title, column: null });
+    const all = [{ ...card(8, ['feedback']), column: null }, dash(10, 'Dependency Dashboard'), dash(11, 'Renovate dashboard')];
+    assert.deepEqual(inbox(all).map((c) => c.number), [8, 11]);
+    assert.deepEqual(inbox(all, undefined, ['Dependency Dashboard', 'Renovate dashboard']).map((c) => c.number), [8]);
+  });
 });
 
 describe('the page-weight budget', () => {

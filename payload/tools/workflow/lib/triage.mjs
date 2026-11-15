@@ -24,7 +24,7 @@ export function likelyDuplicates(cards, threshold = 0.6) {
 }
 
 /** The triage: { focus, findings, counts }. Each finding: { kind, what, cards, suggest }. */
-export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitDays = 3, backlogMax = 30, firstVersion, columns = [] } = {}) {
+export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitDays = 3, backlogMax = 30, firstVersion, columns = [], toolIssues } = {}) {
   const open = cards.filter((c) => c.state === 'open');
   const inCol = (name) => open.filter((c) => c.column === name);
   const findings = [];
@@ -35,7 +35,7 @@ export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitD
   add('waiting-for-you', `waiting for your check for more than ${waitDays} days`, inCol('Waiting for your check').filter((c) => daysSince(c.updatedAt, now) > waitDays), 'try each and say done, or what is wrong: they block the next start');
   add('stalled', `in progress, unchanged for more than ${staleDays} days`, doing.filter((c) => daysSince(c.updatedAt, now) > staleDays), 'still wanted? move it back to Ready with a note, or split what is left into a smaller card');
   add('blocked-long', `blocked for more than ${staleDays} days`, inCol('Blocked').filter((c) => daysSince(c.updatedAt, now) > staleDays), 'is the reason still true? unblock, or close it with why');
-  const waiting = inbox(cards);
+  const waiting = inbox(cards, undefined, toolIssues);
   add('inbox', `${waiting.length} open issue${waiting.length === 1 ? '' : 's'} not on the board (oldest ${Math.max(0, ...waiting.map((c) => daysSince(c.createdAt, now)))} days)`, waiting, 'adopt each with a type, or close it with a reply');
   const startable = open.filter((c) => STARTABLE.includes(c.column));
   add('unranked', 'startable cards without a value label, so the order is a guess', startable.filter((c) => !c.labels.some((l) => /^value:/i.test(l))).slice(0, 8), 'set value and effort (/shape), or close the ones nobody would miss');

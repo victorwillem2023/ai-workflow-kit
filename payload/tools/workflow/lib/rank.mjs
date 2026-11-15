@@ -30,7 +30,12 @@ export function rankCards(cards, { firstVersion, columns = STARTABLE } = {}) {
     .sort((a, b) => Number(b.v1) - Number(a.v1) || b.score - a.score || (a.column === 'Ready' ? -1 : 0) - (b.column === 'Ready' ? -1 : 0) || a.number - b.number);
 }
 
-/** Open issues that are not on the board yet (feedback, error alerts, ideas filed on GitHub), apart from the reports. */
-export function inbox(cards, ignoreLabels = ['security-report', 'access-review']) {
-  return cards.filter((c) => c.state === 'open' && !c.column && !c.labels.some((l) => ignoreLabels.includes(l)));
+/** The issues tools keep open for themselves, by title: Renovate's Dependency Dashboard (its default title; a project that
+ *  renamed it in renovate.json passes that name too). They have no label to tell them by. */
+export const TOOL_ISSUES = ['Dependency Dashboard'];
+
+/** Open issues that are not on the board yet (feedback, error alerts, ideas filed on GitHub), apart from the reports and the
+ *  issues tools keep open (the SecOps report and access review by label, Renovate's dashboard by title). */
+export function inbox(cards, ignoreLabels = ['security-report', 'access-review'], ignoreTitles = TOOL_ISSUES) {
+  return cards.filter((c) => c.state === 'open' && !c.column && !c.labels.some((l) => ignoreLabels.includes(l)) && !ignoreTitles.includes(c.title));
 }

@@ -202,6 +202,8 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.8.1**: the board inbox leaves out Renovate's Dependency Dashboard (by its default title, or the one `renovate.json` gives it),
+  so `/next` and `/tidy` no longer ask for a decision about it.
 - **2.8.0**: safe before relying on it, and as lean as you want.
   **Production never deploys by itself**: after staging the deploy workflow stops; production is you running it, or (with
   `PRODUCTION_AFTER_STAGING`) a required reviewer's approval that the job checks is really there before it deploys.

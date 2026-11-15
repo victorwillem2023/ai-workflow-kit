@@ -3,4 +3,5 @@ type Ranked = Card & { score: number; v1: boolean; why: string };
 export const STARTABLE: string[];
 export function scoreCard(card: Card, firstVersion?: string): Ranked;
 export function rankCards(cards: Card[], o?: { firstVersion?: string; columns?: string[] }): Ranked[];
-export function inbox(cards: Card[], ignoreLabels?: string[]): Card[];
+export const TOOL_ISSUES: string[];
+export function inbox(cards: Card[], ignoreLabels?: string[], ignoreTitles?: string[]): Card[];
