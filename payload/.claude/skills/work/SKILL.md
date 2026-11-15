@@ -8,6 +8,9 @@ description: Work on one {{PROJECT}} board card from start to finish ("work on c
 The one entry in plain words. `/spec`, `/build` and `/ship` do the steps underneath; this skill says which, in what order,
 and where to stop. Run it from the main folder in a fresh chat. Never commit before the owner says done.
 
+0. **What waits from outside**: `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
+   alert: say it first, in plain words, and ask whether to deal with it before the card. Updates only: name the count in one line
+   and go on (`npm run updates` lists them, each with take it, look first or hold).
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
    - In *Blocked*: say the reason (the last "Blocked:" comment) and ask whether it is unblocked before going on.

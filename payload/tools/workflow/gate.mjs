@@ -9,7 +9,7 @@
 //   (project steps from the config: `checks`, `together`, `copies`; a secret in the change fails too. See README.md, *What it checks*)
 //   (the gate also fails when docs/MAP.md is out of date: run npm run map; when an OpenCode command is missing or stale: npm run harness;
 //   or when a doc names a missing file or npm script)
-//   --advice      only print the advice lines (security-review, hostile-input test) (a full run prints them at the end; they never fail the gate)
+//   --advice      only print the advice lines (security-review, hostile-input test, a missing push guard) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
 // Project settings live in workflow.config.json; nothing here knows about the project.
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -169,7 +169,16 @@ function depsLines() {
     unnamedDependencies(addedDependencies(f, gitOk('show', `${base}:${f}`) ?? '', readFileSync(f, 'utf8')), stack)
       .map((n) => `advice: ${f} adds ${n}, which docs/STACK.md does not name: add it there with why (the owner's decision), or take it out`));
 }
-if (flag('--advice')) { const a = [...adviceLines(), ...depsLines()]; if (a.length) console.log(a.join('\n')); process.exit(0); }
+// the push guard (npm run protect) lives in this clone's git hooks: a clone on another computer, or a cloud session, has none.
+// On GitHub's runners (CI) there is nothing to guard. The session folders share the main folder's hooks.
+function guardLines() {
+  if (process.env.CI || !existsSync('tools/workflow/protect.mjs')) return [];
+  const common = gitOk('rev-parse', '--git-common-dir');
+  const hook = common ? `${common}/hooks/pre-push` : null;
+  if (hook && existsSync(hook) && readFileSync(hook, 'utf8').includes('tools/workflow/protect.mjs')) return [];
+  return ['advice: the push guard is not on this computer, so a push here may rewrite or delete main: npm run protect -- --local'];
+}
+if (flag('--advice')) { const a = [...adviceLines(), ...depsLines(), ...guardLines()]; if (a.length) console.log(a.join('\n')); process.exit(0); }
 
 const changed = changedFiles();
 const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming });
@@ -309,5 +318,5 @@ for (const [name, fn] of steps) {
   }
   console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
 }
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...slowLines()]) console.log(line);
+for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines()]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

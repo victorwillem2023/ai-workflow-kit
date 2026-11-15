@@ -74,6 +74,7 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
 | `/spec`, `/ship` | The steps underneath. |
 | `/check`, `/find`, `/docs` | Cheap helpers on a small model: explain a failing gate, answer "where is X" from the map, a small docs edit. Read-only or no commit. |
 | `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
+| `npm run updates` | What Dependabot found: security alerts first, then each update with a verdict (take it, look first, hold). `/work` starts with its one line. |
 
 ## Install into a new project
 Needs: Node 22+, git, the GitHub CLI (`gh auth login`, then `gh auth refresh -s project`), Claude Code.
@@ -139,6 +140,12 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.6.0**: `npm run updates` reads Dependabot (security alerts and pull requests) and gives each library a verdict: take it, look
+  first, or hold (type definitions for a newer Node than the app runs on, or a library held in the config), with the ignore lines that
+  stop a held one at the source; `/work` starts with its one line and `npm run health` shows it. Agents may not skip the push guard
+  (`--no-verify`, `--force`, `-f`, another hooks path are denied in Claude Code and OpenCode; `--update` adds the rules to a project
+  made earlier), and the gate says when the guard is missing on a computer. `tools/workflow/README.md` says what needs a public
+  repository or a paid plan and what stands in for it.
 - **1.5.4**: `npm run protect` asks GitHub about the repository by its full name (`board.repo` is `owner/name`; it put the owner
   in front a second time, so GitHub answered "not found" and the rule was never set). Its test now uses a config as the installer writes it.
 - **1.5.3**: the import rules see `require('...')`, `import(`...`)` and a folder's `index.tsx`, so no import slips past them; a rule

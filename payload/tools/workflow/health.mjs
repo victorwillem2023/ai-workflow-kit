@@ -38,3 +38,10 @@ row('stale doc references in the baseline', (baseline.docs ?? []).length);
 const checked = existsSync('docs/STACK.md') ? /Prices checked:\s*(\d{4}-\d{2}-\d{2})/.exec(readFileSync('docs/STACK.md', 'utf8'))?.[1] : null;
 if (checked) { const days = Math.floor((Date.now() - Date.parse(checked)) / 86_400_000); row('prices in docs/STACK.md', `checked ${checked}, ${days} days ago${days > 90 ? ': look them up again (hosts, AI models) and update the page' : ''}`); }
 if (baseline.quality) row('quality score in the baseline', `${baseline.quality.pass}${baseline.quality.total != null ? ' of ' + baseline.quality.total : ''}`);
+// what Dependabot waits with (security alerts, updates to take, look at or hold): the same line /work starts with
+if (!process.argv.includes('--offline')) {
+  try {
+    const line = execFileSync(process.execPath, ['tools/workflow/updates.mjs', '--short'], { encoding: 'utf8', timeout: 40_000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    row('dependency updates', line.replace(/^updates: /, ''));
+  } catch { row('dependency updates', 'not checked (npm run updates)'); }
+}

@@ -163,6 +163,24 @@ for (const [name, to] of rename) {
   done.kept = done.kept.filter((x) => x !== name);
 }
 
+const claudeAdded = [];
+// Claude Code's settings are the project's own after the first install, but the kit's allow and deny rules it lacks are added,
+// so a project made earlier also gets a new rule (agents never skip the push guard: --no-verify, --force, another hooks path)
+{
+  const own = join(target, '.claude', 'settings.local.json');
+  const kitRules = JSON.parse(readFileSync(join(kit, 'starter', 'settings.local.json'), 'utf8')).permissions ?? {};
+  if (existsSync(own)) {
+    const mine = JSON.parse(readFileSync(own, 'utf8'));
+    mine.permissions ??= {};
+    const added = [];
+    for (const kind of ['allow', 'deny']) {
+      const list = (mine.permissions[kind] ??= []);
+      for (const r of kitRules[kind] ?? []) if (!list.includes(r)) { list.push(r); added.push(`${kind} ${r}`); }
+    }
+    if (added.length) { writeFileSync(own, JSON.stringify(mine, null, 2) + '\n'); claudeAdded.push(...added); }
+  }
+}
+
 // package.json scripts
 const pkgPath = join(target, 'package.json');
 const scripts = JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'));
@@ -271,6 +289,7 @@ console.log(`  added ${done.added.length} files, replaced ${done.replaced.length
 console.log(`  ${harnessLine}`);
 if (update) {
   if (addedSettings.length) console.log(`  settings added to workflow.config.json: ${addedSettings.join(', ')}`);
+  if (claudeAdded.length) console.log(`  rules added to .claude/settings.local.json: ${claudeAdded.join(', ')}`);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');

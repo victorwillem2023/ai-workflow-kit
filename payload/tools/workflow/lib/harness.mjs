@@ -68,13 +68,14 @@ export function commandFile(name, skillText, cfg = {}) {
   ].join('\n');
 }
 
-/** OpenCode shell patterns from Claude Code's allow list: `Bash(git status:*)` becomes `git status*`. */
-export function shellPatterns(claudeSettings) {
-  const allow = claudeSettings?.permissions?.allow ?? [];
+/** OpenCode shell patterns from Claude Code's allow (or deny) list: `Bash(git status:*)` becomes `git status*`. */
+export function shellPatterns(claudeSettings, kind = 'allow') {
+  const allow = claudeSettings?.permissions?.[kind] ?? [];
   const out = [];
   for (const rule of allow) {
     const m = /^Bash\((.+?)(?::\*)?\)$/.exec(rule);
-    if (m && !out.includes(m[1] + '*')) out.push(m[1] + '*');
+    const p = m && (m[1].endsWith('*') ? m[1] : m[1] + '*');
+    if (p && !out.includes(p)) out.push(p);
   }
   return out;
 }
@@ -91,6 +92,8 @@ export function opencodeConfig({ project, cfg = {}, claudeSettings, private: pri
   const rule = (action, resource, effect) => ({ action, resource, effect });
   const permissions = [rule('shell', '*', 'ask')];
   for (const p of shellPatterns(claudeSettings)) permissions.push(rule('shell', p, 'allow'));
+  // Claude Code's deny rules (skipping the push guard, a force push) come after the allows: the last match wins
+  for (const p of shellPatterns(claudeSettings, 'deny')) permissions.push(rule('shell', p, 'deny'));
   permissions.push(rule('shell', '*.env*', 'deny'));
   permissions.push(rule('read', '*.env', 'deny'), rule('read', '*.env.*', 'deny'), rule('read', '*.env.example', 'allow'));
   for (const p of priv) {

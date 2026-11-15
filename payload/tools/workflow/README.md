@@ -88,7 +88,26 @@ GitHub to take only work whose gate passed. Run `npm run protect` again after ch
 `npm run protect` does two things: a git hook on this computer that refuses a push that would delete `main` on GitHub or rewrite
 it (a force push), and the same as a rule on GitHub. GitHub only takes the rule for a public repository or on a paid plan; when it
 refuses, the script says so and the local guard still works. `npm run protect -- --check` shows what is in place.
+
+What needs a public repository or a paid plan, and what stands in for it here:
+| GitHub enforces (public or paid) | Here instead (any plan) |
+|---|---|
+| no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.local.json` and `opencode.jsonc` deny `git push --no-verify`, `--force`, `-f` and another hooks path |
+| a pull request merges only when its gate passed (`"flow": "pr"`) | `node scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
+
+The guard lives in this clone's git hooks (the session folders share them). A clone on another computer or a cloud session has
+none until `npm run protect -- --local` runs there; the gate prints an `advice:` line when it is missing (never on GitHub's runners).
+What it cannot stop: a person who removes the hook, and a merge by hand on GitHub's website.
+
+## Dependency updates
 `.github/dependabot.yml` (written at install) asks GitHub for one pull request a week per kind of dependency; the gate runs on it.
+`npm run updates` reads what waits (security alerts first, then each pull request) and gives every library a verdict: **take it**
+(a fix or a new feature, checks green), **look first** (a new major version, a 0.x minor, or checks red or still running) or
+**hold** (it clashes with a decision: `@types/node` for a newer Node than the app runs on, from `engines.node`, the `Dockerfile` or
+`.nvmrc`; or a library in `updates.hold` of the config, `{ "<library>": "<why>" }`). For a hold it prints the ignore lines for
+`.github/dependabot.yml`, so the same pull request does not come back. `--short` is one line: `/work` starts with it and
+`npm run health` shows it (`--offline` skips it). GitHub that cannot be reached is one line, never a failure. Security alerts
+must be on for the repository (GitHub: Settings, Advanced Security, Dependabot alerts; free for private repositories too).
 
 ## Spec and ship (the flow around the gate)
 `/work <card number>` plans one card and stops for a yes; the build then starts in a new chat with `/build <topic>`, so the

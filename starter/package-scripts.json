@@ -8,5 +8,6 @@
   "board": "node tools/workflow/board.mjs",
   "harness": "node tools/workflow/harness.mjs",
   "health": "node tools/workflow/health.mjs",
-  "protect": "node tools/workflow/protect.mjs"
+  "protect": "node tools/workflow/protect.mjs",
+  "updates": "node tools/workflow/updates.mjs"
 }

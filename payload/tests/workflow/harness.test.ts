@@ -63,6 +63,13 @@ describe('harness: opencode.jsonc and AGENTS.md', () => {
     assert.match(text, /^\/\/ OpenCode for Demo/);
     assert.match(text, /\{ "action": "shell", "resource": "\*", "effect": "ask" \}/, 'one rule per line');
   });
+  it('refuses an agent skipping the push guard in OpenCode too: Claude Code deny rules come after every allow', () => {
+    const withDeny = { permissions: { allow: ['Bash(git commit:*)'], deny: ['Bash(git push --no-verify:*)', 'Bash(git push * --force*)'] } };
+    assert.deepEqual(shellPatterns(withDeny, 'deny'), ['git push --no-verify*', 'git push * --force*']);
+    const json = JSON.parse(opencodeConfig({ project: 'Demo', claudeSettings: withDeny }).replace(/^\/\/.*$/gm, ''));
+    const shell = json.permissions.filter((r: { action: string }) => r.action === 'shell').map((r: { resource: string; effect: string }) => `${r.effect} ${r.resource}`);
+    assert.ok(shell.indexOf('deny git push --no-verify*') > shell.indexOf('allow git commit*'), 'the last match wins, so a deny comes after the allows');
+  });
   it('AGENTS.md only points at CLAUDE.md and repeats no rule', () => {
     const t = agentsMd('Demo');
     assert.match(t, /^# Demo/);
