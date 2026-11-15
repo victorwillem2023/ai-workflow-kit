@@ -122,7 +122,9 @@ With the deploy module: pick a host where deploying and going back are one comma
 back; the app's part is `GET /health` answering with its version (`docs/DEPLOY.md`).
 
 ## 6b. AI inside the app (only when question 9 says so)
-Every call goes through one file of our own (model name, prompt, limits), so the model can be swapped in a line. Choose by the job,
+Every call goes through one file of our own (model name, prompt, limits), so the model can be swapped in a line; name it
+as `ai.wrapper` in the config (the gate's *ai* check fails a model call anywhere else). What that file must hold, and the rules
+against prompt injection and the rest of the OWASP list: `docs/AI-SECURITY.md`. Choose by the job,
 and look the prices and limits up that day: they change every few months.
 - **Small or occasional** (a few calls a day, a personal tool, a first version): a free tier is enough. In November 2026:
   Google's Gemini API (Flash models), OpenRouter's free models, Groq, Cloudflare Workers AI. Say the catch: daily limits, and
@@ -141,6 +143,23 @@ With Vitest: `testAll` and `testFiles` are `npx vitest run --reporter=dot`, and 
 Playwright: `npm init playwright@latest`, then in `checks` of the config (the gate then runs it when a screen changed, and always
 with `--all`; `setup` runs on GitHub only, on your own computer the browser is installed once):
 `{ "name": "e2e", "command": "npx playwright test --reporter=line", "when": ["src/web/**", "e2e/**"], "setup": "npx playwright install --with-deps chromium" }`
+
+With screens this is **not optional**: "does it work for a person" is a test, not only the owner trying a URL. Start with one
+smoke test per main screen (it opens, the main action works) and an accessibility scan on each (`@axe-core/playwright`): it
+fails on a missing label, too little contrast or a button the keyboard cannot reach.
+```ts
+// e2e/smoke.spec.ts: each main screen opens, its main action works, and it passes the accessibility scan
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+test('the plan screen opens and passes the accessibility scan', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(violations).toEqual([]);
+});
+```
+The page-weight budget (`performance` in the config, the `page weight` check) keeps what a visitor downloads small: 250 KB
+compressed to start; raise it only with a reason.
 
 ## 8. Decided once, costly later (ask only the ones that apply)
 - **More than one language for the people using it** ever: all text through an i18n library from the first screen.

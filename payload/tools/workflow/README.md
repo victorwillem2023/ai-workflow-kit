@@ -64,6 +64,15 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   (`{ "file": "package.json", "keys": ["dependencies"] }`, a dotted path to an object or a list of strings); `naming.resources`
   checks the names given in infrastructure files (`name = "..."`, `name: ...`) against a pattern, so a server or bucket name says
   what, which environment and where (`<app>-<env>-<place>-<part>`); a name built from variables is left alone.
+- **ai**: a language-model SDK (Anthropic, OpenAI, Google, Mistral, the AI SDK, LangChain, Ollama and others) or a model API
+  address used in the app's code anywhere but the one wrapper file, `ai.wrapper` in the config, fails; so does any use when no
+  wrapper is named. The wrapper holds the spend cap, the limits, the untrusted-content markers, the output schema and the log
+  (`docs/AI-SECURITY.md`).
+- **spikes**: no file under `spikes/` outside a `spike-<topic>` session: a spike's code is thrown away, what it taught is in
+  `docs/decisions/`.
+- **page weight** (a `checks` entry, when screens or the build change): `node tools/workflow/perfbudget.mjs` builds the app and
+  adds up the compressed size of `performance.files` against `performance.maxKb` (250 KB to start), naming the biggest files
+  when over. No budget, no build script or nothing built: it passes and says so.
 - **image** (when there is a `Dockerfile`): every base pinned to a version (no bare name, no `:latest`); the image that runs
   has a `USER` that is not root (or a `:nonroot` base) and copies only what runs, never `COPY . .` or a whole earlier stage;
   no `ARG`/`ENV` named like a secret (they stay in the image's history: `RUN --mount=type=secret` instead); no `ADD` from a URL;
@@ -203,6 +212,15 @@ never through a shell, and takes the runner as an argument (`tests/workflow/boar
 | `npm run board -- --block <n> "<reason>"` | moves card #n to *Blocked* and adds "Blocked: <reason>" as a comment; refused without a reason |
 | `npm run board -- --show <n>` | card #n: title, column, labels and text |
 | `npm run board -- --search "<words>"` | up to 20 cards, open or closed, whose title or text has the words: number, title, column, state |
+| `npm run board -- --next [n]` | the n (5) cards to build next, from the columns a card can start in: `first version` cards first (the first `board.labels.milestone`), then value for the effort (`value` high 3, medium 2, low 1, not set 1.5; divided by `effort` small 1, medium 2, large 4, unknown 3; times `feasibility` high 1, medium 0.75, low 0.5; a bug +0.5), each with its reason; counts the cards with no value label and the issues off the board (`lib/rank.mjs`, a fixed sum: the owner's labels decide, not a model) |
+| `npm run board -- --inbox` | open issues that are not on the board (feedback from the form, error alerts, ideas filed on GitHub), the weekly reports aside |
+| `npm run board -- --adopt <n> --label <type> [--label <name>]...` | puts issue #n on the board in Backlog with its labels |
+
+**The loop and the order of work**: `/shape <n>` asks whether an idea is worth it (the problem, today's alternative, the first
+ten users, the smallest version, the sign it worked, when to stop) and sets `value` and `first version`; `/spike <n>` tries the
+riskiest part in a `spike-<topic>` session with no spec, tests or gate, ends in `docs/decisions/spike-<topic>.md`, and
+`node scripts/session.mjs --drop spike-<topic>` throws the code away (the gate's *spikes* check fails when `spikes/` reaches main).
+`/work` with no number runs `--next 3`. `npm run changelog` groups the commit subjects by area since the last tag.
 
 **`/idea <a sentence>`** (`.claude/skills/idea/SKILL.md`, runs on a cheap/free model) adds a card to Backlog: it searches for the same
 idea first (`--search`) and asks "Same as this one?", picks one type label and an existing area, effort and feasibility label,

@@ -36,13 +36,15 @@
     "sorted": [{ "file": "package.json", "keys": ["dependencies", "devDependencies"] }],
     "resources": [{ "glob": "infra/**/*.tf", "pattern": "^{{PREFIX}}-(dev|test|uat|staging|prod)-[a-z]+[0-9]*-[a-z0-9-]+$", "say": "<app>-<env>-<place>-<part> (docs/CONVENTIONS.md)" }]
   },
+  "performance": { "files": ["dist/assets/*.js", "dist/assets/*.css"], "maxKb": 250 },
   "sensitive": {
     "paths": []
   },
   "checks": [
     { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] },
     { "name": "unused", "command": "npx --no-install knip --no-progress", "all": true },
-    { "name": "audit", "command": "npm audit --audit-level=high", "all": true }
+    { "name": "audit", "command": "npm audit --audit-level=high", "all": true },
+    { "name": "page weight", "command": "node tools/workflow/perfbudget.mjs", "when": ["src/web/**", "package.json", "vite.config.*", "next.config.*"] }
   ],
   "docs": {
     "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "docs/guide/*.md", "docs/code/*.md"],
@@ -79,11 +81,13 @@
     "project": 0,
     "field": "Status",
     "columns": ["Backlog", "Needs a board or decision", "Ready", "In progress", "Waiting for your check", "Blocked", "Done"],
-    "types": ["ui", "feature", "bug", "workflow"],
+    "types": ["ui", "feature", "bug", "workflow", "spike"],
     "labels": {
       "areas": ["area: UI", "area: Backend", "area: Workflow and docs"],
+      "value": ["value: high", "value: medium", "value: low"],
       "effort": ["effort: small", "effort: medium", "effort: large", "effort: unknown"],
-      "feasibility": ["feasibility: high", "feasibility: medium", "feasibility: low"]
+      "feasibility": ["feasibility: high", "feasibility: medium", "feasibility: low"],
+      "milestone": ["first version"]
     }
   },
   "harness": {

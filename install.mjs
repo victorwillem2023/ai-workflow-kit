@@ -84,6 +84,9 @@ const done = { added: [], kept: [], replaced: [], yours: [] };
 const pkgBefore = existsSync(join(target, 'package.json')) ? JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')) : {};
 const framework = ['react', 'preact', 'vue', 'svelte', 'solid-js', 'next', '@angular/core'].some((d) => d in { ...(pkgBefore.dependencies ?? {}), ...(pkgBefore.devDependencies ?? {}) });
 const happyDom = modules.includes('ui') && !framework ? ' @happy-dom/global-registrator' : '';
+// the Node types of the Node the project runs (.tool-versions), never newer: the gate's *versions* check holds that
+const nodeMajor = (/^nodejs\s+(\d+)/m.exec(readFileSync(existsSync(join(target, '.tool-versions')) ? join(target, '.tool-versions') : join(kit, 'starter', '.tool-versions'), 'utf8')) ?? [])[1];
+const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
 // what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in .workflow-kit), so an update can
 // tell a file the project changed from one only the kit changed
 const hash = (text) => createHash('sha1').update(String(text).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
@@ -314,10 +317,10 @@ if (update) {
   if (framework && JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).ui?.boards === 'html') console.log('  not changed: "ui": { "boards": "html" } although the project has a UI framework. Set it to "components" to have /ui draw its variants as real components.');
   console.log('  then: step 1 below, npm run map, node tools/workflow/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
 }
-if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${happyDom}` : LANGS[lang].needs}`); process.exit(0); }
+if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip${happyDom}` : LANGS[lang].needs}`); process.exit(0); }
 console.log(`
 Next, in ${target}:
-  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip @biomejs/biome${happyDom}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
+  1. ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip @biomejs/biome${happyDom}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
   3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
      the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)

@@ -23,7 +23,12 @@
       "Bash(node tools/workflow/secops.mjs:*)",
       "Bash(npm run setup-check:*)",
       "Bash(npm run access:*)",
-      "Bash(node tools/workflow/access.mjs:*)"
+      "Bash(node tools/workflow/access.mjs:*)",
+      "Bash(npm run changelog:*)",
+      "Bash(node tools/workflow/changelog.mjs:*)",
+      "Bash(node tools/workflow/perfbudget.mjs:*)",
+      "Bash(npm run retro:*)",
+      "Bash(node tools/workflow/retro.mjs:*)"
     ],
     "deny": [
       "Bash(npm run signoff:*)",

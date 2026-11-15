@@ -12,6 +12,9 @@ that card; given several (`/spec 42,43`), name the topic after them and list eve
 separate areas or can ship alone, suggest splitting them into several specs. Given only a topic, ask whether a card
 exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/work <n>` calls this skill for a card.
 
+0. A card labelled `effort: large`, or a new part of the product, with no *Pitch* comment from `/shape` on it: run `/shape <n>`
+   first (the pitch page: problem, first users, the smallest version, the stop rule). Ship the narrowest version first; the
+   rest of the vision becomes cards for later, not this spec.
 1. Read the card: `npm run board -- --show <n>` (title, column, labels, text). Never read the whole board.
    Its type label (`ui`, `feature`, `bug`, `workflow`) goes on the spec's "Card:" line; a card with none: ask which.
    Find what the feature does now in the guide part for it (`docs/GUIDE.md` lists them; open only that file in `docs/guide/`) and the files in `docs/MAP.md` (search them, don't read them

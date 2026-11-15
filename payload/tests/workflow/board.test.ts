@@ -229,8 +229,8 @@ describe('the board tool', () => {
   });
 
   it('--labels groups the config labels for /idea', () => {
-    assert.deepEqual(labelGroups(labelled), { types: TYPES, ...LABELS });
-    assert.deepEqual(labelGroups(board), { types: [], areas: [], effort: [], feasibility: [] });
+    assert.deepEqual(labelGroups(labelled), { types: TYPES, value: [], milestone: [], ...LABELS });
+    assert.deepEqual(labelGroups(board), { types: [], areas: [], value: [], effort: [], feasibility: [], milestone: [] });
   });
 
   it('--init makes the missing labels and columns and leaves an existing project alone', () => {

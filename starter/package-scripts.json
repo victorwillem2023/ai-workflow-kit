@@ -13,5 +13,7 @@
   "secops": "node tools/workflow/secops.mjs",
   "setup-check": "node tools/workflow/setupcheck.mjs",
   "signoff": "node tools/workflow/signoff.mjs",
-  "access": "node tools/workflow/access.mjs"
+  "access": "node tools/workflow/access.mjs",
+  "changelog": "node tools/workflow/changelog.mjs",
+  "retro": "node tools/workflow/retro.mjs"
 }

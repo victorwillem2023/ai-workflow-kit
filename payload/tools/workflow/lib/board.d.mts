@@ -10,6 +10,7 @@ export function boardCache(): BoardCache;
 /** `card` is set when createCard made the issue but could not put it on the board or in its column. */
 export class BoardError extends Error { card?: { number: number; url: string } }
 export function createCard(board: Board, run: GhRunner, card: { title: string; body?: string; labels?: string[]; column: string }, cache?: BoardCache): { number: number; url: string; itemId: string };
+export function adoptCard(board: Board, run: GhRunner, number: number, card: { labels?: string[]; column: string }, cache?: BoardCache): { number: number; itemId: string };
 export function moveCard(board: Board, run: GhRunner, number: number, column: string, cache?: BoardCache): void;
 export function commentCard(board: Board, run: GhRunner, number: number, text: string): void;
 /** Moves card #number to the Blocked column and comments "Blocked: <reason>"; an empty reason is refused before any call. */
@@ -18,7 +19,7 @@ export function readCard(board: Board, run: GhRunner, number: number): Card;
 export function searchCards(board: Board, run: GhRunner, words: string): { number: number; title: string; state: string; column: string | null }[];
 /** `unknownLabels`: labels the config names (types and `labels`) that the repo does not have. */
 export function checkBoard(board: Board, run: GhRunner, cache?: BoardCache): { columns: string[]; missing: string[]; untyped: { number: number; title: string }[]; unknownLabels: string[] };
-export function labelGroups(board: Board): { types: string[]; areas: string[]; effort: string[]; feasibility: string[] };
+export function labelGroups(board: Board): { types: string[]; areas: string[]; value: string[]; effort: string[]; feasibility: string[]; milestone: string[] };
 /** Makes what the config describes and the board lacks: labels, the project itself (when `project` is not a number), the columns. */
 export function initBoard(board: Board, run: GhRunner, cache?: BoardCache, opts?: { title?: string }): { project: number; created: boolean; labelsMade: string[]; columnsAdded: string[] };
 export function listCards(board: Board, run: GhRunner): { number: number; title: string; state: string; labels: string[]; column: string | null }[];

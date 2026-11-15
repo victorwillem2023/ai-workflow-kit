@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
-import { healthUrl, versionOf, previous } from '../../tools/workflow/lib/deploy.mjs';
+import { healthUrl, versionOf, previous, watchDeploy } from '../../tools/workflow/lib/deploy.mjs';
 
 const script = fileURLToPath(new URL('../../scripts/deploy.mjs', import.meta.url));
 
@@ -61,7 +61,7 @@ describe('deploy, end to end', () => {
     const r = await deploy();
     assert.equal(r.code, 0, r.out);
     assert.equal(live(), git('rev-parse', '--short=12', 'HEAD'));
-    assert.match(r.out, /Live: .* runs [0-9a-f]{12}\./);
+    assert.match(r.out, /Live: .* runs [0-9a-f]{12}, and stayed healthy through the watch\./);
     assert.match((await deploy('--smoke')).out, /^up: .* runs [0-9a-f]{12}/);
   });
   it('a deploy that does not come up is rolled back to the version that ran before, and says so', async () => {
@@ -78,5 +78,24 @@ describe('deploy, end to end', () => {
     const r = await deploy();
     assert.equal(r.code, 1);
     assert.match(r.out, /uncommitted files/);
+  });
+});
+
+describe('the canary watch after a deploy', () => {
+  const answers = (list: (string | null)[]) => { let i = 0; return async () => { const v = list[Math.min(i++, list.length - 1)]; return v ? { status: 200, body: JSON.stringify({ version: v }) } : { status: 503, body: '' }; }; };
+  const pause = async () => {};
+  it('calls a deploy good when the new version keeps answering through the window, one blip allowed', async () => {
+    const w = await watchDeploy(answers(['abc', null, 'abc', 'abc']), 'http://x/health', 'abc', { checks: 4, pause });
+    assert.deepEqual([w.ok, w.misses, w.checks], [true, 1, 4]);
+  });
+  it('fails when the new version stops answering, or the old one comes back', async () => {
+    const w = await watchDeploy(answers(['abc', null, 'old', 'abc']), 'http://x/health', 'abc', { checks: 4, pause });
+    assert.equal(w.ok, false);
+    assert.match(w.why ?? '', /stopped answering 2 times/);
+  });
+  it('fails at once when the project\'s own error check says errors rose', async () => {
+    let n = 0;
+    const w = await watchDeploy(answers(['abc']), 'http://x/health', 'abc', { checks: 5, pause, errorsOk: async () => ++n < 2 });
+    assert.deepEqual([w.ok, w.checks, w.why], [false, 2, 'the error check failed in the watch window']);
   });
 });

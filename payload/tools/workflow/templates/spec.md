@@ -20,6 +20,10 @@ Only when the work is big and splits cleanly (several large files, e.g. a refact
 One line per package: `name`: files it owns (backticked), `after: <name>` if it needs another package done first. A package under
 about 300 changed lines is merged into a neighbour. A file belongs to one package only. Shared files (the list under *Parallel work* in CLAUDE.md) are edited by the lead after the last wave, unless one package is named for them.
 
+## How we will know it worked
+One sign we can see after it ships (people use it weekly, an error goes away, a number moves, something a user says), where
+we look, and when. `/ship` puts it on the card, so the look-back is not forgotten. "Nothing to measure" is fine for a fix.
+
 ## Tests (written first)
 Each as a test name that says what the app now does, and the file it goes in.
 For `src/core` / `src/pipeline` a behaviour change needs one. Hostile input: add a test for each refused case.
@@ -30,6 +34,8 @@ The guide part (`docs/guide/<part>.md`), `README.md`, `docs/ARCHITECTURE.md`, or
 ## Security triggers
 New endpoint, file reader or outbound fetch? yes/no. If yes: limits (body size, count, rate) and run a security review before finish.
 Untrusted input read? yes/no.
+Calls a language model, or gives one tools? yes/no. If yes: what goes in (personal? untrusted?), how the answer is checked, which
+tools need a person's click, the cost per use and the cap, and the hostile cases added (`docs/AI-SECURITY.md`, *Before it ships*).
 Sensitive file touched (`sensitive.paths`: money, health, legal texts, personal data)? yes/no. If yes: fill *Sources*; the owner
 signs off with `npm run signoff` before the commit.
 

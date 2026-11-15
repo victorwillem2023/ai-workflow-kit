@@ -11,7 +11,7 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 3. Build | tests first, a session per card, checks by scripts | `/work`, `/build`, the gate | per card |
 | 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit | `/ship`, `.github/workflows/` | per card |
 | 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
-| 6. Grow | a launch, people finding it, feedback becoming cards | `/market` and a launch page in docs (kit 2.4) | when it works for its first users |
+| 6. Grow | a launch, people finding it, feedback becoming cards | `/market` and a launch page in docs (kit 2.6) | when it works for its first users |
 | 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |
 
 ## 5. Run: what is laid from the first day
@@ -55,7 +55,7 @@ the project's own lists: `docs/NETWORK.md`. APIs and their docs: `docs/API.md`. 
 
 What `/launch` writes: `infra/` (the infrastructure as code), the deploy settings, the environments (staging, then
 production), a runbook (what to do when it breaks), and checks on the infrastructure files in the pipeline.
-`/launch` comes with kit 2.3 (network and firewall, one server, container hosts, on-prem) and 2.4 (cluster, serverless, queues).
+`/launch` comes with kit 2.5 (network and firewall, one server, container hosts, on-prem, deploying from GitHub) and 2.6 (cluster, serverless, queues). Until then the kit ends at a scanned image in the registry and `npm run deploy` from your computer.
 
 ## Every stage: kept up to date, checked and written down
 - **Names**: the gate's *naming* check per kind of thing (files, exported functions, types, components), from the language's
@@ -72,6 +72,9 @@ production), a runbook (what to do when it breaks), and checks on the infrastruc
   a subject that says what changed for the user (`docs/CONVENTIONS.md`).
 - **Sensitive work** (money, health, legal texts, personal data): every value from a named source, tests worked out by a person,
   a fresh-eyes review, and the owner's own sign-off for the exact files, which the gate requires (`docs/SENSITIVE.md`).
+- **AI inside the app**: every model call through one wrapper file (the gate's *ai* check), untrusted text as data, the answer
+  checked by a schema, tools that write only on a person's click, a spend cap, and injection attempts among the cases
+  (`docs/AI-SECURITY.md`).
 - **Access**: who has access to what, and why (`docs/ACCESS.md`); `npm run access` checks GitHub against it and lists the rest;
   the weekly report says when the 90-day review is due.
 - **Tools that moved on**: `docs/TOOLS.md` lists the current open-source choice per job and what it replaced (uv over pyenv and
@@ -79,11 +82,11 @@ production), a runbook (what to do when it breaks), and checks on the infrastruc
 - **Models**: plans on the strong model, building on the fast one, small jobs on the small one, and a script before any model
   (`docs/TOKENS.md`).
 - **One repository or several**: one by default (one product, one team, one gate); several when teams, release rhythms or access
-  rules differ (kit 2.4 has the guide). With several, the Renovate policy moves to a config repository of your own.
+  rules differ (kit 2.6 has the guide). With several, the Renovate policy moves to a config repository of your own.
 
 ## 6. Grow
 Positioning, a landing page, pricing, privacy-friendly analytics, a launch checklist, and every piece of feedback as a card on
-the board: `/market` and a launch page in docs, with kit 2.4.
+the board: `/market` and a launch page in docs, with kit 2.6.
 
 ## 7. A small company
 When the first person pays, or a second person works on it, the product needs a business around it. The kit does not give
@@ -104,3 +107,24 @@ legal or tax advice: each line below names who to ask. A checklist, in about the
   what (`docs/CONVENTIONS.md`), and an alert before a bill doubles.
 - **Insurance and contracts**: professional liability when customers rely on it; written agreements with anyone who builds part
   of it, saying who owns the code.
+
+## The loop back to the board
+What happens after a feature ships comes back as cards, the same way security does (the weekly report and `/secops`):
+| Signal | How it reaches the board |
+|---|---|
+| A person's feedback | the feedback form (`.github/ISSUE_TEMPLATE/feedback.yml`, linked from the app's help button) opens an issue; `npm run board -- --inbox` lists it and `--adopt <n> --label <type>` makes it a card |
+| Errors in use | the error tracker (Sentry, or GlitchTip) groups them; Sentry's alert rules can open a GitHub issue, GlitchTip and Uptime Kuma send a webhook to a small workflow that does; they land in the inbox |
+| An outage | the incident note (`docs/RECOVERY.md`) ends with a card for what changes so it does not happen again |
+| Did it work? | `/ship` puts the spec's *How we will know it worked* on the card with a date; on that date look, and write the answer on the card and in `docs/PRODUCT.md`, *What we learned* |
+| Usage | cookieless analytics (Plausible, Umami) answer "is it used"; one look a month, a card when a screen is never used |
+| A spike | its decision note (`docs/decisions/`) makes or changes a card |
+`/work` with no number ranks what can be started (`npm run board -- --next`: first version first, then value for the effort)
+and says how many issues wait in the inbox.
+
+**Feature flags**, for a change that should reach a few people first or be switched off without a deploy: one file reads
+them from the settings (`FEATURES=new-plan,export` in `.env`, so every name is in `.env.example`), the code asks that file and
+nothing else, each flag names its card, and the card is not done until the flag and the old path are taken out. A flag
+service (OpenFeature with Unleash or Flagsmith) only when flags must change per user or without a restart.
+
+**The changelog** is made from the commits (`npm run changelog`, grouped by area; `--prepend` writes `CHANGELOG.md`): the
+release note, the update for customers, the guide's "what is new", without writing it twice.

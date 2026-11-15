@@ -1,0 +1,33 @@
+# Feedback from a person using the app. It lands in the inbox (npm run board -- --inbox), where the owner puts it on the
+# board as a card or answers and closes it. Link this form from the app's help or feedback button.
+name: Feedback
+description: Something that was hard, missing or wrong while using the app
+labels: ["feedback"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What were you trying to do?
+      placeholder: I wanted to move Thursday's run to Friday.
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened instead?
+      placeholder: I could not find how, so I deleted it.
+    validations:
+      required: true
+  - type: dropdown
+    id: how-bad
+    attributes:
+      label: How much does it get in your way?
+      options:
+        - It stops me
+        - It is annoying
+        - A small thing
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Please leave out personal details (health data, addresses, passwords). This page is visible to the project's team.

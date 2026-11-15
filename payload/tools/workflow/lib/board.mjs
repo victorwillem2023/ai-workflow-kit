@@ -96,10 +96,10 @@ function ensureLabels(board, run, labels, cache = {}, colorOf = () => board.labe
 }
 
 // The label groups the config names (`board.types` and `board.labels`: areas, effort, feasibility), each with a colour.
-const LABEL_COLORS = { types: 'c5def5', areas: 'ededed', effort: 'fef2c0', feasibility: 'd4f0d4' };
+const LABEL_COLORS = { types: 'c5def5', areas: 'ededed', value: 'f9d0c4', effort: 'fef2c0', feasibility: 'd4f0d4', milestone: '0e8a16' };
 export function labelGroups(board) {
   const l = board.labels ?? {};
-  return { types: board.types ?? [], areas: l.areas ?? [], effort: l.effort ?? [], feasibility: l.feasibility ?? [] };
+  return { types: board.types ?? [], areas: l.areas ?? [], value: l.value ?? [], effort: l.effort ?? [], feasibility: l.feasibility ?? [], milestone: l.milestone ?? [] };
 }
 const allLabels = (board) => Object.values(labelGroups(board)).flat();
 const colorFor = (board) => { const g = labelGroups(board); return (name) => LABEL_COLORS[Object.keys(g).find((k) => g[k].includes(name))] ?? 'ededed'; };
@@ -130,6 +130,17 @@ export function createCard(board, run, { title, body = '', labels = [], column }
     if (e instanceof BoardError) e.card = { number, url };
     throw e;
   }
+}
+
+/** Puts an existing issue (feedback, an error alert, an idea filed on GitHub) on the board with its labels, in `column`. */
+export function adoptCard(board, run, number, { labels = [], column }, cache = boardCache()) {
+  knownColumn(board, column);
+  oneType(board, labels);
+  ensureLabels(board, run, labels, cache);
+  if (labels.length) gh(run, `labelling card #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, ...labels.flatMap((l) => ['--add-label', l])]);
+  const item = ghJson(run, 'putting the card on the board', ['project', 'item-add', ...project(board), '--url', `https://github.com/${board.repo}/issues/${Number(number)}`, '--format', 'json']);
+  setColumn(board, run, item.id, column, cache);
+  return { number: Number(number), itemId: item.id };
 }
 
 /** Moves card #number to the column with that name. */

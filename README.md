@@ -1,9 +1,14 @@
-# AI workflow kit: from idea to product
+# AI workflow kit: scripts check, the AI reads the result
 
-Everything a project needs to go from an idea to a product people use, built with an AI coding agent (Claude Code and
-OpenCode, from one set of skills): the way of working, the checks, the doc layout, and the basis for running it in production
-and bringing it to people. It is the step from vibe coding to engineering, all the way through: plans you approve, tests
-first, scripts that check, one commit when you say done, and an app that can be deployed without going down.
+Every kit for AI coding promises "from idea to product". This one is built on a different rule: **whatever a script can
+check, a script checks**, and the model only reads the result. Layers, sizes, names, secrets, versions, outbound hosts, images,
+sign-offs, stale docs, what to build next and the weekly security report are scripts that give the same answer every time and
+cost nothing to rerun. The model is kept for what needs judgement: the plan, the code, the review, and the words for you.
+That makes it cheaper (the model reads one failing line, not a log), safer (a check cannot be talked out of), and honest (a
+script does not say "done" when it is not).
+
+Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
+people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
 ```sh
 git clone https://github.com/victorwillem2023/ai-workflow-kit
@@ -15,30 +20,31 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 ## The lifecycle
 | Stage | What the kit gives it |
 |---|---|
-| **Idea** | `/idea`: one card per idea, bug or wish on a GitHub board |
-| **Plan** | `/setup`: the product questions, then the stack and the layers it proposes; `/spec`: a plan with named tests, per card |
+| **Idea** | `/idea`: one card per idea, bug or wish on a GitHub board; `/shape`: is it worth building (the problem, today's alternative, the first ten users, the smallest version, when to stop); `/spike`: a throwaway try of the riskiest part |
+| **Plan** | `/setup`: the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to build next, by value for the effort, at any point; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
-| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit |
-| **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data. When the first deploy card comes, `/launch` asks the infrastructure questions: one app or services, server, container host, cluster or serverless, infrastructure as code, secrets, data, queues, monitoring |
-| **Grow** | `/market`: positioning, a landing page, pricing, analytics, a launch checklist, feedback as cards |
+| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned, distroless release image per commit; smoke and accessibility tests and a page-weight budget once there are screens |
+| **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data; `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). **Not yet**: deploying from GitHub, the infrastructure code and `/launch`, which will ask the infrastructure questions (one app or services, server, container host, cluster or serverless, secrets, data, queues, monitoring): kit 2.5. The guides for those decisions are there today (`docs/INFRA.md`, `docs/RECOVERY.md`, `docs/ENVIRONMENTS.md`) |
+| **Grow** | the loop back: feedback, errors and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, feature flags, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. **Not yet**: `/market` (positioning, a landing page, pricing, a launch checklist): kit 2.6 |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.3 `/launch` with network and firewall, OpenTofu, Ansible,
-the cloud choice and on-prem; 2.4 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.4 the AI module (a model wrapper, real cases, a spend cap, an
+injection guard); 2.5 `/launch` with network and firewall, OpenTofu, Ansible, the cloud choice and on-prem, and deploying from
+GitHub; 2.6 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
 
 ## The idea in ten rules
-1. **The board is the only backlog.** One GitHub Projects card per idea, bug or wish. Claude reads one card, never the list.
-2. **One card, one type label, one route.** `ui` = mockup board first. `feature` = a plan with named tests. `bug` = a failing test first. `workflow` = like a feature, nothing in the app changes.
-3. **Plan before code, and stop for a yes.** A spec (what the user sees, files, tests, docs, security) is approved before anything is built.
-4. **Tests first, named as behaviour.** "refuses a 20 MB upload", not "test upload". New behaviour in the core layer needs one.
-5. **One card = one folder = one branch = one port = one commit.** Sessions are git worktrees, so work in progress never breaks main or another session.
-6. **You try it, you say done.** Claude stops with a URL; feedback comes as one numbered list per round; it commits only on "finish it". Pushing is a separate word.
-7. **Scripts check, the AI reads the result.** `npm run gate` is quiet when it passes: layer rules, file size, stale doc references, typecheck, and only the tests the change can reach.
+1. **Scripts check, the AI reads the result.** `npm run gate` is quiet when it passes: layer rules, file size, stale doc references, typecheck, and only the tests the change can reach.
+2. **The board is the only backlog.** One GitHub Projects card per idea, bug or wish. Claude reads one card, never the list.
+3. **One card, one type label, one route.** `ui` = mockup board first. `feature` = a plan with named tests. `bug` = a failing test first. `workflow` = like a feature, nothing in the app changes.
+4. **Plan before code, and stop for a yes.** A spec (what the user sees, files, tests, docs, security) is approved before anything is built.
+5. **Tests first, named as behaviour.** "refuses a 20 MB upload", not "test upload". New behaviour in the core layer needs one.
+6. **One card = one folder = one branch = one port = one commit.** Sessions are git worktrees, so work in progress never breaks main or another session.
+7. **You try it, you say done.** Claude stops with a URL; feedback comes as one numbered list per round; it commits only on "finish it". Pushing is a separate word.
 8. **Docs ride in the same commit,** and the gate fails when a doc names a file or command that no longer exists.
 9. **Read by the part, never whole.** A new chat per build; the file map searched, the guide one file per part, folder notes
    that hold only rules, a never-read list, a test run that prints only failures. Why each one: `docs/TOKENS.md`.
 10. **One set of skills, any agent.** Skills live in `.claude/skills/`; `npm run harness` writes OpenCode's commands from them
-    (paid model for the flow, free model only for the cheap helpers) and, if you want, an `AGENTS.md` that only points at `CLAUDE.md`.
+    (the strong model for plans and reviews, the fast one for building, a small one for the cheap helpers) and, if you want, an `AGENTS.md` that only points at `CLAUDE.md`.
 
 UI and security are first-class parts of the flow, not extras:
 - **UI**: a new screen is never invented in code. `/ui` draws an HTML board with variants A, B, C on the real style tokens, takes four pictures (desktop/phone, light/dark), and stops for your pick. Then it builds the pick; feedback rounds come with before/after pictures. `docs/STYLE.md` is binding; a done checklist ends every UI reply.
@@ -48,7 +54,7 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /work /spec /build /ship /review /lesson /secops, and the cheap helpers /check /find /docs
+  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops, and the cheap helpers /next /check /find /docs
   tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
                           (SETUP.md proven on a fresh clone), spec template, README (the reference)
@@ -166,6 +172,26 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.3.0**: worth building, and proven for a person; ideas borrowed from gstack and BMAD, with scripts where they used prompts.
+  The README now leads with the difference: scripts check, the AI reads the result. AI inside the app: the gate's *ai* check (every
+  model call through one wrapper file, `ai.wrapper`) and `docs/AI-SECURITY.md` (prompt injection and the rest of the OWASP Top 10
+  for LLM applications, each with its rule; hostile cases in the quality score; promptfoo or garak for a bigger push). `/next` at
+  any point (a script ranks; the model only says it). A light route for small cards (no spec file), so depth follows size: spike,
+  light, spec. `/spec` asks for `/shape`'s pitch before a large card: the narrowest version first, the rest as later cards. The
+  canary: `npm run deploy` watches the new version (5 minutes, an optional error check from the config) and rolls back on its own.
+  `/ship` shows the commit subject as the changelog line; `npm run changelog -- --release <version>` writes `CHANGELOG.md` and
+  the version. `/retro` weekly, from `npm run retro` (features per week, the streak, the health moves) and `npm run health`; each
+  lesson goes through `/lesson`. `/shape` asks whether an idea is worth it (the problem, what people do
+  today, the first ten users, the smallest useful version, the sign it worked, when to stop) into `docs/PRODUCT.md` and the card;
+  `/setup` asks it first on a new project. The board ranks itself: `value` labels, a `first version` milestone, and
+  `npm run board -- --next` (a fixed sum, not a model); `/work` with no number offers the top three. `spike` cards: `/spike` tries
+  the riskiest part in a throwaway session, ends in a decision note in `docs/decisions/`, and `--drop` throws the code away (the gate
+  keeps `spikes/` off main). The loop back: a feedback form, `--inbox` and `--adopt` for issues off the board, a *How we will know it
+  worked* line in every spec that `/ship` puts on the card, `npm run changelog` from the commits, a feature-flag pattern. End-to-end
+  smoke tests with an accessibility scan are the default once there are screens, and a page-weight budget is a gate check. The
+  README says plainly that `/launch` and `/market` are not there yet. The kit checks itself: `npm test` in the kit installs it into
+  a fresh project, runs its tests and the full gate there and an update over it, on Linux and Windows on GitHub; its first run
+  showed the installer naming `@types/node` without the Node major (now `@types/node@^26`, from `.tool-versions`).
 - **2.2.0**: images that hold only what runs, traffic rules as code, APIs and frontends. The TypeScript `Dockerfile` runs on
   distroless Node 26 as nonroot and copies only the built app, its production libraries and `package.json`; the gate's *image*
   check (pinned bases, a non-root user, no whole-repository copy, no secret in the history, a `.dockerignore`); `docs/INFRA.md`

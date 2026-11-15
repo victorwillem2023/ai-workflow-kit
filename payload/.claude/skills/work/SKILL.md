@@ -4,7 +4,7 @@ description: Work on one {{PROJECT}} board card from start to finish ("work on c
 model: opus
 ---
 
-# /work <card number>
+# /work <card number>  or  /work (no number: what to build next)
 
 The one entry in plain words. `/spec`, `/build` and `/ship` do the steps underneath; this skill says which, in what order,
 and where to stop. Run it from the main folder in a fresh chat. Never commit before the owner says done.
@@ -12,10 +12,13 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
 0. **What waits from outside**: `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
    alert: say it first, in plain words, and ask whether to deal with it before the card. Updates only: name the count in one line
    and go on (`npm run updates` lists them, each with take it, look first or hold).
+   **No card number given**: `npm run board -- --next 3` (a fixed sum of the owner's labels: first version first, then value
+   for the effort) and offer those three in one line each, with its reason; the owner picks. Its notes about cards with no value
+   label or issues waiting off the board (`npm run board -- --inbox`) are passed on in one line. Never read the whole board.
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
    - In *Blocked*: say the reason (the last "Blocked:" comment) and ask whether it is unblocked before going on.
-   - No type label, or more than one: ask which of `ui`, `feature`, `bug`, `workflow` it is (with a recommendation), and
+   - No type label, or more than one: ask which of `ui`, `feature`, `bug`, `workflow`, `spike` it is (with a recommendation), and
      after the owner's yes add it: `gh issue edit <n> --repo <board.repo> --add-label <type>`.
 2. **Plan by type, then stop for a yes** (the type picks the route; area labels don't):
    - `feature` and `workflow`: run `/spec <n>`: the plan with named tests. A `workflow` card changes nothing in the app,
@@ -24,6 +27,11 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    - `ui`: run `/ui <n>` and follow it instead of steps 2 to 5 here: it draws the board and stops for the pick, builds in
      a new chat after the pick (`/ui <n>` again, in the session folder, no `/build`), runs the feedback rounds there, and ends with `/ship` when the owner says done.
      A card of another type that turns out to need a new screen: ask to relabel it `ui` (or split it) before going on.
+   - **The light route** for a `feature` or `workflow` card labelled `effort: small` that adds no endpoint, screen, outside
+     host or sensitive file: no spec file. In chat, in a few lines: what changes for the user, the test that proves it (its
+     name), the files. On the yes it goes on like a small bug (step 3). The depth follows the size: spike, light, spec.
+   - `spike`: run `/spike <n>` and follow it instead: a throwaway try with a time limit, no spec, tests or gate, ending in
+     a decision note. A `feature` card for an idea nobody has tried yet: offer a spike first, in one line.
    - `bug`: in chat, in a few lines: the cause as far as known, the failing test that will show it (its name says
      what the app should do), the fix. A fix that reaches several areas or a shared type: run `/spec <n>` instead.
    On the yes, move the card to *Ready* (`/spec` does this). A card with a spec then **stops here**: tell the owner to open

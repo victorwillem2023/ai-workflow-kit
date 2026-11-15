@@ -17,6 +17,7 @@
 //                                               meanwhile the unpushed commits are replayed on top of that and checked again first)
 //   node scripts/session.mjs --remove <topic>   take it away again (refuses while it has uncommitted work or is not merged); first stops its
 //                                               own dev server (the port in its .env, never the main folder's); a folder still open elsewhere is named and kept
+//   node scripts/session.mjs --drop spike-<topic>  throw a spike away unmerged, once docs/decisions/spike-<topic>.md holds what it taught
 //   node scripts/session.mjs --clean [--yes]    the sessions whose branch is on main and that have no uncommitted work: lists them; with --yes removes
 //                                               them (through --remove's own checks). Other <prefix>-* folders are only named, never deleted, except
 //                                               completely empty ones, which --yes removes
@@ -173,6 +174,21 @@ function remove(topic) {
   // -D: "-d" asks whether it is merged into the branch the main folder has checked out, which may be another session's; main was checked above
   try { git(main, 'branch', '-D', topic); } catch (e) { if (!held) throw e; console.log(`Branch "${topic}" is kept: git still sees it in use.`); }
   console.log(held ? heldMessage(dir) : `Session "${topic}" is removed.`);
+}
+/**
+ * A spike's code is thrown away, never merged: only a topic named spike-..., and only once its decision note
+ * (docs/decisions/<topic>.md) is in the main folder, so what it taught is kept. Uncommitted work in the folder goes with it.
+ */
+function drop(topic) {
+  if (!/^spike-/.test(topic)) throw new Error(`Only a spike is dropped unmerged (its topic starts with "spike-"). For "${topic}": --finish or --remove.`);
+  const dir = folderOf(topic);
+  if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
+  const note = join(main, 'docs', 'decisions', `${topic}.md`);
+  if (!existsSync(note)) throw new Error(`Write what the spike taught first: docs/decisions/${topic}.md in the main folder (the /spike skill says what goes in it).`);
+  stopServer(dir);
+  git(main, 'worktree', 'remove', '--force', dir);
+  try { git(main, 'branch', '-D', topic); } catch { console.log(`Branch "${topic}" is kept: git still sees it in use.`); }
+  console.log(`Spike "${topic}" is dropped; what it taught is in docs/decisions/${topic}.md.`);
 }
 const stopServer = (dir) => { const said = stopMessage(stopSessionServer(dir, { mainPort: MAIN_PORT, firstPort: FIRST_PORT })); if (said) console.log(said); };
 
@@ -435,9 +451,10 @@ try {
   else if (a === '--push') push({ noChecks: has('--no-checks') });
   else if (a === '--merge' && b) await merge(b);
   else if (a === '--remove' && b) remove(b);
+  else if (a === '--drop' && b) drop(b);
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial') });
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'));
-  else console.log('usage: node scripts/session.mjs <topic> [--card <n>] | --check-main | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --clean [--yes] | --list');
+  else console.log('usage: node scripts/session.mjs <topic> [--card <n>] | --check-main | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

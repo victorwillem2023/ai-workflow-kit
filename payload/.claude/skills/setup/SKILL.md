@@ -17,6 +17,11 @@ A new, empty project: skip to the questions and say the answers will become the 
 
 ## 2. Ask the owner (AskUserQuestion, each with your best guess as the recommended option; an existing project: at most two rounds)
 1. **What the app does**, in one or two sentences, and for whom.
+   - **A new project: is it worth building?** First the questions of `/shape` (`.claude/skills/shape/SKILL.md`): the problem,
+     what people do today, the first ten users, the smallest useful version, how we will know it worked, when to stop. The
+     answers become `docs/PRODUCT.md`; the smallest version becomes the first cards, labelled `first version` (`npm run board -- --next`
+     ranks them first). Say plainly if the answers point to a spike before any stack (`/spike`). An existing project: fill
+     `docs/PRODUCT.md` from what the owner says in one round, and skip what they do not know yet.
    - **A new project: the product first, then what to build it with.** Read `stack.md` in this folder. Ask its product
      questions in batches of four, in the owner's words, skipping what an earlier answer already settled. Then show one page,
      *What I would build*: every part chosen (language, what runs it, screens, backend, data, sign-in, where it runs, tests),
@@ -80,7 +85,8 @@ Only real decisions; never ask what the code already says.
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
 - **Checks that follow from the stack** (`workflow.config.json`; `tools/workflow/README.md`, *What it checks*): with a database,
   `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);
-  with screens, the `e2e` entry of `stack.md` part 7 in `checks`; `knip.json` when the app starts somewhere else than `src/index.ts`.
+  with screens, the `e2e` entry of `stack.md` part 7 in `checks` (required: a smoke test and an accessibility scan per main
+  screen) and `performance.files` pointing at the built files (the `page weight` check); `knip.json` when the app starts somewhere else than `src/index.ts`.
   With personal data (answer 4 of the product questions), `together` also keeps the tables and `docs/PRIVACY.md` in one change
   (`{ "name": "privacy", "when": ["<the schema file>"], "needs": ["docs/PRIVACY.md"] }`).
 - **`docs/SETUP.md`**: fit its marked steps to the app (the install, the settings, the start command and its ready address,
@@ -92,6 +98,7 @@ Only real decisions; never ask what the code already says.
   provider), then `npm run access` must list nothing unexpected. **`docs/ENVIRONMENTS.md`**: the *This project* row for `dev`;
   the rest waits for `/launch`. `security.domains`: the app's public addresses once it has any (their certificates are watched).
   `security.egress`: every outside host the code calls today (the gate's *network* check), and `docs/NETWORK.md` from answer 3.
+  AI inside the app (stack.md 6b): `ai.wrapper`, the one file that calls the model, and its first hostile cases in `quality`.
 - **Tools**: for each tool the project uses that `docs/TOOLS.md` lists under *Leaving*, one line to the owner with what replaced it
   and what moving costs; never change it without a yes (it becomes a card).
 - **Versions**: `.tool-versions` with the exact Node (and any other tool) the app uses, the same Node in the `Dockerfile` and

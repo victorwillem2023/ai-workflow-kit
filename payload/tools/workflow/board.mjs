@@ -9,12 +9,15 @@
 //   --move <number> "<column>"   move a card          --block <number> "<reason>"   to Blocked, the reason as a comment
 //   --show <number>              a card's title, column, labels and text
 //   --search "<words>"           cards (open and closed) whose title or text has the words: number, title, column
+//   --next [n]                   the n (5) startable cards to build next: first-version cards first, then value for the effort (lib/rank.mjs)
+//   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
 // A failure prints one plain sentence and exits 1.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
+import { adoptCard, createCard, moveCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
+import { inbox, rankCards, STARTABLE } from './lib/rank.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WINDOWS_GH = 'C:\\Program Files\\GitHub CLI\\gh.exe';
@@ -31,7 +34,7 @@ function run(args, input) {
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
 const values = (name) => argv.flatMap((a, i) => (a === name && argv[i + 1] !== undefined ? [argv[i + 1]] : []));
-const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number> or --search "<words>".';
+const usage = 'Use --init, --labels, --map, --check, --add "<title>" --label <type>, --move <number> "<column>", --block <number> "<reason>", --show <number>, --search "<words>", --next [n], --inbox or --adopt <number> --label <type>.';
 
 function cardNumber(s) {
   const n = Number(String(s ?? '').replace(/^#/, ''));
@@ -96,6 +99,26 @@ async function main() {
     const c = readCard(board, run, cardNumber(value('--show')));
     console.log(`#${c.number} ${c.title}\nColumn: ${c.column ?? 'not on the board'} (${c.state.toLowerCase()})\n` +
       `Labels: ${c.labels.join(', ') || 'none'}\n${c.url}\n\n${c.body}`);
+  } else if (argv.includes('--next')) {
+    // what to build next, by the owner's labels and a fixed sum (lib/rank.mjs), never by a model's taste
+    const all = listCards(board, run);
+    const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)) });
+    const n = Number(value('--next')) || 5;
+    if (!ranked.length) console.log('board: no open card can be started (Backlog, Needs a board or decision, Ready)');
+    for (const c of ranked.slice(0, n)) console.log(`#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
+    const unvalued = ranked.filter((c) => /value not set/.test(c.why)).length;
+    if (unvalued) console.log(`(${unvalued} startable card${unvalued === 1 ? ' has' : 's have'} no value label: set one, the order is only as good as the labels)`);
+    const waiting = inbox(all).length;
+    if (waiting) console.log(`(${waiting} open issue${waiting === 1 ? ' is' : 's are'} not on the board yet: npm run board -- --inbox)`);
+  } else if (argv.includes('--inbox')) {
+    const waiting = inbox(listCards(board, run));
+    if (!waiting.length) console.log('board: every open issue is on the board');
+    for (const c of waiting) console.log(`#${c.number} ${c.title}${c.labels.length ? ` [${c.labels.join(', ')}]` : ''}`);
+    if (waiting.length) console.log('Put one on the board: npm run board -- --adopt <number> --label <type> [--label <name>]...; or close it with a reply.');
+  } else if (argv.includes('--adopt')) {
+    const number = cardNumber(value('--adopt'));
+    adoptCard(board, run, number, { labels: values('--label'), column: value('--column') ?? board.columns[0] });
+    console.log(`board: #${number} put on the board in ${value('--column') ?? board.columns[0]}`);
   } else if (argv.includes('--search')) {
     const found = searchCards(board, run, value('--search'));
     if (!found.length) console.log('board: no card matches those words');

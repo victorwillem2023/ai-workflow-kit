@@ -13,7 +13,8 @@ Run from any {{PROJECT}} folder.
    If the result is thin, search once more with a different main word. If a card looks like the same idea (open or closed),
    show it (number, title, column) and ask: "Same as this one?". Only on "no" go on; on "yes" stop and give that card's number.
 2. **Pick the labels**. Exactly one type: `ui` = a screen or part of the UI; `feature` = something the app does; `bug` =
-   something broken; `workflow` = how we work (nothing in the app changes). One existing area label, one `effort: ...` and one
+   something broken; `workflow` = how we work (nothing in the app changes); `spike` = a quick throwaway try to answer one
+   question. One existing area label, one `value: ...` (your guess; the owner or `/shape` corrects it), one `effort: ...` and one
    `feasibility: ...` label. Run `npm run board -- --labels` once: it prints the names the config allows, grouped; use only those,
    spelled exactly (a group that says "none in the config" is skipped).
    Ask at most ONE question, and only when the type or the area cannot be told from the sentence (give your best guess with it).
@@ -23,4 +24,4 @@ Run from any {{PROJECT}} folder.
 4. **Make the card**: `npm run board -- --add "<short title>" --label <type> --label "<area>" --label "<effort>" --label "<feasibility>" --body-file <file>`
    (one `--label` per label, exactly one of them a type).
 5. **Report**: the first line names the type you chose and why in a few words ("Type: ui, it is a screen."), the second is
-   `#<n> made in Backlog: <url>`. Nothing more.
+   `#<n> made in Backlog: <url>`. A new product or a big feature: a third line, "Worth asking first: /shape <n>". Nothing more.

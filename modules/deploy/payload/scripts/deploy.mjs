@@ -2,14 +2,15 @@
 // Deploys the commit you are on and proves it runs, or puts the old version back. Settings: `deploy` in workflow.config.json
 // ({ "url": "https://app.example.com", "command": "<the host's deploy command, {version} is the commit>", "rollback": "<the same for an
 // older {version}>", "health": "/health", "waitSeconds": 120 }); how the app answers /health is in docs/DEPLOY.md.
-//   node scripts/deploy.mjs                      deploy: run the command, wait until /health names this commit; if it never does, roll back
+//   node scripts/deploy.mjs                      deploy: run the command, wait until /health names this commit, watch it (the canary,
+//                                                "watch" in the config: 5 minutes by default); if it never comes up or fails the watch, roll back
 //   node scripts/deploy.mjs --smoke              only ask the running app: is it up, and which version
 //   node scripts/deploy.mjs --rollback [<commit>]  put an older version back (default: the one deployed before, from this computer's list)
 // Only when the owner says so. Refuses uncommitted files and a commit that is not on origin/main: what runs is a commit you can find again.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fill, healthUrl, ask, waitFor, previous } from '../tools/workflow/lib/deploy.mjs';
+import { fill, healthUrl, ask, waitFor, previous, watchDeploy } from '../tools/workflow/lib/deploy.mjs';
 
 const args = process.argv.slice(2);
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -58,11 +59,23 @@ const before = (await ask(get, url)).version;
 console.log(`Deploying ${version}${before ? ` (running now: ${before})` : ''}...`);
 const sent = run(fill(cfg.command, version));
 const now = sent ? await waitFor(get, url, version, waiting) : { ok: false, up: false, version: null };
-if (now.ok) {
+// the canary: once it answers, watch it for a while before calling the deploy good ("watch": { "seconds": 300, "every": 15,
+// "maxMisses": 1, "errors": "<a command that fails when errors rose, e.g. a query to the error tracker>" }; "seconds": 0 skips it)
+let watched = { ok: true };
+if (now.ok && (cfg.watch?.seconds ?? 300) > 0) {
+  const every = Math.max(1, cfg.watch?.every ?? 15) * 1000;
+  const wait = Number(process.env.WORKFLOW_DEPLOY_PAUSE_MS ?? every);
+  console.log(`Up: ${cfg.url} runs ${version}. Watching it for ${cfg.watch?.seconds ?? 300} seconds before calling it good...`);
+  // deploy.watch.errors comes from workflow.config.json, the project's own file, never from outside input
+  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+  const errorsOk = cfg.watch?.errors ? async () => spawnSync(fill(cfg.watch.errors, version), { shell: true, stdio: 'inherit' }).status === 0 : undefined;
+  watched = await watchDeploy(get, url, version, { checks: Math.max(1, Math.round(((cfg.watch?.seconds ?? 300) * 1000) / every)), pause: () => new Promise((r) => setTimeout(r, wait)), maxMisses: cfg.watch?.maxMisses ?? 1, errorsOk });
+}
+if (now.ok && watched.ok) {
   appendFileSync(logFile, version + '\n');
-  console.log(`Live: ${cfg.url} runs ${version}.`);
+  console.log(`Live: ${cfg.url} runs ${version}${cfg.watch?.seconds === 0 ? '' : ', and stayed healthy through the watch'}.`);
   process.exit(0);
 }
-const why = !sent ? 'The deploy command failed. ' : now.up ? `The app answers, but with version ${now.version ?? 'unknown'}, not ${version}. ` : `The new version did not come up (${url} gave no 200). `;
+const why = !watched.ok ? `It came up, but ${watched.why}. ` : !sent ? 'The deploy command failed. ' : now.up ? `The app answers, but with version ${now.version ?? 'unknown'}, not ${version}. ` : `The new version did not come up (${url} gave no 200). `;
 if (before && before !== version) await rollback(before, why); else console.log(`${why}Nothing was running before, so there is nothing to put back.`);
 process.exit(1);

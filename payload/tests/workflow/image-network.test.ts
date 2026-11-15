@@ -74,3 +74,22 @@ describe('outbound traffic and IP rules', () => {
     ]);
   });
 });
+
+describe('model calls go through one wrapper', async () => {
+  const { aiProblems, modelUses } = await import('../../tools/workflow/lib/aicheck.mjs');
+  it('finds model SDKs and model APIs in JavaScript, TypeScript and Python, and nothing else', () => {
+    assert.deepEqual(modelUses('src/server/ai.ts', "import Anthropic from '@anthropic-ai/sdk';\nimport { z } from 'zod';"), ['@anthropic-ai/sdk']);
+    assert.deepEqual(modelUses('src/x.ts', "const r = await fetch('https://api.openai.com/v1/responses');"), ['api.openai.com']);
+    assert.deepEqual(modelUses('app/coach.py', 'from openai import OpenAI\n'), ['openai']);
+    assert.deepEqual(modelUses('src/x.ts', "import { streamText } from 'ai';\nimport { openai } from '@ai-sdk/openai';"), ['ai', '@ai-sdk/openai']);
+    assert.deepEqual(modelUses('src/x.ts', "import { aim } from 'aim';\nimport x from './openai-notes';"), []);
+  });
+  it('lets the wrapper call a model, fails every other file, and fails any use with no wrapper declared', () => {
+    const code = new Map([['src/server/ai.ts', "import Anthropic from '@anthropic-ai/sdk';"], ['src/server/plan.ts', "import Anthropic from '@anthropic-ai/sdk';"]]);
+    const p = aiProblems(code, 'src/server/ai.ts');
+    assert.equal(p.length, 1);
+    assert.match(p[0], /src\/server\/plan\.ts uses @anthropic-ai\/sdk directly: call the model only through src\/server\/ai\.ts/);
+    assert.match(aiProblems(code, undefined)[0], /no "ai.wrapper" is set/);
+    assert.deepEqual(aiProblems(new Map([['src/core/plan.ts', 'export const x = 1;']]), undefined), []);
+  });
+});
