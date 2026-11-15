@@ -24,7 +24,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Plan** | `/setup`: who it is for, the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to do next and which command, by value for the effort, at any point; `/tidy` (`npm run board -- --triage`): the board kept from piling up; `/estimate`: a change's work and cost from `docs/COSTS.md`; `/advise`: up to three advisors on a choice, citing the docs; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
 | **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit (distroless for TypeScript and Go, a slim image for Python and Rust); a page-weight budget once there are screens. **Not yet**: browser smoke and accessibility tests |
-| **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/IAC.md`); deploys go from GitHub to staging, then production after your approval; `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
+| **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/IAC.md`); deploys go from GitHub to staging by themselves, and to production only when you run it (or a required reviewer approves, checked before it deploys); `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
 | **Grow** | the loop back: feedback and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/MARKET.md`. **Not yet**: feature-flag code (how to add it: `docs/LIFECYCLE.md`), a help button in the app linking the feedback form, and errors from the tracker becoming issues by themselves |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
@@ -89,7 +89,7 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
   deploy/    a Dockerfile per language, scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
              npm run smoke; npm run rollback; --env staging|production), docs/DEPLOY.md, .github/workflows/release.yml (after the gate: one image per commit,
              scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit), .github/workflows/deploy.yml
-             (after a release: staging by itself, production after an approval)
+             (after a release: staging by itself; production when you run it, or after a required reviewer's approval)
   production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
              src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
              docs/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
@@ -139,20 +139,29 @@ the kit into that folder. `/setup` recommends the framework when you haven't pic
 cd my-new-project            # a git repo with package.json
 node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
 # only some parts:  ... --modules security,testing      an app that calls a language model:  ... --with ai
+# as lean as you like:  ... --lean   (only the build loop)    ... --lean --with tidy,shape,ai   (and just these)
 npm i -D tsx typescript @types/node@^26 knip @biomejs/biome # + @happy-dom/global-registrator with the ui module; the installer prints the exact line
 ```
+**Lean**: `--lean` installs only the build loop: the gate, the board, the map, sessions, and the skills `/setup`, `/next`,
+`/idea`, `/work`, `/spec`, `/build`, `/ship`, `/review`, `/check`, `/find`, `/docs` and `/lesson`, with no modules (`--modules`
+names any you want). Every other part is one word with `--with`: `shape`, `spike`, `tidy`, `estimate`, `advise` (with `/arch`),
+`launch`, `market`, `retro`, `secops` (the skill and the Monday report), `setup-check` (the workflow that proves `docs/SETUP.md`),
+and the modules (`ai`, `ui`, `cluster`, ...). Each skill is something every agent reads about in every chat, so fewer is cheaper.
+The choice is remembered: `--update --with retro` adds one later, `--update --full` takes every part, and a part or module that
+is left out is removed on the update when you never changed its files.
 The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
 data comes in and the board's areas, then writes `CLAUDE.md`, `workflow.config.json`, `docs/GUIDE.md` and `docs/ARCHITECTURE.md`,
 runs `npm run board -- --init` (labels, the GitHub project, its columns) and the gate, and stops for your yes before one commit.
-After that: `/idea <the first thing to build>`, then `/work <n>`.
+After that: type `/next` whenever you are not sure; it tells you which command (the first time: `/idea`, then `/work <n>`).
 
 **Is a project behind the kit, or ahead of it?** `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --check` lists
 the machinery files that differ or are missing and changes nothing.
 
 **Bringing an existing project up to the kit, keeping its own changes**: `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --update`.
 A machinery file the project never changed is replaced by the kit's new one; one the project changed is kept and listed (compare,
-then `--take <path,path>` takes the kit's); missing files are added; settings the kit has and the project lacks are added to
+then `--take <path,path>` takes the kit's); missing files are added; a file the kit no longer ships (renamed or removed) is
+taken out when the project never changed it, and listed when it did; settings the kit has and the project lacks are added to
 `workflow.config.json`, nothing in it is changed. Then `npm run map`, `node tools/workflow/gate.mjs --update-baseline` (what the new
 checks find today becomes the baseline, so only new cases fail) and `npm run gate:all`. A project installed before 1.5 has no
 record of what the kit wrote, so the first time every differing file is listed.
@@ -193,6 +202,21 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.8.0**: safe before relying on it, and as lean as you want.
+  **Production never deploys by itself**: after staging the deploy workflow stops; production is you running it, or (with
+  `PRODUCTION_AFTER_STAGING`) a required reviewer's approval that the job checks is really there before it deploys.
+  **The AI caps cannot be off**: the model, its prices and both caps are required settings (no prices written in code, the
+  cheapest model by default), the wrapper refuses to start without them, and spending is kept in a file that survives restarts
+  and deploys. **Destroys are spelled out**: the apply lists every destroy by name, each one that holds data is typed out in
+  full before the code, and `--allow-destroy` is refused to agents by the settings and by the script.
+  `--lean` installs only the build loop, every other part one word with `--with`, remembered on updates. `--update` removes
+  files the kit no longer ships when the project never changed them. The starter `CLAUDE.md` is 2 KB smaller, so every module
+  fits its budget with room for `/setup`; the first baseline no longer takes a `CLAUDE.md` over budget without a reason. The
+  self-test runs seven variants (full, lean, cluster, a Vite starter, Python, Go, Rust), which found and fixed: the Python image
+  copied everything (now only the installed app), the Vite starter's demo links counted as outbound calls, two TypeScript
+  classes Vite's `erasableSyntaxOnly` refuses, and lint failing on a project with no `src` yet. The k6 pin is visible to
+  Renovate, with a test that every pinned image is. Board read commands warn in one line and carry on when GitHub cannot be
+  reached. `/setup` and the installer end with `/next`. Go needs 1.23 or newer (said now).
 - **2.7.0**: an advisor, a board tidy-up and a cost estimate, and everything optional.
   `project.audience` (`me`, `team`, `customers`, asked by `/setup`) decides what the kit brings up: a personal project hears
   nothing about launch, market, access reviews or "this already exists"; the SecOps report leaves out access and drills for it.

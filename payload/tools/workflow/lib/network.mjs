@@ -19,6 +19,8 @@ export function outboundHosts(files) {
       for (const m of line.matchAll(/["'`]https?:\/\/([a-z0-9.-]+\.[a-z]{2,}|localhost|\[::1\]|\d+\.\d+\.\d+\.\d+)(?=[:/"'`?$]|$)/gi)) {
         const host = m[1].toLowerCase();
         if (LOCAL.test(host) || NOT_CALLED.test(host)) continue;
+        // a link the user clicks (href="https://...") is a page they visit, not data the app sends; <img src>, fetch and the rest count
+        if (/\bhref\s*=\s*\{?\s*$/i.test(line.slice(0, m.index))) continue;
         if (!out.has(host)) out.set(host, []);
         out.get(host).push(`${file}:${i + 1}`);
       }

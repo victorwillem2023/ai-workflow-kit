@@ -8,8 +8,10 @@ cases. The list follows the OWASP Top 10 for LLM Applications (2025). Read by th
 ## The one file
 Every call to a model goes through one file, the wrapper (`ai.wrapper` in `workflow.config.json`; the gate fails a model SDK
 or API used anywhere else, and any use with no wrapper named). That file holds:
-- the **model and its settings** (one place to change them), and the **spend cap**: a monthly budget, a limit per user per day,
-  and a hard stop with a plain message when either is reached; the provider's own budget alert as a second line;
+- the **model and its settings** (one place to change them; the cheapest model until the cases say otherwise), its **prices**
+  from the provider's page (settings, never written in code), and the **spend cap**: a monthly budget, a limit per user per
+  day, required (no cap means it refuses to start), counted in a store that survives restarts and deploys, and a hard stop
+  with a plain message when either is reached; the provider's own budget alert as a second line;
 - **limits**: the longest input it accepts, the longest answer, a timeout, retries with back-off, and a rate limit per user;
 - the **markers** around untrusted content (below), and the **output check** (below);
 - the **log** of each call: who, which feature, tokens, cost, time, and the outcome, never the personal content of the prompt.

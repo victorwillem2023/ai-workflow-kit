@@ -22,7 +22,7 @@ self-hosted, this platform or that), say so and offer `/advise` with the options
    bill today) so the answer is "from €38 to €61 a month", not a number in the air. Count:
    - servers, storage, data transfer out, a bigger database plan, a new managed service;
    - outside APIs per use (maps, routing, email, SMS, payments' fees), with today's use from the analytics or logs;
-   - AI calls: tokens per use times uses, at the prices in the wrapper (`ai.ts`), against `ai.monthlyBudget`;
+   - AI calls: tokens per use times uses, at the prices in the settings (`AI_PRICE_INPUT_USD_PER_MTOK`, `AI_PRICE_OUTPUT_USD_PER_MTOK`; checked against the price page), against the cap (`AI_MONTHLY_BUDGET_USD`);
    - your hours each month to run it (updates, data refreshes, support questions it will bring), at the rate in `docs/COSTS.md`.
    Where options differ (paid or self-hosted), write them as JSON and run `npm run costs -- --compare <file>`
    (`docs/BUY-OR-HOST.md`).

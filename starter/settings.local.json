@@ -46,6 +46,8 @@
       "Bash(node tools/workflow/signoff.mjs:*)",
       "Bash(npm run infra-apply:*)",
       "Bash(node tools/workflow/infraplan.mjs --apply:*)",
+      "Bash(npm run infra-plan * --allow-destroy*)",
+      "Bash(node tools/workflow/infraplan.mjs * --allow-destroy*)",
       "Bash(tofu apply:*)",
       "Bash(terraform apply:*)",
       "Bash(pulumi up:*)",

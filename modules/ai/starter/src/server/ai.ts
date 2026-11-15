@@ -2,10 +2,19 @@
 // anywhere else). It holds the guards of docs/AI-SECURITY.md: a spend cap per month and per user per day, limits on input and
 // output, untrusted text passed as marked data, a canary that shows when the instructions leak, an answer checked against a
 // schema, and a log line per call without the personal content. The rest of the app calls `ai.ask(...)` with plain data.
-//   const ai = createAi({ provider: anthropicProvider(), log });
+//   const ai = createAi({ provider: anthropicProvider(), log, spend: fileSpend('data/ai-spend.json'), ...aiSettingsFromEnv() });
 //   const summary = await ai.ask({ feature: 'workout-summary', userId, instructions: 'Summarise the workout in two sentences.',
 //     untrusted: { notes: workout.notes }, schema: z.object({ summary: z.string().max(400) }) });
+// The caps and the prices are required: there is no "no cap", and no price is written in this file (they change). They come
+// from the settings, read once at start-up (put them in .env.example with the date you read the prices):
+//   AI_MODEL                      the model (default claude-haiku-5-5, the cheapest; move up only when the cases say so)
+//   AI_PRICE_INPUT_USD_PER_MTOK   dollars per million input tokens, from the provider's price page
+//   AI_PRICE_OUTPUT_USD_PER_MTOK  dollars per million output tokens, the same page
+//   AI_MONTHLY_BUDGET_USD         the most the whole app may spend in a month; past it the feature pauses
+//   AI_USER_DAILY_BUDGET_USD      the most one user may spend in a day
 import { randomBytes } from 'node:crypto';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
@@ -16,19 +25,38 @@ export type ModelCall = { model: string; system: string; user: string; schema: z
 export type ModelAnswer = { data: unknown | null; text: string; inputTokens: number; outputTokens: number; refused: boolean };
 export type Provider = (call: ModelCall) => Promise<ModelAnswer>;
 
-/** The model's prices per million tokens, in US dollars. Look them up the day you choose a model: they change. */
+/** The model's prices per million tokens, in US dollars, from the settings (the provider's page, read the day you set them). */
 type Price = { input: number; output: number };
-const PRICES: Record<string, Price> = {
-  'claude-opus-5-5': { input: 4, output: 20 },
-  'claude-sonnet-5-5': { input: 2, output: 10 },
-  'claude-haiku-5-5': { input: 0.1, output: 0.5 },
-};
 
-/** Where spending is counted. The default keeps it in memory (one server); a database table when there are several. */
+/** Where spending is counted. It must outlive a restart or a deploy, or the month's cap starts again at zero: `fileSpend` on
+ *  the server's data volume for one server, a database table (the same two functions) when there are several. */
 export interface SpendStore {
   spent(key: string): Promise<number>;
   add(key: string, usd: number): Promise<void>;
 }
+
+/** Spending kept in a JSON file (on the data volume, so it survives deploys); written whole and renamed into place. */
+export function fileSpend(path: string): SpendStore {
+  const read = (): Record<string, number> => {
+    try {
+      return JSON.parse(readFileSync(path, 'utf8'));
+    } catch {
+      return {};
+    }
+  };
+  return {
+    spent: async (k) => read()[k] ?? 0,
+    add: async (k, usd) => {
+      const all = read();
+      all[k] = (all[k] ?? 0) + usd;
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(`${path}.tmp`, JSON.stringify(all));
+      renameSync(`${path}.tmp`, path);
+    },
+  };
+}
+
+/** Spending kept in memory: for tests and one-off scripts only, it forgets everything on a restart. */
 export function memorySpend(): SpendStore {
   const m = new Map<string, number>();
   return {
@@ -42,27 +70,27 @@ export function memorySpend(): SpendStore {
 export type Refusal = 'budget' | 'user-budget' | 'too-long' | 'refused' | 'bad-answer' | 'leak' | 'timeout' | 'failed';
 /** A call that was not made, or whose answer was not used. `reason` says which guard stopped it; the message is for people. */
 export class AiRefused extends Error {
-  constructor(
-    public reason: Refusal,
-    message: string,
-  ) {
+  // a plain field, not a constructor parameter property: TypeScript set to erasable syntax only (Vite's default) refuses those
+  reason: Refusal;
+  constructor(reason: Refusal, message: string) {
     super(message);
     this.name = 'AiRefused';
+    this.reason = reason;
   }
 }
 
 export type AiSettings = {
   provider: Provider;
-  model?: string;
-  price?: Price;
-  /** dollars a month for the whole app, and a day for one user: past either, calls stop with a plain message */
-  monthlyBudgetUsd?: number;
-  userDailyBudgetUsd?: number;
+  model: string;
+  price: Price;
+  /** dollars a month for the whole app, and a day for one user: past either, calls stop with a plain message. Required. */
+  monthlyBudgetUsd: number;
+  userDailyBudgetUsd: number;
+  spend: SpendStore;
   /** characters of untrusted text in one call, tokens in one answer, and how long a call may take */
   maxInputChars?: number;
   maxOutputTokens?: number;
   timeoutMs?: number;
-  spend?: SpendStore;
   /** one line per call: never the prompt or the answer, only who, what, how much */
   log?: (event: string, fields: Record<string, unknown>) => void;
   now?: () => Date;
@@ -94,10 +122,9 @@ const refuse = (done: Done, reason: Refusal, message: string, extra?: Record<str
 
 /** Step 1: the size and the budgets, before anything is sent (the worst case of this call is counted first). */
 async function checkBefore(s: AiSettings, keys: { month: string; day: string }, worst: number, done: Done) {
-  const spend = s.spend as SpendStore;
-  if (s.monthlyBudgetUsd != null && (await spend.spent(keys.month)) + worst > s.monthlyBudgetUsd)
+  if ((await s.spend.spent(keys.month)) + worst > s.monthlyBudgetUsd)
     refuse(done, 'budget', 'This feature is paused for the rest of the month. Everything else works as usual.');
-  if (s.userDailyBudgetUsd != null && (await spend.spent(keys.day)) + worst > s.userDailyBudgetUsd)
+  if ((await s.spend.spent(keys.day)) + worst > s.userDailyBudgetUsd)
     refuse(done, 'user-budget', 'You have used this feature a lot today. It is available again tomorrow.');
 }
 
@@ -141,11 +168,33 @@ function checkAnswer<S extends z.ZodType>(
   return checked.data;
 }
 
-export function createAi(settings: AiSettings) {
-  const s = { ...settings, spend: settings.spend ?? memorySpend() };
-  const model = s.model ?? 'claude-opus-5-5';
-  const price = s.price ?? PRICES[model];
-  if (!price) throw new Error(`No price for ${model}: give "price" (dollars per million tokens, from the provider's page).`);
+/** The model, prices and caps from the settings (the names in this file's header). Throws one plain sentence naming what is
+ *  missing or not a number, so the app refuses to start rather than run without a cap. */
+export function aiSettingsFromEnv(env: Record<string, string | undefined> = process.env) {
+  const num = (name: string, min: number) => {
+    const v = Number(env[name]);
+    if (env[name] == null || env[name] === '' || !Number.isFinite(v) || v < min)
+      throw new Error(
+        `${name} is not set to a number${min > 0 ? ' above 0' : ''}: set it in .env (the header of src/server/ai.ts says what it is).`,
+      );
+    return v;
+  };
+  return {
+    model: env.AI_MODEL || 'claude-haiku-5-5',
+    price: { input: num('AI_PRICE_INPUT_USD_PER_MTOK', 0), output: num('AI_PRICE_OUTPUT_USD_PER_MTOK', 0) },
+    monthlyBudgetUsd: num('AI_MONTHLY_BUDGET_USD', Number.MIN_VALUE),
+    userDailyBudgetUsd: num('AI_USER_DAILY_BUDGET_USD', Number.MIN_VALUE),
+  };
+}
+
+export function createAi(s: AiSettings) {
+  const ok = (n: unknown, min: number) => typeof n === 'number' && Number.isFinite(n) && n >= min;
+  if (!s.model || !ok(s.price?.input, 0) || !ok(s.price?.output, 0))
+    throw new Error('createAi needs a model and its price (aiSettingsFromEnv reads them).');
+  if (!ok(s.monthlyBudgetUsd, Number.MIN_VALUE) || !ok(s.userDailyBudgetUsd, Number.MIN_VALUE))
+    throw new Error('createAi needs a monthly and a per-user daily cap above 0: there is no "no cap".');
+  if (!s.spend) throw new Error('createAi needs a spend store that outlives a restart (fileSpend, or a database table).');
+  const { model, price } = s;
   const now = s.now ?? (() => new Date());
   const cost = (inTok: number, outTok: number) => (inTok * price.input + outTok * price.output) / 1_000_000;
 

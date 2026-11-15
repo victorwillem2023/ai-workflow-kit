@@ -7,8 +7,14 @@ export class BoardError extends Error {
   constructor(message) { super(message); this.name = 'BoardError'; }
 }
 
-// One plain sentence for a failed gh call: missing, no network, not signed in, or gh's own first line.
+// One plain sentence for a failed gh call: missing, no network, not signed in, or gh's own first line. Marked `gh`, so a
+// read-only command can carry on with a warning instead of stopping the flow around it.
 function failure(res, what) {
+  const e = ghFailure(res, what);
+  e.gh = true;
+  return e;
+}
+function ghFailure(res, what) {
   if (res.error?.code === 'ENOENT') {
     return new BoardError('gh (the GitHub command line) is not installed or not on the PATH: install it from https://cli.github.com and run gh auth login.');
   }
@@ -26,7 +32,7 @@ function failure(res, what) {
     return new BoardError('gh may not touch the board: run gh auth refresh -s project.');
   }
   const first = err.split('\n').find((l) => l.trim()) ?? res.error?.message ?? 'no answer';
-  return new BoardError(`gh failed while ${what}: ${first.trim().replace(/\s+/g, ' ')}`);
+  return new BoardError(`gh failed while ${what}: ${first.trim().replace(/\s+/g, ' ').slice(0, 160)}`);
 }
 
 function gh(run, what, args, input) {

@@ -8,4 +8,5 @@ export function fromTofuPlan(json: unknown): PlanChange[];
 export function fromPulumiPreview(json: unknown): PlanChange[];
 export function parseExpect(text: string): ExpectLine[];
 export function reviewPlan(changes: PlanChange[], options?: { expect?: ExpectLine[] | null; protect?: RegExp; allowDestroy?: string[]; naming?: NamingOptions }): PlanReview;
+export function destroyLines(stack: string, destroys: { action: string; address: string; type: string; data: boolean }[]): string[];
 export function renderReview(stack: string, review: PlanReview): string;

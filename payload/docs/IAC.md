@@ -11,7 +11,7 @@ against what the spec meant, and applied by the owner exactly as it was read. Wo
 | 1. Check | `npm run infra-check` (and the gate, when `infra/` changes) | no | anyone, the agent | formatted, valid, the stack's own tests pass with mocked providers, startup scripts clean, Trivy finds no open firewall or public bucket |
 | 2. Expect | write `plan.expect` in the stack's folder, from the spec | no | the agent, in the build | what the change is meant to do, written down before anyone sees the plan |
 | 3. Plan | `npm run infra-plan -- infra/<stack>` | read only | the agent or the owner | what the tool would really do against the real state, and that it matches step 2 |
-| 4. Apply | `npm run infra-apply -- infra/<stack>` | yes, writes | **only the owner**, at a terminal, typing a code | exactly the saved plan goes out, or nothing |
+| 4. Apply | `npm run infra-apply -- infra/<stack>` | yes, writes | **only the owner**, at a terminal: every destroy is listed by name, each one that holds data is typed out in full, then a code | exactly the saved plan goes out, or nothing |
 
 Why write the expectation first: a plan of 40 lines is easy to nod through. "1 to create, 1 to change" against a spec that said
 "add a firewall rule" is a question nobody can miss. The script compares, the agent explains the difference, the owner decides.
@@ -26,7 +26,8 @@ One line per change: `create`, `update`, `delete`, `replace` (destroyed and made
 Commit it with the change: the review in `/review` reads it next to the diff. The plan fails when:
 - a change in the plan is not in the file (the code does more than the spec said), or a line in the file is not in the plan;
 - something that holds data or names would be destroyed or replaced (a database, volume, disk, bucket, DNS zone or record,
-  key vault, backup). Expecting it is not enough: the owner plans again with `--allow-destroy <address>`, after a backup
+  key vault, backup). Expecting it is not enough: the owner plans again with `--allow-destroy <address>` at their own terminal (agents are
+  refused it, by the settings and by the script), after a backup
   and a restore drill (`docs/RECOVERY.md`). Which kinds count: `launch.protect` in the config, a pattern;
 - there is no `plan.expect` at all.
 

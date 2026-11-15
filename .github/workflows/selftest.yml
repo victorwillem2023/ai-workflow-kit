@@ -1,5 +1,7 @@
-# The kit checks itself: on every push and pull request, install it into a fresh project on Linux and Windows and run the
-# kit's own tests and the full gate there, then an --update over it (scripts/selftest.mjs).
+# The kit checks itself: on every push and pull request, install it into fresh projects and run the project's tests and the
+# full gate there, then an --update over each (scripts/selftest.mjs). One job per variant: TypeScript with every module and ai,
+# lean, the cluster module, a Vite starter, Python, Go and Rust on Linux; full and lean on Windows too. In CI a variant whose
+# tools are missing fails instead of being skipped.
 name: selftest
 on:
   push:
@@ -13,8 +15,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
+        variant: [full, lean, cluster, vite, python, go, rust]
+        include:
+          - { os: windows-latest, variant: full }
+          - { os: windows-latest, variant: lean }
     runs-on: ${{ matrix.os }}
+    name: selftest (${{ matrix.os }}, ${{ matrix.variant }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -22,4 +29,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: starter/.tool-versions
-      - run: npm test
+      - if: matrix.variant == 'go'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.24'
+      - if: matrix.variant == 'python'
+        run: pipx install uv
+      - if: matrix.variant == 'rust'
+        run: cargo install cargo-machete cargo-audit --locked
+      - run: node scripts/selftest.mjs ${{ matrix.variant }}

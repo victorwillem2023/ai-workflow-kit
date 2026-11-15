@@ -83,7 +83,7 @@
         "/(^|/)tools/workflow/(infracheck|infraplan|load|secops)\\.mjs$/"
       ],
       "matchStrings": [
-        "'(?<depName>[a-z0-9][a-z0-9./_-]*):(?<currentValue>v?[0-9][\\w.-]*)',\\s*// renovate: docker"
+        "'(?<depName>[a-z0-9][a-z0-9./_-]*):(?<currentValue>v?[0-9][\\w.-]*)'[,;]?\\s*// renovate: docker"
       ],
       "datasourceTemplate": "docker"
     }

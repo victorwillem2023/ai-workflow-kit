@@ -10,7 +10,7 @@ the day it decides. Read by the section.
 |---|---|---|
 | gate | every push and pull request | the same gate as on your computer, the whole suite |
 | release (deploy module) | after the gate passes on main | builds the image, names it after the commit, pushes it to GitHub's registry (GHCR) |
-| deploy (deploy module) | after a release, or by hand | staging first, the smoke check and the watch; then production, behind an approval |
+| deploy (deploy module) | after a release, or by hand | staging first, the smoke check and the watch; production only when you run it by hand, or after a required reviewer's approval (below) |
 | secops | weekly | the scanners and the report (`npm run secops`) |
 | setup check | when the kit is updated | that a fresh install still passes |
 
@@ -30,9 +30,14 @@ CI later is a few small files, not a rewrite.
 | Dagger | free (the engine), runs inside any CI | pipelines written in TypeScript, the same on your computer and in CI | an agent can run the same pipeline locally | pipelines grow complicated; the kit's scripts cover this until then |
 
 **Our pick**: GitHub Actions. Public repositories run free; a private one on the Free plan uses about 3 to 6 minutes per push
-for the gate, so 2,000 minutes is a few hundred pushes a month. Environments with required reviewers (the approval before
-production) work on public repositories, and on private ones from the Team plan: on Free or Pro, production waits for the
-owner running the deploy job by hand (`workflow_dispatch`).
+for the gate, so 2,000 minutes is a few hundred pushes a month.
+
+**Production never deploys by itself by default.** After staging, the deploy workflow stops and says production waits for
+you; you run it by hand and pick production (Actions, deploy, Run workflow), and that click is the approval. To let
+production follow staging with an approval instead, add required reviewers to the "production" environment (public
+repositories, or private ones from the Team plan; Free and Pro cannot have them) and set the repository variable
+`PRODUCTION_AFTER_STAGING` to `true`. The job checks the reviewers are there before it deploys and stops if they are not, so
+the variable alone never makes production deploy unapproved.
 
 Rules that hold on any CI: actions pinned to a commit (Renovate updates them), the least permissions per job (`permissions:`
 at the top), secrets only in the environment that needs them (production's token only in the production environment), and

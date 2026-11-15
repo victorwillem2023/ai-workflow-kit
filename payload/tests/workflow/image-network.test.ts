@@ -51,6 +51,10 @@ describe('outbound traffic and IP rules', () => {
   it('finds the outside hosts the code calls, not local ones, comments or schemas', () => {
     assert.deepEqual([...outboundHosts(code).keys()], ['api.open-meteo.com', 'oauth2.googleapis.com']);
   });
+  it('leaves out links the user clicks, but not images the page loads', () => {
+    const page = new Map([['src/web/App.tsx', '<a href="https://vite.dev" target="_blank"><img src="https://cdn.example-images.net/logo.svg" /></a>\n<a href={\'https://react.dev\'}>React</a>']]);
+    assert.deepEqual([...outboundHosts(page).keys()], ['cdn.example-images.net']);
+  });
   it('fails a host the allowlist does not name; *.domain covers its subdomains', () => {
     assert.ok(allowed('oauth2.googleapis.com', ['*.googleapis.com']) && !allowed('evil.com', ['*.googleapis.com']));
     const p = unlistedEgress(code, ['*.googleapis.com']);

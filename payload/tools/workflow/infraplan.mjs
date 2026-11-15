@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { stacks } from './lib/infracheck.mjs';
-import { PROTECTED, fromPulumiPreview, fromTofuPlan, parseExpect, renderReview, reviewPlan } from './lib/infraplan.mjs';
+import { PROTECTED, destroyLines, fromPulumiPreview, fromTofuPlan, parseExpect, renderReview, reviewPlan } from './lib/infraplan.mjs';
 
 const IMAGES = {
   tofu: 'ghcr.io/opentofu/opentofu:1.10.0', // renovate: docker
@@ -72,10 +72,14 @@ function plan() {
   let expect = null;
   try { expect = existsSync(expectFile) ? parseExpect(readFileSync(expectFile, 'utf8')) : null; } catch (e) { stop(e.message); }
   const allowDestroy = args.flatMap((a, i) => (args[i - 1] === '--allow-destroy' ? [a] : []));
+  // allowing a destroy is the owner's decision, typed at a terminal: an agent (no terminal) or CI is refused
+  if (allowDestroy.length && (!process.stdin.isTTY || !process.stdout.isTTY || process.env.CI)) stop(`--allow-destroy is for the owner at a terminal: run "npm run infra-plan -- ${stack.dir} --allow-destroy ${allowDestroy.join(' --allow-destroy ')}" yourself, after a backup.`);
   const protect = config.launch?.protect ? new RegExp(config.launch.protect, 'i') : PROTECTED;
   const naming = { rules: config.naming?.resources ?? [], labels: config.launch?.labels ?? [] };
   const review = reviewPlan(changes, { expect, protect, allowDestroy, naming });
-  writeFileSync(metaFile, JSON.stringify({ tool: stack.tool, print: print(), ok: !review.problems.length, changes: changes.length, at: new Date().toISOString() }));
+  // what the apply must spell out before anyone types the code: every destroy and replace, and which of them hold data
+  const destroys = changes.filter((c) => c.action === 'delete' || c.action === 'replace').map((c) => ({ action: c.action, address: c.address, type: c.type, data: protect.test(c.type) }));
+  writeFileSync(metaFile, JSON.stringify({ tool: stack.tool, print: print(), ok: !review.problems.length, changes: changes.length, destroys, allowDestroy, at: new Date().toISOString() }));
   console.log(renderReview(stack.dir, review));
   process.exit(review.problems.length ? 1 : 0);
 }
@@ -88,8 +92,14 @@ async function apply() {
   if (meta.print !== print()) stop(`Files in ${stack.dir} changed after the plan was made: plan again, so what is applied is what was read.`);
   if (!meta.changes) stop(`${stack.dir}: the plan has no changes, nothing to apply.`);
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // every destroy is named here, and each one that holds data must be typed out in full: a code alone could be typed blind
+  const destroys = meta.destroys ?? [];
+  console.log(`\n${destroyLines(stack.dir, destroys).join('\n')}`);
+  for (const d of destroys.filter((x) => x.data)) {
+    if ((await rl.question(`Type the address to confirm destroying it (${d.address}): `)).trim() !== d.address) { rl.close(); stop(`Not confirmed: nothing applied. ${d.address} stays.`); }
+  }
   const code = String(randomInt(1000, 9999));
-  const typed = (await rl.question(`Apply the reviewed plan for ${stack.dir} (${meta.changes} change${meta.changes === 1 ? '' : 's'}, made ${meta.at})? Type ${code}: `)).trim();
+  const typed = (await rl.question(`Apply the reviewed plan for ${stack.dir} (${meta.changes} change${meta.changes === 1 ? '' : 's'}, ${destroys.length} destroyed, made ${meta.at})? Type ${code}: `)).trim();
   rl.close();
   if (typed !== code) stop('The code did not match: nothing applied.');
   const r = stack.tool === 'pulumi'

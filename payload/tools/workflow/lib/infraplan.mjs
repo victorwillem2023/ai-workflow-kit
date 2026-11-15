@@ -89,6 +89,13 @@ export function reviewPlan(changes, { expect = null, protect = PROTECTED, allowD
   return { rows, problems, warnings };
 }
 
+/** What the apply shows before the code is typed: every destroy by name, and which hold data (each of those is typed out). */
+export function destroyLines(stack, destroys) {
+  if (!destroys.length) return [`This plan destroys nothing in ${stack}.`];
+  return [`This plan DESTROYS ${destroys.length} thing${destroys.length === 1 ? '' : 's'} in ${stack}:`,
+    ...destroys.map((d) => `  ${d.action === 'replace' ? 'destroy and recreate' : 'DESTROY'}  ${d.address}  (${d.type}${d.data ? ', holds data: whatever is in it is gone unless restored from a backup' : ''})`)];
+}
+
 const SIGN = { create: '+', update: '~', delete: '-', replace: '±' };
 
 /** The review as text: counts, one line per change, then the problems and warnings. */

@@ -138,4 +138,5 @@ names a file that does not exist yet: write it or take the name out, don't basel
 ## 5. Stop
 Show what was written (files, one line each), what you guessed rather than were told, and ask for a yes. On yes, one commit:
 "Workflow: set up the AI workflow (CLAUDE.md, config, board, agent commands, guide and architecture docs)". Then say the next step:
-`/idea <the first thing to build>`, then `/work <n>`.
+"From here, type `/next` whenever you are not sure: it tells you which command." (The first time it will offer `/idea` for the
+first thing to build, then `/work <n>`.)

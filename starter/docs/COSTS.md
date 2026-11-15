@@ -17,5 +17,5 @@ euros a month, without VAT. Hours of your own work are counted too: they are the
 Hourly rate used for estimates: <€ 50> (what your time is worth, or what you would pay someone)
 
 ## Limits that would change the bill
-<the free tiers and quotas the product relies on, with their limits and source: "Search Console: free", "AI: monthly cap €20 in
-ai.monthlyBudget">
+<the free tiers and quotas the product relies on, with their limits and source: "Search Console: free", "AI: monthly cap $20 in
+AI_MONTHLY_BUDGET_USD">

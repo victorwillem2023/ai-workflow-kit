@@ -38,7 +38,8 @@ and rolls back:
   }
 }
 ```
-The deploy workflow runs it for staging, then for production after the approval; the Argo CD token lives in each GitHub
+The deploy workflow runs it for staging, then for production when you run it by hand or a required reviewer approves
+(`docs/CICD.md`); the Argo CD token lives in each GitHub
 environment's secrets (`DEPLOY_TOKEN`, read as `ARGOCD_AUTH_TOKEN`). Purer GitOps, where every version is a commit: Argo CD
 Image Updater writing the tag back to `values-<env>.yaml`, or the release workflow opening that commit; then the deploy
 script only watches and the rollback is a revert.

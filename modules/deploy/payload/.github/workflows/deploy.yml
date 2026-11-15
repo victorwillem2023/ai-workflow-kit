@@ -1,7 +1,10 @@
 # The deploy pipeline: after a release built the image, it goes to staging by itself (the deploy script: health check, the watch,
-# a rollback if it fails), then to production only after a person approves the "production" environment (Settings, Environments,
-# Required reviewers: on public repositories, or private ones from GitHub's Team plan; on Free or Pro, run this workflow by hand
-# for production instead). Each environment is skipped while deploy.environments in workflow.config.json does not name it.
+# a rollback if it fails). Production never follows by itself unless two things are true:
+#   - the repository variable PRODUCTION_AFTER_STAGING is "true" (Settings, Secrets and variables, Actions, Variables), and
+#   - the "production" environment has required reviewers (Settings, Environments), checked by the first step below: no
+#     reviewers found (a private repository on GitHub Free or Pro cannot have them) and the job stops before it deploys.
+# Otherwise production is a person running this workflow by hand (Actions, deploy, Run workflow, production): that click is
+# the approval. Each environment is skipped while deploy.environments in workflow.config.json does not name it.
 # The host's credentials live in that environment's secrets: DEPLOY_SSH_KEY (a private key for an SSH deploy, Kamal, Compose)
 # and DEPLOY_TOKEN (a platform's API token), read by deploy.environments.<name>.command. Production's never reach staging.
 # docs/CICD.md says how this fits; the infrastructure under it changes only through the plan and review in docs/IAC.md.
@@ -61,12 +64,28 @@ jobs:
       - name: Not set up
         if: steps.env.outputs.go != '1'
         run: echo "No ${{ github.job }} under deploy.environments in workflow.config.json yet (/launch sets it up). Skipped."
+      - name: Production waits for you
+        if: github.event_name == 'workflow_run' && vars.PRODUCTION_AFTER_STAGING != 'true'
+        run: echo "::notice::Staging is done. Production waits for you; run this workflow by hand and pick production (Actions, deploy, Run workflow)."
   production:
     needs: staging
-    if: always() && ((github.event_name == 'workflow_run' && needs.staging.result == 'success') || inputs.environment == 'production')
+    if: always() && ((github.event_name == 'workflow_run' && needs.staging.result == 'success' && vars.PRODUCTION_AFTER_STAGING == 'true') || inputs.environment == 'production')
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      actions: read
     steps:
+      # after staging by itself: only with reviewers on the production environment (a person approved before this step ran)
+      - name: Production has required reviewers
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          n=$(gh api "repos/$GITHUB_REPOSITORY/environments/production" --jq '[.protection_rules[]? | select(.type == "required_reviewers")] | length' 2>/dev/null) || n=""
+          if [ "$n" != "" ] && [ "$n" -gt 0 ]; then echo "production: approved by a required reviewer"; exit 0; fi
+          echo "::error::PRODUCTION_AFTER_STAGING is true, but the production environment has no required reviewers (or they could not be read), so nobody approved this. Nothing was deployed. Add reviewers, or unset the variable and run this workflow by hand for production."
+          exit 1
       # nosemgrep: yaml.github-actions.security.workflow-run-target-code-checkout.workflow-run-target-code-checkout
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

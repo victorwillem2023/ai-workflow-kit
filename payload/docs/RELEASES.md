@@ -10,7 +10,7 @@ How a change goes from "done" to everyone using it, and how real people try it b
 | 2. Release | the release workflow builds the image once, named after the commit, scanned, with its bill of materials | CI | the image is in the registry |
 | 3. Staging | the deploy workflow puts it on staging, checks the health address names the commit, watches it | CI | the deploy log, the smoke check |
 | 4. Try it | the owner (and testers, below) use it on staging | people | nothing broke that the tests missed |
-| 5. Production | the same image, after the approval of the production environment | the owner | the watch passes; else it rolled back by itself |
+| 5. Production | the same image, when the owner runs the deploy workflow for production (or approves it as the environment's required reviewer, `docs/CICD.md`) | the owner | the watch passes; else it rolled back by itself |
 | 6. Tell people | the changelog and, for something users notice, a short note | `/ship` writes the changelog line | users know what changed |
 
 The same image goes everywhere: never rebuild for production. A change to the infrastructure under it is its own change, with

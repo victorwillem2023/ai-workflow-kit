@@ -108,6 +108,8 @@ if (flag('--update-baseline')) {
     if (!reason || reason.startsWith('--')) { console.log('--allow-growth needs a reason: --allow-growth "<reason>"'); process.exit(1); }
   }
   // the very first baseline of a project takes what is there (a framework starter's long demo function, say); after that only shrinking is free
+  // (not CLAUDE.md's budget: a rules file every agent reads in every chat starts within it, or with a reason the owner gives)
+  const owned = reason;
   if (!reason && !('cycles' in baseline)) reason = 'the first baseline';
   const upd = updateSizes(sizes, baseline.sizes ?? {}, reason, baseline.reasons ?? {});
   if (!upd.ok) {
@@ -147,7 +149,7 @@ if (flag('--update-baseline')) {
   next.cycles = cycles;
   // a rules file over its budget is only taken as it is the first time; one that grew past what was recorded is refused
   const fatter = overBudget.filter(([f, , size]) => size > (baseline.budget?.[f] ?? 0));
-  if (fatter.length && !reason) {
+  if (fatter.length && !owned) {
     console.log('baseline not written: these rules files are over their budget and grew (every agent reads them in every chat: turn a rule into a check, move what only some work needs into a doc they point to, or --allow-growth "<reason>"):');
     for (const [f, max, size] of fatter) console.log(`  ${f} is ${size} bytes, the budget is ${max}${baseline.budget?.[f] ? `, it was ${baseline.budget[f]}` : ''}`);
     process.exit(1);

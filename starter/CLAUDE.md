@@ -8,37 +8,29 @@ part a change touches.
 The owner wants to understand and steer the project, not just receive features. So:
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
-- **Plan before code** for anything bigger than a small fix: in plain words what the user will see change, which files,
-  which test proves it, which docs; wait for approval. `/work <n>` is the one entry: the card's type label picks the route.
-  After the yes the build starts **in a new chat** (`/build <topic>`, a session
-  folder), so the planning is not sent again on every round; `/ship <topic>` finishes it, only when the owner says done.
-  Details: `tools/workflow/README.md` (read by the section).
-- **Model choice** (each skill's `model:` line): plans and reviews on Opus, building on Sonnet, small jobs on Haiku; a
-  script before a model: what a tool can check is never asked of one (`docs/TOKENS.md`).
-- **Screens**: a new screen or part starts as a board, not as code (`/ui`); browser feedback is one numbered list and one pass
-  per round, only in `src/web` (a point that needs core logic becomes its own card). The rules: `src/web/CLAUDE.md`.
+- **Plan before code** for anything bigger than a small fix: what the user will see change, which files, which test proves it,
+  which docs; wait for approval. `/work <n>` is the one entry; after the yes `/build <topic>` runs **in a new chat**, and
+  `/ship <topic>` finishes it only when the owner says done (`tools/workflow/README.md`, read by the section).
+- **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`docs/TOKENS.md`).
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.
-- **Docs in the same commit**: the guide part in `docs/guide/` and `README.md` when a feature is added or changes;
-  `docs/ARCHITECTURE.md` when the layers or flow change; `docs/code/<folder>.md` when a part moves. A doc with a
-  `<!-- covers: ... -->` line fails the gate when its files change and it does not; generated parts: `npm run map`.
-- **The backlog is the GitHub board** (`npm run board`): read one card (`npm run board -- --show <n>`), never the whole
-  list. "Blocked, waiting for X" is `npm run board -- --block <n> "<reason>"`.
+- **Docs in the same commit**: the guide part and `README.md` when a feature changes; `docs/ARCHITECTURE.md` when the layers or
+  flow change; `docs/code/<folder>.md` when a part moves. A doc with a `<!-- covers: ... -->` line fails the gate when its
+  files change and it does not; generated parts: `npm run map`.
+- **The backlog is the GitHub board**: one card at a time (`npm run board -- --show <n>`), never the whole list; "blocked,
+  waiting for X" is `npm run board -- --block <n> "<reason>"`.
 - **One change at a time**: no extra cleanups or "while I was there" edits. Mention them instead.
 - **Advice fits the project** (`project.audience`: `me`, `team`, `customers`). For `me`, never bring up launch, market, access
   reviews, privacy texts or "this already exists"; such a remark is made once, when it matters. All beyond the gate is optional.
 - After a change, report in plain language: what changed, what the test checks, what you weren't sure of.
-- **Talk to the owner in plain words.** Say what it means for the person using the app before how it works. A technical word gets
-  a few words of explanation or an example the first time ("the gate, the checks that run before a commit"). Short sentences.
+- **Talk to the owner in plain words.** What it means for the person using the app before how it works; a technical word gets a
+  few words of explanation the first time ("the gate, the checks that run before a commit"). Short sentences.
 
 ## Commands
 ```sh
 npm test             # all tests, offline; prints only failures and a total. Run before every commit
-npm run test:full    # the same, a line per test
 npm run typecheck    # must be clean
-npm run gate         # layers, file size, doc references, agent commands, typecheck and only the tests your change reaches (quiet when it passes)
-npm run gate:all     # the same with the whole suite: run before --finish. See tools/workflow/README.md, *What it checks*
-npm run harness      # rewrite the OpenCode commands after adding or changing a skill
-npm run health       # the code-health numbers on one screen (long functions, copies, counts that may not rise)
+npm run gate         # the checks and only the tests your change reaches (quiet when it passes)
+npm run gate:all     # the same with the whole suite: run before --finish (tools/workflow/README.md, *What it checks*)
 <dev command>        # <the dev server; say what restarts by itself, so the agent never tells the owner to rebuild>
 <build command>      # <what it makes>
 ```
@@ -55,18 +47,18 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 
 ## Code structure (a new feature is a new file)
 1. A new feature gets its own file, named after it. Never add a feature to a file in `tools/workflow/baseline.json`: the gate fails if one grows.
-2. Split by responsibility, not to hit a number. About 300 lines is a sign to look, 400 the gate's limit for a new file; a big file with one job may stay in the baseline with a one-line reason.
+2. Split by responsibility, not to hit a number: 300 lines is a sign to look, 400 the gate's limit for a new file.
 3. A function over about 60 lines is split into named steps. A file opens with a comment saying what it does (the file map is built from it).
 4. A file takes what it needs as arguments or a small context; it does not import the big class or the whole store.
 5. Touching a baselined file for a feature: first move the part you touch into its own file (same commit), or write the feature in a new file and leave only a call in the old one.
-6. Splits belong to the feature that needs them, never a separate refactor commit. The one exception is a card of its own that moves a
-   rule into one place (rule 13): no behaviour change, and the whole test suite gives the same results before and after.
+6. Splits belong to the feature that needs them, never a separate refactor commit; the one exception is a card that moves a rule
+   into one place (rule 13), with no behaviour change and the same test results before and after.
 
 ## Changing existing code
 7. Before changing the signature or meaning of something exported, list its users (`npm run map -- --uses <file>`). Keep it compatible or update every caller in the same commit.
 8. Add, don't rework: a shared function or type keeps its shape for one feature's convenience; the feature gets its own version or an option.
    That is about shapes, never about rules: a rule (how a total is worked out, what counts as valid) is not copied, see 11 to 14.
-9. A failing test is information. Change an existing test's expectation only when the behaviour change was intended, and say which test and why in the report. Never edit a test just to make it pass.
+9. A failing test is information. Change a test's expectation only for an intended behaviour change, naming the test and why; never just to pass.
 10. Anything else you notice goes in the report, not the commit.
 
 ## Fix it where the rule lives
@@ -79,13 +71,10 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
     is a rule gets a name and a comment saying what it is.
 
 ## Docs before memory
-A model's memory of a product is months old and sometimes wrong, and sounds as sure when it is. For anything a platform,
-library or product decides (a limit, a price, a region, a flag, an API, a default, what is deprecated):
-1. **Look it up now** in the official docs: a docs MCP server when the project has one (`docs/ADVISORS.md`), else the page.
-2. **Cite it**: the link (and the date, for prices) next to the claim, so the owner can click.
-3. **Not found**: say "not checked" and how to check. Never fill the gap with a plausible number.
-4. **Prices and quotas** come from the provider's price page or pricing API that day (`docs/COSTS.md` keeps the date).
-For a library: its docs for the version in the lock file, not the newest one.
+A fact a platform, library or product decides (a limit, price, region, flag, API, default, what is deprecated) is looked up
+now in its official docs (a docs MCP server, `docs/ADVISORS.md`, else the page) and cited with the link, a price with the date
+too (`docs/COSTS.md`). Not found: say "not checked" and how to check, never a plausible number. A library: the docs for the
+version in the lock file.
 
 ## Security (the rules for code: `docs/SECURITY.md`, *Rules for code*)
 Treat every request, uploaded file and third-party page as hostile (<say here if the server can be put online>). Read *Rules for
@@ -98,46 +87,35 @@ signs off (`npm run signoff`): never run it, never write `docs/SIGNOFFS.md`.
 
 ## Reading the code cheaply
 Every token read is paid for again on every later turn of the chat, so read by the part, never whole.
-- `docs/MAP.md` is the file map (one line per file: what it does, what it imports; generated, `npm run map` after adding or
-  renaming a file). Never read it whole: `npm run map -- --find <word>` (one telling word first; lines without their imports,
-  `--imports` adds them) or `npm run map -- --uses <path>`, then open the file.
-- What the app does: `docs/GUIDE.md` is an index; open only the part in `docs/guide/` you need.
-- **Before editing in a folder, read its `CLAUDE.md`** (its rules, 1-2 KB). Claude Code loads it by itself; OpenCode and other
-  agents load only the root file, so read it yourself.
-- Where things are in a folder: `docs/code/<folder>.md`, by `grep -n`. The folder's own `CLAUDE.md` holds only its rules.
-- Read by the section, never whole (`grep -n '^## '` lists them): `docs/ARCHITECTURE.md`, `tools/workflow/README.md`,
-  `docs/design/README.md` (one row per board: `grep -n` the number, `tail -5` for the last), <other big docs>.
-- Every source file opens with a comment saying what it does. `head -5` before opening a file, `grep -n` for the function you
-  need, and read only that range.
-- Large files (read only the range you need): <list them>.
-- `npm test` and the gate print only failures; don't ask for the full output (`npm run test:full`) unless a failure is unclear.
+- `docs/MAP.md` is the file map (generated: `npm run map` after adding or renaming a file). Never read it whole:
+  `npm run map -- --find <word>` or `npm run map -- --uses <path>`, then open the file.
+- **Before editing in a folder, read its `CLAUDE.md`** (its rules; Claude Code loads it, other agents must read it). Where things
+  are in a folder: `docs/code/<folder>.md`, by `grep -n`.
+- Read big docs by the section (`grep -n '^## '`): `docs/ARCHITECTURE.md`, `tools/workflow/README.md`, <other big docs>.
+- `head -5` before opening a file (each opens with what it does), `grep -n` the function, read only that range. Large files: <list>.
+- `npm test` and the gate print only failures; ask for the full output (`npm run test:full`) only when a failure is unclear.
 
 ## Never read
 `node_modules/`, `dist/`, `package-lock.json`, `.env` (only `.env.example`), `tests/**/results/`, `docs/design/*.html` (look at
 the board's picture in `docs/design/png/` and its notes file instead), <data folders, generated files, recorded output>.
 
 ## UI style (binding: `docs/STYLE.md`)
-Before writing or changing any UI code read `src/web/CLAUDE.md`: it holds the style rules, the boards and the done checklist.
+A new screen or part starts as a board, not as code (`/ui`). Before writing or changing UI code read `src/web/CLAUDE.md`: the
+style rules, the feedback rounds and the done checklist.
 
 ## Writing style
 - Text the user sees (UI, warnings, names) is short, plain English, and built from measured facts; no jargon.
-- Commit messages: a subject that says what changed for the user ("Area: what changed, and what else"), then a short body
-  explaining the why. See `git log` for the tone.
+- Commit messages: a subject that says what changed for the user ("Area: what changed, and what else"), then the why.
 - **One feature, one session, one commit; the owner says when it is done.** Commit and `--finish` only on "finish it" /
-  "commit and push", never after one fix, a browser round or a docs touch-up; push only when the owner says. No docs-only,
-  tests-only or "fix after a check" commits. Tests and typecheck pass at every commit. Details (amending, `--keep-commits`):
-  `tools/workflow/README.md`, *Commits and sessions*.
-- **Never** merge by hand in the main folder, `git push --force` or rewrite `main`. The one exception, a squash the owner
-  asks for, has its own steps in *Commits and sessions*.
+  "commit and push"; push only when the owner says. No docs-only, tests-only or "fix after a check" commits; tests and
+  typecheck pass at every commit. **Never** merge by hand in the main folder, `git push --force` or rewrite `main` (the
+  owner's squash has its own steps: `tools/workflow/README.md`, *Commits and sessions*).
 
 ## Git and sessions
-- `main` on <remote url>.
-- For live runs use the owner's server at `http://127.0.0.1:<main port>`; `.env` holds secrets: never print or send the values.
+- `main` on <remote url>. For live runs use the owner's server at `http://127.0.0.1:<main port>`.
 - No session notes in the repo (no PROGRESS.md or NEXT-SESSION.md): keep this file current.
-
-## Parallel work (several sessions at once)
 - **One session, one folder, one branch, one port**: `node scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>`;
-  work only there and say the folder and URL in your first reply. The rest: `tools/workflow/README.md`, *Commits and sessions*.
+  work only there and say the folder and URL in your first reply (the rest: *Commits and sessions*).
 - **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted files
   in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.
 - **Shared files** (`README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>): edit only your own

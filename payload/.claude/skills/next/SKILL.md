@@ -10,7 +10,9 @@ Change no file. Read no code. At most eight lines.
 
 **Asked which command** for something ("how do I check what this costs?", "where do I start the deploy?"): find it in
 `docs/WORKFLOW.md`, *The commands, by stage* (`grep -n` the words, read only that table), and answer with the command and one
-line on what it does. Not in the table: say so and offer `/find`. Then stop.
+line on what it does. Not in the table: say so and offer `/find`. Then stop. A command whose skill is not in
+`.claude/skills/` was left out of a lean install: say so, and that `node <kit>/install.mjs . --update --with <part>` adds it.
+Never offer a skill that is not installed as the next step.
 
 **Otherwise**, three commands:
 1. `npm run updates -- --short`: a security alert comes first, in one line, with "deal with it first?".

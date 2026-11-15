@@ -11,12 +11,12 @@ import { isPrivateAddress } from '../core/netguard';
 
 /** Thrown when a link is refused (not a web address, private address, too many redirects, too big). `status` is 0, or 413 for too big. */
 export class RefusedError extends Error {
-  constructor(
-    why: string,
-    readonly status = 0,
-  ) {
+  // a plain field, not a constructor parameter property: TypeScript set to erasable syntax only (Vite's default) refuses those
+  readonly status: number;
+  constructor(why: string, status = 0) {
     super(`Refused: ${why}`);
     this.name = 'RefusedError';
+    this.status = status;
   }
 }
 

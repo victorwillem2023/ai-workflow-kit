@@ -143,7 +143,13 @@ async function main() {
   }
 }
 
+// the commands that only read: when GitHub cannot be reached they warn in one line and let the flow around them go on
+const READS = ['--labels', '--check', '--map', '--show', '--search', '--next', '--triage', '--inbox'];
 try { await main(); } catch (e) {
+  if (e instanceof BoardError && e.gh && READS.some((r) => argv.includes(r))) {
+    console.log(`board (warning): ${e.message} Carrying on without the board.`);
+    process.exit(0);
+  }
   console.error(e instanceof BoardError ? e.message : `board: ${e?.message ?? e}`.split('\n')[0]);
   process.exit(1);
 }

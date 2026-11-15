@@ -234,7 +234,7 @@
   },
   "go": {
     "name": "Go",
-    "needs": "go",
+    "needs": "go 1.23 or newer (the unused check runs go mod tidy -diff)",
     "config": {
       "code": [
         ".go",

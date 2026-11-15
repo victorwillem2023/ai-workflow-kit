@@ -1,7 +1,7 @@
 // Reviewing an infrastructure plan before it is applied (lib/infraplan.mjs) and the startup-script rules (lib/infracheck.mjs).
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromPulumiPreview, fromTofuPlan, parseExpect, renderReview, reviewPlan } from '../../tools/workflow/lib/infraplan.mjs';
+import { destroyLines, fromPulumiPreview, fromTofuPlan, parseExpect, renderReview, reviewPlan } from '../../tools/workflow/lib/infraplan.mjs';
 import { startupFiles, startupProblems } from '../../tools/workflow/lib/infracheck.mjs';
 
 const plan = {
@@ -48,6 +48,19 @@ describe('reviewing a plan against what was expected', () => {
     assert.match(reviewPlan(changes).problems[0], /No plan\.expect/);
     assert.throws(() => parseExpect('build hcloud_server.web'), /line 1/);
     assert.match(renderReview('infra/prod', reviewPlan([])), /no changes/);
+  });
+});
+
+describe('what the apply shows before the code', () => {
+  it('names every destroy, and says which hold data', () => {
+    const lines = destroyLines('infra/prod', [
+      { action: 'delete', address: 'hcloud_volume.data', type: 'hcloud_volume', data: true },
+      { action: 'replace', address: 'hcloud_server.web', type: 'hcloud_server', data: false },
+    ]);
+    assert.equal(lines[0], 'This plan DESTROYS 2 things in infra/prod:');
+    assert.match(lines[1], /DESTROY {2}hcloud_volume\.data {2}\(hcloud_volume, holds data/);
+    assert.match(lines[2], /destroy and recreate {2}hcloud_server\.web {2}\(hcloud_server\)$/);
+    assert.deepEqual(destroyLines('infra/prod', []), ['This plan destroys nothing in infra/prod.']);
   });
 });
 
