@@ -92,7 +92,7 @@ refuses, the script says so and the local guard still works. `npm run protect --
 What needs a public repository or a paid plan, and what stands in for it here:
 | GitHub enforces (public or paid) | Here instead (any plan) |
 |---|---|
-| no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.local.json` and `opencode.jsonc` deny `git push --no-verify`, `--force`, `-f` and another hooks path |
+| no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.local.json` and `opencode.jsonc` (`npm run harness` adds a rule the first gained to the second) deny `git push --no-verify`, `--force`, `-f` and another hooks path |
 | a pull request merges only when its gate passed (`"flow": "pr"`) | `node scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
 
 The guard lives in this clone's git hooks (the session folders share them). A clone on another computer or a cloud session has

@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { commandFile, opencodeConfig, agentsMd } from './lib/harness.mjs';
+import { addMissingRules, commandFile, opencodeConfig, agentsMd } from './lib/harness.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -36,10 +36,16 @@ if (check) {
   process.exit(0);
 }
 const made = [];
+const claudeSettings = JSON.parse(read(join('.claude', 'settings.local.json')) ?? '{}');
+if (existsSync('opencode.jsonc')) {
+  // written earlier: add the shell rules Claude Code's settings gained since (a new allow, a deny that keeps the push guard)
+  const r = addMissingRules(read('opencode.jsonc'), claudeSettings);
+  if (r.added.length) { writeFileSync('opencode.jsonc', r.text); made.push(`opencode.jsonc +${r.added.length} rules (${r.added.join(', ')})`); }
+  if (r.manual.length) made.push(`opencode.jsonc is not in the kit's shape: add by hand ${r.manual.join(', ')}`);
+}
 if (!existsSync('opencode.jsonc') && !existsSync('opencode.json')) {
-  const claudeSettings = JSON.parse(read(join('.claude', 'settings.local.json')) ?? '{}');
   writeFileSync('opencode.jsonc', opencodeConfig({ project: config.name ?? 'this project', cfg: h.opencode || {}, claudeSettings, private: h.private ?? ['.env'] }));
   made.push('opencode.jsonc');
 }
 if (h.agentsMd === true && !existsSync('AGENTS.md')) { writeFileSync('AGENTS.md', agentsMd(config.name ?? 'This project')); made.push('AGENTS.md'); }
-console.log(`harness: ${stale.length ? `wrote ${stale.length} of ${skills.length} OpenCode commands` : `${skills.length} OpenCode commands, all current`}${made.length ? `; made ${made.join(', ')}` : ''}`);
+console.log(`harness: ${stale.length ? `wrote ${stale.length} of ${skills.length} OpenCode commands` : `${skills.length} OpenCode commands, all current`}${made.length ? `; ${made.map((m) => (m.startsWith('opencode.jsonc ') ? m : `made ${m}`)).join('; ')}` : ''}`);

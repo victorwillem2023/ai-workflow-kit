@@ -129,6 +129,34 @@ export function opencodeConfig({ project, cfg = {}, claudeSettings, private: pri
 }
 
 /**
+ * The shell rules of .claude/settings.local.json that an opencode.jsonc written earlier lacks, put in place: { text, added, manual }.
+ * New allows go right after the `*` ask rule and new denies before the first `.env` rule (or at the end of the list), so every
+ * deny still comes after every allow (the last match wins). The rest of the file, its comments and the owner's own rules stay
+ * as they are. A file whose shape is not the kit's gets nothing written: the missing rules come back in `manual`.
+ * To drop a rule for good, take it out of .claude/settings.local.json: both lists come from there.
+ */
+export function addMissingRules(text, claudeSettings) {
+  let json;
+  try { json = JSON.parse(text.replace(/^\s*\/\/.*$/gm, '')); } catch { json = null; }
+  const have = new Set((json?.permissions ?? []).map((r) => `${r.action}|${r.resource}|${r.effect}`));
+  const line = (resource, effect) => `    { "action": "shell", "resource": ${JSON.stringify(resource)}, "effect": "${effect}" },`;
+  const want = (effect) => shellPatterns(claudeSettings, effect === 'allow' ? 'allow' : 'deny').filter((p) => !have.has(`shell|${p}|${effect}`));
+  const allows = want('allow');
+  const denies = want('deny');
+  const added = [...allows.map((p) => `allow ${p}`), ...denies.map((p) => `deny ${p}`)];
+  if (!added.length) return { text, added: [], manual: [] };
+  const lines = text.split('\n');
+  const ask = lines.findIndex((l) => /"action": "shell", "resource": "\*", "effect": "ask"/.test(l));
+  let denyAt = lines.findIndex((l) => /"resource": "\*\.env/.test(l));
+  if (denyAt < 0) denyAt = lines.findIndex((l, i) => i > ask && /^\s*\]/.test(l));
+  if (!json || ask < 0 || denyAt < 0 || denyAt <= ask) return { text, added: [], manual: added };
+  const out = [...lines.slice(0, ask + 1), ...allows.map((p) => line(p, 'allow')), ...lines.slice(ask + 1, denyAt), ...denies.map((p) => line(p, 'deny')), ...lines.slice(denyAt)];
+  // a rule put before the closing bracket needs the comma of the one before it, and must not leave one itself
+  const fixed = out.join('\n').replace(/\}(\n\s+\{ "action")/g, '},$1').replace(/\},(\n\s*\])/g, '}$1');
+  return { text: fixed, added, manual: [] };
+}
+
+/**
  * AGENTS.md, for agents that read only that file. It points at CLAUDE.md and says nothing else, so the rules live in one place.
  * Opt-in (`harness.agentsMd: true`): OpenCode reads AGENTS.md *instead of* CLAUDE.md when both exist, so with it OpenCode no
  * longer loads CLAUDE.md by itself and depends on the model following this pointer.

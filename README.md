@@ -140,6 +140,8 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.6.1**: `npm run harness` (and so `--update`) adds to an `opencode.jsonc` written earlier the shell rules
+  `.claude/settings.local.json` gained since (allows after the ask rule, denies after every allow), and leaves the rest of the file as it is.
 - **1.6.0**: `npm run updates` reads Dependabot (security alerts and pull requests) and gives each library a verdict: take it, look
   first, or hold (type definitions for a newer Node than the app runs on, or a library held in the config), with the ignore lines that
   stop a held one at the source; `/work` starts with its one line and `npm run health` shows it. Agents may not skip the push guard

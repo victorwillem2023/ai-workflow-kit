@@ -3,4 +3,5 @@ export function frontMatter(text: string): { name: string; description: string; 
 export function commandFile(name: string, skillText: string, cfg?: Partial<typeof DEFAULTS>): string;
 export function shellPatterns(claudeSettings: unknown, kind?: "allow" | "deny"): string[];
 export function opencodeConfig(o: { project: string; cfg?: Partial<typeof DEFAULTS>; claudeSettings?: unknown; private?: string[] }): string;
+export function addMissingRules(text: string, claudeSettings: unknown): { text: string; added: string[]; manual: string[] };
 export function agentsMd(project: string): string;

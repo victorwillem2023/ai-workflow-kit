@@ -1,7 +1,7 @@
 // Multi-agent support: the OpenCode command files, the first opencode.jsonc and AGENTS.md are written from the skills.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { frontMatter, commandFile, shellPatterns, opencodeConfig, agentsMd, DEFAULTS } from '../../tools/workflow/lib/harness.mjs';
+import { addMissingRules, frontMatter, commandFile, shellPatterns, opencodeConfig, agentsMd, DEFAULTS } from '../../tools/workflow/lib/harness.mjs';
 
 const skill = (name: string, description: string, model = '') =>
   `---\nname: ${name}\ndescription: ${description}\n${model ? `model: ${model}\n` : ''}---\n\n# /${name}\n`;
@@ -69,6 +69,22 @@ describe('harness: opencode.jsonc and AGENTS.md', () => {
     const json = JSON.parse(opencodeConfig({ project: 'Demo', claudeSettings: withDeny }).replace(/^\/\/.*$/gm, ''));
     const shell = json.permissions.filter((r: { action: string }) => r.action === 'shell').map((r: { resource: string; effect: string }) => `${r.effect} ${r.resource}`);
     assert.ok(shell.indexOf('deny git push --no-verify*') > shell.indexOf('allow git commit*'), 'the last match wins, so a deny comes after the allows');
+  });
+  it('adds the rules an opencode.jsonc written earlier lacks: allows after the ask rule, denies after every allow, the rest untouched', () => {
+    const before = opencodeConfig({ project: 'Demo', claudeSettings: { permissions: { allow: ['Bash(git commit:*)'] } } }).replace('// OpenCode for Demo', '// OpenCode for Demo (my note)');
+    const later = { permissions: { allow: ['Bash(git commit:*)', 'Bash(npm run updates:*)'], deny: ['Bash(git push --no-verify:*)'] } };
+    const r = addMissingRules(before, later);
+    assert.deepEqual(r.added, ['allow npm run updates*', 'deny git push --no-verify*']);
+    assert.match(r.text, /my note/, 'the owner\'s own lines stay');
+    const rules = JSON.parse(r.text.replace(/^\s*\/\/.*$/gm, '')).permissions.map((x: { effect: string; resource: string }) => `${x.effect} ${x.resource}`);
+    assert.ok(rules.indexOf('allow npm run updates*') > rules.indexOf('ask *'));
+    assert.ok(rules.indexOf('deny git push --no-verify*') > rules.indexOf('allow git commit*'), 'a deny after every allow');
+    assert.deepEqual(addMissingRules(r.text, later).added, [], 'run again, nothing more is added');
+  });
+  it('a file of another shape gets nothing written; the missing rules are named instead, and a file with no permissions is read too', () => {
+    const r = addMissingRules('{ "permissions": [] }', { permissions: { deny: ['Bash(git push --force:*)'] } });
+    assert.deepEqual(r.manual, ['deny git push --force*']);
+    assert.equal(r.text, '{ "permissions": [] }');
   });
   it('AGENTS.md only points at CLAUDE.md and repeats no rule', () => {
     const t = agentsMd('Demo');
