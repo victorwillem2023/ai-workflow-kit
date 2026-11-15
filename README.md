@@ -139,6 +139,10 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **1.5.1**: from the first real project. The gate runs in a repository with no commit yet; a project's first baseline takes what
+  a framework starter ships; `tsconfig.gate.json` when the starter's own config checks nothing; `.cmd` files get their names filled
+  in; a project with a UI framework does not get the kit's DOM helper; the hostile-input advice sees new test files. `/setup` asks
+  about the product first and proposes what to build, with the host (cheapest and easiest) and, for AI features, the model.
 - **1.5.0**: the rules of the craft as checks, and a diet. Gate: import circles, source files no test reaches, nesting deeper
   than 4, escape hatches that may not increase (`any`, `@ts-ignore`, an empty `catch`, a `TODO` with no card number; a set per
   language), Biome (lint and format) for TypeScript, tests that are copies with other values, a time budget for the suite

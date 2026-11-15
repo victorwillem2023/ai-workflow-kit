@@ -17,6 +17,8 @@ About the product and the people using it, never about technology. Batches of fo
 7. **Money**: do people pay? Once, a subscription, through the app stores?
 8. **From outside**: which other services does it read or write (calendar, wearables, maps, mail, a payment provider)?
 9. **AI**: does it generate or judge anything (plans, feedback, pictures)? Must that work without sending personal data out?
+   If yes, what to start with: free with daily limits (fine to try it out, not for personal data), the cheapest paid model that
+   does the job well, or the best there is whatever it costs?
 10. **Messages**: mail, push notifications, reminders at a set time?
 11. **Files**: do people upload photos, videos or documents? How large?
 12. **Languages and places**: one language or several? One country or the EU and beyond (privacy rules, where data is kept)?
@@ -24,15 +26,22 @@ About the product and the people using it, never about technology. Batches of fo
 14. **When it breaks**: is an hour of downtime an annoyance or a disaster? Who is told?
 15. **Looking after it**: you with agents, or a team later? Any language or tool that team already knows?
 16. **Money to run it**: what may it cost per month now, and at a thousand users?
+17. **Where it runs, to start with**: what matters most: costs nothing or next to nothing, the least work to get it online and
+    keep it there, or room to grow without moving later? (The page then names the host for that, and the runner-up.)
 
 ## B. The page: *What I would build*
-One table, a row per part: the choice, why it follows from which answer ("phones and offline, so an installable web app with its
+One table, a row per part (the host with its two prices, and the AI model when there is one): the choice, why it follows from which answer ("phones and offline, so an installable web app with its
 data in the browser first"), and what would make us change it. Aim at an app that is modern, grows without a rewrite and can
 swap a part: the rules below. Under the table: what was left out on purpose and when to add it (a queue, a cache, a second
 server), and what it costs per month now and at the size from question 1. The owner changes a line or says yes.
 
 Before recommending a library or service by name, check its site or repository (a web search is fine): still maintained, its
 current major version, no announced end. Names below were right in November 2026; prefer what is current over what is written here.
+
+**Prices and limits are looked up, by you, every time**: a web search and the provider's own pricing page, during this interview,
+for every host, database and AI model you put on the page. Never ask the owner for a price and never use one from memory or from
+this file. Write the number, the link and the date into `docs/STACK.md` under `Prices checked: <YYYY-MM-DD>`; `npm run health`
+says when that date is more than 90 days old, and then the same lookup is done again and the page updated.
 
 Rules that keep a stack future-proof:
 - **Boring and widely used** over new and clever: more answers, more agents that know it, less chance it disappears.
@@ -97,9 +106,32 @@ who may see what (a user's own data only, or teams): it shapes every table.
 Decide before the first deploy-shaped decision: static hosting for a static page; one container (a `Dockerfile` in the repo) for
 anything with a server, so it runs the same on a laptop, a small VPS or a cloud host. Settings come from the environment with a
 checked-in `.env.example`; secrets never in the repository. One command starts it locally.
-With the deploy module: pick a host where deploying and going back are one command each (Fly.io, Railway and Render take the
-`Dockerfile` as it is; your own server works with Kamal). `npm run deploy` then proves the new version runs, or puts the old one
+**Name the host, never leave it open.** Put two on the page, each with its price per month now and at the size from question 1,
+looked up on the host's own pricing page that day: the **cheapest** that fits and the **easiest to get running**, and take the one
+that matches the answer to question 17, saying why. Where to look, by the shape of the app:
+- *Only pages, no server*: a static host with a free plan (Cloudflare Pages, Netlify, Vercel, GitHub Pages).
+- *A framework with its own server* (Next.js, SvelteKit): the easiest is the host made for it (Vercel, Netlify); the cheapest
+  is the container below.
+- *A server in a container*: easiest is a host that takes the `Dockerfile` as it is (Railway, Render, Fly.io); cheapest at steady
+  use is one small server of your own (Hetzner and the like) with Kamal or Coolify, at the price of looking after it.
+- *The database*: SQLite on the app's own disk costs nothing; hosted Postgres with a free start (Neon, Supabase) when there are
+  accounts. Count it in the price.
+Say what the free plan does not do (sleeps when idle, a limit on data or build minutes), so the first bill is not a surprise.
+With the deploy module: pick a host where deploying and going back are one command each. `npm run deploy` then proves the new version runs, or puts the old one
 back; the app's part is `GET /health` answering with its version (`docs/DEPLOY.md`).
+
+## 6b. AI inside the app (only when question 9 says so)
+Every call goes through one file of our own (model name, prompt, limits), so the model can be swapped in a line. Choose by the job,
+and look the prices and limits up that day: they change every few months.
+- **Small or occasional** (a few calls a day, a personal tool, a first version): a free tier is enough. In November 2026:
+  Google's Gemini API (Flash models), OpenRouter's free models, Groq, Cloudflare Workers AI. Say the catch: daily limits, and
+  some free tiers may use what is sent to train their models, so never personal or health data.
+- **Real use, or personal data**: a paid model, the cheapest that passes the app's own cases. Start with the small, cheap model
+  of a provider (a "flash", "mini" or "haiku" class), write ten real cases with the answer that must come out, and move up a
+  class only for the cases it fails. Put the price per thousand calls on the page.
+- **Nothing may leave the machine**: a small open model run locally (Ollama), and say what it cannot do.
+Always: a spending limit set at the provider, a cap on calls per user, answers kept when the same question comes again, and the
+key in the environment, never in the code.
 
 ## 7. Tests
 The language's own runner (Vitest with Vite and React, `cargo test`, pytest, `go test`); Playwright for a few end-to-end checks of

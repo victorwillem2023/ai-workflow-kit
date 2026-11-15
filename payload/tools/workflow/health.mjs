@@ -34,4 +34,7 @@ row('test files', `${tests.length}, ${testLines} lines (${codeLines ? (testLines
 row('import circles / untested files', `${(baseline.cycles ?? []).length} / ${(baseline.untested ?? []).length} in the baseline`);
 row('layer exceptions in the baseline', (baseline.boundaries ?? []).length);
 row('stale doc references in the baseline', (baseline.docs ?? []).length);
+// the prices in docs/STACK.md (hosts, AI models) go stale: say when they were last looked up
+const checked = existsSync('docs/STACK.md') ? /Prices checked:\s*(\d{4}-\d{2}-\d{2})/.exec(readFileSync('docs/STACK.md', 'utf8'))?.[1] : null;
+if (checked) { const days = Math.floor((Date.now() - Date.parse(checked)) / 86_400_000); row('prices in docs/STACK.md', `checked ${checked}, ${days} days ago${days > 90 ? ': look them up again (hosts, AI models) and update the page' : ''}`); }
 if (baseline.quality) row('quality score in the baseline', `${baseline.quality.pass}${baseline.quality.total != null ? ' of ' + baseline.quality.total : ''}`);

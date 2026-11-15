@@ -80,6 +80,10 @@ const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
 const done = { added: [], kept: [], replaced: [], yours: [] };
+// a project that already has a UI framework builds its screens with components: the ui module's own DOM helper and its test stay out
+const pkgBefore = existsSync(join(target, 'package.json')) ? JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')) : {};
+const framework = ['react', 'preact', 'vue', 'svelte', 'solid-js', 'next', '@angular/core'].some((d) => d in { ...(pkgBefore.dependencies ?? {}), ...(pkgBefore.devDependencies ?? {}) });
+const happyDom = modules.includes('ui') && !framework ? ' @happy-dom/global-registrator' : '';
 // what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in .workflow-kit), so an update can
 // tell a file the project changed from one only the kit changed
 const hash = (text) => createHash('sha1').update(String(text).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
@@ -92,6 +96,7 @@ function copyTree(from, overwrite) {
     // another language: the TypeScript starter files stay out (the machinery's own tests are payload and stay in)
     if (lang !== 'ts' && !overwriteOnly(from) && (/\.tsx?$/.test(rel) || rel === 'tsconfig.json')) continue;
     if (rel === 'lang.json') continue;
+    if (framework && /^(src[\\/]web[\\/]dom\.ts|tests[\\/]dom\.test\.ts)$/.test(rel)) continue;
     // --update: the example code of the starter (src, tests) is for a new project; an existing one gets only docs and settings it lacks
     if (update && !overwriteOnly(from) && /^(src|tests|cmd|internal|pkg)[\\/]/.test(rel) && !existsSync(join(target, rel))) continue;
     const dest = join(target, rel);
@@ -243,10 +248,10 @@ if (update) {
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');
   console.log('  then: step 1 below, npm run map, node tools/workflow/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
 }
-if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : LANGS[lang].needs}`); process.exit(0); }
+if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip${happyDom}` : LANGS[lang].needs}`); process.exit(0); }
 console.log(`
 Next, in ${target}:
-  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip @biomejs/biome${modules.includes('ui') ? ' @happy-dom/global-registrator' : ''}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
+  1. ${lang === 'ts' ? `npm i -D tsx typescript @types/node knip @biomejs/biome${happyDom}` : `Install ${LANGS[lang].name}: ${LANGS[lang].needs}`}
   2. gh auth login && gh auth refresh -s project   (once per computer, for the board)
   3. Open Claude Code (or OpenCode) in the folder and type /setup: it asks about the app, then fills CLAUDE.md, the config,
      the guide and docs/ARCHITECTURE.md, writes the OpenCode commands (npm run harness), makes the board (npm run board -- --init)

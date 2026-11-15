@@ -149,7 +149,8 @@ function adviceLines() {
   const codeDir = (config.security?.code ?? 'src/').replace(/\/$/, '');
   const diff = gitOk('diff', '-U0', '--diff-filter=d', base, '--', codeDir, 'tests') ?? '';
   const fresh = new Map();
-  const fresh0 = git('ls-files', '--others', '--exclude-standard', '--', codeDir).split('\n').map((x) => x.trim());
+  // new files that git does not know yet count as added: the code, and the tests that say what it refuses
+  const fresh0 = git('ls-files', '--others', '--exclude-standard', '--', codeDir, 'tests').split('\n').map((x) => x.trim());
   for (const f of fresh0.filter((x) => x && existsSync(x))) fresh.set(f, readFileSync(f, 'utf8').split('\n'));
   return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security)];
 }
