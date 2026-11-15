@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.8.x` tag** (now `v2.8.3`). The kit is frozen at 2.8: until a real project has shipped its first cards on it, only
+> **Build on the latest `v2.8.x` tag** (now `v2.8.4`). The kit is frozen at 2.8: until a real project has shipped its first cards on it, only
 > fixes land (2.8.x: a bug, a wrong doc, a check that lies), never a new part, guide or skill. New work waits for 2.9, which
 > starts from what that project taught.
 
@@ -206,6 +206,9 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.8.4**: stacking on a session whose built work is not committed is refused with the commit to make (the new session
+  would not have had it); and a repo whose remote was added after `git init` gets `origin/HEAD` (set by `session.mjs` whenever
+  it fetches), so Claude Code's `security-review` runs in `/ship` instead of falling back to a review by hand.
 - **2.8.3**, fixes from trying 2.8.2 on a real project. **Handing a build over to try** follows one page
   (`.claude/skills/build/try-it.md`): `node scripts/session.mjs --serve <topic>` starts the session's dev server in the background
   and waits until the link answers, so the owner only opens it; a change without a screen gets a try command

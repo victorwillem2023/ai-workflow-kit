@@ -81,6 +81,11 @@ const free = (port) => new Promise((ok) => {
 /** Fetch origin, then the main folder against origin/main: commits only it has (ahead), commits only origin has (behind), loose files. */
 function mainState(strict) {
   try { git(main, 'fetch', 'origin'); } catch (e) { if (strict) throw new Error(`Could not reach origin: ${e.stderr?.toString().trim() || e.message}`); }
+  // a repo whose remote was added after git init has no origin/HEAD (a clone does), and tools that compare with the default
+  // branch (Claude Code's security-review) stop without it: point it at origin/main, a local ref only
+  if (!gitQuiet(main, 'rev-parse', '--verify', '--quiet', 'refs/remotes/origin/HEAD') && gitQuiet(main, 'rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main')) {
+    gitQuiet(main, 'remote', 'set-head', 'origin', 'main');
+  }
   const log = (range) => git(main, 'log', '--format=%h %s', range).split('\n').filter(Boolean);
   const onMain = git(main, 'branch', '--show-current') === 'main';
   return {
@@ -262,7 +267,10 @@ async function make(topic, card, on) {
     if (isAncestor(main, on, 'main')) console.log(`"${on}" is on main already, so this session starts from main.`);
     else {
       from = on;
-      if (existsSync(folderOf(on)) && looseWork(folderOf(on))) console.log(`"${on}" has uncommitted work: this session starts from its last commit, without it.`);
+      // builders do not commit while the owner tries it, so the built work is often loose: without a commit the new session would not have it
+      if (existsSync(folderOf(on)) && looseWork(folderOf(on))) {
+        throw new Error(`"${on}" has uncommitted work, which a session on top of it would not get. Commit it there first, as one commit with the feature's subject (--finish squashes later rounds into it):\n  cd "${folderOf(on)}" && git add -A && git commit -m "<Area: what changed>"`);
+      }
     }
   }
   catchUp(mainState(false));

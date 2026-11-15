@@ -71,6 +71,13 @@ describe('docs and settings left in the main folder', () => {
     assert.match(check.out, /The main folder has uncommitted files/);
   });
 
+  it('a repo without origin/HEAD (remote added after git init) gets it, so tools comparing with the default branch work', () => {
+    const r = repo(true);
+    try { git(r.main, 'remote', 'set-head', 'origin', '-d'); } catch { /* it had none */ }
+    assert.ok(run(r, '--check-main').ok);
+    assert.equal(git(r.main, 'symbolic-ref', 'refs/remotes/origin/HEAD'), 'refs/remotes/origin/main');
+  });
+
   it('without a subject it says how to give one', () => {
     const r = repo(true);
     ownerNotes(r);

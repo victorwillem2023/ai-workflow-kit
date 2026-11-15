@@ -57,6 +57,17 @@ describe('a session built on top of another one', () => {
     assert.ok(run(r, '--finish', 'screen').ok);
   });
 
+  it('a base whose built work is not committed is refused, with the commit to make', () => {
+    const r = makeRepo();
+    assert.ok(run(r, 'rules').ok);
+    commitIn(r.wt('rules'), 'rules.txt', 'rules\n', 'Plan: rules');
+    writeFileSync(join(r.wt('rules'), 'more.txt'), 'built, not committed\n');
+    const made = run(r, 'screen', '--on', 'rules');
+    assert.equal(made.ok, false);
+    assert.match(made.out, /"rules" has uncommitted work, which a session on top of it would not get[\s\S]*git commit -m/);
+    assert.equal(existsSync(r.wt('screen')), false, 'no session was made');
+  });
+
   it('a base that is on main already is not stacked on', () => {
     const r = makeRepo();
     assert.ok(run(r, 'rules').ok);

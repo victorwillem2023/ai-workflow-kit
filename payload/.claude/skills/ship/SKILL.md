@@ -32,7 +32,10 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    the files, the spec's *Sources*, and `cd <session folder> && npm run signoff` to run in their own terminal. You never run it,
    never write `docs/SIGNOFFS.md`, and never call the change checked before the gate passes with their row.
 3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first.
-4. Security: if "Security triggers" says yes, run the `security-review` skill and fix findings first.
+4. Security: if "Security triggers" says yes, run the `security-review` skill and fix findings first. It compares with
+   `origin/HEAD`; when that is missing (a repo whose remote was added after `git init`), run `git remote set-head origin main`
+   in the main folder (a local reference only; step 0's `--check-main` sets it too) and run the skill again: never review by hand
+   instead.
 5. Delete `specs/<topic>.md` (and its try command `specs/<topic>.try.*`, if any) in the session folder and in the main folder (`/build` copied it from there; it is ignored, so nothing else removes it).
 6. Commit everything as ONE commit: subject = what changed for the user ("Area: what changed, and what else"),
    body = a few lines of what the feature now does. Add the Co-Authored-By line the session gives. The subject is also the

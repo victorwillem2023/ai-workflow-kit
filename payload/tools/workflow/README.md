@@ -324,7 +324,7 @@ The skills live once, in `.claude/skills/<name>/SKILL.md`; every agent reads tho
   spec, so the planning context is not sent again on every feedback round.
 
 ## Commits and sessions (the details behind CLAUDE.md)
-**Commits.** One feature, one session, one commit; the owner says when it is done. Don't commit while the owner is trying it;
+**Commits.** One feature, one session, one commit; the owner says when it is done. Don't commit while the owner is trying it (one exception: a session another one is stacked on gets one commit first, `.claude/skills/work/together.md`);
 after feedback change the files (`--amend` only while unpushed). Write the message once: `--finish` keeps the first commit's,
 `--keep-commits` only for a big rework (say so in the message). `--finish` puts it on the local `main`;
 `node scripts/session.mjs --push`, only when the owner says, sends it to origin. Collect fixes into one commit ("Fixes from
