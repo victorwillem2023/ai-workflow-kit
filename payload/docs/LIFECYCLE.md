@@ -11,7 +11,7 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 3. Build | tests first, a session per card, checks by scripts | `/work`, `/build`, the gate | per card |
 | 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit | `/ship`, `.github/workflows/` | per card |
 | 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
-| 6. Grow | a launch, people finding it, feedback becoming cards | `/market` and a launch page in docs (kit 2.6) | when it works for its first users |
+| 6. Grow | a launch, people finding it, feedback becoming cards | `/market`, `docs/GROWTH.md`, the launch check | when it works for its first users |
 | 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |
 
 ## 5. Run: what is laid from the first day
@@ -88,11 +88,16 @@ the platform repository and the architecture board (`/arch`): `docs/SCALING.md`.
 - **Models**: plans on the strong model, building on the fast one, small jobs on the small one, and a script before any model
   (`docs/TOKENS.md`).
 - **One repository or several**: one by default (one product, one team, one gate); several when teams, release rhythms or access
-  rules differ (kit 2.6 has the guide). With several, the Renovate policy moves to a config repository of your own.
+  rules differ (`docs/SCALING.md`, with the platform repository for what they share). With several, the Renovate policy moves
+  to that repository.
 
 ## 6. Grow
-Positioning, a landing page, pricing, privacy-friendly analytics, a launch checklist, and every piece of feedback as a card on
-the board: `/market` and a launch page in docs, with kit 2.6.
+`/market` walks through `docs/GROWTH.md` and writes the answers in `docs/MARKET.md`: positioning (the real alternatives, what
+only we have, the value, the best-fit users, the category), pricing, the landing page (`npm run launch-check` checks it: search,
+share previews, the privacy link, trackers without consent, robots.txt, the sitemap, its weight), cookieless analytics on one
+funnel, search and Search Console, the channels, paid ads (a first Google Ads Search campaign step by step with Consent Mode;
+whether AdSense fits), the launch checklist, and a monthly review where each channel is kept, changed or stopped. User tests
+before the launch: `docs/RELEASES.md`. Every piece of feedback becomes a card on the board (below).
 
 ## 7. A small company
 When the first person pays, or a second person works on it, the product needs a business around it. The kit does not give

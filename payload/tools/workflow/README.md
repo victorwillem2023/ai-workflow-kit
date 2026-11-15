@@ -206,6 +206,14 @@ on `{port}`, asks it `recovery.drill.paths` (the first one until it answers, wit
 and writes the date and timings into the *Last restore drill* row of `docs/RECOVERY.md`; `pingEnv` names an environment
 variable with a dead man's switch address to call on success. SecOps flags a drill older than 90 days.
 
+## The launch check
+`npm run launch-check -- <https address | built .html file>` checks one landing page (`lib/launchcheck.mjs`): the title (10 to
+60 characters) and description (50 to 160), the language and viewport, a canonical link, Open Graph (title, description,
+image), exactly one `<h1>`, alt text on every image, a link to the privacy notice, trackers (`TRACKERS`: Google tag and Ads,
+Tag Manager, AdSense, DoubleClick, the Meta, LinkedIn and TikTok pixels, Hotjar, Clarity) without a consent manager or
+Consent Mode defaults, robots.txt (present, not `Disallow: /` for all, naming the sitemap), the sitemap, and for an address the
+weight of the page and its own files. Exit 1 on a problem; warnings are judgements. Why each: `docs/GROWTH.md`.
+
 ## A setup guide that is proven
 `docs/SETUP.md` marks its steps ```sh setup``` (must finish) and one ```sh start``` with `<!-- ready: http://127.0.0.1:<port>/ -->`
 below it (must answer). `npm run setup-check` runs them on a fresh clone of the committed repository; `.github/workflows/setup.yml`

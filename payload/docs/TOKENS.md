@@ -14,7 +14,7 @@ A model that is asked the same mechanical question twice is a sign a script is m
 ## Which model for which job
 | Job | Model (Claude Code / OpenCode) | Why |
 |---|---|---|
-| Plans and judgements: `/setup`, `/spec`, `/work` up to the yes, `/review`, the `/ship` reviewer, `/launch`, the `/arch` chair, sensitive builds | Opus / `planModel` | a wrong plan or a missed flaw costs every later step; it is a small part of the tokens |
+| Plans and judgements: `/setup`, `/spec`, `/work` up to the yes, `/review`, the `/ship` reviewer, `/launch`, `/market`, the `/arch` chair, sensitive builds | Opus / `planModel` | a wrong plan or a missed flaw costs every later step; it is a small part of the tokens |
 | The `/arch` reviewers (one point of view each) | Sonnet / `model` | a position on a brief, not a plan; four of them on Opus would cost four plans |
 | Building an approved spec, `/ship`, `/secops`, `/build`'s lead | Sonnet / `model` | the plan decided the seams, files and tests; building it is coding, at a fraction of the price |
 | Small jobs you start and can rerun: `/idea`, `/docs`, `/check`, `/find` | Haiku / `cheapModel` | easy to check; a wrong answer costs a rerun |

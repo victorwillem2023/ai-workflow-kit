@@ -25,11 +25,11 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
 | **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned, distroless release image per commit; smoke and accessibility tests and a page-weight budget once there are screens |
 | **Run** | from day one: checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data; `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/IAC.md`); deploys go from GitHub to staging, then production after your approval; `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
-| **Grow** | the loop back: feedback, errors and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, feature flags, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. **Not yet**: `/market` (positioning, a landing page, pricing, a launch checklist): kit 2.6 |
+| **Grow** | the loop back: feedback, errors and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, feature flags, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/MARKET.md` |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Coming: 2.5 `/launch` with network and firewall, OpenTofu, Ansible, the cloud choice and on-prem, and deploying from
-GitHub; 2.6 cluster, serverless, queues, Helm and GitOps, one repo or several, and `/market`.
+recommendation fitted to how big the app is. The full map: `docs/LIFECYCLE.md` in a project. Not yet: ready-made starters for a cluster (a Helm chart, GitOps with
+Argo CD or Flux), serverless and queues; the guides say when and which, and `/launch` writes them for the project today.
 
 ## The idea in ten rules
 1. **Scripts check, the AI reads the result.** `npm run gate` is quiet when it passes: layer rules, file size, stale doc references, typecheck, and only the tests the change can reach.
@@ -53,7 +53,7 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch, and the cheap helpers /next /check /find /docs
+  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market, and the cheap helpers /next /check /find /docs
                           infracheck and infraplan (infrastructure checked, planned, reviewed, applied), drill (the restore drill)
   tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
@@ -112,6 +112,8 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
 | `/launch` | Before the first real deploy: the platform, shape, database, load balancer, sizes and infrastructure tool, one decision at a time with prices that day; writes the record, `infra/`, the environments and the run docs. Never applies. |
 | `/arch <question>` | The architecture board: four AI reviewers (cost, operations, security, product) answer apart; a proposed decision record; you decide. |
 | `npm run infra-plan -- infra/<env>` then `npm run infra-apply -- infra/<env>` | The plan, reviewed against the stack's `plan.expect` (names, labels, nothing holding data destroyed); then you apply exactly that plan, typing a code. |
+| `/market [part]` | Bringing it to market: positioning, pricing, the page, the funnel, ads, the launch, the monthly review; answers in `docs/MARKET.md`, the work as cards. Never spends money or publishes. |
+| `npm run launch-check -- <address>` | Is the landing page ready: title, description, share preview, one heading, image texts, privacy link, trackers without consent, robots.txt, sitemap, weight. |
 | `npm run drill` | The restore drill: the latest backup restored into a new place, the app started on it and asked; the date goes in `docs/RECOVERY.md`. |
 | `npm run setup-check` | Runs `docs/SETUP.md`'s marked steps on a fresh clone: the setup guide is proven, not hoped. |
 | `npm run updates` | What Dependabot found: security alerts first, then each update with a verdict (take it, look first, hold). `/work` starts with its one line. |
@@ -180,6 +182,13 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.6.0**: `/market` and the Grow stage. `docs/GROWTH.md` is the guide (positioning in five answers, pricing models and
+  providers, the landing page, search and Search Console, cookieless analytics on one funnel, a first Google Ads Search
+  campaign step by step with Consent Mode and a stop rule, Performance Max and the rest, AdSense and when it does not fit,
+  the other channels, the launch checklist, and what AI may draft but a person checks); `docs/MARKET.md` holds the project's
+  answers and numbers. `npm run launch-check` checks a landing page by script: title, description, Open Graph, one main
+  heading, image texts, language, viewport, the privacy link, nine kinds of tracker without a consent manager, robots.txt that
+  shuts search engines out, the sitemap, and the page's weight.
 - **2.5.0**: `/launch` and the Run stage, for any platform and tool. `docs/LAUNCH.md` walks the choices (cloud or on-prem;
   one server, a container host, serverless or a cluster; the database; the load balancer; server type and size; OpenTofu,
   Terraform, Pulumi or Ansible; analytics and a warehouse). Infrastructure changes go out in four steps (`docs/IAC.md`):
