@@ -34,7 +34,7 @@ import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
 import { ALL, inList, list, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
 import { runMigrations } from './migrations/index.mjs';
-import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
+import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages, unmarkInstalled } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -316,6 +316,8 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
 // lacks; each module's own settings (install-config.mjs)
 const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: done.added.includes('workflow.config.json'), claudeGrowth });
 migrate('config');
+// a part or module added later: the "(not installed)" marks in the project's own text come out where it is there now
+const unmarked = update ? unmarkInstalled({ target }) : [];
 
 // a first install into a project with its own CLAUDE.md: the kit's parts it lacks go at its end, between their markers
 const kitPartsAdded = !update && done.kept.includes('CLAUDE.md') ? mergeKitBlocks({ target, kit, fill }) : [];
@@ -357,6 +359,7 @@ if (update) {
   if (done.helpers.length) console.log(`  helpers the kit's rules name, added (never replacing one): ${done.helpers.join(', ')}`);
   if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
+  if (unmarked.length) console.log(`  "(not installed)" taken out where it is installed now, in: ${unmarked.join(', ')}`);
   const ran = migrated.flatMap((m) => m.ran);
   if (ran.length) console.log(`  the kit's changes since ${before} (migrations/): ${ran.join('; ')}\n${migrated.flatMap((m) => m.said).map((l) => `  ${l}`).join('\n')}`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);

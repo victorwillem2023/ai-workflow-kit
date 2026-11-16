@@ -268,6 +268,35 @@ export function rewriteChangedRules({ target, kit, fill, rules = true }) {
 }
 
 /** A stage now entered: CLAUDE.md (the project's own, never replaced) gets its "comes with the ... stage" mentions back as links. */
+/**
+ * A part or module added later (--with): the "(not installed)" marks a lean install wrote into the project's own text (CLAUDE.md,
+ * the docs it filled) come out again where what they name is there now: a command whose skill is installed, a guide that exists,
+ * an npm script package.json has. The kit's own files are written unmarked anyway. Returns the files changed.
+ */
+export function unmarkInstalled({ target }) {
+  const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '*.md'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
+  let scripts = {};
+  try { scripts = JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).scripts ?? {}; } catch { /* no package.json */ }
+  const skill = (name) => existsSync(join(target, '.claude', 'skills', name, 'SKILL.md'));
+  const changed = [];
+  for (const f of listed.split('\n').filter(Boolean)) {
+    const p = join(target, f);
+    if (!existsSync(p)) continue;
+    const was = readFileSync(p, 'utf8');
+    if (!was.includes('not installed')) continue;
+    const now = was
+      // `/shape ...` (not installed) and a bare /shape (not installed)
+      .replace(/(`\/([\w-]+)\b[^`\n]*`) \(not installed\)/g, (m, code, name) => (skill(name) ? code : m))
+      .replace(/(^|[\s("'])\/([\w-]+) \(not installed\)/gm, (m, before, name) => (skill(name) ? `${before}/${name}` : m))
+      // a guide: docs/run/LAUNCH.md (with the launch part, not installed), or (with the security module, not installed)
+      .replace(/([\w./-]+\.md) \(with the [\w-]+ (?:part|module), not installed\)/g, (m, doc) => (existsSync(join(target, doc)) ? `\`${doc}\`` : m))
+      // npm run launch-check ... (not installed)
+      .replace(/(npm run ([\w:-]+)\b[^`\n(]*?) \(not installed\)/g, (m, cmd, name) => (name in scripts ? `\`${cmd}\`` : m));
+    if (now !== was) { writeFileSync(p, now); changed.push(f); }
+  }
+  return changed;
+}
+
 export function unmarkEnteredStages({ target, stages }) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(claude)) return;

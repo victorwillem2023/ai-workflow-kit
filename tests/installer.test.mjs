@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { formatJson, rewriteJson } from '../install-config.mjs';
 import { detectLang, detectProject, inList, readChoices, recorded, recordLines, repoFromRemote } from '../install-choices.mjs';
-import { mergeKitBlocks, rewriteChangedRules } from '../install-docs.mjs';
+import { mergeKitBlocks, rewriteChangedRules, unmarkInstalled } from '../install-docs.mjs';
 import { movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
 import { due, older, STEPS } from '../migrations/index.mjs';
 
@@ -106,6 +106,19 @@ describe('the kit\'s parts of CLAUDE.md', () => {
     const text = readFileSync(join(d, 'CLAUDE.md'), 'utf8');
     assert.ok(text.includes('<!-- kit:how-we-work -->'), 'an untouched part is the kit\'s now');
     assert.ok(text.includes('- Our own line.') && !text.includes('<!-- kit:writing-style -->'), 'a changed part stays the project\'s');
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('"(not installed)" marks', () => {
+  it('come out where what they name is there now, and stay where it is not', () => {
+    const d = folder({
+      'docs/PRODUCT.md': 'Run `/shape 3` (not installed) or /market (not installed); see docs/run/LAUNCH.md (with the launch part, not installed) and npm run launch-check (not installed).\n',
+      '.claude/skills/shape/SKILL.md': 'x', 'docs/run/LAUNCH.md': 'x', 'package.json': '{ "scripts": {} }',
+    });
+    spawnSync('git', ['init', '-q'], { cwd: d });
+    assert.deepEqual(unmarkInstalled({ target: d }), ['docs/PRODUCT.md']);
+    assert.equal(readFileSync(join(d, 'docs/PRODUCT.md'), 'utf8'), 'Run `/shape 3` or /market (not installed); see `docs/run/LAUNCH.md` and npm run launch-check (not installed).\n');
     rmSync(d, { recursive: true, force: true });
   });
 });
