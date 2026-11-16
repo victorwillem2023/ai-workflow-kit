@@ -5,7 +5,7 @@
 // lib/stage.mjs. A board that cannot be reached leaves its rules out. Prints nothing when there is nothing to say.
 //   node tools/workflow/stage.mjs
 //   node tools/workflow/stage.mjs --enter run|market   start a stage: the kit's update brings that stage's folder (docs/run/ with
-//                                                      its guides, docs/market/), from the kit on this computer (.workflow-kit, kit=)
+//                                                      its guides, docs/market/), from the kit on this computer (git config workflow.kit)
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,7 +23,8 @@ if (enterAt >= 0) {
   const stage = process.argv[enterAt + 1];
   if (!['run', 'market'].includes(stage)) { console.error('Say which stage: --enter run (where it runs, /launch) or --enter market (/market).'); process.exit(1); }
   const mark = existsSync('.workflow-kit') ? readFileSync('.workflow-kit', 'utf8') : '';
-  const kit = /^kit=(.+)$/m.exec(mark)?.[1]?.trim();
+  // where the kit is on this computer: this clone's git config (workflow.kit, set by the installer); a record from before 2.10 says kit=
+  const kit = git('config', 'workflow.kit') || /^kit=(.+)$/m.exec(mark)?.[1]?.trim();
   const args = ['--project', config.name, '--repo', board?.repo, '--prefix', config.session?.prefix].flatMap((a, i, all) => (i % 2 === 0 && all[i + 1] ? [a, all[i + 1]] : []));
   const cmd = (k) => `node ${k}/install.mjs . ${args.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(' ')} --update --stage ${stage}`;
   if (/^stages=.*\b/m.test(mark) && new RegExp(`^stages=.*\\b${stage}\\b`, 'm').test(mark)) { console.log(`stage: ${stage} is entered already.`); process.exit(0); }

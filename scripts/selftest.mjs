@@ -140,6 +140,17 @@ const verdict = (name, what, found) => {
   console.log(`${found.length ? 'FAIL' : 'ok  '} ${name}: ${what}${found.length ? `:\n${found.slice(0, 20).join('\n')}` : ''}`);
   if (found.length) throw new Error(what);
 };
+/**
+ * The installer converges: on a project that has the kit, run again with no flags at all (it finds the rest in the record), it
+ * changes no file. Everything is committed first, so any change it makes is in `git status`.
+ */
+async function converges({ name, dir, git, step }) {
+  git('add', '-A');
+  git('commit', '-q', '--allow-empty', '-m', 'After the update');
+  await step('run again, no flags', process.execPath, [join(kit, 'install.mjs'), dir]);
+  const changed = execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }).split('\n').filter(Boolean);
+  verdict(name, 'run again with no flags, the installer changes nothing', changed);
+}
 /** The kit's files the update took for the project's own work ("kept, because the project changed them (n); the kit's version differs"). */
 const claimedKitFiles = (said) => /kept, because the project changed them \(\d+\); the kit's version differs[\s\S]*?(?=\n {2}\S|\n\S|$)/.exec(said)?.[0];
 
@@ -167,6 +178,7 @@ async function runMessy({ name, dir, step, git, install }) {
   await step('file map', process.execPath, ['tools/workflow/map.mjs']);
   await step('baseline, as the update says', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
   await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+  await converges({ name, dir, git, step });
   return 'passed';
 }
 
@@ -271,6 +283,7 @@ async function runVariant(name) {
     // what the update's own last lines ask for: the map (the docs index changed with the docs)
     await step('file map after the update', process.execPath, ['tools/workflow/map.mjs']);
     await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+    await converges({ name, dir, git, step });
     return 'passed';
   } catch {
     return 'failed';

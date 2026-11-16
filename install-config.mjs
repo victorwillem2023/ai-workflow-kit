@@ -267,8 +267,7 @@ export function machineryDiffs({ kit, target, modules, fill, text, walk, chosenO
   for (const from of roots) for (const src of walk(from)) {
     const rel = relative(from, src).replace(/\\/g, '/');
     // what the project chose not to have (a part left out, a stage not reached, a file it skips) is not missing
-    // (gate.yml gets the language's own setup steps after it is copied, so it never equals the kit's file: the update treats it so too)
-    if (chosenOut(rel) || rel === '.github/workflows/gate.yml') continue;
+    if (chosenOut(rel)) continue;
     const dest = join(target, rel);
     if (!existsSync(dest)) lines.push(`missing  ${rel}`);
     else if (text.test(src) && !same(fill(readFileSync(src, 'utf8'), src), readFileSync(dest, 'utf8'))) lines.push(`differs  ${rel}`);

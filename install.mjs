@@ -31,52 +31,18 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { movePathsBack, undoCorrections } from './doc-layout.mjs';
 import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
-import { addClaudeRules, machineryDiffs, settleConfig, writeProjectFiles } from './install-config.mjs';
-import { STAGE_FOLDERS, rewriteChangedRules, keepNamedStageDocs, moveOldDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
+import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
+import { ALL, inList, list, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
+import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, moveOldDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
-const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
-const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefined;
-const force = args.includes('--force');
-const update = args.includes('--update');
-// --take and --skip name files, folders (tools/workflow/** or tools/workflow/) or, for --take, all
-const pathList = (s) => String(s ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
-const inList = (paths, key) => paths.includes('all') || paths.some((p) => p === key || (/(\/\*\*|\/)$/.test(p) && key.startsWith(p.replace(/\*\*$/, ''))));
-const take = pathList(opt('--take'));
-const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy', 'production'];
-const lang = opt('--lang') ?? 'ts';
-const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
-if (!LANGS[lang]) { console.error(`Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)`); process.exit(1); }
-// modules only some apps need: added with --with <name> (an app that calls a language model: --with ai)
-const OPTIONAL = ['ai', 'cluster'];
-// the parts of the core past the build loop (skills an agent sees in every chat, and workflows that run by themselves): all in a
-// full install; with --lean none, unless named with --with (--lean --with shape,tidy). The build loop itself (setup, next, idea,
-// work, spec, build, ship, review, check, find, docs, lesson, the gate, the board, the map, sessions) is always there.
-// A part's guides and tools travel with it (a lean project without /market has no GROWTH.md either).
-const PARTS = {
-  shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/'],
-  estimate: ['.claude/skills/estimate/'],
-  advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/run/BUY-OR-HOST.md', 'docs/run/SCALING.md', 'docs/company/STAGES.md', 'docs/company/ROADMAP.md'],
-  launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MESH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],
-  market: ['.claude/skills/market/', 'docs/market/GROWTH.md', 'docs/market/MARKET.md', 'tools/workflow/launchcheck.mjs', 'tools/workflow/lib/launchcheck.mjs', 'tools/workflow/lib/launchcheck.d.mts', 'tests/workflow/launchcheck.test.ts'],
-  retro: ['.claude/skills/retro/'],
-  secops: ['.claude/skills/secops/', '.github/workflows/secops.yml'], 'setup-check': ['.github/workflows/setup.yml'],
-};
-const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
-// an update keeps the modules and the lean choice the project was installed with (.workflow-kit remembers them), plus any --with
-const mark = target && existsSync(join(target, '.workflow-kit')) ? readFileSync(join(target, '.workflow-kit'), 'utf8') : '';
-// files the project does not want from the kit (--skip; .workflow-kit remembers them as skip=): never written, never taken away
-const skip = [...new Set([...pathList(/^skip=(.*)$/m.exec(mark)?.[1]), ...pathList(opt('--skip'))])];
-const remembered = list(/^modules=(.*)$/m.exec(mark)?.[1]);
-// an update and --check both go by what the project chose before (.workflow-kit): lean, its parts, its modules
-const remembers = update || args.includes('--check');
-const lean = args.includes('--lean') || (remembers && !args.includes('--full') && /^lean=1$/m.test(mark));
-const withs = [...new Set([...list(opt('--with')), ...(remembers && !args.includes('--lean') ? list(/^parts=(.*)$/m.exec(mark)?.[1]) : [])])];
-const pickedModules = opt('--modules') === 'none' ? [] : opt('--modules') ? list(opt('--modules')) : remembers && /^modules=/m.test(mark) ? remembered : lean ? [] : ALL;
-const modules = [...new Set([...pickedModules, ...withs.filter((w) => !(w in PARTS))])];
-const parts = lean ? withs.filter((w) => w in PARTS) : Object.keys(PARTS);
-for (const m of modules) if (![...ALL, ...OPTIONAL].includes(m)) { console.error(`Unknown module or part "${m}". Modules: ${ALL.join(', ')}; with --with: ${OPTIONAL.join(', ')}; parts (with --lean): ${Object.keys(PARTS).join(', ')}`); process.exit(1); }
+const opt =(name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+// every choice, from the flags, then the project's record, then what the project says (install-choices.mjs): run again, the same
+// command converges on the same result (a project with the record is updated; a flag changes the record, never resets the rest)
+const choices = readChoices(args, kit);
+if (choices.error && !['usage', 'repo'].includes(choices.error)) { console.error(choices.error); process.exit(1); }
+const { target, mark, force, update, take, skip, lang, LANGS, lean, withs, modules, parts } = choices;
 const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.includes(p) && paths.some((x) => key === x || key.startsWith(x)));
 // In a lean project the installed text never points at what is not there: a command of a part left out gets "(not installed)"
 // after it, and a guide left out loses its backticks (so the docs check does not take it for a file that should exist) and says
@@ -104,20 +70,25 @@ function markAbsent(text) {
   if (absentScripts.length) t = t.replace(new RegExp(`\`(npm run (?:${absentScripts.join('|')})\\b[^\`\\n]*)\``, 'g'), '$1 (not installed)');
   return t;
 }
-const repo = opt('--repo');
-const project = opt('--project');
-if (!target || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || !project) {
-  console.error('Usage: node install.mjs <target-folder> --project "My App" --repo owner/name [--prefix myapp] [--modules ui,security,testing,dev,map,deploy] [--lang ts|rust|python|go] [--force]');
+const { repo, project, prefix } = choices;
+if (choices.error) {
+  console.error('Usage: node install.mjs <target-folder> [--project "My App"] [--repo owner/name] [--prefix myapp] [--modules ui,security,testing,dev,map,deploy] [--lang ts|rust|python|go] [--force]\n'
+    + 'The name, the repo, the prefix and the language are found when not given (package.json or the manifest, the git remote, the folder); without a GitHub remote, give --repo.');
   process.exit(1);
 }
 if (!existsSync(target)) { console.error(`${target} does not exist. Make the project folder (and git init) first.`); process.exit(1); }
-const prefix = opt('--prefix') ?? repo.split('/')[1].toLowerCase().replace(/[^a-z0-9-]/g, '-');
+// --dry-run: the same run on a copy of the project, and what it changed there (install-plan.mjs); nothing here is written
+if (args.includes('--dry-run')) process.exit((await import('./install-plan.mjs')).dryRun({ kit, target, args: args.filter((a) => a !== '--dry-run') }));
 const vars = {
   PROJECT: project, REPO: repo, OWNER: repo.split('/')[0], PREFIX: prefix,
   TESTS: LANGS[lang].config?.tests ?? LANGS[lang].tests ?? 'tests/*.test.ts',
   TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
 };
-const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
+// gate.yml's "another language" line is where the language's own CI steps go (starter/lang.json, ci): filled in the same pass as
+// the rest, so the file the project has is exactly the one the kit wrote, and an update and --check compare it like any other
+const ciSteps = (LANGS[lang].ci ?? []).map((l) => `      ${l}\n`).join('');
+const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k])
+  .replace(/^[ \t]*# another language: add its toolchain here.*\r?\n/m, ciSteps);
 
 // Stage folders (kit 2.9.1): a stage's docs are not written until the project reaches it (docs/run/ with /launch, docs/market/
 // with /market); what a stage or a module left out would bring is marked where it is named (install-docs.mjs)
@@ -143,8 +114,8 @@ if (args.includes('--check')) {
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 // where the kit is for later (stage.mjs --enter runs it again): --kit-path when this run is from a temporary copy; and the tag and
 // the repository, so the right version can be fetched where the path does not exist
+// where the kit is on this computer, for stage.mjs --enter: this clone's git config (workflow.kit), never the committed record
 const kitPath = resolve(opt('--kit-path') ?? kit).replace(/\\/g, '/');
-const kitRef = spawnSync('git', ['-C', kit, 'describe', '--tags', '--always'], { encoding: 'utf8' }).stdout?.trim() || `v${kitVersion}`;
 const kitRepo = spawnSync('git', ['-C', kit, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout?.trim() || '';
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
@@ -243,7 +214,7 @@ for (const m of modules) {
 if (update) {
   for (const [key, was] of written) {
     const path = join(target, key);
-    if (shipped.has(key) || key === '.github/workflows/gate.yml' || !existsSync(path)) continue;
+    if (shipped.has(key) || !existsSync(path)) continue;
     if (!untouched(key, readFileSync(path, TEXT.test(key) ? 'utf8' : 'latin1'))) { done.orphans.push(key); continue; }
     rmSync(path);
     stamp.delete(key);
@@ -315,8 +286,14 @@ for (const m of modules) if (existsSync(join(kit, 'modules', m, 'package-scripts
 for (const name of absentScripts) delete scripts[name];
 const own = { ...(pkg.scripts ?? {}) };
 if (/no test specified/.test(own.test ?? '')) delete own.test;
-pkg.scripts = { ...scripts, ...own };
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+// the project's scripts first and in their order, the kit's it lacks after them; written back in its own layout, and only when changed
+pkg.scripts = { ...own, ...Object.fromEntries(Object.entries(scripts).filter(([k]) => !(k in own))) };
+const writePkg = () => {
+  const was = existsSync(pkgPath) ? readFileSync(pkgPath, 'utf8') : null;
+  const now = was ? rewriteJson(was.replace(/\r\n/g, '\n'), pkg) : `${JSON.stringify(pkg, null, 2)}\n`;
+  if (now !== was?.replace(/\r\n/g, '\n')) writeFileSync(pkgPath, now);
+};
+writePkg();
 
 // a tsconfig.json that was there before and checks nothing by itself (a framework starter's: "files": [] and references): the gate
 // gets its own, tsconfig.gate.json, over src, tests and scripts, so `npm run typecheck` really checks them
@@ -329,7 +306,7 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
     if (deps.react) gateCfg.compilerOptions.jsx = 'react-jsx';
     if (deps.vite) gateCfg.compilerOptions.types.push('vite/client');
     writeFileSync(join(target, 'tsconfig.gate.json'), JSON.stringify(gateCfg, null, 2) + '\n');
-    if (!own.typecheck) { pkg.scripts.typecheck = 'tsc --noEmit -p tsconfig.gate.json'; writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
+    if (!own.typecheck) { pkg.scripts.typecheck = 'tsc --noEmit -p tsconfig.gate.json'; writePkg(); }
     done.added.push('tsconfig.gate.json');
   }
 }
@@ -338,14 +315,8 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
 // lacks; each module's own settings (install-config.mjs)
 const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: done.added.includes('workflow.config.json'), claudeGrowth });
 
-// the GitHub workflow, when this run wrote it (new, or replaced by --force): the language's own setup steps (`ci` in starter/lang.json) go where the
-// file says "another language: add its toolchain here"
-const ciPath = join(target, '.github', 'workflows', 'gate.yml');
-if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replace(/\\/g, '/') === '.github/workflows/gate.yml')) {
-  const steps = (LANGS[lang].ci ?? []).map((l) => `      ${l}\n`).join('');
-  writeFileSync(ciPath, readFileSync(ciPath, 'utf8').replace(/^[ \t]*# another language: add its toolchain here.*\r?\n/m, steps));
-  stamp.set('.github/workflows/gate.yml', hash(readFileSync(ciPath, 'latin1')));
-}
+// a first install into a project with its own CLAUDE.md: the kit's parts it lacks go at its end, between their markers
+const kitPartsAdded = !update && done.kept.includes('CLAUDE.md') ? mergeKitBlocks({ target, kit, fill }) : [];
 
 // the project files written once, then the project's: Dependabot (without Renovate), .gitignore lines, .gitattributes
 // (install-config.mjs)
@@ -358,11 +329,16 @@ if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(pr
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
-writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nkit=${kitPath}\nref=${kitRef}\n${kitRepo ? `kitRepo=${kitRepo}\n` : ''}modules=${modules.join(',')}\nstages=${stages.join(',')}\n${skip.length ? `skip=${skip.join(',')}\n` : ''}${lean ? `lean=1\nparts=${parts.join(',')}\n` : ''}sections=${[...sectionsDone].join(',')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+spawnSync('git', ['-C', target, 'config', 'workflow.kit', kitPath], { stdio: 'ignore' });
+writeFileSync(markFile, `# which ai-workflow-kit this project came from and what it chose (install.mjs writes it; running it again goes by it). The sha lines: each machinery file as the kit wrote it.\n${recordLines({ version: kitVersion, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections: [...sectionsDone] }).join('\n')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 const shape = `modules: ${modules.join(', ') || 'none'}${lean ? `; lean, parts: ${parts.join(', ') || 'none'} (add one later: --update --with <part>; every part: --update --full)` : ''}`;
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (${shape})` : `Installed kit ${kitVersion} into ${target} (${shape})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
+// a first install into a project that has files at the kit's places: each is named, since the kit's rules may assume its own there
+const collided = update ? [] : done.kept.filter((f) => !['package.json', 'CLAUDE.md', 'README.md', '.gitignore'].includes(f.replace(/\\/g, '/')));
+if (kitPartsAdded.length) console.log(`  CLAUDE.md is yours and stays so; the kit's rules its commands rely on were added at its end, between <!-- kit: --> markers (an update keeps those current): ${kitPartsAdded.join('; ')}`);
+if (collided.length) console.log(`  yours, at a place the kit also writes (kept as they are; where the kit's rules name one, compare it with the kit's in ${kit}):\n${collided.map((f) => `    ${f.replace(/\\/g, '/')}`).join('\n')}`);
 if (done.skipped.length) console.log(`  skipped, as the project asked (skip= in .workflow-kit, --skip adds more): ${done.skipped.length} file${done.skipped.length === 1 ? '' : 's'}`);
 // a kit file the project's ignore rules hide is never committed (a rule like *UCT.md hid docs/PRODUCT.md): written now or there before
 const hidden = (spawnSync('git', ['check-ignore', '--stdin'], { cwd: target, input: [...done.added, ...done.replaced, ...done.kept].map((f) => f.replace(/\\/g, '/')).join('\n'), encoding: 'utf8' }).stdout ?? '').split('\n').filter(Boolean);

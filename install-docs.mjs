@@ -209,6 +209,34 @@ function updateKitBlocks({ target, kit, fill, text }) {
   return { text: crlf ? now.replace(/\n/g, '\r\n') : now, said };
 }
 
+/**
+ * A first install into a project that has its own CLAUDE.md (kept whole): the kit's parts it lacks are added at its end, between
+ * their markers, so the rules the commands rely on reach it and later updates keep them current. Its size budget grows to fit
+ * (the kit's text must not fail the gate). Returns the parts added.
+ */
+export function mergeKitBlocks({ target, kit, fill }) {
+  const claude = join(target, 'CLAUDE.md');
+  if (!existsSync(claude)) return [];
+  const text = readFileSync(claude, 'utf8');
+  const have = kitBlocks(text.replace(/\r\n/g, '\n'));
+  const missing = [...kitBlocks(fill(readFileSync(join(kit, 'starter', 'CLAUDE.md'), 'utf8')))]
+    .filter(([name, block]) => !have.has(name) && !text.includes(block.split('\n')[1]));
+  if (!missing.length) return [];
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const now = `${text.replace(/\s*$/, '')}${eol}${eol}${missing.map(([, b]) => b).join('\n\n').replace(/\n/g, eol)}${eol}`;
+  writeFileSync(claude, now);
+  const cfgAt = join(target, 'workflow.config.json');
+  try {
+    const cfg = JSON.parse(readFileSync(cfgAt, 'utf8'));
+    const size = Buffer.byteLength(now);
+    if (typeof cfg.budget?.['CLAUDE.md'] === 'number' && cfg.budget['CLAUDE.md'] < size) {
+      cfg.budget['CLAUDE.md'] = Math.ceil(size / 500) * 500;
+      writeFileSync(cfgAt, `${JSON.stringify(cfg, null, 2)}\n`);
+    }
+  } catch { /* no config: nothing to fit */ }
+  return missing.map(([, b]) => b.split('\n')[1].replace(/^## /, ''));
+}
+
 export function rewriteChangedRules({ target, kit, fill }) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(claude)) return [];
