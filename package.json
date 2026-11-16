@@ -2,9 +2,10 @@
   "name": "ai-workflow-kit",
   "private": true,
   "type": "module",
-  "description": "The kit itself: npm test installs it into a fresh project and runs everything there.",
+  "description": "The kit itself: npm run test:quick checks the installer's helpers in seconds; npm test installs it into fresh projects and runs everything there.",
   "scripts": {
-    "test": "node scripts/selftest.mjs"
+    "test": "node scripts/selftest.mjs",
+    "test:quick": "node --test tests/"
   },
   "engines": { "node": ">=26" }
 }

@@ -53,9 +53,11 @@ function topLevelTexts(text) {
 export function rewriteJson(before, value) {
   let old;
   try { old = JSON.parse(before); } catch { return `${formatJson(value)}\n`; }
-  const texts = topLevelTexts(before);
-  return `{\n${Object.entries(value).map(([k, v]) => `  ${JSON.stringify(k)}: ${texts.has(k) ? keepText(valueText(texts.get(k), k), old[k], v, '  ') : formatJson(v, '  ')}`).join(',\n')}\n}\n`;
+  return `{\n${entriesText(topLevelTexts(before), old, value, '  ').join(',\n')}\n}\n`;
 }
+/** Each key of `now` as text: unchanged, exactly as it was written (its own spacing too); changed, its value kept where it can be. */
+const entriesText = (texts, was, now, inner) => Object.entries(now).map(([k, v]) => (!texts.has(k) ? `${inner}${JSON.stringify(k)}: ${formatJson(v, inner)}`
+  : same(was[k], v) ? `${inner}${texts.get(k)}` : `${inner}${JSON.stringify(k)}: ${keepText(valueText(texts.get(k), k), was[k], v, inner)}`));
 /** The value's text in a `"key": value` piece. */
 const valueText = (piece, key) => piece.slice(piece.indexOf(':', JSON.stringify(key).length) + 1).trim();
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -74,9 +76,7 @@ function keepText(text, was, now, indent) {
     return `${text.slice(0, end).trimEnd()},\n${extra.map((x) => `${pad}${formatJson(x, pad)}`).join(',\n')}${text.slice(text.slice(0, end).trimEnd().length)}`;
   }
   if (was && now && typeof was === 'object' && typeof now === 'object' && !Array.isArray(was) && !Array.isArray(now) && text.includes('\n')) {
-    const texts = topLevelTexts(text);
-    const inner = `${indent}  `;
-    return `{\n${Object.entries(now).map(([k, v]) => `${inner}${JSON.stringify(k)}: ${texts.has(k) ? keepText(valueText(texts.get(k), k), was[k], v, inner) : formatJson(v, inner)}`).join(',\n')}\n${indent}}`;
+    return `{\n${entriesText(topLevelTexts(text), was, now, `${indent}  `).join(',\n')}\n${indent}}`;
   }
   return formatJson(now, indent);
 }
