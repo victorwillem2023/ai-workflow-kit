@@ -25,6 +25,8 @@ describe('the skill scenarios', () => {
   });
   it('lesson-outside-kit-parts fails when a kit part of CLAUDE.md changed', () => {
     assert.equal(run('lesson-outside-kit-parts', 'own-rule').ok, true);
+    assert.equal(run('lesson-outside-kit-parts', 'board').ok, true, 'a card for a check is a place too');
     assert.match(run('lesson-outside-kit-parts', 'kit-part').problems.join(), /changed a kit part of CLAUDE\.md/);
+    assert.match(run('lesson-outside-kit-parts', '').problems.join(), /the rule was written nowhere/, 'doing nothing is not keeping the lesson');
   });
 });

@@ -29,8 +29,8 @@ function fakeGh(bin, log) {
   writeFileSync(join(bin, 'gh'), `#!/bin/sh\nexec node "${js}" "$@"\n`, { mode: 0o755 });
   writeFileSync(join(bin, 'gh.cmd'), `@node "${js}" %*\r\n`);
 }
-const writes = (log) => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [])
-  .filter((a) => /^(issue (create|edit|comment|close)|project (item-edit|item-add|item-archive|field-create)|label create|api)/.test(a.slice(0, 2).join(' ')));
+const calls = (log) => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+const writes = (log) => calls(log).filter((a) => /^(issue (create|edit|comment|close)|project (item-edit|item-add|item-archive|field-create)|label create|api)/.test(a.slice(0, 2).join(' ')));
 
 /** The scenarios: the owner's message, what is set up first, and what must be true after. `check` returns the problems found. */
 export const SCENARIOS = {
@@ -67,9 +67,11 @@ export const SCENARIOS = {
   'lesson-outside-kit-parts': {
     what: '/lesson writes a rule where the project keeps its own (never inside the kit\'s marked parts) and commits nothing',
     prompt: '/lesson never rename an exported function without listing its users first. Write it down without asking me again.',
-    check: ({ before, after }) => [
+    check: ({ before, after, ghCalls }) => [
       ...(after.commits > before.commits ? ['it committed'] : []),
       ...(after.kitParts !== before.kitParts ? ['it changed a kit part of CLAUDE.md (an update would overwrite the rule)'] : []),
+      // and it did write it somewhere: a CLAUDE.md, the project's own command file, or a card for a check
+      ...(!/CLAUDE\.md|\.claude\/project\//.test(after.status) && !ghCalls.some((a) => a[0] === 'issue' && a[1] === 'create') ? ['the rule was written nowhere (no CLAUDE.md, no .claude/project file, no card)'] : []),
     ],
   },
 };
@@ -114,10 +116,13 @@ export function runScenario(name, { agent = 'claude', deps = true, keep = false 
     // a shell only on Windows, where the CLI is a .cmd file; the arguments are fixed here, never outside input
     // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
     const [cmd, ...pre] = Array.isArray(agent) ? agent : [agent];
-    const r = spawnSync(cmd, [...pre, '-p', s.prompt, '--output-format', 'json', '--max-turns', '25', '--permission-mode', 'acceptEdits'], { cwd: dir, env, encoding: 'utf8', shell: win && cmd !== process.execPath, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
+    // through a shell (Windows, where the CLI is a .cmd file) every argument is quoted, or the prompt arrives cut at its first space
+    const shell = win && cmd !== process.execPath;
+    const quote = (a) => (shell && /[\s"&|<>^()]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
+    const r = spawnSync(cmd, [...pre, '-p', s.prompt, '--output-format', 'json', '--max-turns', '25', '--permission-mode', 'acceptEdits'].map(quote), { cwd: dir, env, encoding: 'utf8', shell, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
     let out = {};
     try { out = JSON.parse(r.stdout); } catch { out = { result: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().slice(-2000) }; }
-    const problems = s.check({ before, after: state(dir), ghWrites: writes(log) });
+    const problems = s.check({ before, after: state(dir), ghWrites: writes(log), ghCalls: calls(log) });
     return { name, ok: problems.length === 0, problems, cost: out.total_cost_usd ?? null, said: String(out.result ?? '').slice(0, 600), dir: keep ? dir : null };
   } finally {
     if (!keep) rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
