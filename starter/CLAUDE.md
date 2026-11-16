@@ -107,6 +107,8 @@ style rules, the feedback rounds and the done checklist.
 
 ## Writing style
 - Text the user sees (UI, warnings, names) is short, plain English, and built from measured facts; no jargon.
+- **To the owner**, a suggestion or a question says in plain words what will happen, what they get and how long; a skill or
+  command name comes after it in brackets at most ("Look back on the week, 10 minutes (/retro)"), never as the message.
 - Commit messages: a subject that says what changed for the user ("Area: what changed, and what else"), then the why.
 - **One feature, one session, one commit; the owner says when it is done.** Commit and `--finish` only on "finish it" /
   "commit and push"; push only when the owner says. No tests-only or "fix after a check" commits (docs and settings left in the main folder go in first, on their own: `/ship` step 0); tests and

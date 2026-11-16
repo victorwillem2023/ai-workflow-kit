@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.9.x` tag** (now `v2.9.4`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
+> **Build on the latest `v2.9.x` tag** (now `v2.9.5`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
 > what that project taught (the docs in folders, and in 2.9.1 a folder only once its stage is reached). The same rule holds: a new
 > part, guide or skill comes from a real project running into its lack, never ahead of one.
 
@@ -206,6 +206,12 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
 - **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
+- **2.9.5**: **`/next` offers instead of naming.** It ends with one question whose choices are the next steps it found (a
+  security alert, the stage nudges such as `/retro` and `/advise roadmap`, `/tidy` when the board needs decisions or the map has
+  ends nobody plans, and the top card), the recommended one marked with why, and runs the one picked at once, so the owner never
+  has to type a command the kit already knew was next. Each choice says in plain words what you will do, what you get and how long ("Look back on
+  the week, about 10 minutes: what shipped, what got in the way; each lesson becomes a check or a rule"), the command after it. CLAUDE.md makes it the rule everywhere: a suggestion or a question to the
+  owner says in plain words what will happen; a skill name comes after it in brackets at most.
 - **2.9.4**, from updating Training Coach: a stage not reached yet keeps the kit docs the project's own pages still point at
   (its filled-in deploy page at the infra guide), a few references deep, so nothing it keeps leads nowhere; and an update rewrites
   old doc paths in the project's text every time, not only when it moved a file (one an earlier update left is fixed too). The
