@@ -262,8 +262,17 @@ if (tooBig.length) process.exit(1);
   const cfg = readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8').replace(/\r\n/g, '\n');
   const sameLayout = rewriteJson(cfg, JSON.parse(cfg)) === cfg;
   const tmpRules = mkdtempSync(join(tmpdir(), 'kit-rules-'));
-  writeFileSync(join(tmpRules, 'CLAUDE.md'), 'No docs-only,\n  tests-only or "fix after a check" commits.\n');
-  const ruled = rewriteChangedRules({ target: tmpRules }).length === 1 && !readFileSync(join(tmpRules, 'CLAUDE.md'), 'utf8').includes('docs-only');
+  // chosen "own": the new sentence; never chosen: the old rule stays and the config says so (notes go in with the feature)
+  const oldRule = 'No docs-only,\n  tests-only or "fix after a check" commits.\n';
+  writeFileSync(join(tmpRules, 'CLAUDE.md'), oldRule);
+  writeFileSync(join(tmpRules, 'workflow.config.json'), '{ "commits": { "notes": "own" } }\n');
+  const rewritten = rewriteChangedRules({ target: tmpRules }).length === 1 && !readFileSync(join(tmpRules, 'CLAUDE.md'), 'utf8').includes('docs-only');
+  writeFileSync(join(tmpRules, 'CLAUDE.md'), oldRule);
+  writeFileSync(join(tmpRules, 'workflow.config.json'), '{\n  "name": "x"\n}\n');
+  rewriteChangedRules({ target: tmpRules });
+  const kept = readFileSync(join(tmpRules, 'CLAUDE.md'), 'utf8') === oldRule
+    && JSON.parse(readFileSync(join(tmpRules, 'workflow.config.json'), 'utf8')).commits?.notes === 'with-feature';
+  const ruled = rewritten && kept;
   rmSync(tmpRules, { recursive: true, force: true });
   console.log(`${sameLayout && ruled ? 'ok  ' : 'FAIL'} the installer keeps a config's layout and updates the kit's old wording${sameLayout ? '' : ' (the config is reflowed)'}${ruled ? '' : ' (the old rule stays)'}`);
   if (!sameLayout || !ruled) process.exit(1);

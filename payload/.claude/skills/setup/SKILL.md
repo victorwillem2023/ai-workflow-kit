@@ -77,7 +77,7 @@ Only real decisions; never ask what the code already says.
   **`docs/ARCHITECTURE.md`** (the layers, the flow of a request, where state lives, and *Rules and where each lives*: the kinds of case this app has and
   the three to six rules every feature must keep, each with its home file; an empty table on a new project). Both short; they grow with each feature.
 - When the ui module is installed: in `src/web/CLAUDE.md` fill *New feature here* and *Rules here*, and `docs/code/web.md`; leave `docs/STYLE.md` for the first `/ui` board
-  (its tokens come from there), unless the owner already has a brand: then put its colours in `src/web/styles.css` and `docs/STYLE.md`.
+  (its tokens come from there), unless the owner already has a brand: then put its colours in the tokens file (`ui.tokens`, `src/web/styles.css` by default; set it where the project keeps them) and `docs/STYLE.md`.
 - When the ui module is **not** installed (no `src/web/CLAUDE.md`): take the *UI style* section, the board and picture lines and
   the `docs/design` paths out of `CLAUDE.md`, and the `ui` type out of `workflow.config.json`.
 - When the map module is installed (`docs/flow/`): the questions and the kinds in `docs/REQUESTS.md` from answer 1, the first

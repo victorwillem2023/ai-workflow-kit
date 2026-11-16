@@ -54,8 +54,31 @@ export function rewriteJson(before, value) {
   let old;
   try { old = JSON.parse(before); } catch { return `${formatJson(value)}\n`; }
   const texts = topLevelTexts(before);
-  const same = (k) => texts.has(k) && JSON.stringify(old[k]) === JSON.stringify(value[k]);
-  return `{\n${Object.entries(value).map(([k, v]) => (same(k) ? `  ${texts.get(k)}` : `  ${JSON.stringify(k)}: ${formatJson(v, '  ')}`)).join(',\n')}\n}\n`;
+  return `{\n${Object.entries(value).map(([k, v]) => `  ${JSON.stringify(k)}: ${texts.has(k) ? keepText(valueText(texts.get(k), k), old[k], v, '  ') : formatJson(v, '  ')}`).join(',\n')}\n}\n`;
+}
+/** The value's text in a `"key": value` piece. */
+const valueText = (piece, key) => piece.slice(piece.indexOf(':', JSON.stringify(key).length) + 1).trim();
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+/**
+ * A value written back from its old text: unchanged, the old text; a list that only grew at its end, the old text with the new
+ * entries added in its own layout (one line stays one line); an object, each key the same way; anything else laid out anew.
+ */
+function keepText(text, was, now, indent) {
+  if (same(was, now)) return text;
+  if (Array.isArray(was) && Array.isArray(now) && was.length && now.length > was.length && was.every((x, i) => same(x, now[i]))) {
+    const end = text.lastIndexOf(']');
+    const extra = now.slice(was.length);
+    if (!text.includes('\n')) return `${text.slice(0, end).trimEnd()}, ${extra.map((x) => formatJson(x, `${indent}  `)).join(', ')}]`;
+    const lastLine = text.slice(0, end).trimEnd().split('\n').at(-1);
+    const pad = /^\s*/.exec(lastLine)[0] || `${indent}  `;
+    return `${text.slice(0, end).trimEnd()},\n${extra.map((x) => `${pad}${formatJson(x, pad)}`).join(',\n')}${text.slice(text.slice(0, end).trimEnd().length)}`;
+  }
+  if (was && now && typeof was === 'object' && typeof now === 'object' && !Array.isArray(was) && !Array.isArray(now) && text.includes('\n')) {
+    const texts = topLevelTexts(text);
+    const inner = `${indent}  `;
+    return `{\n${Object.entries(now).map(([k, v]) => `${inner}${JSON.stringify(k)}: ${texts.has(k) ? keepText(valueText(texts.get(k), k), was[k], v, inner) : formatJson(v, inner)}`).join(',\n')}\n${indent}}`;
+  }
+  return formatJson(now, indent);
 }
 const writeJson = (p, v) => writeFileSync(p, existsSync(p) ? rewriteJson(readFileSync(p, 'utf8'), v) : `${formatJson(v)}\n`);
 
@@ -121,7 +144,7 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
       }
       // a card type the skills offer (spike, say) that the project's board does not know yet: added, never one taken away
       if (k === 'board' && Array.isArray(v.types) && Array.isArray(mine.board?.types)) for (const t of v.types) {
-        if (!mine.board.types.includes(t)) { mine.board.types.push(t); added.push(`board.types: ${t}`); }
+        if (!mine.board.types.includes(t)) { mine.board.types.push(t); added.push(`board.types: ${t} (its label goes on GitHub with npm run board -- --init)`); }
       }
       // kit 2.9: the docs' subject folders are checked like the top of docs/ (the doc-layout folders the kit's include names)
       if (k === 'docs' && Array.isArray(mine.docs?.include)) for (const g of v.include.filter((x) => /^docs\/[a-z]+\/\*\.md$/.test(x))) {
@@ -159,7 +182,46 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
  * the kit's .gitignore lines it lacks, and .gitattributes (LF everywhere, Windows scripts CRLF). Returns a hint when an existing
  * .gitattributes lacks LF, else ''.
  */
-export function writeProjectFiles({ target, kit, lang, langs, modules, update, done }) {
+const KNIP_CONFIGS = ['knip.json', 'knip.jsonc', '.knip.json', '.knip.jsonc', 'knip.ts', 'knip.js', 'knip.config.ts', 'knip.config.js'];
+/**
+ * knip's start files, read from the build (a TypeScript project with no knip config of its own): the files a script that
+ * package.json runs or vite.config names as entry points, and index.html's module script. Without them knip calls the whole app
+ * unused. Written once as knip.json (with knip's usual start files beside them); never over a config the project has.
+ */
+export function knipEntries(target) {
+  const read = (f) => { try { return readFileSync(join(target, f), 'utf8'); } catch { return ''; } };
+  const pkg = (() => { try { return JSON.parse(read('package.json')); } catch { return {}; } })();
+  if (pkg.knip || KNIP_CONFIGS.some((f) => existsSync(join(target, f)))) return null;
+  const scripts = Object.values(pkg.scripts ?? {}).join('\n');
+  const ran = [...scripts.matchAll(/\bnode\s+([\w./-]+\.m?[jt]s)\b/g)].map((m) => m[1]).filter((f) => !f.startsWith('tools/workflow/'));
+  const texts = [scripts, ...ran.map(read), ...['vite.config.ts', 'vite.config.js', 'vite.config.mjs'].map(read)];
+  const found = new Set();
+  for (const t of texts) for (const m of t.matchAll(/['"`](?:\.\/)?((?:src|app|web|client|server)\/[\w./-]+\.(?:m?[jt]sx?))['"`]/g)) found.add(m[1]);
+  for (const m of read('index.html').matchAll(/<script[^>]*type=["']module["'][^>]*src=["']\/?([\w./-]+)["']/g)) found.add(m[1]);
+  const entries = [...found].filter((f) => existsSync(join(target, f))).sort();
+  return entries.length ? entries : null;
+}
+
+export function writeProjectFiles({ target, kit, lang, langs, modules, update, done, projectNode }) {
+  let knipNote = '';
+  const entries = lang === 'ts' ? knipEntries(target) : null;
+  if (entries) {
+    const usual = ['{index,cli,main}.{js,mjs,cjs,jsx,ts,tsx,mts,cts}', 'src/{index,cli,main}.{js,mjs,cjs,jsx,ts,tsx,mts,cts}'];
+    writeFileSync(join(target, 'knip.json'), `${formatJson({ entry: [...entries, ...usual] })}\n`);
+    done.added.push('knip.json');
+    knipNote = `  knip.json: the unused check starts from the files the build starts from (${entries.join(', ')}); add any it missed`;
+  }
+  const hint = writeProjectFilesRest({ target, kit, lang, langs, modules, update, done, projectNode });
+  return [knipNote, hint].filter(Boolean).join('\n');
+}
+
+function writeProjectFilesRest({ target, kit, lang, langs, modules, update, done, projectNode }) {
+  // the kit's .tool-versions, just written, never contradicts the Node the project already names (engines, Dockerfile, .nvmrc)
+  const tv = join(target, '.tool-versions');
+  if (projectNode && done.added.includes('.tool-versions') && existsSync(tv)) {
+    const kitMajor = Number(/nodejs\s+(\d+)/.exec(readFileSync(tv, 'utf8'))?.[1]);
+    if (kitMajor && kitMajor !== projectNode.major) writeFileSync(tv, readFileSync(tv, 'utf8').replace(/^nodejs\s+\S+/m, `nodejs ${projectNode.major}`));
+  }
   const botPath = join(target, '.github', 'dependabot.yml');
   if (!existsSync(botPath) && !existsSync(join(target, 'renovate.json'))) {
     const kinds = [langs[lang].dependabot ?? 'npm', 'github-actions', ...(modules.includes('deploy') ? ['docker'] : [])];

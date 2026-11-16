@@ -2,9 +2,11 @@
 // The page-weight check: builds the app (npm run build) and adds up what the browser downloads, compressed, against
 // `performance.maxKb` in workflow.config.json. Runs as a `checks` entry of the gate when screens change. No budget, no build
 // script or no built files: it says so and passes, so a project without screens is never blocked.
-//   node tools/workflow/perfbudget.mjs [--no-build]
+// Already over the budget the first time (an older project): that weight becomes the baseline (tools/workflow/perf-baseline.json),
+// and only heavier than it, with a little room, fails.
+//   node tools/workflow/perfbudget.mjs [--no-build] [--update]   (--update: today's weight is the baseline again)
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { matchesAny } from './lib/glob.mjs';
 import { weighPages, weightLine } from './lib/perfbudget.mjs';
@@ -34,6 +36,17 @@ if (!found.length) {
     + `Its files are in ${outputs.join(', ')}: set "performance.files" to ${JSON.stringify(outputs.flatMap((d) => [`${d}/**/*.js`, `${d}/**/*.css`]))}`);
   process.exit(1);
 }
-const v = weighPages(found.map((path) => ({ path, gzipBytes: gzipSync(readFileSync(path)).length })), perf.maxKb);
+const files = found.map((path) => ({ path, gzipBytes: gzipSync(readFileSync(path)).length }));
+// a page already over the budget the first time it is weighed gets today's weight as its baseline (--update takes it again)
+const BASELINE = 'tools/workflow/perf-baseline.json';
+let baselineKb = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')).kb ?? null : null;
+const today = weighPages(files, perf.maxKb).kb;
+if ((baselineKb === null || process.argv.includes('--update')) && today > perf.maxKb) {
+  baselineKb = today;
+  writeFileSync(BASELINE, `${JSON.stringify({ note: 'The page weight when it was first weighed over the budget; heavier than this (plus a little room) fails. Under performance.maxKb: delete this file.', kb: today }, null, 2)}\n`);
+  console.log(`page weight: over the budget when first weighed, so ${today} KB is the baseline (${BASELINE}); make a card to bring it under ${perf.maxKb} KB`);
+}
+if (baselineKb !== null && today <= perf.maxKb) console.log(`page weight: under the budget again: ${BASELINE} is not needed any more (delete it)`);
+const v = weighPages(files, perf.maxKb, baselineKb);
 console.log(weightLine(v));
 process.exit(v.ok ? 0 : 1);

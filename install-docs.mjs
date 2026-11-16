@@ -56,6 +56,7 @@ const PROJECT_TEXT = /\.(md|mjs|cjs|js|jsx|ts|tsx|mts|json|txt|html|css|toml|cmd
  * moved, every old path in the project's own text (tracked, untracked, and the waiting specs git ignores) is rewritten.
  * Returns what moved, the files rewritten, and the bytes the longer paths added to CLAUDE.md.
  */
+const ALL_MOVE_TARGETS = [...MOVES, ...CORRECTIONS].map(([, to]) => to);
 export function moveOldDocs({ target, written, stamp }) {
   const moved = [];
   let claudeGrowth = 0;
@@ -69,14 +70,22 @@ export function moveOldDocs({ target, written, stamp }) {
   }
   const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
   const specs = existsSync(join(target, 'specs')) ? readdirSync(join(target, 'specs')).map((f) => `specs/${f}`) : [];
-  const rewritten = [];
+  const rewritten = [], specsNaming = [];
   for (const f of [...new Set([...listed.split('\n'), ...specs])].filter((x) => x && PROJECT_TEXT.test(x) && !x.startsWith('node_modules/'))) {
+    // history stays as it was written (the changelog, decision records)
+    if (f === 'CHANGELOG.md' || f.startsWith('docs/decisions/')) continue;
     const p = join(target, f);
     if (!existsSync(p) || !statSync(p).isFile()) continue;
-    const was = readFileSync(p, 'utf8'), now = movePaths(was);
-    if (now !== was) { writeFileSync(p, now); rewritten.push(f); if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was); }
+    const was = readFileSync(p, 'utf8');
+    // a line that names the new place already is about the move itself ("moved from docs/X.md to docs/run/X.md"): left alone
+    const now = was.split('\n').map((line) => (ALL_MOVE_TARGETS.some((to) => line.includes(to)) ? line : movePaths(line))).join('\n');
+    if (now === was) continue;
+    // a waiting spec is the owner's approved text: named, not changed (/build and /ship read the docs at their new places)
+    if (f.startsWith('specs/')) { specsNaming.push(f); continue; }
+    writeFileSync(p, now); rewritten.push(f);
+    if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was);
   }
-  return { moved, rewritten, claudeGrowth };
+  return { moved, rewritten, specsNaming, claudeGrowth };
 }
 
 /** Removes a file and then its folders, as long as they are left empty (never the project folder itself). */
@@ -145,19 +154,38 @@ export function nameHelpersInCodeDocs({ target, done }) {
  * Sentences the kit itself once wrote into CLAUDE.md and has since changed, where the old one now contradicts a skill: rewritten
  * in the project's CLAUDE.md (which is otherwise never touched), wherever its lines were wrapped. Returns what changed.
  * - "No docs-only, tests-only or ... commits" (before 2.8.2) forbade the separate commit /ship makes of the notes left in the
- *   main folder (session.mjs --commit-notes).
+ *   main folder (session.mjs --commit-notes). Since 2.9.8 that is the project's choice, `commits.notes`: only a project that chose
+ *   "own" gets the new sentence; one that never chose keeps its rule, and its config says so ("with-feature": the notes go in
+ *   with the feature's commit), so the update changes nothing about how it commits.
  */
 const RULES_THAT_CHANGED = [
   [/No docs-only,(\s+)tests-only or(\s+)"fix after a check" commits/, 'No tests-only or$2"fix after a check" commits (notes left in the main folder go in first, on their own: /ship)',
-    'the "no docs-only commits" rule: /ship commits the notes left in the main folder on their own'],
+    'the "no docs-only commits" rule: /ship commits the notes left in the main folder on their own', 'commits.notes'],
 ];
 export function rewriteChangedRules({ target }) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(claude)) return [];
   let text = readFileSync(claude, 'utf8');
+  const configAt = join(target, 'workflow.config.json');
+  let notes;
+  try { notes = JSON.parse(readFileSync(configAt, 'utf8')).commits?.notes; } catch { notes = undefined; }
   const changed = [];
-  for (const [old, now, what] of RULES_THAT_CHANGED) if (old.test(text)) { text = text.replace(old, now); changed.push(what); }
-  if (changed.length) writeFileSync(claude, text);
+  for (const [old, now, what, choice] of RULES_THAT_CHANGED) {
+    if (!old.test(text)) continue;
+    if (choice === 'commits.notes' && notes !== 'own') {
+      // never chosen: the old rule stands, written down as the choice it is (a later update leaves both alone)
+      if (notes === undefined && existsSync(configAt)) {
+        const before = readFileSync(configAt, 'utf8');
+        const cfg = JSON.parse(before);
+        writeFileSync(configAt, before.replace(/\{/, '{\n  "commits": { "notes": "with-feature" },'));
+        try { JSON.parse(readFileSync(configAt, 'utf8')); } catch { writeFileSync(configAt, `${JSON.stringify({ commits: { notes: 'with-feature' }, ...cfg }, null, 2)}\n`); }
+        changed.push('kept "no docs-only commits": the notes left in the main folder go in with the feature (commits.notes "with-feature"; "own" makes them a commit of their own)');
+      }
+      continue;
+    }
+    text = text.replace(old, now); changed.push(what);
+  }
+  if (text !== readFileSync(claude, 'utf8')) writeFileSync(claude, text);
   return changed;
 }
 

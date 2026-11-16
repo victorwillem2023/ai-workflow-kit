@@ -2,6 +2,22 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **2.9.10**, from porting Trailsmith (its builder's second list; what only Trailsmith's history causes is left to its own move).
+  **An update no longer changes what it should not**: waiting specs, `CHANGELOG.md` and `docs/decisions/` keep the old doc paths
+  (the specs are named in the report instead), and a line that already names the new place, a sentence about the move itself,
+  is left alone. The old "no docs-only commits" line stays when the project never chose `commits.notes`, and its config then says
+  `"with-feature"`, so it commits as before; only a project that chose `"own"` gets the new sentence. Lists the config merge adds
+  to keep their layout (a one-line list stays one line), at any depth. A `.tool-versions` the kit adds says the Node the project
+  already names (engines, the Dockerfile, `.nvmrc`), not the kit's. **Checks that fit an older project**: page weight already
+  over the budget the first time takes that weight as its baseline (`tools/workflow/perf-baseline.json`, 5% room; heavier fails),
+  instead of blocking every screen change; the unused check says "install the packages first" when knip is missing; and a
+  TypeScript project with no knip config gets `knip.json` with the files its build starts from (a build script's entry points,
+  vite.config, index.html), so knip no longer calls the app unused. **A session's packages without touching the main folder**:
+  `node scripts/packages.mjs --own` gives the session its own copy (the suggestion now offers both). **Settings, not fixed text**:
+  `build-requests.mjs` reads `map.requests` and takes the map's words from the index page (its title, its "## The kinds ..."
+  heading, an "On the map: ..." line); `/ui` and `/setup` name the tokens file by `ui.tokens`. Smaller: an added card type says
+  to run `npm run board -- --init`; the hidden-by-`.gitignore` warning covers every kit file, not only those written that run;
+  the `--card` test commits even when the project's own config already names the board.
 - **2.9.9**: **the kit asks where AI could make the app better**, in plain words and always starting from what the project's
   rules let go to a model. `docs/workflow/AI-AGENTS.md` opens with *Where AI could make the app better*: the uses (summarise,
   a first draft, sorting, reading a file, search by meaning, an assistant over the person's own data, the app as an MCP server

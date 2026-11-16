@@ -53,7 +53,7 @@ export function mapFiles(flow) {
       if (n.q) { walk(n.yes); walk(n.no); for (const [, sub] of n.opts ?? []) walk(sub); }
     }
   };
-  for (const g of flow.groups) for (const st of g.stages) if (!String(g.name).startsWith('What someone asks')) walk(st.tree);
+  for (const g of flow.groups) for (const st of g.stages) if (g.basis !== 'requests' && !String(g.name).startsWith('What someone asks')) walk(st.tree);
   return { files, unnamed };
 }
 

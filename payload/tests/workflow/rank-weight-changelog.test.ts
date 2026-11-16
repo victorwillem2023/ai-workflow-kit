@@ -46,6 +46,15 @@ describe('the page-weight budget', () => {
     assert.match(weightLine(v), /290 KB, the budget is 250 KB.*The biggest: dist\/assets\/index\.js 200 KB, dist\/assets\/chart\.js 80 KB/s);
     assert.equal(weightLine(weighPages(files.slice(2), 250)), 'page weight: 10 KB of 250 KB (compressed)');
   });
+
+  it('a page over the budget from before has a baseline: a little heavier passes, much heavier fails, and the budget still counts', () => {
+    const at = (kb: number) => [{ path: 'dist/app.js', gzipBytes: kb * 1024 }];
+    const same = weighPages(at(330), 250, 329);
+    assert.equal(same.ok, true, 'about as heavy as before: ordinary changes go on');
+    assert.match(weightLine(same), /over the budget of 250 KB as it was before \(the baseline: 329 KB, with room up to 345\.5 KB\)/);
+    assert.equal(weighPages(at(360), 250, 329).ok, false, 'much heavier than before fails');
+    assert.equal(weighPages(at(260), 250, 200).ok, false, 'a baseline under the budget gives no room');
+  });
 });
 
 describe('the changelog', () => {

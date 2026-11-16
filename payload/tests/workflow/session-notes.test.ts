@@ -102,7 +102,8 @@ describe('docs and settings left in the main folder', () => {
     // the fake gh knows card 42 on project 1 (tests/workflow/session-repo.ts)
     const cfg = JSON.parse(readFileSync(join(r.main, 'workflow.config.json'), 'utf8'));
     writeFileSync(join(r.main, 'workflow.config.json'), JSON.stringify({ ...cfg, board: { ...cfg.board, project: 1 } }));
-    git(r.main, 'add', '-A'); git(r.main, 'commit', '-qm', 'board');
+    // --allow-empty: the fixture copies the project's own config, which may already name project 1
+    git(r.main, 'add', '-A'); git(r.main, 'commit', '-q', '--allow-empty', '-m', 'board');
     const made = run(r, 'a', '--card', '42');
     assert.ok(made.ok, made.out);
     assert.doesNotMatch(made.out, /Board warning/, 'a broken board library would only show here, as a warning');

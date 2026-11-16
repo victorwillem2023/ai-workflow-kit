@@ -4,7 +4,9 @@
 // at another version than the lock says. session.mjs runs it when it makes a session, before --serve and after --finish, and
 // installs what is missing (npm install, which follows the lock).
 //   node scripts/packages.mjs            say what is missing or at another version (exit 1 when anything is)
-import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
+//   node scripts/packages.mjs --own      in a session folder: its own packages (npm ci there) instead of the main folder's
+import { spawnSync } from 'node:child_process';
+import { existsSync, lstatSync, readFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,13 +49,28 @@ export function packagesFix(dir, list) {
   try { linked = lstatSync(join(dir, 'node_modules')).isSymbolicLink(); } catch { /* no node_modules at all: npm install */ }
   if (!linked) return 'run npm install';
   const target = realpathSync(join(dir, 'node_modules')).replace(/[\\/]node_modules$/, '');
-  return `this session shares the main folder's packages: cd "${target}" && npm install --no-save ${list.map((p) => `${p.name}@${p.want}`).join(' ')}`;
+  return `this session shares the main folder's packages. Either the main folder gets them: cd "${target}" && npm install --no-save `
+    + `${list.map((p) => `${p.name}@${p.want}`).join(' ')} (it writes in the main folder, so a permission rule may ask the owner), `
+    + 'or this session gets its own copy and nothing outside it changes: node scripts/packages.mjs --own (slower: a full npm ci here)';
+}
+
+/** --own: the session's link to the main folder's packages is taken away (never followed) and npm ci installs its own copy. */
+function ownPackages(dir) {
+  const link = join(dir, 'node_modules');
+  let linked = false;
+  try { linked = lstatSync(link).isSymbolicLink(); } catch { /* none */ }
+  if (linked) unlinkSync(link);
+  // a shell only on Windows, where npm is a .cmd file; the arguments are fixed, never outside input
+  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+  const r = spawnSync('npm', ['ci', '--no-audit', '--no-fund'], { cwd: dir, stdio: 'inherit', shell: process.platform === 'win32' });
+  return r.status ?? 1;
 }
 
 /** One line for a person: how many, and the first few by name. */
 export const describeMissing = (list) => `${list.length} package${list.length === 1 ? '' : 's'} not installed as package-lock.json lists ${list.length === 1 ? 'it' : 'them'} (${list.slice(0, 5).map((p) => (p.have ? `${p.name} ${p.have}, wants ${p.want}` : `${p.name} missing`)).join('; ')}${list.length > 5 ? '; ...' : ''})`;
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  if (process.argv.includes('--own')) process.exit(ownPackages(process.cwd()));
   const list = checkPackages(process.cwd());
   console.log(list.length ? `${describeMissing(list)}: ${packagesFix(process.cwd(), list)}` : 'packages: as package-lock.json lists them');
   process.exit(list.length ? 1 : 0);

@@ -32,7 +32,8 @@ part or a second screen, stop and go to stage 1.
    feature. Work only in `../{{PREFIX}}-<topic>`, with absolute paths, every Bash command starting `cd <folder> &&`.
 2. Draw **one HTML board** in `docs/design/<Name>.html` (the next board number: `tail -5 docs/design/README.md`):
    Start from `docs/design/board-template.html` (copy it; it already has the variants A, B, C, the phone width and the states).
-   - on the real tokens: `<link rel="stylesheet" href="../../src/web/styles.css">` for the variables (light on `:root`, dark on
+   - on the real tokens: `<link rel="stylesheet" href="../../<the tokens file>">` (`ui.tokens` in `workflow.config.json`;
+     `src/web/styles.css` when it is not set; a project whose tokens live elsewhere sets it) for the variables (light on `:root`, dark on
      `data-theme='dark'`), the board's own layout in a short `<style>` built from those variables; no hex, no new size or radius;
    - **variants A, B, C** side by side on the one page, each with a letter, a one-line name and what it costs or gives up; mark the
      one you recommend and say why in one sentence; the phone width (400 px) drawn for at least the recommended one;

@@ -161,8 +161,8 @@ const aiLibs = modules.includes('ai') ? ' && npm i @anthropic-ai/sdk zod' : '';
 // the Node types of the Node the project runs (.tool-versions), never newer: the gate's *versions* check holds that
 const readIn = (f) => (existsSync(join(target, f)) ? readFileSync(join(target, f), 'utf8') : undefined);
 // (the project's own say first: .tool-versions, package.json engines, the Dockerfile, .nvmrc; only then the kit's own pin)
-const nodeMajor = (runtimeNode({ pkg: pkgBefore, toolVersions: readIn('.tool-versions'), dockerfile: readIn('Dockerfile'), nvmrc: readIn('.nvmrc') ?? readIn('.node-version') })
-  ?? runtimeNode({ toolVersions: readFileSync(join(kit, 'starter', '.tool-versions'), 'utf8') }))?.major;
+const projectNode = runtimeNode({ pkg: pkgBefore, toolVersions: readIn('.tool-versions'), dockerfile: readIn('Dockerfile'), nvmrc: readIn('.nvmrc') ?? readIn('.node-version') });
+const nodeMajor = (projectNode ?? runtimeNode({ toolVersions: readFileSync(join(kit, 'starter', '.tool-versions'), 'utf8') }))?.major;
 const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
 // what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in .workflow-kit), so an update can
 // tell a file the project changed from one only the kit changed
@@ -179,7 +179,7 @@ let claudeGrowth = 0; // bytes the longer doc paths added to CLAUDE.md (its budg
 if (update) {
   const m = moveOldDocs({ target, written, stamp });
   claudeGrowth = m.claudeGrowth;
-  if (m.moved.length || m.rewritten.length) done.movedDocs = { count: m.moved.length, rewritten: m.rewritten };
+  if (m.moved.length || m.rewritten.length || m.specsNaming.length) done.movedDocs = { count: m.moved.length, rewritten: m.rewritten, specs: m.specsNaming };
 }
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
 // does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
@@ -349,7 +349,7 @@ if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replac
 
 // the project files written once, then the project's: Dependabot (without Renovate), .gitignore lines, .gitattributes
 // (install-config.mjs)
-const lfHint = writeProjectFiles({ target, kit, lang, langs: LANGS, modules, update, done });
+const lfHint = writeProjectFiles({ target, kit, lang, langs: LANGS, modules, update, done, projectNode });
 
 // the map module: the request pages' file, so the map opens and the gate's check passes from the start
 if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(process.execPath, ['docs/flow/build-requests.mjs'], { cwd: target, encoding: 'utf8' });
@@ -364,8 +364,8 @@ console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (${s
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
 if (done.skipped.length) console.log(`  skipped, as the project asked (skip= in .workflow-kit, --skip adds more): ${done.skipped.length} file${done.skipped.length === 1 ? '' : 's'}`);
-// a file the kit wrote that the project's ignore rules hide is never committed (a rule like docs/*.md once hid docs/PRODUCT.md)
-const hidden = (spawnSync('git', ['check-ignore', '--stdin'], { cwd: target, input: [...done.added, ...done.replaced].map((f) => f.replace(/\\/g, '/')).join('\n'), encoding: 'utf8' }).stdout ?? '').split('\n').filter(Boolean);
+// a kit file the project's ignore rules hide is never committed (a rule like *UCT.md hid docs/PRODUCT.md): written now or there before
+const hidden = (spawnSync('git', ['check-ignore', '--stdin'], { cwd: target, input: [...done.added, ...done.replaced, ...done.kept].map((f) => f.replace(/\\/g, '/')).join('\n'), encoding: 'utf8' }).stdout ?? '').split('\n').filter(Boolean);
 if (hidden.length) console.log(`  hidden by .gitignore, so git will not commit them (add a !<path> line, or narrow the rule):\n${hidden.map((f) => `    ${f}`).join('\n')}`);
 console.log(`  ${harnessLine}`);
 if (update) {
@@ -381,6 +381,7 @@ if (update) {
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
   if (done.movedDocs?.count) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git`);
   if (done.movedDocs?.rewritten.length) console.log(`  old doc paths rewritten (look at the diff before committing) in:\n${done.movedDocs.rewritten.map((f) => `    ${f}`).join('\n')}`);
+  if (done.movedDocs?.specs.length) console.log(`  waiting specs that name a doc at its old place, left as you approved them (the doc is at its new place now; change the spec if it lists it):\n${done.movedDocs.specs.map((f) => `    ${f}`).join('\n')}`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');

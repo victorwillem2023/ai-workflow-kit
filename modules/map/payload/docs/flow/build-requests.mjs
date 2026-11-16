@@ -1,5 +1,8 @@
-// Makes docs/flow/requests.js from the request pages (docs/REQUESTS.md and docs/requests/*.md), so the app map shows
-// them as its first group, "What someone asks". The pages stay the one place to edit; run this after changing one:
+// Makes docs/flow/requests.js from the request pages (docs/REQUESTS.md and docs/requests/*.md, or where `map.requests` in
+// workflow.config.json says: { index, folder }), so the app map shows them as its first group. The words come from the index
+// page: the group is its title up to the first comma, the kinds' section its "## The kinds ..." heading, the questions' intro
+// its "The one rule:" line, and a section's map intro an "On the map: ..." line under its heading. The pages stay the one place
+// to edit; run this after changing one:
 //   node docs/flow/build-requests.mjs            (--check: fail when requests.js is not what the pages say now)
 // No dependencies. It reads the two tables' shapes: the questions and the list of kinds in REQUESTS.md, and the
 // "Someone asks | The app does | Status | Proof" table of each page.
@@ -8,8 +11,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const docs = join(here, '..');
-const read = (p) => readFileSync(join(docs, p), 'utf8').replace(/\r\n/g, '\n');
+const root = join(here, '..', '..');
+const read = (p) => readFileSync(join(root, p), 'utf8').replace(/\r\n/g, '\n');
+let places = {};
+try { places = JSON.parse(read('workflow.config.json')).map?.requests ?? {}; } catch { /* no config: the kit's places */ }
+const indexAt = places.index ?? 'docs/REQUESTS.md';
+const folderAt = (places.folder ?? 'docs/requests/').replace(/\/?$/, '/');
 const STATUS = { built: undefined, decided: 'decided', 'being built': 'building', open: 'open' };
 const unTick = (s) => s.replace(/`/g, '');
 
@@ -46,7 +53,7 @@ function rowNode([asks, does, status, proof = '']) {
 
 /** One page of docs/requests as a stage. */
 function pageStage(file) {
-  const text = read(`requests/${file}`);
+  const text = read(`${folderAt}${file}`);
   const slug = file.replace(/\.md$/, '');
   const name = (/^# (.+)$/m.exec(text) ?? [, slug])[1];
   // the bullets under the title, wrapped lines joined
@@ -60,32 +67,41 @@ function pageStage(file) {
   const intro = bullets.filter((b) => b !== lives).map(unTick).join(' ');
   return {
     id: `k-${slug}`, kind: slug, name, basis: 'requests', intro: intro || 'What the app does when two answers or two kinds meet.',
-    src: `docs/requests/${file}${lives ? ' · ' + unTick(lives.replace(/^Lives today in\s*/, '').replace(/\.$/, '')) : ''}`,
+    src: `${folderAt}${file}${lives ? ' · ' + unTick(lives.replace(/^Lives today in\s*/, '').replace(/\.$/, '')) : ''}`,
     tree: tableRows(text).map(rowNode),
   };
 }
 
-const index = read('REQUESTS.md');
-const pages = existsSync(join(docs, 'requests')) ? readdirSync(join(docs, 'requests')).filter((f) => f.endsWith('.md') && f !== 'README.md').sort() : [];
+const index = read(indexAt);
+const pages = existsSync(join(root, folderAt)) ? readdirSync(join(root, folderAt)).filter((f) => f.endsWith('.md') && f !== 'README.md').sort() : [];
 const pageStages = pages.map(pageStage);
 const hasPage = new Set(pageStages.map((s) => s.kind));
 
 // the questions every request answers (the heading "## The … questions"): each with what happens when it is said, vague, or cannot be done
 const heading = (/^## (The .*questions.*)$/m.exec(index) ?? [, 'The questions'])[1];
+/** The "On the map: ..." line in the section under `title`, if the page has one. */
+const mapIntro = (title) => {
+  const at = index.indexOf(`## ${title}\n`);
+  const section = at < 0 ? '' : index.slice(at).split(/\n## /)[0];
+  return sentence(/^On the map: (.+)$/m.exec(section)?.[1]?.trim());
+};
+const sentence = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : null);
+const oneRule = sentence(/^The one rule: (.+)$/m.exec(index)?.[1]?.trim());
 const six = {
-  id: 'six', name: heading, basis: 'requests', src: 'docs/REQUESTS.md',
-  intro: 'What the person says beats what the kind assumes; a kind only fills in what was left out.',
+  id: 'six', name: heading, basis: 'requests', src: indexAt,
+  intro: mapIntro(heading) ?? oneRule ?? 'What the person says beats what the kind assumes; a kind only fills in what was left out.',
   tree: tableRows(index, '## ' + heading).map(([q, said, vague, cannot]) => ({
     q: q.replace(/^\d+\.\s*/, ''),
     opts: [['said clearly', [{ t: unTick(said), s: 'none' }]], ['not said, or vague', [{ t: unTick(vague), s: 'none' }]], ['cannot be done', [{ t: unTick(cannot), s: 'none' }]]],
   })),
 };
 
-// the kinds of outing, each with its page or "no page yet"
+// the kinds of request, each with its page or "no page yet"; the section's name is the page's heading ("## The kinds" alone: the kit's words)
+const kindsHeading = /^## (The kinds\b.*)$/m.exec(index)?.[1]?.trim() ?? 'The kinds';
 const kindLines = [...index.matchAll(/^\d+\. (.+?) \(`([^`]+)`\): (.+?)\. (?:Page: `[^`]+`|No page yet)\.\s*$/gm)];
 const kinds = {
-  id: 'kinds', name: 'The kinds of request', basis: 'requests', src: 'docs/REQUESTS.md · docs/requests/',
-  intro: 'One page per kind: what someone asks, what the app does, whether that is decided, and what proves it.',
+  id: 'kinds', name: kindsHeading === 'The kinds' ? 'The kinds of request' : kindsHeading, basis: 'requests', src: `${indexAt} · ${folderAt}`,
+  intro: mapIntro(kindsHeading) ?? 'One page per kind: what someone asks, what the app does, whether that is decided, and what proves it.',
   tree: kindLines.map(([, name, slug, trigger]) => ({
     t: `${name}: ${unTick(trigger)}.`, kind: slug,
     ...(hasPage.has(slug) ? { s: 'none' } : { s: 'unmapped', n: 'No page yet.' }),
@@ -96,8 +112,10 @@ if (notKinds) kinds.tree.push({ t: `Not kinds today: ${notKinds[1].replace(/\s*\
 
 // a kind's own page first, the clashes last
 const ordered = [...pageStages.filter((s) => s.kind !== 'clashes'), ...pageStages.filter((s) => s.kind === 'clashes')];
-const group = { name: 'What someone asks', stages: [six, kinds, ...ordered] };
-const out = `// Made by docs/flow/build-requests.mjs from docs/REQUESTS.md and docs/requests/. Do not edit: change the pages and run it again.\nwindow.FLOW_REQUESTS = ${JSON.stringify(group, null, 1)};\n`;
+// the group's name: the index page's title up to its first comma ("What someone asks, and what the app does")
+const title = /^# ([^,\n]+)/m.exec(index)?.[1]?.trim();
+const group = { name: title && !/^requests$/i.test(title) ? title : 'What someone asks', basis: 'requests', stages: [six, kinds, ...ordered] };
+const out = `// Made by docs/flow/build-requests.mjs from ${indexAt} and ${folderAt}. Do not edit: change the pages and run it again.\nwindow.FLOW_REQUESTS = ${JSON.stringify(group, null, 1)};\n`;
 const file = join(here, 'requests.js');
 if (process.argv.includes('--check')) {
   const now = existsSync(file) ? readFileSync(file, 'utf8').replace(/\r\n/g, '\n') : '';

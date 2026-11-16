@@ -10,6 +10,12 @@ import { compareUnused, unusedFindings } from './lib/unused.mjs';
 
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
 const FILE = 'tools/workflow/unused-baseline.json';
+// knip not installed (a fresh clone, a session whose packages are not in yet): say so and how, instead of knip's own error
+if (!existsSync('node_modules/knip/package.json')) {
+  console.log('unused: knip is not installed here, so nothing was checked. Install the packages first: npm install'
+    + ' (in a session folder: node scripts/packages.mjs says how), then run it again.');
+  process.exit(1);
+}
 // a shell only on Windows, where npx is a .cmd file; the arguments are fixed, never outside input
 // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 const r = spawnSync('npx', ['--no-install', 'knip', '--no-progress', '--reporter', 'json'], { encoding: 'utf8', shell: process.platform === 'win32', maxBuffer: 64 << 20 });
