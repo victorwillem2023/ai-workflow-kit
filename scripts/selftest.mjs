@@ -362,6 +362,17 @@ if (tooBig.length) process.exit(1);
   if (!sameLayout || !ruled) process.exit(1);
 }
 const results = {};
+// the slower checks of the kit's own scripts (tests/slow: the skill scenarios against a stand-in agent), beside the variants
+const slow = new Promise((done) => {
+  const p = spawn(process.execPath, ['--test', 'tests/slow/*.test.mjs'], { cwd: kit, stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  p.stdout.on('data', (d) => { out += d; });
+  p.stderr.on('data', (d) => { out += d; });
+  p.on('close', (code) => {
+    console.log(`${code === 0 ? 'ok  ' : 'FAIL'} the skill scenarios catch a misbehaving agent (tests/slow)${code === 0 ? '' : `\n${out.trim().split('\n').slice(-30).join('\n')}`}`);
+    done(code === 0);
+  });
+});
 // the longest first, so the slowest never starts last and runs alone at the end (with 4 at a time and 6 variants)
 const LONGEST = ['messy', 'full', 'cluster', 'vite'];
 const rank = (n) => (LONGEST.includes(n) ? LONGEST.indexOf(n) : LONGEST.length);
@@ -371,5 +382,6 @@ await Promise.all(Array.from({ length: Math.min(jobs, names.length) }, async () 
 }));
 // on CI every asked variant must really run: a skip there means a tool the workflow should have installed is missing
 const failed = Object.entries(results).filter(([, r]) => r === 'failed' || (process.env.CI && r === 'skipped')).map(([n]) => n);
+if (!(await slow)) failed.push('tests/slow');
 console.log(`selftest: ${names.map((n) => `${n} ${results[n]}`).join(', ')}`);
 process.exit(failed.length ? 1 : 0);

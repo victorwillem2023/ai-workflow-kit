@@ -1,0 +1,31 @@
+# The skill scenarios (scripts/skilltest.mjs) with the real Claude Code: an agent runs each skill on a throwaway project and the
+# script checks what it did. It costs money (a few cents to a dollar a scenario), so it only runs when started by hand
+# (Actions, "skilltest", Run workflow), with the ANTHROPIC_API_KEY secret set in the repository's settings.
+name: skilltest
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: 'Scenarios to run, separated by spaces (empty: all; node scripts/skilltest.mjs --list names them)'
+        required: false
+        default: ''
+permissions:
+  contents: read
+jobs:
+  skilltest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: starter/.tool-versions
+      # (not pinned yet: pin the version the scenarios last passed with, as the kit pins its other tools)
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: git config --global user.name "Skill test" && git config --global user.email skilltest@example.invalid
+      # the names through the environment, never pasted into the command (what is typed into a form is not trusted as shell)
+      - run: node scripts/skilltest.mjs $SCENARIOS
+        env:
+          SCENARIOS: ${{ inputs.scenarios }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
