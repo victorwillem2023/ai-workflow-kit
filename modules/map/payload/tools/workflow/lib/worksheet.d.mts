@@ -1,6 +1,6 @@
 /** A node of the app map (docs/flow/map.js): a question with branches, or an end. */
 export interface FlowNode { q?: string; yes?: FlowNode[]; no?: FlowNode[]; opts?: [string, FlowNode[]][]; t?: string; s?: string; card?: number[]; n?: string; f?: string }
-export interface Flow { groups: { name: string; stages: { name: string; src?: string; tree: FlowNode[] }[] }[] }
+export interface Flow { groups: { name: string; stages: { name: string; src?: string; tree: FlowNode[] }[] }[]; requestPages?: string[] }
 export interface WorksheetCard { number: number; title: string; state: string; labels: string[]; column: string | null }
 /** An end of the map: where it is (group › stage), its stage's source file, status ('built' when unmarked), cards and note. */
 export interface MapEnd { where: string; src: string; text: string; status: string; cards: number[]; note: string }

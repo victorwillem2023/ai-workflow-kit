@@ -18,7 +18,7 @@ import { availableParallelism, tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { CORRECTIONS, MOVES, movePathsBack, oldPaths } from '../doc-layout.mjs';
+import { CORRECTIONS, MOVES, movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const win = process.platform === 'win32';
@@ -74,7 +74,10 @@ function asOlderKitLeftIt(dir) {
   for (const h of HELPERS) if (existsSync(join(dir, h))) rmSync(join(dir, h));
   // CLAUDE.md exactly at its budget, as a project near it is: the move's longer paths must not fail its gate
   const cfg = JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8'));
-  if (cfg.budget?.['CLAUDE.md']) { cfg.budget['CLAUDE.md'] = Buffer.byteLength(readFileSync(join(dir, 'CLAUDE.md'), 'utf8')); writeFileSync(join(dir, 'workflow.config.json'), `${JSON.stringify(cfg, null, 2)}\n`); }
+  if (cfg.budget?.['CLAUDE.md']) cfg.budget['CLAUDE.md'] = Buffer.byteLength(readFileSync(join(dir, 'CLAUDE.md'), 'utf8'));
+  // a setting of the project's own in a list the kit also fills (an extra input folder): an update must keep it
+  if (cfg.security?.inputFolders) cfg.security.inputFolders.push('src/races/');
+  writeFileSync(join(dir, 'workflow.config.json'), `${JSON.stringify(cfg, null, 2)}\n`);
 }
 const HELPERS = ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.ts', 'tests/production/debugging.test.ts'];
 
@@ -103,6 +106,15 @@ function docsWithoutReader(dir) {
   const readers = [...walkAll(join(dir, '.claude')), ...walkAll(join(dir, 'tools')), ...walkAll(join(dir, 'scripts')), join(dir, 'CLAUDE.md')]
     .filter((f) => /\.(md|mjs|js|ts)$/.test(f) && existsSync(f)).map((f) => readFileSync(f, 'utf8')).join('\n');
   return docs.filter((d) => !readers.includes(d));
+}
+
+/** The values the config had before that are gone after (a key, or an entry of a list), as "path: value" lines. */
+function configLost(before, after, path = '') {
+  if (Array.isArray(before)) return before.filter((x) => !(Array.isArray(after) ? after : []).some((y) => JSON.stringify(y) === JSON.stringify(x))).map((x) => `${path}: ${JSON.stringify(x)}`);
+  if (before && typeof before === 'object') return Object.entries(before).flatMap(([k, v]) => (after && typeof after === 'object' && k in after ? configLost(v, after[k], path ? `${path}.${k}` : k) : [`${path ? `${path}.` : ''}${k}: gone`]));
+  // a budget may only grow (the update raises CLAUDE.md's by the bytes its own doc paths added)
+  if (path.startsWith('budget.') && typeof before === 'number' && after >= before) return [];
+  return before === after ? [] : [`${path}: ${JSON.stringify(before)} became ${JSON.stringify(after)}`];
 }
 
 function unmarkedMentions(dir) {
@@ -197,12 +209,18 @@ async function runVariant(name) {
     asOlderKitLeftIt(dir);
     git('add', '-A');
     git('commit', '-q', '-m', 'As a kit from before 2.9 left it');
+    // (with the doc paths the update moves already moved: a path that moved is not a setting lost)
+    const configBefore = JSON.parse(movePaths(readFileSync(join(dir, 'workflow.config.json'), 'utf8')));
     const updated = await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
     // nothing of the kit's may be taken for the project's own work: the move rewrote paths in kit files, nobody changed them
     // (only the kit's own files: "the kit's version differs"; a project page kept in a stage not reached is rightly its own)
     const claimed = /kept, because the project changed them \(\d+\); the kit's version differs[\s\S]*?(?=\n {2}\S|\n\S|$)/.exec(updated)?.[0];
     console.log(`${claimed ? 'FAIL' : 'ok  '} ${name}: the update takes no kit file for the project's own${claimed ? `:\n${claimed}` : ''}`);
     if (claimed) throw new Error('kit files taken for the project');
+    // every value the project's config had is still there after the update (it may only add): a list the kit also fills keeps the project's own entries
+    const lost = configLost(configBefore, JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8')));
+    console.log(`${lost.length ? 'FAIL' : 'ok  '} ${name}: the update keeps every setting the project had${lost.length ? `:\n${lost.slice(0, 20).join('\n')}` : ''}`);
+    if (lost.length) throw new Error('settings lost');
     const left = [...oldDocPaths(dir), ...[...MOVES, ...CORRECTIONS].filter(([from]) => existsSync(join(dir, from))).map(([from]) => `${from} was not moved`),
       ...(v.args.includes('--lang') || !existsSync(join(dir, 'src', 'server', 'log.ts')) ? [] : HELPERS.filter((h) => !existsSync(join(dir, h))).map((h) => `${h} was not added back`))];
     console.log(`${left.length ? 'FAIL' : 'ok  '} ${name}: the update moved the docs into their folders${left.length ? `:\n${left.slice(0, 20).join('\n')}` : ''}`);

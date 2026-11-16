@@ -27,7 +27,14 @@ if (enterAt >= 0) {
   const args = ['--project', config.name, '--repo', board?.repo, '--prefix', config.session?.prefix].flatMap((a, i, all) => (i % 2 === 0 && all[i + 1] ? [a, all[i + 1]] : []));
   const cmd = (k) => `node ${k}/install.mjs . ${args.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(' ')} --update --stage ${stage}`;
   if (/^stages=.*\b/m.test(mark) && new RegExp(`^stages=.*\\b${stage}\\b`, 'm').test(mark)) { console.log(`stage: ${stage} is entered already.`); process.exit(0); }
-  if (!kit || !existsSync(join(kit, 'install.mjs'))) { console.error(`stage: the kit is not at ${kit ?? '(no kit= line in .workflow-kit)'} on this computer. Run it from the kit's folder: ${cmd('<kit>')}`); process.exit(1); }
+  if (!kit || !existsSync(join(kit, 'install.mjs'))) {
+    // the version this project is on, and where to get it (.workflow-kit's ref= and kitRepo=), so the stage comes from the same kit
+    const ref = /^ref=(.+)$/m.exec(mark)?.[1]?.trim();
+    const repo = /^kitRepo=(.+)$/m.exec(mark)?.[1]?.trim();
+    const get = ref && repo ? `Get it: git clone --branch ${ref} ${repo} <kit>, then: ` : 'Run it from the kit\'s folder: ';
+    console.error(`stage: the kit is not at ${kit ?? '(no kit= line in .workflow-kit)'} on this computer. ${get}${cmd('<kit>')}`);
+    process.exit(1);
+  }
   const r = spawnSync(process.execPath, [join(kit, 'install.mjs'), '.', ...args, '--update', '--stage', stage], { stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status ?? 1);
   // the docs index lists the new folder

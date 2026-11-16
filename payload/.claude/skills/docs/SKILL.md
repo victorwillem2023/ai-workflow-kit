@@ -17,5 +17,6 @@ code, or a decision about what the app does, stop and say it belongs in `/work`.
    what was asked; mention anything else you noticed instead of fixing it. Keep each file's line endings.
 3. **Check**: every file path and npm script a doc names must exist. Run `npm run gate` (it checks doc references) and fix what
    it says about your edit.
-4. **Don't commit.** Report the files changed and the changed lines (`git diff`), and that the next `/ship` commits them first,
-   as their own commit, after the quick gate (`node scripts/session.mjs --commit-notes`, which the owner can also run now).
+4. **Don't commit.** Report the files changed and the changed lines (`git diff`), and that the next `/ship` puts them in, as the
+   project chose (`commits.notes`): as their own commit after the quick gate (`node scripts/session.mjs --commit-notes`, which the
+   owner can also run now), or with the feature's commit.

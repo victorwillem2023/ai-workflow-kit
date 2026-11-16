@@ -31,7 +31,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { movePathsBack, undoCorrections } from './doc-layout.mjs';
 import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
-import { addClaudeRules, settleConfig, writeProjectFiles } from './install-config.mjs';
+import { addClaudeRules, machineryDiffs, settleConfig, writeProjectFiles } from './install-config.mjs';
 import { STAGE_FOLDERS, rewriteChangedRules, keepNamedStageDocs, moveOldDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
@@ -40,7 +40,10 @@ const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : unde
 const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefined;
 const force = args.includes('--force');
 const update = args.includes('--update');
-const take = (opt('--take') ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
+// --take and --skip name files, folders (tools/workflow/** or tools/workflow/) or, for --take, all
+const pathList = (s) => String(s ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
+const inList = (paths, key) => paths.includes('all') || paths.some((p) => p === key || (/(\/\*\*|\/)$/.test(p) && key.startsWith(p.replace(/\*\*$/, ''))));
+const take = pathList(opt('--take'));
 const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy', 'production'];
 const lang = opt('--lang') ?? 'ts';
 const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
@@ -63,10 +66,14 @@ const PARTS = {
 const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
 // an update keeps the modules and the lean choice the project was installed with (.workflow-kit remembers them), plus any --with
 const mark = target && existsSync(join(target, '.workflow-kit')) ? readFileSync(join(target, '.workflow-kit'), 'utf8') : '';
+// files the project does not want from the kit (--skip; .workflow-kit remembers them as skip=): never written, never taken away
+const skip = [...new Set([...pathList(/^skip=(.*)$/m.exec(mark)?.[1]), ...pathList(opt('--skip'))])];
 const remembered = list(/^modules=(.*)$/m.exec(mark)?.[1]);
-const lean = args.includes('--lean') || (update && !args.includes('--full') && /^lean=1$/m.test(mark));
-const withs = [...new Set([...list(opt('--with')), ...(update && !args.includes('--lean') ? list(/^parts=(.*)$/m.exec(mark)?.[1]) : [])])];
-const pickedModules = opt('--modules') === 'none' ? [] : opt('--modules') ? list(opt('--modules')) : update && /^modules=/m.test(mark) ? remembered : lean ? [] : ALL;
+// an update and --check both go by what the project chose before (.workflow-kit): lean, its parts, its modules
+const remembers = update || args.includes('--check');
+const lean = args.includes('--lean') || (remembers && !args.includes('--full') && /^lean=1$/m.test(mark));
+const withs = [...new Set([...list(opt('--with')), ...(remembers && !args.includes('--lean') ? list(/^parts=(.*)$/m.exec(mark)?.[1]) : [])])];
+const pickedModules = opt('--modules') === 'none' ? [] : opt('--modules') ? list(opt('--modules')) : remembers && /^modules=/m.test(mark) ? remembered : lean ? [] : ALL;
 const modules = [...new Set([...pickedModules, ...withs.filter((w) => !(w in PARTS))])];
 const parts = lean ? withs.filter((w) => w in PARTS) : Object.keys(PARTS);
 for (const m of modules) if (![...ALL, ...OPTIONAL].includes(m)) { console.error(`Unknown module or part "${m}". Modules: ${ALL.join(', ')}; with --with: ${OPTIONAL.join(', ')}; parts (with --lean): ${Object.keys(PARTS).join(', ')}`); process.exit(1); }
@@ -126,25 +133,22 @@ function* walk(dir) {
   }
 }
 
-// --check: which machinery files differ from this kit (line endings aside)? Nothing is written.
+// --check: which machinery files differ from this kit (line endings aside)? Nothing is written (install-config.mjs)
 if (args.includes('--check')) {
-  const same = (a, b) => a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
-  const roots = [join(kit, 'payload'), ...modules.map((m) => join(kit, 'modules', m, 'payload')).filter(existsSync)];
-  const lines = [];
-  for (const from of roots) for (const src of walk(from)) {
-    const rel = relative(from, src).replace(/\\/g, '/');
-    const dest = join(target, rel);
-    if (!existsSync(dest)) lines.push(`missing  ${rel}`);
-    else if (TEXT.test(src) && !same(fill(readFileSync(src, 'utf8')), readFileSync(dest, 'utf8'))) lines.push(`differs  ${rel}`);
-  }
-  console.log(lines.length ? lines.join('\n') + `\n${lines.length} machinery files differ from the kit (--force takes the kit's; a change worth keeping goes into the kit first)` : 'the machinery is the kit\'s');
+  const lines = machineryDiffs({ kit, target, modules, fill: (t, src) => (/\.md$/.test(src) ? markAbsent(fill(t)) : fill(t)), text: TEXT, walk, chosenOut: (rel) => inList(skip, rel) || skippedPart(rel) || skippedStage(rel) });
+  console.log(lines.length ? `${lines.join('\n')}\n${lines.length} machinery files differ from the kit (--force takes the kit's; a change worth keeping goes into the kit first)` : "the machinery is the kit's");
   process.exit(lines.length ? 1 : 0);
 }
 
 const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
+// where the kit is for later (stage.mjs --enter runs it again): --kit-path when this run is from a temporary copy; and the tag and
+// the repository, so the right version can be fetched where the path does not exist
+const kitPath = resolve(opt('--kit-path') ?? kit).replace(/\\/g, '/');
+const kitRef = spawnSync('git', ['-C', kit, 'describe', '--tags', '--always'], { encoding: 'utf8' }).stdout?.trim() || `v${kitVersion}`;
+const kitRepo = spawnSync('git', ['-C', kit, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout?.trim() || '';
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
-const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], stageNamed: [], helpers: [] };
+const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], stageNamed: [], helpers: [], skipped: [] };
 // what a stage not reached yet would have written: an update takes away the untouched copies an older kit wrote there
 const stageSkipped = new Map();
 const shipped = new Set(); // every machinery file this run of the kit ships, to find the ones an older kit wrote and this one dropped
@@ -204,6 +208,8 @@ function copyTree(from, overwrite) {
     const machinery = overwriteOnly(from);
     // a part left out: its machinery is not shipped, and its starter pages (docs/market/MARKET.md, docs/company/ROADMAP.md) are not made
     if (skippedPart(key)) continue;
+    // a file the project skips: not written, and kept out of the clean-up of files the kit no longer ships
+    if (inList(skip, key)) { if (machinery) shipped.add(key); done.skipped.push(key); continue; }
     // a stage the project has not reached: not written (and not an orphan either: it comes back when the stage is entered)
     if (skippedStage(key)) { stageSkipped.set(key, { next, machinery }); if (machinery) shipped.add(key); continue; }
     if (machinery) shipped.add(key);
@@ -212,7 +218,7 @@ function copyTree(from, overwrite) {
       const now = hash(readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1'));
       const fresh = hash(TEXT.test(src) ? next : raw.toString('latin1'));
       if (now === fresh) { stamp.set(key, fresh); done.kept.push(rel); continue; }
-      if (!untouched(key, readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1')) && !take.includes(key)) { done.yours.push(key); continue; }
+      if (!untouched(key, readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1')) && !inList(take, key)) { done.yours.push(key); continue; }
     } else if (exists && !overwrite) { done.kept.push(rel); continue; }
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, next);
@@ -352,11 +358,12 @@ if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(pr
 const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
-writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nkit=${kit.replace(/\\/g, '/')}\nmodules=${modules.join(',')}\nstages=${stages.join(',')}\n${lean ? `lean=1\nparts=${parts.join(',')}\n` : ''}sections=${[...sectionsDone].join(',')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from (install.mjs writes it; --force and --update renew it). The sha lines: each machinery file as the kit wrote it.\nversion=${kitVersion}\nkit=${kitPath}\nref=${kitRef}\n${kitRepo ? `kitRepo=${kitRepo}\n` : ''}modules=${modules.join(',')}\nstages=${stages.join(',')}\n${skip.length ? `skip=${skip.join(',')}\n` : ''}${lean ? `lean=1\nparts=${parts.join(',')}\n` : ''}sections=${[...sectionsDone].join(',')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 const shape = `modules: ${modules.join(', ') || 'none'}${lean ? `; lean, parts: ${parts.join(', ') || 'none'} (add one later: --update --with <part>; every part: --update --full)` : ''}`;
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (${shape})` : `Installed kit ${kitVersion} into ${target} (${shape})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
+if (done.skipped.length) console.log(`  skipped, as the project asked (skip= in .workflow-kit, --skip adds more): ${done.skipped.length} file${done.skipped.length === 1 ? '' : 's'}`);
 // a file the kit wrote that the project's ignore rules hide is never committed (a rule like docs/*.md once hid docs/PRODUCT.md)
 const hidden = (spawnSync('git', ['check-ignore', '--stdin'], { cwd: target, input: [...done.added, ...done.replaced].map((f) => f.replace(/\\/g, '/')).join('\n'), encoding: 'utf8' }).stdout ?? '').split('\n').filter(Boolean);
 if (hidden.length) console.log(`  hidden by .gitignore, so git will not commit them (add a !<path> line, or narrow the rule):\n${hidden.map((f) => `    ${f}`).join('\n')}`);

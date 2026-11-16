@@ -3,7 +3,7 @@
 // budget the kit's doc move grew), and the project files written once (Dependabot, .gitignore lines, .gitattributes). Each
 // function gets what it works on as arguments; install.mjs runs them in order.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 
 // the commands the kit's own checks had before, by name: a project still on one of them gets the new one on --update
 const OLD_COMMANDS = { unused: ['npx --no-install knip --no-progress'] };
@@ -119,6 +119,10 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
         const same = mine.checks.find((x) => x.name === c.name);
         if (same && OLD_COMMANDS[c.name]?.includes(same.command) && same.command !== c.command) { same.command = c.command; added.push(`checks: ${c.name} now runs ${c.command}`); }
       }
+      // a card type the skills offer (spike, say) that the project's board does not know yet: added, never one taken away
+      if (k === 'board' && Array.isArray(v.types) && Array.isArray(mine.board?.types)) for (const t of v.types) {
+        if (!mine.board.types.includes(t)) { mine.board.types.push(t); added.push(`board.types: ${t}`); }
+      }
       // kit 2.9: the docs' subject folders are checked like the top of docs/ (the doc-layout folders the kit's include names)
       if (k === 'docs' && Array.isArray(mine.docs?.include)) for (const g of v.include.filter((x) => /^docs\/[a-z]+\/\*\.md$/.test(x))) {
         if (!mine.docs.include.includes(g)) { mine.docs.include.push(g); added.push(`docs.include: ${g}`); }
@@ -185,4 +189,24 @@ export function writeProjectFiles({ target, kit, lang, langs, modules, update, d
     return '';
   }
   return update && !/eol=lf/.test(readFileSync(gaPath, 'utf8')) ? '  .gitattributes has no `* text=auto eol=lf`: without it git on Windows warns "LF will be replaced by CRLF" on every add' : '';
+}
+
+/**
+ * --check: the machinery files of the kit (its payload and the modules') that are missing in the project or differ, line endings
+ * aside; `chosenOut` leaves out what the project chose not to have.
+ */
+export function machineryDiffs({ kit, target, modules, fill, text, walk, chosenOut = () => false }) {
+  const same = (a, b) => a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
+  const roots = [join(kit, 'payload'), ...modules.map((m) => join(kit, 'modules', m, 'payload')).filter((d) => existsSync(d))];
+  const lines = [];
+  for (const from of roots) for (const src of walk(from)) {
+    const rel = relative(from, src).replace(/\\/g, '/');
+    // what the project chose not to have (a part left out, a stage not reached, a file it skips) is not missing
+    // (gate.yml gets the language's own setup steps after it is copied, so it never equals the kit's file: the update treats it so too)
+    if (chosenOut(rel) || rel === '.github/workflows/gate.yml') continue;
+    const dest = join(target, rel);
+    if (!existsSync(dest)) lines.push(`missing  ${rel}`);
+    else if (text.test(src) && !same(fill(readFileSync(src, 'utf8'), src), readFileSync(dest, 'utf8'))) lines.push(`differs  ${rel}`);
+  }
+  return lines;
 }

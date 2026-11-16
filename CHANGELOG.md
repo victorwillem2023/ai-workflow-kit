@@ -2,6 +2,19 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **2.9.8**, from porting Trailsmith (its builder's list). **A test moves a card**: starting a session with `--card` must
+  move it to In progress with no board warning (the fixture's missing `cardgraph.mjs` had only shown as a warning). **An update
+  keeps every setting**: the self-test's older project has its own extra input folder, and after the update every value of the
+  old config must still be there. **The installer remembers where the kit is and what to skip**: `.workflow-kit` records `ref=`
+  (the tag) and `kitRepo=` beside `kit=`, `--kit-path` names the real place when installing from a copy, and `stage.mjs --enter`
+  says how to fetch that tag when the folder is gone; `--skip <files or folders>` keeps kit files out for good (`skip=`), and
+  `--take` takes a folder (`tools/workflow/**`) or `all`. `--check` now goes by the project's remembered choices (lean, parts,
+  modules, stages, skips) and the text an install writes, so a fresh lean install reads "the machinery is the kit's".
+  **Settings instead of fixed places**: the request pages' places (`map.requests`: `{ index, folder }`), and where the notes left
+  in the main folder go (`commits.notes`: `"own"`, a commit of their own, or `"with-feature"`, carried into the session by
+  `session.mjs --carry-notes <topic>` for a project that allows no commit of docs alone). An update adds the card types the
+  skills offer (`spike`) to `board.types`. The session test fixture takes its folder prefix as an option. And, unsaid until now:
+  since 2.8.3 a session's card comment no longer names its port (a link only for a change with a screen, from `--serve`).
 - **2.9.7**: **the kit keeps its own size rule.** The two scripts that grew most and carry the most risk are split along their
   seams: `session.mjs` (648 lines) into itself (making, finishing, pushing, listing), `session-core.mjs` (git, the folders, the
   main folder against origin, the board, packages, rebasing, checks) and `session-extras.mjs` (the main folder's notes, `--sync`,

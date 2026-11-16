@@ -13,7 +13,11 @@ export function loadFlow(root) {
     if (existsSync(file)) vm.runInNewContext(readFileSync(file, 'utf8'), { window }, { filename: f, timeout: 2000 });
   }
   if (!window.FLOW) throw new Error('docs/flow/map.js did not set window.FLOW.');
-  return { groups: [...(window.FLOW_REQUESTS ? [window.FLOW_REQUESTS] : []), ...window.FLOW.groups] };
+  // where the request pages live: `map.requests` in workflow.config.json ({ index, folder }), else the kit's own places
+  let requests = {};
+  try { requests = JSON.parse(readFileSync(join(root, 'workflow.config.json'), 'utf8')).map?.requests ?? {}; } catch { /* no config: the kit's places */ }
+  const requestPages = [requests.index ?? 'docs/REQUESTS.md', requests.folder ?? 'docs/requests/'];
+  return { groups: [...(window.FLOW_REQUESTS ? [window.FLOW_REQUESTS] : []), ...window.FLOW.groups], requestPages };
 }
 
 /** Every end of the map with where it is: group › stage, and the stage's source file (where to fix it). */
@@ -69,13 +73,14 @@ const UNDER_WAY = ['Ready', 'In progress', 'Waiting for your check'];
 const OFF_MAP_TYPES = ['workflow'];
 
 const short = (s, n = 70) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const isRequestPage = (e) => e.src.startsWith('docs/REQUESTS.md') || e.src.startsWith('docs/requests/');
+// an end that comes from a request page is fixed on that page (`map.requests`; the kit's places when a flow has none)
+const isRequestPage = (e, pages = ['docs/REQUESTS.md', 'docs/requests/']) => pages.some((p) => e.src.startsWith(p));
 
 /** The hygiene problems, one plain line each, saying where to fix it. */
-function hygiene(ends, byNumber) {
+function hygiene(ends, byNumber, requestPages) {
   const out = [];
   for (const e of ends) {
-    const at = `"${short(e.text, 50)}" (${e.where}${isRequestPage(e) ? `, fix it on ${e.src}` : ''})`;
+    const at = `"${short(e.text, 50)}" (${e.where}${isRequestPage(e, requestPages) ? `, fix it on ${e.src}` : ''})`;
     for (const n of e.cards) {
       const c = byNumber.get(n);
       if (!c) out.push(`#${n} is on ${at} but is no card on the board.`);
@@ -114,7 +119,7 @@ export function worksheet(flow, cards, columns, { all = false } = {}) {
     }
     if (shown.length < here.length) lines.push(`  and ${here.length - shown.length} more on no map end (--all lists them)`);
   }
-  const problems = hygiene(ends, byNumber);
+  const problems = hygiene(ends, byNumber, flow.requestPages);
   lines.push('', problems.length ? `Hygiene (${problems.length})` : 'Hygiene: nothing to fix.', ...problems.map((p) => `  - ${p}`));
   return { text: lines.join('\n'), problems };
 }

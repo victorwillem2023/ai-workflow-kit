@@ -15,10 +15,15 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    if it fails (uncommitted files there, or unpushed features while origin has new commits: it then says to run `--push`) stop and show
    the owner its message. Finished features that are not pushed yet are fine. Waiting specs don't count (`specs/` is ignored).
    **Only docs and settings left there** (its message says "docs and settings that are not committed yet": from `/docs`, `/lesson`,
-   `/shape` or the owner's own edits) are not a reason to stop or ask: they are the owner's, never folded into this feature. Run
-   `node scripts/session.mjs --commit-notes "<Area: what changed>"` (a subject from the diff, e.g. "Product: the problem and the first
-   users"), say in one line that they went in first as their own commit, run `--check-main` again and go on. If its quick gate fails,
-   stop and show the owner the failure: a hand edit broke a check. Code left in the main folder still stops here.
+   `/shape` or the owner's own edits) are not a reason to stop or ask. Where they go is the project's choice, `commits.notes` in
+   `workflow.config.json`:
+   - `"own"` (the default): they are the owner's, never folded into this feature. Run `node scripts/session.mjs --commit-notes
+     "<Area: what changed>"` (a subject from the diff, e.g. "Product: the problem and the first users"), say in one line that they
+     went in first as their own commit, run `--check-main` again and go on. If its quick gate fails, stop and show the owner the
+     failure: a hand edit broke a check.
+   - `"with-feature"` (a project that allows no commit of docs alone): `node scripts/session.mjs --carry-notes <topic>` moves them
+     into the session folder, so they go in with this feature's one commit; say so in one line, add them to the spec's files, and go on.
+   Code left in the main folder still stops here.
 1. Read `specs/<topic>.md`.
 2. `npm run gate:all` must pass. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.

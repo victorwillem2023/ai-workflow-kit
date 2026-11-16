@@ -74,6 +74,7 @@
     "egress": [],
     "ipRules": []
   },
+  "commits": { "notes": "own" },
   "session": {
     "prefix": "{{PREFIX}}",
     "firstPort": 8788,

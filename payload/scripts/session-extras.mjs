@@ -1,9 +1,9 @@
 // What scripts/session.mjs gained after its first version: the main folder's own notes (--check-main, --commit-notes, --sync),
 // a session's dev server (--serve), and sessions built on another one (--on, --restack). Built on session-core.mjs.
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, openSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { git, gitQuiet, here, main, PREFIX, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, ensurePackages, npmRun, rebaseOn, gh } from './session-core.mjs';
 
 /**
@@ -129,4 +129,30 @@ export function restack(topic, oldTip) {
   forget(topic);
   console.log(`"${topic}" was built on "${base}" and now sits on main.`);
   return true;
+}
+
+/**
+ * For a project whose notes go in with the feature (`commits.notes: "with-feature"` in workflow.config.json, a project that allows
+ * no commit of docs alone): the docs and settings left in the main folder move into the session folder, at the same paths, and the
+ * main folder is put back as it was, so they are part of the feature's one commit. Code among them is refused, and so is a file
+ * the session changed itself (it would be overwritten).
+ */
+export function carryNotes(topic) {
+  const dir = folderOf(topic);
+  if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
+  if (git(main, 'branch', '--show-current') !== 'main') throw new Error('The main folder is not on main.');
+  const status = execFileSync('git', ['status', '--porcelain', '-uall'], { cwd: main, encoding: 'utf8' }).split('\n').filter(Boolean)
+    .map((l) => ({ code: l.slice(0, 2), file: l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, '') })).filter((x) => !/^node_modules\/?$/.test(x.file));
+  if (!status.length) { console.log('The main folder has no notes to carry.'); return; }
+  const code = status.filter((x) => !NOTE.test(x.file)).map((x) => x.file);
+  if (code.length) throw new Error(`Only docs and settings are carried; these are not:\n${code.join('\n')}\nMove them to a session (or ask the owner).`);
+  const clash = status.filter((x) => git(dir, 'status', '--porcelain', '--', x.file)).map((x) => x.file);
+  if (clash.length) throw new Error(`The session changed these too, so carrying the main folder's would overwrite them:\n${clash.join('\n')}\nMerge them by hand first.`);
+  for (const { code: c, file } of status) {
+    const from = join(main, file), to = join(dir, file);
+    if (existsSync(from)) { mkdirSync(dirname(to), { recursive: true }); copyFileSync(from, to); } else rmSync(to, { force: true });
+    // the main folder as it was: a changed or deleted file back from git, a new one taken away
+    if (c === '??') rmSync(from, { force: true }); else git(main, 'checkout', '--', file);
+  }
+  console.log(`Carried ${status.length} note${status.length === 1 ? '' : 's'} into ../${basename(dir)}: they go in with the feature's commit (commits.notes: with-feature).`);
 }

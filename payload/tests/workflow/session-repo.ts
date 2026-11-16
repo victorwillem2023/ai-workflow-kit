@@ -32,7 +32,8 @@ else if(cmd==='api graphql')out({data:{repository:{issue:{projectItems:{nodes:[{
 else if(cmd==='issue view')out({number:42,projectItems:[{status:{name:process.env.CARD_COLUMN||'In progress'}}]});
 else out({});`;
 export const OPTION = { 'In progress': 'o3', 'Waiting for your check': 'o4' };
-export function makeRepo(): Repo {
+/** A throwaway project with its origin; `prefix` names the session folders (<prefix>-<topic>), as `session.prefix` does in a project. */
+export function makeRepo({ prefix = 'app' }: { prefix?: string } = {}): Repo {
   // a space and a "~" in the path, as in C:\Users\John Smith or a Windows short name (RUNNER~1): paths must survive both
   const root = mkdtempSync(join(tmpdir(), 'session ~'));
   roots.push(root);
@@ -48,7 +49,7 @@ export function makeRepo(): Repo {
   for (const lib of ['board.mjs', 'cardgraph.mjs']) copyFileSync(resolve('tools/workflow/lib', lib), join(main, 'tools', 'workflow', 'lib', lib));
   // the project's own config, with the session folders named app-<topic> whatever the project calls its own
   const config = JSON.parse(readFileSync(resolve('workflow.config.json'), 'utf8'));
-  writeFileSync(join(main, 'workflow.config.json'), JSON.stringify({ ...config, session: { prefix: 'app', firstPort: 8788 + PORTS, mainPort: 8787 + PORTS, env: {} } }));
+  writeFileSync(join(main, 'workflow.config.json'), JSON.stringify({ ...config, session: { prefix, firstPort: 8788 + PORTS, mainPort: 8787 + PORTS, env: {} } }));
   writeFileSync(join(main, 'package.json'), JSON.stringify({ scripts: { map: 'node map.cjs', test: 'node check.cjs' } }));
   writeFileSync(join(main, 'map.cjs'), MAP_SCRIPT); writeFileSync(join(main, 'check.cjs'), CHECK_SCRIPT);
   writeFileSync(join(root, 'fake-gh.cjs'), FAKE_GH);
@@ -57,7 +58,7 @@ export function makeRepo(): Repo {
   execFileSync('node', ['map.cjs'], { cwd: main });
   git(main, 'add', '-A'); git(main, 'commit', '-m', 'start'); git(main, 'push', '-u', 'origin', 'main');
   const ghLog = join(root, 'gh.log'); const checkLog = join(root, 'check.log');
-  return { root, main, origin, wt: (t) => join(root, `app-${t}`), ghLog, checkLog,
+  return { root, main, origin, wt: (t) => join(root, `${prefix}-${t}`), ghLog, checkLog,
     env: { WORKFLOW_GH: join(root, 'fake-gh.cjs'), GH_LOG: ghLog, CHECK_LOG: checkLog } };
 }
 export const run = (r: Repo, ...args: string[]) => {
