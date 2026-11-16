@@ -33,7 +33,7 @@ describe('the stop points', () => {
     assert.equal(verdict('git commit -m x', { commit: now - 60_000 }, now).ok, true);
     const stale = verdict('git commit -m x', { commit: now - HOLDS_MS - 1 }, now);
     assert.equal(stale.ok, false);
-    assert.match(stale.why, /waits for the owner.*"done"/);
+    assert.match(stale.why ?? '', /waits for the owner.*"done"/);
     assert.equal(verdict('git push', { commit: now }, now).ok, false, 'a "done" is not a "push"');
     assert.equal(verdict('npm test', {}, now).ok, true);
   });

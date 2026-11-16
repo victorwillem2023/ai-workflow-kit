@@ -14,8 +14,9 @@ const SKIPPED = 'the kit\'s own tests skipped: no machinery changed (GitHub runs
  *   whole: --all; unknown: a changed file the import graph does not understand; reached: the tests the change reaches
  * @returns {{ mode: 'suite' | 'files' | 'none', files: string[], whole: boolean, note: string }}
  */
-export function testPlan({ whole, unknown, reached, allTests, changed, forced, matches, kitTests = KIT_TESTS, kitMachinery = KIT_MACHINERY, maxFiles = 300 }) {
-  const kitDue = forced || changed.some((f) => matches(f, kitMachinery));
+// (`skipKit`: the kit's self-test runs them once itself, WORKFLOW_KIT_TESTS=0 on its other gates: never due then)
+export function testPlan({ whole, unknown, reached, allTests, changed, forced, matches, kitTests = KIT_TESTS, kitMachinery = KIT_MACHINERY, maxFiles = 300, skipKit = false }) {
+  const kitDue = !skipKit && (forced || changed.some((f) => matches(f, kitMachinery)));
   const why = unknown && !whole ? ' (an unknown file changed)' : '';
   if (whole || unknown) {
     const own = allTests.filter((f) => !matches(f, kitTests)).sort();

@@ -213,8 +213,8 @@ const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChang
 if (config.testPicking === false) { reach.all = changed.some((f) => !matchesAny(f, config.ignoreChanged)); reach.tests = []; }
 // which tests run (lib/testplan.mjs): the kit's own only when the machinery changed, on GitHub, with --kit or WORKFLOW_KIT_TESTS
 const plan = testPlan({ whole: flag('--all'), unknown: reach.all, reached: reach.tests, allTests: [...graph.files.keys()].filter(isTest), changed,
-  forced: Boolean(process.env.CI || process.env.WORKFLOW_KIT_TESTS) || flag('--kit') || config.testPicking === false, matches: matchesAny,
-  kitTests: config.kitTests, kitMachinery: config.kitMachinery });
+  forced: Boolean(process.env.CI || (process.env.WORKFLOW_KIT_TESTS && process.env.WORKFLOW_KIT_TESTS !== '0')) || flag('--kit') || config.testPicking === false, matches: matchesAny,
+  kitTests: config.kitTests, kitMachinery: config.kitMachinery, skipKit: process.env.WORKFLOW_KIT_TESTS === '0' });
 
 // the scope guard: with one spec in specs/, the changed files it does not name
 function scopeLines() {

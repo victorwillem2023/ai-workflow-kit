@@ -6,8 +6,9 @@ find: a double charge, a public file with someone's address in it, a job that ra
 The legal side (consent, terms, VAT) is `docs/workflow/LIFECYCLE.md`; where it runs is `/launch`. Read by the section.
 
 ## The same four rules for all of them
-- **One file per part** (`src/server/mail.ts`, `payments.ts`, `uploads.ts`, `jobs.ts`), the only one that talks to its provider,
-  with a fake for the tests (`tests/fakes.example.ts`). A provider's SDK used anywhere else is a finding.
+- **One file per part** in the server folder (mail, payments, uploads, jobs: a file named after each), the only one that talks
+  to its provider, with a fake for the tests (the fakes pattern of the testing module). A provider's SDK used anywhere else is a
+  finding.
 - **Buy the hard part**: a mail provider, a payment provider, object storage, the platform's scheduler. Never your own mail
   server, card form or file server (`docs/run/BUY-OR-HOST.md`; a new provider is the owner's decision and a line in
   `docs/STACK.md` and `security.egress`).

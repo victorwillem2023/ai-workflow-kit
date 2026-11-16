@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // The kit checks itself: install it into a fresh project in a temporary folder, the way a person would, and run everything
-// there: the kit's own tests (they need a real project around them), the file map, the first baseline and the full gate.
-// Then do it again with --update over the result, so an update is proven too. Used by .github/workflows/selftest.yml.
+// there: the file map, the first baseline and the full gate. Then do it again with --update over the result, so an update is
+// proven too. Used by .github/workflows/selftest.yml. The kit's own tests (tests/workflow, about a minute) run once per run, in
+// the full variant's first gate and in the messy project after its update; every other gate runs the project's own tests and
+// every check. First of all, tests/ (the installer's helpers, a second): npm run test:quick runs only those.
 //   node scripts/selftest.mjs [<variant>...] [--keep]      no variant: full. --keep leaves the folders for a look
 //   node scripts/selftest.mjs --quick                      full and lean only: enough for a routine change (CI still runs them all)
 // Variants run side by side (--jobs <n>, default 4), each with its own port range (WORKFLOW_TEST_PORTS): a session's --finish
@@ -26,6 +28,8 @@ const win = process.platform === 'win32';
 // a tool is there when it answers --version (go answers "go version" instead)
 const has = (cmd) => [['--version'], ['version']].some((a) => spawnSync(cmd, a, { stdio: 'ignore', shell: win }).status === 0);
 
+// the variants whose first gate runs the kit's own tests; the messy one runs them after its update
+const KIT_TESTS_IN = ['full'];
 const VARIANTS = {
   // full: the run stage entered (docs/run/ there); every other variant without it, as a new project starts
   full: { args: ['--with', 'ai', '--stage', 'run'] },
@@ -178,7 +182,8 @@ async function runMessy({ name, dir, step, git, install }) {
   verdict(name, 'after the update every doc pointed at is there', missingDocPointers(dir));
   await step('file map', process.execPath, ['tools/workflow/map.mjs']);
   await step('baseline, as the update says', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
-  await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+  // (the kit's own tests here too: an old project with a board set is where they found real bugs)
+  await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all'], { WORKFLOW_KIT_TESTS: '1' });
   await converges({ name, dir, git, step });
   return 'passed';
 }
@@ -196,13 +201,13 @@ async function runVariant(name) {
   mkdirSync(dir);
   const steps = [];
   // its own port range, so projects checked side by side never stop each other's test servers
-  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_KIT_TESTS: '1', WORKFLOW_TEST_PORTS: String(Object.keys(VARIANTS).indexOf(name) * 400) };
-  const step = (label, cmd, args) => new Promise((done, fail) => {
+  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_KIT_TESTS: '0', WORKFLOW_TEST_PORTS: String(Object.keys(VARIANTS).indexOf(name) * 400) };
+  const step = (label, cmd, args, more = {}) => new Promise((done, fail) => {
     const t0 = Date.now();
     // npm, uv and cargo can be .cmd files on Windows; the arguments are fixed here, never outside input
     // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
     // stdin closed, so a starter that would ask a question takes its default instead of waiting
-    const p = spawn(cmd, args, { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'], shell: win && cmd !== process.execPath, env });
+    const p = spawn(cmd, args, { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'], shell: win && cmd !== process.execPath, env: { ...env, ...more } });
     let out = '';
     p.stdout.on('data', (d) => { out += d; });
     p.stderr.on('data', (d) => { out += d; });
@@ -254,7 +259,9 @@ async function runVariant(name) {
     await step('file map', process.execPath, ['tools/workflow/map.mjs']);
     await step('first baseline', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
     // the full gate runs the project's whole test suite (npm test) itself: no separate run of it
-    await step('full gate', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+    // the kit's own tests (tests/workflow) run once per self-test, here in the full variant's first gate (KIT_TESTS_IN); every
+    // other gate runs the project's own tests and every check (WORKFLOW_KIT_TESTS=0), which is most of the time saved
+    await step('full gate', process.execPath, ['tools/workflow/gate.mjs', '--all'], { WORKFLOW_KIT_TESTS: KIT_TESTS_IN.includes(name) ? '1' : '0' });
     git('add', '-A');
     git('commit', '-q', '-m', 'The first baseline');
     // the update starts from the layout an older kit left (every doc at the top of docs/), so moving a project over is proven too
@@ -337,7 +344,10 @@ if (tooBig.length) process.exit(1);
   if (!sameLayout || !ruled) process.exit(1);
 }
 const results = {};
-const queue = [...names];
+// the longest first, so the slowest never starts last and runs alone at the end (with 4 at a time and 6 variants)
+const LONGEST = ['messy', 'full', 'cluster', 'vite'];
+const rank = (n) => (LONGEST.includes(n) ? LONGEST.indexOf(n) : LONGEST.length);
+const queue = [...names].sort((a, b) => rank(a) - rank(b));
 await Promise.all(Array.from({ length: Math.min(jobs, names.length) }, async () => {
   for (let n = queue.shift(); n; n = queue.shift()) results[n] = await runVariant(n);
 }));

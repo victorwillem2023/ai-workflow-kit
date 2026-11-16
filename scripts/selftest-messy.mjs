@@ -81,7 +81,9 @@ export async function messyAtOldKit({ dir, kit, step, git, installArgs }) {
   writeFileSync(cfgAt, `${JSON.stringify(cfg, null, 2)}\n`);
   await step(`file map (${OLD_TAG})`, process.execPath, ['tools/workflow/map.mjs']);
   await step(`baseline (${OLD_TAG})`, process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
-  await step(`full gate (${OLD_TAG})`, process.execPath, ['tools/workflow/gate.mjs', '--all']);
+  // (its quick gate: every check, on a fixture that never changes; the old gate takes any WORKFLOW_KIT_TESTS as "run the kit's
+  // tests", so it is empty here)
+  await step(`gate (${OLD_TAG})`, process.execPath, ['tools/workflow/gate.mjs'], { WORKFLOW_KIT_TESTS: '' });
   git('add', '-A'); git('commit', '-q', '-m', 'The first baseline');
   makeItTheirs(dir);
   git('add', '-A'); git('commit', '-q', '-m', 'Our own settings, board and rules');
