@@ -5,7 +5,7 @@
   "description": "The kit itself: npm run test:quick checks the installer's helpers in seconds; npm test installs it into fresh projects and runs everything there.",
   "scripts": {
     "test": "node scripts/selftest.mjs",
-    "test:quick": "node --test tests/"
+    "test:quick": "node --test \"tests/*.test.mjs\""
   },
   "engines": { "node": ">=26" }
 }

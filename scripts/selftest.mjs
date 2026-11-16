@@ -302,7 +302,7 @@ const jobsAt = process.argv.indexOf('--jobs');
 const jobs = Math.max(1, Number(jobsAt >= 0 ? process.argv[jobsAt + 1] : 0) || Math.min(4, Math.max(1, Math.floor(availableParallelism() / 2))));
 // the installer's helpers, one by one (tests/, seconds): a slip there fails here, before minutes of installing
 {
-  const unit = spawnSync(process.execPath, ['--test', 'tests/'], { cwd: kit, encoding: 'utf8' });
+  const unit = spawnSync(process.execPath, ['--test', 'tests/*.test.mjs'], { cwd: kit, encoding: 'utf8' });
   console.log(`${unit.status === 0 ? 'ok  ' : 'FAIL'} the installer's helpers (tests/)${unit.status === 0 ? '' : `\n${`${unit.stdout}${unit.stderr}`.trim().split('\n').slice(-40).join('\n')}`}`);
   if (unit.status !== 0) process.exit(1);
 }
