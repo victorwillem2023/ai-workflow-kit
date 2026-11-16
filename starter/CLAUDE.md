@@ -11,7 +11,7 @@ The owner wants to understand and steer the project, not just receive features. 
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: what the user will see change, which files, which test proves it,
-  which docs; wait for approval. `/work <n>` is the one entry; after the yes `/build <topic>` runs **in a new chat**, and
+  which docs; wait for the owner. `/work <n>` is the one entry; the owner typing `/build <topic>` **in a new chat** is the yes, and
   `/ship <topic>` finishes it only when the owner says done (`tools/workflow/README.md`, read by the section).
 - **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`docs/workflow/TOKENS.md`).
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.

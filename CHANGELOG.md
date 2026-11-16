@@ -2,6 +2,34 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **2.9.7**: **the kit keeps its own size rule.** The two scripts that grew most and carry the most risk are split along their
+  seams: `session.mjs` (648 lines) into itself (making, finishing, pushing, listing), `session-core.mjs` (git, the folders, the
+  main folder against origin, the board, packages, rebasing, checks) and `session-extras.mjs` (the main folder's notes, `--sync`,
+  `--serve`, stacked sessions); `install.mjs` (590) into itself, `install-docs.mjs` (the stages, the doc move, keeping what a
+  project's pages point at) and `install-config.mjs` (Claude Code's rules, the config merge, the files written once). Each moved
+  piece is unchanged, and gets what it works on as arguments. The self-test fails when any of the kit's own scripts goes over
+  400 lines. Fixed on the way: an update again sees a market page an older project kept at its old place (the 2.9.0 path rewrite
+  had turned that path into the new one).
+  **Typing `/build` is the approval** (asked for before 2.8.3 and lost since): `/spec` and `/work` end with "happy with it? open a
+  new chat and type `/build <topic>`: that is your yes", and `/build` records "approved on <date> (by running /build)" and moves
+  the card to Ready itself. It still stops when the spec asks an open question or holds a sensitive number without a source, and
+  only the owner's own `/build` approves.
+  **Faster work is offered, not hidden**: `/next` adds "build these at the same time" when two or three cards to start do not
+  depend on each other and sit in different areas (about as long as the longest, about the cost of all of them), and `/spec`
+  offers splitting a big card over several builders as a choice of time against cost instead of deciding it silently.
+  Both go by the size of the work: cards at the same time only when each is medium or large (two small ones in one area are
+  offered as one session instead), a split only for a large card whose packages are each a few hundred lines on their own files.
+  **From porting an existing project (Trailsmith)**: the session tests' repos copy what the board library imports
+  (`cardgraph.mjs`); the gate workflow says `permissions: contents: read` itself; the installer warns when the project's ignore
+  rules hide a file it wrote (a rule once hid `docs/PRODUCT.md`) and adds a `.gitignore` comment only with a line of its group;
+  the page-weight check fails, with the setting to write, when the build's files are not where `performance.files` says (it
+  passed checking nothing); the unused check (knip) has a baseline like the others (`tools/workflow/unused.mjs`: the first run
+  takes what is there, then only new findings fail; an update moves a project still on the old command to it); writing
+  `workflow.config.json` back keeps every unchanged key exactly as written (no more reflowed one-line entries); in a session the
+  packages check gives the command that puts a missing package into the shared folder without touching the main folder's files
+  (`npm install --no-save`); the installer takes the Node version from the project's own `.tool-versions`, `engines`,
+  Dockerfile or `.nvmrc` (it named `@types/node` 26 for a Node 24 project); and an update rewrites the kit's own old "no
+  docs-only commits" sentence in CLAUDE.md, which contradicted `/ship`'s notes commit.
 - **2.9.6**: **updates look after themselves.** The `renovate.json` a project starts with merges small updates (fixes, minor
   versions, pins, the monthly lock refresh; not libraries below 1.0) once Renovate has seen every check on them pass, and Renovate
   merges them itself (`platformAutomerge` off, so nothing merges before the checks ran; GitHub's "Allow auto-merge" is not

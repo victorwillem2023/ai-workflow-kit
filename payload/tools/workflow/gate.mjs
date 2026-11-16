@@ -13,7 +13,7 @@
 //   --advice      only print the advice lines (security-review, hostile-input test, a missing push guard) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
 // Project settings live in workflow.config.json; nothing here knows about the project.
-import { checkPackages, describeMissing } from '../../scripts/packages.mjs';
+import { checkPackages, describeMissing, packagesFix } from '../../scripts/packages.mjs';
 import { testPlan } from './lib/testplan.mjs';
 import { errorRuleFindings } from './lib/errorrules.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -352,7 +352,7 @@ const steps = [
   // a package the lock lists and node_modules lacks: said plainly here, instead of as a typecheck or test error further down
   existsSync('package-lock.json') && ['packages', () => {
     const missing = checkPackages('.');
-    return missing.length ? { ok: false, out: `${describeMissing(missing)}: run npm install (in the main folder: every session uses its packages)` } : { ok: true };
+    return missing.length ? { ok: false, out: `${describeMissing(missing)}: ${packagesFix('.', missing)}` } : { ok: true };
   }],
   ['typecheck', () => run(config.commands.typecheck)],
   ['tests', () => {

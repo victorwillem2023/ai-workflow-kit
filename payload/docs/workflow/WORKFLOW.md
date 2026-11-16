@@ -73,9 +73,9 @@ Why the flow is split this way, and what keeps a session cheap: `docs/workflow/T
    | `workflow` | Like a feature, but nothing in the app changes. |
    | `ui` | A mockup board first (variants A, B, C, with pictures), then the build, only in `src/web`. |
 
-3. **Approve the plan**: The agent shows a short summary (what you will see, files, tests, docs) and stops.
-   Answer yes, or say what to change. The card moves to *Ready*, and the agent asks you to open a new chat and run
-   `/build <topic>`. The build starts fresh from the plan, so it doesn't carry the whole planning chat along (a small bug is
+3. **Look at the plan**: The agent shows a short summary (what you will see, files, tests, docs) and stops. Say what to change,
+   or open a new chat and type `/build <topic>`: typing it is your yes (the plan is marked approved and the card moves to
+   *Ready*). The build starts fresh from the plan, so it doesn't carry the whole planning chat along (a small bug is
    fixed in the same chat).
 4. **Try it**: In that chat the agent builds in the session folder, then hands it over in plain words: what to try, with
    examples, your own numbers and the edge cases. A change with a new screen comes with a link to a server that is already
@@ -88,7 +88,7 @@ Why the flow is split this way, and what keeps a session cheap: `docs/workflow/T
 7. **Push**: when you want it online, `node scripts/session.mjs --push`.
 
 ## Several cards at once
-`/work 12 14 15` reads the three cards and writes their plans one after another in the same chat; you approve each on its own.
+`/work 12 14 15` reads the three cards and writes their plans one after another in the same chat; then one `/build <their topics>` in a new chat approves and builds them all.
 Then, in a new chat, `/build a b c` starts one builder per plan, at most 3 at the same time, each in its own folder and port. If two plans change the
 same file, the later one waits until the first is finished with `/ship`. You get one summary with each folder, URL and
 "unsure" list. Give feedback naming the topic ("on fan-out: ..."), and ship one at a time: `/ship a`, then `/ship b`.

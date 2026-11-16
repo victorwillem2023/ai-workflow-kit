@@ -24,12 +24,15 @@
 // 4. package.json gets the test/test:full/typecheck/gate/gate:all/map/board/harness scripts (the project's own win, except npm's
 //    placeholder test); .gitignore gets the kit's lines; .github/dependabot.yml (weekly updates) is written when missing. The OpenCode commands are written last (`npm run harness` again after a skill changes).
 //    Nothing is committed.
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { CORRECTIONS, MOVES, movePaths, movePathsBack, undoCorrections } from './doc-layout.mjs';
+import { movePathsBack, undoCorrections } from './doc-layout.mjs';
+import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
+import { addClaudeRules, settleConfig, writeProjectFiles } from './install-config.mjs';
+import { STAGE_FOLDERS, rewriteChangedRules, keepNamedStageDocs, moveOldDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -109,38 +112,10 @@ const vars = {
 };
 const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k]);
 
-// Stage folders (kit 2.9.1): a stage's docs are not written until the project reaches it, so a new project shows what it needs
-// now. docs/run/ comes with the run stage (/launch), docs/market/ with the market stage (/market). `--stage <name>` enters one
-// (`node tools/workflow/stage.mjs --enter <name>` runs that update) and .workflow-kit remembers it (stages=). A project from before
-// 2.9.1 keeps a stage it already went into: a launch decision record (run), a market page it wrote (market).
-const STAGE_FOLDERS = { run: { folder: 'docs/run/', by: '/launch' }, market: { folder: 'docs/market/', by: '/market' } };
+// Stage folders (kit 2.9.1): a stage's docs are not written until the project reaches it (docs/run/ with /launch, docs/market/
+// with /market); what a stage or a module left out would bring is marked where it is named (install-docs.mjs)
 for (const s of list(opt('--stage'))) if (!(s in STAGE_FOLDERS)) { console.error(`Unknown stage "${s}". Stages: ${Object.keys(STAGE_FOLDERS).join(', ')}`); process.exit(1); }
-function stagesAlreadyEntered() {
-  const out = [];
-  const decisions = join(target, 'docs', 'decisions');
-  if (existsSync(decisions) && readdirSync(decisions).some((f) => /-launch\.md$/.test(f))) out.push('run');
-  const page = ['docs/market/MARKET.md', 'docs/market/MARKET.md'].map((p) => join(target, p)).find((p) => existsSync(p));
-  const template = join(kit, 'starter', 'docs', 'market', 'MARKET.md');
-  const plain = (t) => t.replace(/\r\n/g, '\n').trim();
-  if (page && existsSync(template) && plain(readFileSync(page, 'utf8')) !== plain(fill(readFileSync(template, 'utf8')))) out.push('market');
-  return out;
-}
-const stages = [...new Set([...(/^stages=/m.test(mark) ? list(/^stages=(.*)$/m.exec(mark)?.[1]) : update ? stagesAlreadyEntered() : []), ...list(opt('--stage'))])];
-const skippedStage = (key) => Object.entries(STAGE_FOLDERS).some(([s, { folder }]) => !stages.includes(s) && key.startsWith(folder));
-// every doc a stage not reached yet would bring, from the kit's sources (and the infra map, which npm run map writes there)
-const kitRoots = [join(kit, 'payload'), join(kit, 'starter'), ...[...ALL, ...OPTIONAL].flatMap((m) => ['payload', 'starter'].map((d) => join(kit, 'modules', m, d)))];
-const stageDocs = Object.entries(STAGE_FOLDERS).filter(([s]) => !stages.includes(s)).flatMap(([s, { folder, by }]) => [...new Set([
-  ...kitRoots.flatMap((r) => (existsSync(join(r, folder)) ? readdirSync(join(r, folder)).filter((f) => f.endsWith('.md')).map((f) => `${folder}${f}`) : [])),
-  ...(s === 'run' ? ['docs/run/INFRA-MAP.md'] : []),
-])].map((doc) => [doc, s, by]));
-// every doc a module left out would have brought (its payload and starter docs, folders included), unless another source brings it
-const docsUnder = (root, rel = 'docs') => (existsSync(join(root, rel)) ? readdirSync(join(root, rel), { withFileTypes: true })
-  .flatMap((e) => (e.isDirectory() ? docsUnder(root, `${rel}/${e.name}`) : e.name.endsWith('.md') ? [`${rel}/${e.name}`] : [])) : []);
-const installedRoots = [join(kit, 'payload'), join(kit, 'starter'), ...modules.flatMap((m) => ['payload', 'starter'].map((d) => join(kit, 'modules', m, d)))];
-const broughtAnyway = new Set(installedRoots.flatMap((r) => docsUnder(r)));
-const moduleDocs = [...ALL, ...OPTIONAL].filter((m) => !modules.includes(m))
-  .flatMap((m) => ['payload', 'starter'].flatMap((d) => docsUnder(join(kit, 'modules', m, d)).map((doc) => [doc, m])))
-  .filter(([doc]) => !broughtAnyway.has(doc));
+const { stages, skippedStage, stageDocs, moduleDocs } = stageSetup({ kit, target, mark, update, asked: list(opt('--stage')), fill, modules, allModules: [...ALL, ...OPTIONAL], list });
 // files whose {{PROJECT}}-style placeholders are filled in (Helm's and GitHub's own {{ ... }} are left alone: only the names in `fill`)
 const TEXT = /(\.(md|mjs|js|ts|json|mts|txt|html|css|toml|cmd|ya?ml|tpl)|Dockerfile)$/;
 
@@ -180,7 +155,10 @@ const happyDom = modules.includes('ui') && !framework ? ' @happy-dom/global-regi
 // the ai module's wrapper uses the official Anthropic SDK and checks answers with zod (step 1 adds them; they run in production)
 const aiLibs = modules.includes('ai') ? ' && npm i @anthropic-ai/sdk zod' : '';
 // the Node types of the Node the project runs (.tool-versions), never newer: the gate's *versions* check holds that
-const nodeMajor = (/^nodejs\s+(\d+)/m.exec(readFileSync(existsSync(join(target, '.tool-versions')) ? join(target, '.tool-versions') : join(kit, 'starter', '.tool-versions'), 'utf8')) ?? [])[1];
+const readIn = (f) => (existsSync(join(target, f)) ? readFileSync(join(target, f), 'utf8') : undefined);
+// (the project's own say first: .tool-versions, package.json engines, the Dockerfile, .nvmrc; only then the kit's own pin)
+const nodeMajor = (runtimeNode({ pkg: pkgBefore, toolVersions: readIn('.tool-versions'), dockerfile: readIn('Dockerfile'), nvmrc: readIn('.nvmrc') ?? readIn('.node-version') })
+  ?? runtimeNode({ toolVersions: readFileSync(join(kit, 'starter', '.tool-versions'), 'utf8') }))?.major;
 const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
 // what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in .workflow-kit), so an update can
 // tell a file the project changed from one only the kit changed
@@ -191,35 +169,13 @@ const stamp = new Map(written);
 // from before 2.9 rewrites them in every file, the kit's too, and that is not the project changing the file).
 const untouched = (key, text) => written.has(key) && [text, movePathsBack(text), undoCorrections(text), movePathsBack(undoCorrections(text))]
   .some((t) => written.get(key) === hash(t));
-// --update from before kit 2.9: the docs move into their folders (doc-layout.mjs) before anything is copied, with git so their
-// history follows; a kit guide keeps its stamp under the new path (so it is still known as the kit's), and every old path in the
-// project's own text (tracked, untracked, and the waiting specs git ignores) is rewritten
-const movedDocs = [];
+// --update: an older project's docs move into their folders, and old doc paths are rewritten, before anything is copied
+// (install-docs.mjs)
 let claudeGrowth = 0; // bytes the longer doc paths added to CLAUDE.md (its budget grows by exactly that, below)
-// every text file a project may name a doc in, whatever its language
-const PROJECT_TEXT = /\.(md|mjs|cjs|js|jsx|ts|tsx|mts|json|txt|html|css|toml|cmd|ps1|sh|ya?ml|tpl|py|go|rs)$|(^|\/)Dockerfile$/;
 if (update) {
-  for (const [from, to] of [...MOVES, ...CORRECTIONS]) {
-    const a = join(target, from), b = join(target, to);
-    if (!existsSync(a) || existsSync(b)) continue;
-    mkdirSync(dirname(b), { recursive: true });
-    if (spawnSync('git', ['mv', from, to], { cwd: target, stdio: 'ignore' }).status !== 0) renameSync(a, b);
-    for (const m of [written, stamp]) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
-    movedDocs.push(from);
-  }
-  {
-    // on every update, not only when a file moved: a path an earlier update left (a doc already moved, or since corrected) is fixed too
-    const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
-    const specs = existsSync(join(target, 'specs')) ? readdirSync(join(target, 'specs')).map((f) => `specs/${f}`) : [];
-    const rewritten = [];
-    for (const f of [...new Set([...listed.split('\n'), ...specs])].filter((x) => x && PROJECT_TEXT.test(x) && !x.startsWith('node_modules/'))) {
-      const p = join(target, f);
-      if (!existsSync(p) || !statSync(p).isFile()) continue;
-      const was = readFileSync(p, 'utf8'), now = movePaths(was);
-      if (now !== was) { writeFileSync(p, now); rewritten.push(f); if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was); }
-    }
-    if (movedDocs.length || rewritten.length) done.movedDocs = { count: movedDocs.length, rewritten };
-  }
+  const m = moveOldDocs({ target, written, stamp });
+  claudeGrowth = m.claudeGrowth;
+  if (m.moved.length || m.rewritten.length) done.movedDocs = { count: m.moved.length, rewritten: m.rewritten };
 }
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
 // does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
@@ -290,63 +246,13 @@ if (update) {
   }
 }
 
-// --update: a stage the project has not reached loses the copies an older kit wrote there and nobody changed since (the same text
-// as the kit's, or as the kit's stamp says it wrote); a changed one is the project's own work, so it stays and is named
-if (update) {
-  for (const [key, { next: want }] of stageSkipped) {
-    const path = join(target, key);
-    if (!existsSync(path)) continue;
-    const now = hash(readFileSync(path, 'utf8'));
-    if (now !== hash(want) && !untouched(key, readFileSync(path, 'utf8'))) { done.stageKept.push(key); continue; }
-    rmSync(path);
-    stamp.delete(key);
-    done.staged.push(key);
-    for (let dir = dirname(path); dir.startsWith(target) && dir !== target && readdirSync(dir).length === 0; dir = dirname(dir)) rmSync(dir, { recursive: true });
-  }
-}
-// A stage not entered can still be partly in use: a page of the project's own there (the deploy page /setup filled) or CLAUDE.md
-// pointing into it. A kit doc of that stage that what stays still names is put back (and what it names, a few rounds deep), so
-// nothing the project keeps leads nowhere.
-if (stageSkipped.size) {
-  const mdUnder = (d) => (existsSync(d) ? readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? mdUnder(join(d, e.name)) : e.name.endsWith('.md') ? [join(d, e.name)] : [])) : []);
-  for (let round = 0; round < 5; round++) {
-    const texts = [...mdUnder(join(target, 'docs')), join(target, 'CLAUDE.md')].filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8')).join('\n');
-    const named = [...stageSkipped.keys()].filter((key) => !existsSync(join(target, key)) && texts.includes(`\`${key}\``));
-    if (!named.length) break;
-    for (const key of named) {
-      const { next, machinery } = stageSkipped.get(key);
-      mkdirSync(dirname(join(target, key)), { recursive: true });
-      writeFileSync(join(target, key), next);
-      if (machinery) stamp.set(key, hash(next));
-      done.staged = done.staged.filter((k) => k !== key);
-      done.stageNamed.push(key);
-    }
-  }
-}
-
-// a helper an update added (src/web/report.ts ...) is a new file in a folder a code doc covers ("covers new files: src/web/**"):
-// that doc gets its line, from the helper's own first comment, so the doc stays true and the gate's covers check holds
-if (done.helpers.length && existsSync(join(target, 'docs', 'code'))) {
-  for (const doc of readdirSync(join(target, 'docs', 'code')).filter((f) => f.endsWith('.md'))) {
-    const path = join(target, 'docs', 'code', doc);
-    const text = readFileSync(path, 'utf8');
-    const globs = [...text.matchAll(/<!-- covers new files: ([^>]+?) -->/g)].flatMap((m) => m[1].split(',').map((g) => g.trim()));
-    const mine = done.helpers.filter((h) => globs.some((g) => h.startsWith(g.replace(/\*\*$/, '').replace(/\*.*$/, ''))) && !text.includes(h));
-    if (!mine.length) continue;
-    const say = (h) => (/^\/\/\s*(.+?)(?:\.\s|$)/m.exec(readFileSync(join(target, h), 'utf8'))?.[1] ?? 'added by the kit').replace(/\.$/, '');
-    writeFileSync(path, `${text.replace(/\n*$/, '\n')}\n## Added by the kit\n${mine.map((h) => `- \`${h}\`: ${say(h)}.`).join('\n')}\n`);
-    done.helpers = done.helpers.map((h) => (mine.includes(h) ? `${h} (named in docs/code/${doc})` : h));
-  }
-}
-
-// a stage now entered: CLAUDE.md (the project's own, never replaced) gets its "comes with the ... stage" mentions back as plain links
-for (const s of stages) {
-  const claude = join(target, 'CLAUDE.md');
-  if (!existsSync(claude)) continue;
-  const was = readFileSync(claude, 'utf8');
-  const now = was.replace(new RegExp(`(docs/${s}/[\\w-]+\\.md) \\(comes with the ${s} stage: [^)]*\\)`, 'g'), '`$1`');
-  if (now !== was) writeFileSync(claude, now);
-}
+// A stage not reached: its untouched copies go and what the project's own pages point at stays; a helper an update added is named
+// in the code doc that covers it; a stage now entered gets CLAUDE.md's links back (install-docs.mjs)
+if (update) pruneStageCopies({ target, stageSkipped, untouched, hash, stamp, done });
+if (stageSkipped.size) keepNamedStageDocs({ target, stageSkipped, hash, stamp, done });
+nameHelpersInCodeDocs({ target, done });
+unmarkEnteredStages({ target, stages });
+const rulesRewritten = update ? rewriteChangedRules({ target }) : [];
 
 // a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end. "Once" is remembered in
 // .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
@@ -389,23 +295,8 @@ for (const [name, to] of rename) {
   done.kept = done.kept.filter((x) => x !== name);
 }
 
-const claudeAdded = [];
-// Claude Code's settings are the project's own after the first install, but the kit's allow and deny rules it lacks are added,
-// so a project made earlier also gets a new rule (agents never skip the push guard: --no-verify, --force, another hooks path)
-{
-  const own = join(target, '.claude', 'settings.local.json');
-  const kitRules = JSON.parse(readFileSync(join(kit, 'starter', 'settings.local.json'), 'utf8')).permissions ?? {};
-  if (existsSync(own)) {
-    const mine = JSON.parse(readFileSync(own, 'utf8'));
-    mine.permissions ??= {};
-    const added = [];
-    for (const kind of ['allow', 'deny']) {
-      const list = (mine.permissions[kind] ??= []);
-      for (const r of kitRules[kind] ?? []) if (!list.includes(r)) { list.push(r); added.push(`${kind} ${r}`); }
-    }
-    if (added.length) { writeFileSync(own, JSON.stringify(mine, null, 2) + '\n'); claudeAdded.push(...added); }
-  }
-}
+// Claude Code's settings: the kit's allow and deny rules a project lacks are added (install-config.mjs)
+const claudeAdded = addClaudeRules({ target, kit });
 
 // package.json scripts
 const pkgPath = join(target, 'package.json');
@@ -437,73 +328,9 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
   }
 }
 
-// a project with a UI framework: /ui draws its variants as real components, not as an HTML board
-if (framework && done.added.includes('workflow.config.json')) {
-  const cfgPath = join(target, 'workflow.config.json');
-  const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
-  if (cfg.ui) { cfg.ui.boards = 'components'; writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n'); }
-}
-
-// another language: its commands and file endings into the config, when the config is the one just written
-if (LANGS[lang].config && done.added.includes('workflow.config.json')) {
-  const cfgPath = join(target, 'workflow.config.json');
-  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(readFileSync(cfgPath, 'utf8')), ...LANGS[lang].config }, null, 2) + '\n');
-}
-
-// --update: settings the kit has and the project's config lacks are added (a whole key, or a check by its name); nothing is changed
-const addedSettings = [];
-if (update && !done.added.includes('workflow.config.json')) {
-  const cfgPath = join(target, 'workflow.config.json');
-  const mine = JSON.parse(readFileSync(cfgPath, 'utf8'));
-  const kits = { ...JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8'))), ...(LANGS[lang].config ?? {}) };
-  for (const [k, v] of Object.entries(kits)) {
-    if (!(k in mine)) {
-      mine[k] = k === 'checks' ? v.filter((c) => c.name !== 'lint') : v;
-      // a project that has a UI framework draws its /ui variants as components, as a new install would set it
-      if (k === 'ui' && framework) mine.ui = { ...v, boards: 'components' };
-      addedSettings.push(k === 'ui' && framework ? 'ui (boards: components, because the project has a UI framework)' : k);
-      continue;
-    }
-    // an import rule the kit has and the project lacks, by its name (a folder the project does not have matches nothing)
-    if (k === 'boundaries') for (const r of v) {
-      const same = mine.boundaries.find((x) => x.name === r.name);
-      if (!same) { mine.boundaries.push(r); addedSettings.push(`import rule: ${r.name}`); }
-      // the kit's own rule, by its name, that the kit has since given a stated exception: the exception is added, nothing else
-      else if (r.except && !same.except) { same.except = r.except; addedSettings.push(`import rule "${r.name}": except ${r.except.join(', ')}`); }
-    }
-    if (k === 'checks') for (const c of v) if (c.name !== 'lint' && !mine.checks.some((x) => x.name === c.name)) { mine.checks.push(c); addedSettings.push(`checks: ${c.name}`); }
-    // kit 2.9: the docs' subject folders are checked like the top of docs/ (the doc-layout folders the kit's include names)
-    if (k === 'docs' && Array.isArray(mine.docs?.include)) for (const g of v.include.filter((x) => /^docs\/[a-z]+\/\*\.md$/.test(x))) {
-      if (!mine.docs.include.includes(g)) { mine.docs.include.push(g); addedSettings.push(`docs.include: ${g}`); }
-    }
-    if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; addedSettings.push(`${k}.${kk}`); }
-  }
-  // the kit's own doc move made CLAUDE.md longer (its paths): when that takes it over its budget, the budget grows by exactly that
-  // much, so the gate fails a project for what it wrote, never for the kit's move
-  const budget = mine.budget?.['CLAUDE.md'];
-  const claudeSize = existsSync(join(target, 'CLAUDE.md')) ? Buffer.byteLength(readFileSync(join(target, 'CLAUDE.md'), 'utf8')) : 0;
-  if (claudeGrowth > 0 && typeof budget === 'number' && claudeSize > budget && claudeSize - claudeGrowth <= budget) {
-    mine.budget['CLAUDE.md'] = budget + claudeGrowth;
-    addedSettings.push(`budget.CLAUDE.md ${budget} -> ${budget + claudeGrowth} (the ${claudeGrowth} bytes the longer doc paths of kit 2.9 added)`);
-  }
-  if (addedSettings.length) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
-}
-
-// a module's own settings (modules/<name>/config.json), on a new install and an update alike: a key the project lacks is added
-// whole; "egress" adds its hosts to security.egress when the project keeps an outbound allowlist
-{
-  const cfgPath = join(target, 'workflow.config.json');
-  const mine = JSON.parse(readFileSync(cfgPath, 'utf8'));
-  let changed = false;
-  for (const m of modules) {
-    const file = join(kit, 'modules', m, 'config.json');
-    if (!existsSync(file)) continue;
-    const { egress = [], ...rest } = JSON.parse(readFileSync(file, 'utf8'));
-    for (const [k, v] of Object.entries(rest)) if (!(k in mine)) { mine[k] = v; addedSettings.push(`${k} (the ${m} module)`); changed = true; }
-    if (Array.isArray(mine.security?.egress)) for (const h of egress) if (!mine.security.egress.includes(h)) { mine.security.egress.push(h); addedSettings.push(`security.egress: ${h} (the ${m} module)`); changed = true; }
-  }
-  if (changed) writeFileSync(cfgPath, JSON.stringify(mine, null, 2) + '\n');
-}
+// workflow.config.json: a fresh one fitted to the framework and language; on --update the settings the kit has and the project
+// lacks; each module's own settings (install-config.mjs)
+const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: done.added.includes('workflow.config.json'), claudeGrowth });
 
 // the GitHub workflow, when this run wrote it (new, or replaced by --force): the language's own setup steps (`ci` in starter/lang.json) go where the
 // file says "another language: add its toolchain here"
@@ -514,36 +341,9 @@ if (existsSync(ciPath) && [...done.added, ...done.replaced].some((f) => f.replac
   stamp.set('.github/workflows/gate.yml', hash(readFileSync(ciPath, 'latin1')));
 }
 
-// Dependabot: one grouped pull request a week per kind of dependency, so versions never fall far behind (written once, then yours)
-const botPath = join(target, '.github', 'dependabot.yml');
-// with Renovate (renovate.json, from the starter) Dependabot's version updates would double every pull request: alerts need no file
-if (!existsSync(botPath) && !existsSync(join(target, 'renovate.json'))) {
-  const kinds = [LANGS[lang].dependabot ?? 'npm', 'github-actions', ...(modules.includes('deploy') ? ['docker'] : [])];
-  mkdirSync(dirname(botPath), { recursive: true });
-  writeFileSync(botPath, '# Dependency updates: one small pull request a week per kind; the gate runs on each. Merge it on GitHub when it is green.\nversion: 2\nupdates:\n'
-    + kinds.map((k) => `  - package-ecosystem: ${k}\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 7\n    groups:\n      all:\n        patterns: ["*"]\n`).join(''));
-  done.added.push('.github/dependabot.yml');
-}
-
-let lfHint = '';
-// .gitignore lines
-const giPath = join(target, '.gitignore');
-const have = new Set((existsSync(giPath) ? readFileSync(giPath, 'utf8') : '').split(/\r?\n/).map((l) => l.trim()));
-const add = [...readFileSync(join(kit, 'starter', 'gitignore.txt'), 'utf8').split(/\r?\n/), ...(LANGS[lang].gitignore ?? [])].filter((l) => l.trim() && !have.has(l.trim()));
-if (add.length) writeFileSync(giPath, (existsSync(giPath) ? readFileSync(giPath, 'utf8').replace(/\n?$/, '\n') : '') + add.join('\n') + '\n');
-
-// line endings: LF everywhere, in the repository and on disk, whatever git's own setting says (Git for Windows sets
-// core.autocrlf=true, which made every `git add` warn "LF will be replaced by CRLF"); Windows scripts are the one exception.
-// Written once, then yours; a project's own .gitattributes is never changed.
-const gaPath = join(target, '.gitattributes');
-if (!existsSync(gaPath)) {
-  writeFileSync(gaPath, '# Line endings: LF in the repository and on disk on every computer, whatever git\'s own core.autocrlf says.\n'
-    + '# Windows scripts are the exception: cmd.exe wants CRLF.\n* text=auto eol=lf\n*.cmd text eol=crlf\n*.bat text eol=crlf\n'
-    + '*.png binary\n*.jpg binary\n*.gif binary\n*.ico binary\n*.webp binary\n*.woff2 binary\n*.pdf binary\n');
-  done.added.push('.gitattributes');
-} else if (update && !/eol=lf/.test(readFileSync(gaPath, 'utf8'))) {
-  lfHint = '  .gitattributes has no `* text=auto eol=lf`: without it git on Windows warns "LF will be replaced by CRLF" on every add';
-}
+// the project files written once, then the project's: Dependabot (without Renovate), .gitignore lines, .gitattributes
+// (install-config.mjs)
+const lfHint = writeProjectFiles({ target, kit, lang, langs: LANGS, modules, update, done });
 
 // the map module: the request pages' file, so the map opens and the gate's check passes from the start
 if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(process.execPath, ['docs/flow/build-requests.mjs'], { cwd: target, encoding: 'utf8' });
@@ -557,11 +357,15 @@ const shape = `modules: ${modules.join(', ') || 'none'}${lean ? `; lean, parts: 
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (${shape})` : `Installed kit ${kitVersion} into ${target} (${shape})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);
+// a file the kit wrote that the project's ignore rules hide is never committed (a rule like docs/*.md once hid docs/PRODUCT.md)
+const hidden = (spawnSync('git', ['check-ignore', '--stdin'], { cwd: target, input: [...done.added, ...done.replaced].map((f) => f.replace(/\\/g, '/')).join('\n'), encoding: 'utf8' }).stdout ?? '').split('\n').filter(Boolean);
+if (hidden.length) console.log(`  hidden by .gitignore, so git will not commit them (add a !<path> line, or narrow the rule):\n${hidden.map((f) => `    ${f}`).join('\n')}`);
 console.log(`  ${harnessLine}`);
 if (update) {
   if (addedSettings.length) console.log(`  settings added to workflow.config.json: ${addedSettings.join(', ')}`);
   if (claudeAdded.length) console.log(`  rules added to .claude/settings.local.json: ${claudeAdded.join(', ')}`);
   if (lfHint) console.log(lfHint);
+  if (rulesRewritten.length) console.log(`  CLAUDE.md: the kit's own old wording brought up to date (${rulesRewritten.join('; ')})`);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
   if (done.stageNamed.length) console.log(`  kept from a stage not reached yet, because the project's own pages point at them: ${done.stageNamed.join(', ')}`);

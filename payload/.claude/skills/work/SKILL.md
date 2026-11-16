@@ -67,6 +67,6 @@ Read each card (step 1; one `--show` per card). `ui` cards go their own route (`
 `together.md` says, and show that sorting with the plans: which are **combined** (one spec, one session, one commit closing
 them all), which are **stacked** (one starts on top of the other, its spec's "Starts on" line), and which run **side by side**.
 For the others, write the specs
-**one after another in this chat** (shared context is cheaper than parallel spec agents; do not fan out `/spec`). Show each spec and
-stop for its own yes: an unapproved spec never gets a builder. Then stop: the owner opens a new chat and runs `/build a b c`,
+**one after another in this chat** (shared context is cheaper than parallel spec agents; do not fan out `/spec`). Show each spec, then
+stop: the owner opens a new chat and types `/build a b c` (typing it is the yes for each; a spec with an open question is left out),
 which checks for overlap, starts at most 3 builders at once and gives one summary. Feedback and `/ship` go one topic at a time. One card behaves exactly as above.

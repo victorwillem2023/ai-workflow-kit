@@ -40,7 +40,11 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one.
    - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
-     order, so `/build` can run them as waves. Small or tangled work: leave the section out. The owner approves the split with the spec.
+     order, so `/build` can run them as waves. Only when it pays for itself: a large card whose packages are each a few hundred
+     lines of real work on files of their own; small, medium or tangled work stays one builder (splitting it costs more in
+     set-up and joining than it saves). Offer the split as a choice in plain words, never decided silently: "One builder: about <time>. Or <n> builders at once, each on its own files: about <shorter
+     time>, for about the same cost in total plus a little for joining them, and one more thing to check at the seams."
+     The owner says which, before `/build`; the spec holds the packages only when they chose the split.
    - Security: any new endpoint, file reader or outbound fetch gets limits listed and a `security-review` before finish.
      A new endpoint follows `docs/workflow/API.md` (schema, errors, paging, limits, who may call it); a new outside host goes in
      `security.egress` (the owner says yes: what data goes there).
@@ -50,10 +54,10 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
      is an open question for the owner, never filled in from what the model remembers (`docs/workflow/SENSITIVE.md`).
 4. Fill in "Suggested model for the build" (Sonnet by default: the plan is decided, building it is coding; Opus only if a design
    decision is left or a sensitive file is touched, with one reason).
-   Show the owner a summary, including that line, and stop.
-5. When the owner approves: set "Owner approval" and move the card to Ready: `npm run board -- --move <n> "Ready"`.
-   If the board cannot be reached, say so in one line and carry on; the owner moves it by hand.
-   Then stop, and tell the owner to open a new chat in the main folder and run `/build <topic>`.
+   Show the owner a summary, including that line, and stop with one line: "Happy with it? Open a new chat here and type
+   `/build <topic>`: that is your yes, and it builds it. Want changes? Say them here."
+5. Changes asked for: change the spec and show the summary again. There is no separate "yes" step: `/build` records the approval
+   and moves the card to Ready (`.claude/skills/build/SKILL.md`, step 1).
 6. Building happens in that new chat: `/build <topic>` makes the session folder and starts a builder that reads the spec and
    the CLAUDE.md of each folder it touches, not this chat. It writes the tests first, and updates `## Status` at the end.
 

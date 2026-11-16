@@ -1,6 +1,6 @@
 ---
 name: build
-description: Build an approved {{PROJECT}} spec without the owner changing folders: sets up the session folder, copies the spec, and starts a subagent that builds it there. Run from the main folder after /spec is approved.
+description: Build a {{PROJECT}} spec without the owner changing folders (typing /build is the owner's approval of the spec): sets up the session folder, copies the spec, and starts a subagent that builds it there. Run from the main folder, in a new chat, after /spec.
 model: sonnet
 ---
 
@@ -11,7 +11,11 @@ Run from the main folder, in a fresh chat. The owner never switches folder or pa
 With one topic and one builder, steps 1 to 7 below are all there is. **Several topics** (`/build a b c`) or a spec with a
 *Work packages* section of two or more packages: read `several.md` in this folder first (`.claude/skills/build/several.md`).
 
-1. Read `specs/<topic>.md` in the main folder. If "Owner approval" is not "approved on ...", stop and say so.
+1. Read `specs/<topic>.md` in the main folder. **The owner typing `/build` is the approval**: when "Owner approval" says "not yet",
+   set it to "approved on <today> (by running /build)" and move its card to Ready (`npm run board -- --move <n> "Ready"`), say so in
+   one line, and go on. Stop only when the spec is not ready to approve: an open question it still asks the owner, or a sensitive
+   number or rule without a source (*Sources*); name them. Only the owner's own `/build` approves: one started by another skill or
+   agent goes on only when the spec says "approved on".
 2. Session folder `../{{PREFIX}}-<topic>` (next to the main folder):
    - missing: `node scripts/session.mjs <topic> --card <n>` (run in the main folder; `n` is the spec's "Card: #n" line, `--card 12,14`
      for combined cards, left out when it has none; with a "Starts on: <other topic>" line add `--on <other topic>`: the session

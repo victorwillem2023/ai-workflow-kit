@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+# it only reads the code: nothing it runs can push, comment or change a setting, whatever the repository's default allows
+permissions:
+  contents: read
 jobs:
   gate:
     runs-on: ubuntu-latest

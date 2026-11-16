@@ -27,6 +27,14 @@ Never offer a skill that is not installed as the next step.
    needs ... decisions"): together one next step, the board tidy-up.
 Nothing to start: offer `/idea` or `/shape` for the next thing in `docs/PRODUCT.md`; no `docs/PRODUCT.md` and no cards: `/setup`.
 
+**Faster, together**, only when it pays for itself: several builders cost a session each, so it is offered by the size of the
+work, from the cards' effort labels. Two or three cards to start that do not depend on each other, have different area labels
+(so they are unlikely to touch the same files) and are each `effort: medium` or `large`: add one choice: "Build #a, #b and #c at the same time (about as long as the longest;
+it costs about the three together, and you try three things at the end). (/work a b c)". Small cards are not
+worth a builder each: two `effort: small` cards in the same area are offered as one session instead ("Do #a and #b together,
+one change (/work a b)"); small ones in different areas simply go one after the other. Cards that depend on each other are never
+offered together; `/work` sorts them again (combined, one after the other, or side by side).
+
 **End with ONE question**: the next steps found, at most four, most urgent first (a security alert, the `stage:` lines, the
 board tidy-up when it has decisions, the top card), the one you recommend marked with why in a few words (the quick ones that
 keep the rest honest first: a look back due, an empty roadmap, decisions waiting; then the card).

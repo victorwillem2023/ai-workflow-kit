@@ -17,7 +17,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { availableParallelism, tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CORRECTIONS, MOVES, movePathsBack, oldPaths } from '../doc-layout.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -230,6 +230,26 @@ const names = asked.includes('all') ? Object.keys(VARIANTS) : asked.length ? ask
 // side by side, at most --jobs at once (each runs a whole project's checks, which use several cores themselves)
 const jobsAt = process.argv.indexOf('--jobs');
 const jobs = Math.max(1, Number(jobsAt >= 0 ? process.argv[jobsAt + 1] : 0) || Math.min(4, Math.max(1, Math.floor(availableParallelism() / 2))));
+// the kit keeps its own rule: no script of its own over 400 lines (the riskiest ones grow fastest: install, sessions)
+const kitScripts = [...readdirSync(kit).filter((f) => f.endsWith('.mjs')), ...readdirSync(join(kit, 'scripts')).map((f) => `scripts/${f}`),
+  ...readdirSync(join(kit, 'payload', 'scripts')).map((f) => `payload/scripts/${f}`)].filter((f) => f.endsWith('.mjs'));
+const tooBig = kitScripts.map((f) => [f, readFileSync(join(kit, f), 'utf8').split('\n').length]).filter(([, n]) => n > 400);
+console.log(`${tooBig.length ? 'FAIL' : 'ok  '} the kit's own scripts are at most 400 lines${tooBig.length ? `: ${tooBig.map(([f, n]) => `${f} ${n}`).join(', ')}` : ''}`);
+if (tooBig.length) process.exit(1);
+// the installer's own helpers that a project never runs: writing the config back unchanged keeps its layout, and the kit's old
+// "no docs-only commits" wording is brought up to date wherever a project wrapped it
+{
+  const { rewriteJson } = await import(pathToFileURL(join(kit, 'install-config.mjs')).href);
+  const { rewriteChangedRules } = await import(pathToFileURL(join(kit, 'install-docs.mjs')).href);
+  const cfg = readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8').replace(/\r\n/g, '\n');
+  const sameLayout = rewriteJson(cfg, JSON.parse(cfg)) === cfg;
+  const tmpRules = mkdtempSync(join(tmpdir(), 'kit-rules-'));
+  writeFileSync(join(tmpRules, 'CLAUDE.md'), 'No docs-only,\n  tests-only or "fix after a check" commits.\n');
+  const ruled = rewriteChangedRules({ target: tmpRules }).length === 1 && !readFileSync(join(tmpRules, 'CLAUDE.md'), 'utf8').includes('docs-only');
+  rmSync(tmpRules, { recursive: true, force: true });
+  console.log(`${sameLayout && ruled ? 'ok  ' : 'FAIL'} the installer keeps a config's layout and updates the kit's old wording${sameLayout ? '' : ' (the config is reflowed)'}${ruled ? '' : ' (the old rule stays)'}`);
+  if (!sameLayout || !ruled) process.exit(1);
+}
 const results = {};
 const queue = [...names];
 await Promise.all(Array.from({ length: Math.min(jobs, names.length) }, async () => {

@@ -25,7 +25,15 @@ if (!process.argv.includes('--no-build')) {
 const roots = [...new Set(perf.files.map((g) => g.split('/')[0]))];
 const walk = (dir) => (existsSync(dir) ? readdirSync(dir, { recursive: true }).map((f) => `${dir}/${String(f).replace(/\\/g, '/')}`) : []);
 const found = roots.flatMap(walk).filter((f) => matchesAny(f, perf.files) && statSync(f).isFile());
-if (!found.length) { console.log(`page weight: no built files match ${perf.files.join(', ')}`); process.exit(0); }
+if (!found.length) {
+  // a build ran and none of its files match: the setting points at the wrong folder, and passing would check nothing at all.
+  // Where the build did write (the usual output folders), with the setting that names it.
+  const outputs = ['dist', 'build', 'out', '.next/static', 'public/build', 'www'].filter((d) => walk(d).some((f) => /\.(js|css)$/.test(f)));
+  if (process.argv.includes('--no-build') || !outputs.length) { console.log(`page weight: no built files match ${perf.files.join(', ')}`); process.exit(0); }
+  console.log(`page weight: the build wrote no file that "performance.files" names (${perf.files.join(', ')}), so nothing was weighed. `
+    + `Its files are in ${outputs.join(', ')}: set "performance.files" to ${JSON.stringify(outputs.flatMap((d) => [`${d}/**/*.js`, `${d}/**/*.css`]))}`);
+  process.exit(1);
+}
 const v = weighPages(found.map((path) => ({ path, gzipBytes: gzipSync(readFileSync(path)).length })), perf.maxKb);
 console.log(weightLine(v));
 process.exit(v.ok ? 0 : 1);

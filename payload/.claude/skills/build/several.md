@@ -18,7 +18,7 @@ When the spec has a "Work packages" section with two or more packages, one topic
 No spec packages, or a single package: step 4 above, one builder.
 
 ## Several topics at once (`/build a b c`)
-1. Read every spec (step 1 per topic). A topic whose spec is missing or not approved is left out and named; the others go on.
+1. Read every spec (step 1 per topic). The owner's `/build a b c` approves each (step 1); a topic whose spec is missing, or still asks an open question, is left out and named; the others go on.
 2. **Overlap check.** From each spec's "Files that change" list take the backticked paths. Two specs overlap when they name the
    same file. Ignore the shared files (the list under *Shared files* in CLAUDE.md, *Git and sessions*): the rebase at `--finish` handles them.
    Different files in the same folder do not overlap. Go through the topics in the order given: a topic that overlaps an earlier

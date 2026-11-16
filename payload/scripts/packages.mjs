@@ -4,7 +4,7 @@
 // at another version than the lock says. session.mjs runs it when it makes a session, before --serve and after --finish, and
 // installs what is missing (npm install, which follows the lock).
 //   node scripts/packages.mjs            say what is missing or at another version (exit 1 when anything is)
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,11 +37,24 @@ export function checkPackages(dir) {
   });
 }
 
+/**
+ * What to run for the missing ones. In a session folder node_modules is a link to the main folder's, so a package the session
+ * added goes into that shared folder without touching the main folder's package.json or lock (--no-save); it lands there for real
+ * when the session is finished. Elsewhere: npm install.
+ */
+export function packagesFix(dir, list) {
+  let linked = false;
+  try { linked = lstatSync(join(dir, 'node_modules')).isSymbolicLink(); } catch { /* no node_modules at all: npm install */ }
+  if (!linked) return 'run npm install';
+  const target = realpathSync(join(dir, 'node_modules')).replace(/[\\/]node_modules$/, '');
+  return `this session shares the main folder's packages: cd "${target}" && npm install --no-save ${list.map((p) => `${p.name}@${p.want}`).join(' ')}`;
+}
+
 /** One line for a person: how many, and the first few by name. */
 export const describeMissing = (list) => `${list.length} package${list.length === 1 ? '' : 's'} not installed as package-lock.json lists ${list.length === 1 ? 'it' : 'them'} (${list.slice(0, 5).map((p) => (p.have ? `${p.name} ${p.have}, wants ${p.want}` : `${p.name} missing`)).join('; ')}${list.length > 5 ? '; ...' : ''})`;
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const list = checkPackages(process.cwd());
-  console.log(list.length ? `${describeMissing(list)}: run npm install` : 'packages: as package-lock.json lists them');
+  console.log(list.length ? `${describeMissing(list)}: ${packagesFix(process.cwd(), list)}` : 'packages: as package-lock.json lists them');
   process.exit(list.length ? 1 : 0);
 }
