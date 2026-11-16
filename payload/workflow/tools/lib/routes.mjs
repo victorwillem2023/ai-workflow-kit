@@ -13,7 +13,9 @@ const METHODS = 'get|post|put|patch|delete|del|all|options|head|any|use|route|ha
 // before it); the receiver not a client or a store
 const CLIENTS = /^(?:axios|http|https|client|ky|got|request|superagent|\$http|fetcher|cache|map|store|storage|params|searchparams|headers|cookies|redis|db|kv|localstorage|sessionstorage|url|query)$/i;
 const ROUTE_CALL = new RegExp(String.raw`\b([\w$]+)\.(?:${METHODS})\s*\(\s*["'\`]\/[^"'\`]*["'\`]\s*,\s*(?:async\b|function\b|\(|[\w$.]+\s*(?:[,)]|=>))`);
-const routeCall = (line) => { const m = ROUTE_CALL.exec(line); return !!m && !CLIENTS.test(m[1]); };
+// what a client sends after the path is data, named as data (api.post('/users', body)); a handler is not named so
+const DATA_ARG = /\(\s*["'`]\/[^"'`]*["'`]\s*,\s*(?:body|data|payload|input|values|form|formdata|params|options|opts|init|config|json|query|item|record|row|dto|request|req)\s*[,)]/i;
+const routeCall = (line) => { const m = ROUTE_CALL.exec(line); return !!m && !CLIENTS.test(m[1]) && !DATA_ARG.test(line); };
 export const CLIENT_FOLDERS = ['src/web/', 'src/client/', 'src/components/', 'src/ui/', 'src/browser/', 'web/', 'client/'];
 const STRONG = [
   /\bexport\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/,

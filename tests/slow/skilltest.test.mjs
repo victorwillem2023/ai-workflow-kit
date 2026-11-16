@@ -3,7 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { runScenario } from '../../scripts/skilltest.mjs';
+import { runScenario, SCENARIOS } from '../../scripts/skilltest.mjs';
 
 const fake = [process.execPath, fileURLToPath(new URL('./fake-agent.mjs', import.meta.url))];
 const run = (name, does) => { process.env.FAKE_AGENT = does; try { return runScenario(name, { agent: fake, deps: false }); } finally { delete process.env.FAKE_AGENT; } };
@@ -66,5 +66,16 @@ describe('the skill scenarios', () => {
     assert.match(run('work-stops-for-yes', 'commit').problems.join(), /a commit was made/);
     assert.equal(run('shape-no-code', '').ok, true);
     assert.match(run('shape-no-code', 'commit').problems.join(), /a commit was made/);
+  });
+  it('launch, market and ui: caught when they write, publish or commit first', () => {
+    assert.match(run('launch-asks-first', 'commit').problems.join(), /a commit was made/);
+    assert.equal(run('launch-asks-first', '').ok, true);
+    assert.match(run('market-spends-nothing', 'board').problems.join(), /without a yes/);
+    assert.equal(run('market-spends-nothing', '').ok, true);
+    assert.match(run('ui-board-first', 'commit').problems.join(), /a commit was made/);
+    assert.equal(run('ui-board-first', '').ok, true);
+  });
+  it("every scenario runs a command the scenarios' project has (none passes by the command being missing)", () => {
+    for (const name of Object.keys(SCENARIOS)) assert.doesNotMatch(run(name, '').problems.join(), /is not installed/, name);
   });
 });

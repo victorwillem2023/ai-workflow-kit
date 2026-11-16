@@ -358,7 +358,8 @@ const steps = [
   ['tests', () => {
     if (plan.mode === 'none') return { ok: true, note: plan.note };
     const t0 = Date.now();
-    const r = run(plan.mode === 'suite' ? config.commands.testAll : `${config.commands.testFiles} ${plan.files.join(' ')}`);
+    // a language whose runner takes no file list (Go: `go test ./...`, testPicking false) runs its whole suite
+    const r = run(plan.mode === 'suite' || config.testPicking === false ? config.commands.testAll : `${config.commands.testFiles} ${plan.files.join(' ')}`);
     if (plan.whole) suiteSeconds = (Date.now() - t0) / 1000;
     return { ...r, note: plan.note };
   }],

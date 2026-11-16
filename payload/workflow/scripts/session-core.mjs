@@ -127,7 +127,7 @@ export const sayPartial = async (cards, text) => {
 
 export const isAncestor = (dir, a, b) => { try { git(dir, 'merge-base', '--is-ancestor', a, b); return true; } catch { return false; } };
 
-/** Uncommitted work in a session's folder (the node_modules link is ours: .gitignore's "node_modules/" matches a folder, not a link). */
+/** Uncommitted work in a session's folder (the node_modules link is ours: an older project's .gitignore says "node_modules/", which matches a folder, not a link). */
 export const looseWork = (dir) => git(dir, 'status', '--porcelain').split('\n').some((l) => l && !/^\?\? node_modules\/?$/.test(l));
 
 export const stopServer = (dir) => { const said = stopMessage(stopSessionServer(dir, { mainPort: MAIN_PORT, firstPort: FIRST_PORT })); if (said) console.log(said); };

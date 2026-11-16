@@ -57,6 +57,8 @@ async function make(topic, card, on) {
     // the new session would not have it. It is saved here as a checkpoint on the base's own branch: nothing reaches main, so it is not the owner's stop
     // point (the agent never runs git commit for it), and --finish later squashes it under the subject the owner approves.
     if (existsSync(folderOf(on)) && looseWork(folderOf(on))) {
+      // (the session's node_modules link stays out: the kit's .gitignore says "node_modules", which matches a link as well as a
+      // folder; an older project's "node_modules/" matched only the folder, so on Linux and macOS the link went into this commit)
       git(folderOf(on), 'add', '-A');
       git(folderOf(on), 'commit', '-q', '-m', `${CHECKPOINT} ${on}: built, waiting for the owner's check`);
       console.log(`Saved "${on}"'s uncommitted work as a checkpoint on its own branch (not on main; --finish ${on} replaces its message with the approved one).`);

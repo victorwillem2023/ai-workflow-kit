@@ -2,6 +2,16 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.2.1**: **the skill scenarios test what they say.** Their project had none of the parts most of them use (a lean install:
+  no /launch, /market, /ui, /shape, /spike, /tidy, /estimate, /advise or /secops), so those scenarios would have passed by the
+  command not being there; the project now has every part they use, and a scenario whose command is missing fails. Three more
+  (/launch asks before it writes, /market spends and publishes nothing on its own, /ui draws its board before any app code): 21
+  in all. The kit's own top-level code keeps to the 60-line rule at a stretch (the self-test checks it; the gate's steps and
+  the scenario table are named as longer and may only shrink). A call that sends data after its path (`api.post('/users',
+  body)`) is a client, not a route. Found by GitHub's runners: on Linux a stacked base's checkpoint took the session's
+  node_modules link into the commit (the kit's .gitignore now says `node_modules`, which matches a link too, and the checkpoint
+  leaves it out), and a Go project's full gate handed `go test ./...` a list of files (a language that picks no tests now runs
+  its suite); the Go variant had failed on GitHub since before 3.0.
 - **3.2.0**: **sign-offs are signatures.** 3.1.0 said "a sign-off an agent cannot write"; what it delivered was one an agent
   would not write by accident (the key it sealed with was readable, the gate refused real rows on a second computer, and CI took
   any seal). Now each signer has a key pair: the private key encrypted with a passphrase only they know (`npm run signoff --

@@ -331,22 +331,19 @@ const kitScripts = [...readdirSync(kit).filter((f) => f.endsWith('.mjs')), ...re
 const tooBig = kitScripts.map((f) => [f, readFileSync(join(kit, f), 'utf8').split('\n').length]).filter(([, n]) => n > 400);
 console.log(`${tooBig.length ? 'FAIL' : 'ok  '} the kit's own scripts are at most 400 lines${tooBig.length ? `: ${tooBig.map(([f, n]) => `${f} ${n}`).join(', ')}` : ''}`);
 if (tooBig.length) process.exit(1);
-// facts that age (a price, a free tier) in the kit's guides: a guide that has them says when they were last checked ("Facts
-// checked: 2026-11" or "Reviewed: 2026-11"); older than six months fails, so a release looks again; one with no date is listed
+// the kit's own top-level code keeps to the 60-line rule at a stretch (scripts/selftest-kit.mjs)
 {
-  const guides = [join(kit, 'payload', 'docs'), join(kit, 'payload', 'workflow', 'guides'), ...readdirSync(join(kit, 'modules')).flatMap((m) => [join(kit, 'modules', m, 'payload', 'docs'), join(kit, 'modules', m, 'payload', 'workflow', 'guides')])]
-    .filter((d) => existsSync(d)).flatMap((d) => readdirSync(d, { recursive: true }).map((f) => join(d, String(f)))).filter((f) => f.endsWith('.md'));
-  const now = new Date();
-  const months = (y, m) => (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
-  const dated = guides.filter((f) => /[€$] ?\d|free tier/i.test(readFileSync(f, 'utf8')));
-  const rel = (f) => f.slice(kit.length + 1).replace(/\\/g, '/');
-  const stale = [], undated = [];
-  for (const f of dated) {
-    const m = /(?:Facts checked|Reviewed): (\d{4})-(\d{2})/.exec(readFileSync(f, 'utf8'));
-    if (!m) undated.push(rel(f));
-    else if (months(Number(m[1]), Number(m[2])) > 6) stale.push(`${rel(f)} (checked ${m[1]}-${m[2]})`);
-  }
-  console.log(`${stale.length ? 'FAIL' : 'ok  '} the kit's prices and free tiers were checked in the last six months${stale.length ? `: check them and set the date: ${stale.join(', ')}` : ''}${undated.length ? `\n     not checked yet (add "Facts checked: <year>-<month>" once they are): ${undated.join(', ')}` : ''}`);
+  const { longTopLevel } = await import(pathToFileURL(join(kit, 'scripts', 'selftest-kit.mjs')).href);
+  const long = await longTopLevel(kit, kitScripts);
+  console.log(`${long.length ? 'FAIL' : 'ok  '} the kit's own top-level code keeps to 60 lines at a stretch (known longer ones may only shrink)${long.length ? `: ${long.join(', ')}` : ''}`);
+  if (long.length) process.exit(1);
+}
+// prices and free tiers in the guides say when they were checked (scripts/selftest-kit.mjs)
+{
+  const { agedFacts } = await import(pathToFileURL(join(kit, 'scripts', 'selftest-kit.mjs')).href);
+  const { stale, undated } = agedFacts(kit);
+  console.log(`${stale.length ? 'FAIL' : 'ok  '} the kit's prices and free tiers were checked in the last six months${stale.length ? `: check them and set the date: ${stale.join(', ')}` : ''}${undated.length ? `
+     not checked yet (add "Facts checked: <year>-<month>" once they are): ${undated.join(', ')}` : ''}`);
   if (stale.length) process.exit(1);
 }
 // the installer's own helpers that a project never runs: writing the config back unchanged keeps its layout, and the kit's old

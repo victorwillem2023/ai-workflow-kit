@@ -77,3 +77,11 @@ describe('a client call is not a route, and a route outside src/ or in Python st
     assert.deepEqual(securityAdvice(diffOf('tests/test_main.py', '@app.post("/goals")')), [], 'a test is never looked at');
   });
 });
+
+describe('a call that sends data after the path', () => {
+  it('is a client sending a body, not a route; one that passes a handler is still a route', () => {
+    assert.equal(addsRoute('src/core/sync.ts', ["await api.post('/users', body);"]), false);
+    assert.equal(addsRoute('src/core/sync.ts', ["await api.put('/goals/1', payload);"]), false);
+    assert.equal(addsRoute('src/server/users.ts', ["api.post('/users', saveUser);"]), true);
+  });
+});

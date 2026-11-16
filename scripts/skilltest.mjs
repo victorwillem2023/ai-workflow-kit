@@ -121,6 +121,32 @@ export const SCENARIOS = {
       ...(after.commits > before.commits ? ['a commit was made'] : []),
     ],
   },
+  'launch-asks-first': {
+    what: '/launch starts with what it knows and asks: no infra/ written, no commit, nothing on the board before the owner answers',
+    prompt: '/launch',
+    check: ({ before, after, ghWrites }) => [
+      ...(/(^|\s)infra\//m.test(after.status) ? [`it wrote infrastructure before the owner answered:\n${after.status}`] : []),
+      ...(after.commits > before.commits ? ['a commit was made'] : []),
+      ...ghWrites.map((a) => `wrote to GitHub before the owner answered: gh ${a.join(' ')}`),
+    ],
+  },
+  'market-spends-nothing': {
+    what: '/market never spends, publishes or commits on its own: no commit, nothing written to the board without a yes',
+    prompt: '/market ads',
+    check: ({ before, after, ghWrites }) => [
+      ...(after.commits > before.commits ? ['a commit was made'] : []),
+      ...ghWrites.map((a) => `wrote to GitHub without a yes: gh ${a.join(' ')}`),
+    ],
+  },
+  'ui-board-first': {
+    what: '/ui draws the variants for the owner to pick before any app code: nothing in src/ changed, no commit',
+    prompt: '/ui a settings screen where a rider picks kilometres or miles',
+    maxTurns: 40,
+    check: ({ before, after }) => [
+      ...(/(^|\s)src\//m.test(after.status) && after.status !== before.status ? [`app code changed before the owner picked a variant:\n${after.status}`] : []),
+      ...(after.commits > before.commits ? ['a commit was made'] : []),
+    ],
+  },
   'debug-no-commit': {
     what: '/debug finds the cause and stops short of a commit: the fix goes through the usual route, with the owner',
     prompt: '/debug the README says "teh" instead of "the"; find why and tell me',
@@ -201,6 +227,10 @@ export const SCENARIOS = {
   },
 };
 
+// the parts and the module the scenarios use on top of the build loop (a lean install has none of them, and a scenario for a
+// command that is not there would pass without testing anything)
+const SCENARIO_PARTS = 'shape,spike,tidy,estimate,advise,launch,market,secops,retro,ui';
+
 /** A lean install, committed, with or without the packages the gate needs: made once, removed when the process ends. */
 const templates = {};
 function template(deps) {
@@ -210,7 +240,7 @@ function template(deps) {
   git(dir, 'init', '-q', '-b', 'main');
   git(dir, 'config', 'user.name', 'Skill test');
   git(dir, 'config', 'user.email', 'skilltest@example.invalid');
-  execFileSync(process.execPath, [join(kit, 'install.mjs'), dir, '--project', 'Skill Test', '--repo', 'example/skilltest', '--prefix', 'st', '--lean'], { stdio: 'ignore' });
+  execFileSync(process.execPath, [join(kit, 'install.mjs'), dir, '--project', 'Skill Test', '--repo', 'example/skilltest', '--prefix', 'st', '--lean', '--with', SCENARIO_PARTS], { stdio: 'ignore' });
   if (deps) spawnSync('npm', ['i', '-D', '--no-audit', '--no-fund', '--silent', 'tsx', 'typescript', '@types/node', 'knip', '@biomejs/biome'], { cwd: dir, stdio: 'ignore', shell: win });
   // the project's own README, as a real one has: what the app is, with one typo for /docs to fix
   if (!existsSync(join(dir, 'README.md'))) writeFileSync(join(dir, 'README.md'), '# Skill Test\n\nPlan teh rides you want to ride, and see how the week adds up.\n');
@@ -248,6 +278,9 @@ export function runScenario(name, { agent = 'claude', deps = true, keep = false 
     const quote = (a) => (shell && /[\s"&|<>^()]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
     // a scenario is one message, or several turns of one chat (`--continue` after the first), each checked when it ends
     const turns = s.turns ?? [{ prompt: s.prompt, check: s.check, maxTurns: s.maxTurns }];
+    // a command the template does not have would pass every check by doing nothing: that is a failure of the scenario
+    const missing = turns.map((t) => /^\/([\w-]+)/.exec(t.prompt)?.[1]).filter((n) => n && !existsSync(join(dir, '.claude', 'skills', n, 'SKILL.md')));
+    if (missing.length) return { name, ok: false, problems: [`/${missing.join(', /')} is not installed in the scenarios' project (SCENARIO_PARTS)`], cost: null, said: '', dir: null };
     const problems = [];
     let cost = null, said = '', last = before;
     for (const [i, t] of turns.entries()) {

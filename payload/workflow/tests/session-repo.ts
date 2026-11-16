@@ -53,7 +53,7 @@ export function makeRepo({ prefix = 'app' }: { prefix?: string } = {}): Repo {
   writeFileSync(join(main, 'package.json'), JSON.stringify({ scripts: { map: 'node map.cjs', test: 'node check.cjs' } }));
   writeFileSync(join(main, 'map.cjs'), MAP_SCRIPT); writeFileSync(join(main, 'check.cjs'), CHECK_SCRIPT);
   writeFileSync(join(root, 'fake-gh.cjs'), FAKE_GH);
-  writeFileSync(join(main, '.gitignore'), 'node_modules/\n.env\n# waiting specs are local\nworkflow/specs/\n');
+  writeFileSync(join(main, '.gitignore'), 'node_modules\n.env\n# waiting specs are local\nworkflow/specs/\n');
   writeFileSync(join(main, 'a.txt'), 'one\n');
   execFileSync('node', ['map.cjs'], { cwd: main });
   git(main, 'add', '-A'); git(main, 'commit', '-m', 'start'); git(main, 'push', '-u', 'origin', 'main');
