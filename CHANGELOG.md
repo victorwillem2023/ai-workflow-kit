@@ -34,7 +34,9 @@ What changed in each version of the kit, newest first. Build on the latest tag (
   `npm run cost` adds up what Claude Code recorded for the project and its session folders (tokens by model, command and day;
   money only from prices the project writes down), and `npm run coverage` says how much of the code the tests run and which
   files have the most lines no test runs; `/retro` shows both. The kit's prices and free tiers say when they were checked, and
-  the self-test fails when that is over six months ago. **The self-test is faster**: the kit's own tests run once per run, not
+  the self-test fails when that is over six months ago. Two runnable examples to copy: a route test with each refusal
+  (`tests/security/routes.example.ts`) and a data test with migrations and a rollback per test (`tests/data.example.ts`).
+  **The self-test is faster**: the kit's own tests run once per run, not
   in every gate of every variant, and the longest variants start first (all variants, the messy one included: 3 min 21;
   `--quick`: 2 min 14; `npm run test:quick`: a second).
 - **2.9.11**: **the self-test has an old, messy project** (Trailsmith at 2.8 the model): an app with debt (an unused file and
