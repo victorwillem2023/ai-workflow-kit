@@ -20,6 +20,15 @@ describe('the stage nudge', () => {
     assert.match(line, /Before it goes online: #5 Sign in with Google .* then \/launch\.$/);
   });
 
+  it('a working first version asks once whether AI could make it better, until a decision record answers it', () => {
+    const built = { ...quiet, firstVersion: { total: 4, open: 0 }, launched: true, marketPage: true };
+    const [line] = stageNudges({ ...built, aiConsidered: false });
+    assert.match(line, /Could AI make it better for the people using it .* \/advise ai looks at it, starting from what your rules let go to a model/);
+    assert.deepEqual(stageNudges({ ...built, aiConsidered: true }), [], 'answered (yes or no): it stops');
+    assert.deepEqual(stageNudges({ ...quiet, aiConsidered: false }), [], 'not before the first version works');
+    assert.match(stageNudges({ ...built, aiConsidered: false, installed: { advise: false } })[0], /--with advise adds it/);
+  });
+
   it('a stage whose skill is not installed says the command that adds it', () => {
     const [line] = stageNudges({ ...quiet, firstVersion: { total: 4, open: 0 }, installed: { launch: false, market: false, retro: false } });
     assert.match(line, /\/launch is not installed: node <kit>\/install\.mjs \. --update --with launch adds it/);

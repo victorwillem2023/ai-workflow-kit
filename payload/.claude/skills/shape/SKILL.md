@@ -27,6 +27,10 @@ answered on the card or in `docs/PRODUCT.md`.
    version, the sign it worked, and the stop rule.
 3. **Say what you think**, plainly: is it worth building now, later or not, and why, in three lines. Name the riskiest
    assumption and whether a spike (`/spike`) should test it first. The owner decides.
+   **Could AI make it better?** One line, only when a use in `docs/workflow/AI-AGENTS.md` (*Where AI could make the app better*)
+   fits the smallest version or a later one, and the project's rules let the data it needs go to a model (they come first;
+   say so when they rule it out): what the person would get, in plain words, and that it is a choice for later or for `/spec`,
+   never the reason to build. Nothing fits: say nothing.
 4. **Write it down**, on the owner's yes:
    - A card: a comment that starts with **Pitch** (`/spec` looks for it before a large card) with the answers (`npm run board` has no edit; use `gh issue comment <n> --repo <board.repo> --body-file <file>`),
      and the labels: one `value: ...` (the owner's, from the answers), one `effort: ...` you estimate from the smallest version

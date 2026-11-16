@@ -5,7 +5,7 @@
 /**
  * @param {{ firstVersion: { total: number, open: number } | null, beforeDeploy: { number: number, title: string }[],
  *   launched: boolean, marketPage: boolean, installed: Record<string, boolean>, shippedThisWeek: number,
- *   daysSinceRetro: number | null }} f
+ *   daysSinceRetro: number | null, aiConsidered?: boolean }} f
  * @returns {string[]} the nudges, most urgent first
  */
 export function stageNudges(f) {
@@ -20,6 +20,10 @@ export function stageNudges(f) {
   }
   if (f.launched && f.beforeDeploy.length) {
     out.push(`It has a launch plan, but ${f.beforeDeploy.map((c) => `#${c.number}`).join(', ')} says it comes before the first deploy: do that before the deploy goes out.`);
+  }
+  // once the first version works: could a model make it better for its users? Asked until a decision record says yes or no
+  if (built && f.aiConsidered === false) {
+    out.push(`The first version works. Could AI make it better for the people using it (a summary, a first draft, sorting, search by meaning, their own assistant using the app)? /advise ai looks at it, starting from what your rules let go to a model (a few minutes; its answer is a decision record, yes or no, and then this stops).${add('advise')}`);
   }
   if (f.launched && !f.marketPage) out.push(`It has a launch plan and nothing yet on who it is for and how they find it: /market when you want users (it starts the market stage, which brings docs/market/).${add('market')}`);
   // the project's own roadmap (docs/company/ROADMAP.md): its stage and the sign it watches, so the owner's plan steers too

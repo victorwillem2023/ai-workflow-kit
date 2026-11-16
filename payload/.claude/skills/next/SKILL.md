@@ -47,6 +47,9 @@ long; the command after it in brackets, never as the choice itself:
   check or a rule, so it does not happen again. (/retro)"
 - `/advise roadmap`: "Say where the project is and what would show it is ready for the next step (a few minutes), for example
   'first users; the sign: most of the ten use it every week'. Then the kit reminds you at the right moment. (/advise roadmap)"
+- `/advise ai`: "See whether AI could make the app better for the people using it (a few minutes), for example a three-line
+  summary of their week, or their own assistant reading the app. It starts from what your rules let go to a model, and 'not
+  now' is a fine answer; either way it stops asking. (/advise ai)"
 - `/tidy`: "Clean up the board (about 5 minutes): I propose small fixes, like merging two cards that are the same, setting how
   much a card matters, deciding which of two equal cards comes first, linking a missing piece of the app to its card. You tick
   what you agree with. (/tidy)"

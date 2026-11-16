@@ -6,6 +6,8 @@ export interface StageFacts {
   installed: Record<string, boolean>;
   shippedThisWeek: number;
   daysSinceRetro: number | null;
+  /** a decision record on AI in the app exists (docs/decisions/*-ai.md); undefined: not known, no nudge */
+  aiConsidered?: boolean;
   roadmap?: { stage: string | null; sign: string | null; daysSinceChange: number } | null;
 }
 export function stageNudges(f: StageFacts): string[];

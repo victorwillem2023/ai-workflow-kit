@@ -37,7 +37,7 @@ come when a stage needs them; past the gate, every one is optional (`project.aud
 | Idea | `/spike <n>` | A throwaway try of the riskiest part, ending in a decision note. |
 | Plan | `/tidy` | When the board piles up: one batch of tidy-ups for your yes, then the week's focus. |
 | Plan | `/estimate <n or a sentence>` | What one change costs: the work, the money a month now and at 10 times, and what else it brings. |
-| Plan | `/advise [panel] [question]` | Help choosing between options: up to three advisors, each citing the docs; `/arch` is its architecture panel. You decide. |
+| Plan | `/advise [panel] [question]` | Help choosing between options: up to three advisors, each citing the docs; `/arch` is its architecture panel; `/advise ai` looks where AI could make the app better, once the first version works. You decide. |
 | Build | `/work <n>` | The main entry. Plans card n and stops for your yes, in the steps below. Run it from the main folder in a fresh chat. |
 | Build | `/build <topic>` | After the yes, in a new chat: builds the plan, the feedback rounds and `/ship` all happen there. |
 | Build | `/ui <n>` | Same, for a `ui` card (`/work` sends you there by itself). |

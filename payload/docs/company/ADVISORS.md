@@ -39,6 +39,7 @@ its own; the chair puts them side by side; the owner decides.
 | **buy or host** | FinOps, sysadmin, security and data, product and time | a paid API or service against hosting it yourself, with the cost over 12 and 36 months and the hours (`docs/run/BUY-OR-HOST.md`) |
 | **roadmap** | product strategist, growth, finance, operations | what the next stage needs and when to start it (`docs/company/STAGES.md`, the project's `docs/company/ROADMAP.md`) |
 | **growth** | positioning, conversion, channels, brand and trust | why visitors do not convert, what to change in the product or the page (`docs/market/GROWTH.md`) |
+| **ai** | AI product engineer, security and data, FinOps, product and time | where a model would make the app better for its users, or none: the uses in `docs/workflow/AI-AGENTS.md`, *Where AI could make the app better*, MCP both ways, starting from what the project's rules let go to a model |
 
 What a panel may give back, besides an opinion:
 - **a pilot**: a small, time-boxed try of a suggestion (for example "the image resizer on Cloud Run for two weeks, behind a

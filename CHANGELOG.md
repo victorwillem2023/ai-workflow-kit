@@ -2,6 +2,15 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **2.9.9**: **the kit asks where AI could make the app better**, in plain words and always starting from what the project's
+  rules let go to a model. `docs/workflow/AI-AGENTS.md` opens with *Where AI could make the app better*: the uses (summarise,
+  a first draft, sorting, reading a file, search by meaning, an assistant over the person's own data, the app as an MCP server
+  for people's own assistants, data from an MCP server), what each needs and when it is worth it; the model writes words, code
+  holds facts, and plain code is the answer more often than not. `/shape` adds one line when a use fits; `/spec` asks "with AI
+  or plainly in code?" when the card's job is such a use (and says that `--with ai` adds the wrapper when it is missing). A new
+  `/advise ai` panel (AI product engineer, security and data, FinOps, product and time) looks at the whole app, with the
+  project's data rules at the top of its brief, and its answer, "none for now" included, is a decision record
+  (`docs/decisions/<date>-ai.md`). Once the first version works, `/next` offers that look until the record exists.
 - **2.9.8**, from porting Trailsmith (its builder's list). **A test moves a card**: starting a session with `--card` must
   move it to In progress with no board warning (the fixture's missing `cardgraph.mjs` had only shown as a warning). **An update
   keeps every setting**: the self-test's older project has its own extra input folder, and after the update every value of the

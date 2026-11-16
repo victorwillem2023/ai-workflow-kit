@@ -23,6 +23,12 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    service or a datastore, a platform or provider, changes a boundary, or is otherwise hard to undo: suggest `/arch` first
    (the architecture board, `docs/run/SCALING.md`), and write the spec on its accepted decision. A change under `infra/` names
    what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).
+   **AI or plain code**: when the card's job is one of the uses in `docs/workflow/AI-AGENTS.md` (*Where AI could make the app
+   better*: summarise, draft, sort, read a file, search by meaning, an assistant, MCP) and the project's rules let its data go to
+   a model, add one question in plain words: "Do it with AI (<what the person gets>, about <cost> per use) or plainly in code
+   (<what that gives>)?", plain code first when it does the job. With AI: the spec follows `docs/workflow/AI-SECURITY.md` (the
+   wrapper, the cases); without the `ai` module installed (no `src/server/ai.ts`), say that `node <kit>/install.mjs . --update
+   --with ai` adds it first. A fact the app relies on stays in code either way. No use fits: no question.
 3. Copy `tools/workflow/templates/spec.md` to `specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
    - The app map (with the map module): `npm run board -- --map` shows the ends this card is on, and `grep -n` in

@@ -3,6 +3,25 @@
 How an app gives a model tools, takes tools from others, and talks to other agents, and what each step adds to secure and pay
 for. The rules of `docs/workflow/AI-SECURITY.md` hold for all of it; this page is about the parts that connect. Read by the section.
 
+## Where AI could make the app better
+Read by `/shape` and `/spec` (one line, only when a use below fits) and by `/advise ai` (the whole look, once the first version
+works). **The project's rules come first**: data that the project says never goes to a model (`CLAUDE.md`, `docs/PRODUCT.md`,
+`docs/workflow/SENSITIVE.md` for `sensitive.paths`) rules out every use that needs it, and that is said before any idea. A model
+host is an outbound host like any other (`security.egress`, with what goes there). **The model writes words, code holds facts**:
+a number, a rule or a decision the app relies on is worked out in code; AI explains, drafts or sorts around it.
+| A use | For example | Worth it when | It needs |
+|---|---|---|---|
+| Summarise or explain | "your week in three lines", why a number is what it is | people skip long screens or ask "why?" | one call through the wrapper (`--with ai`) |
+| A first draft | a reply, a description, a plan the person edits | people start from a blank page often | one call, and the person sends it, never the model |
+| Sort or tag | route a support message, tag a note | many items, a person does it by hand today | one call with a fixed list of answers (a schema) |
+| Read a file or a photo | fields from a receipt or a PDF | people type over what is in front of them | one call; the result shown for a check before it is saved |
+| Search by meaning | "the run where my knee hurt" finds it without the word | words differ from what people remember | embeddings (an index), not a chat |
+| An assistant in the app | questions over the person's own data | the questions are many and open | an agent with read-only tools for that person (below) |
+| The app as an MCP server | people's own assistant (Claude, ChatGPT) reads or adds to the app | they already live in such an assistant | *Offering an MCP server* below |
+| Data from an MCP server | a calendar, a docs search, a provider's data | a published server does what an integration would | *Using MCP servers in the app* below |
+Each is offered as a choice with its cost per use from the provider's price page, never as the reason to build, and never for a
+fact code can work out the same way every time. Plainly in code is the answer more often than not.
+
 ## Start with the smallest thing that works
 | The job | Take | Not yet |
 |---|---|---|
