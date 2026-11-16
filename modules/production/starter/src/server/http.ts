@@ -66,6 +66,15 @@ export type AppOptions = {
   now?: () => number;
 };
 
+/** One part of a path, decoded; a broken escape (`/goals/%E0%A4%A`) is the caller's mistake: a 400, not a fault in the code. */
+function decodePart(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    throw new AppError('bad-path', 'This address has a broken %-escape in it.', { status: 400 });
+  }
+}
+
 /** A route's path with `:name` parts: '/api/goals/:id' matches '/api/goals/42' with { id: '42' }. */
 export function matchPath(pattern: string, path: string): Record<string, string> | null {
   const a = pattern.split('/'),
@@ -73,7 +82,7 @@ export function matchPath(pattern: string, path: string): Record<string, string>
   if (a.length !== b.length) return null;
   const params: Record<string, string> = {};
   for (let i = 0; i < a.length; i++) {
-    if (a[i].startsWith(':')) params[a[i].slice(1)] = decodeURIComponent(b[i]);
+    if (a[i].startsWith(':')) params[a[i].slice(1)] = decodePart(b[i]);
     else if (a[i] !== b[i]) return null;
   }
   return params;
@@ -141,7 +150,11 @@ function idempotent(store: IdempotencyStore) {
 
 export function createApp(o: AppOptions) {
   const state = readiness();
+  // routes and pages are counted apart: a page brings its scripts, styles and pictures, and a team behind one address opens
+  // many, so the files get ten times the routes' allowance (the routes are where the cost and the risk are)
   const within = rateLimit(o.requestsPerMinute ?? 120, o.now);
+  const withinPages = rateLimit((o.requestsPerMinute ?? 120) * 10, o.now);
+  const tooMany = () => new AppError('too-many', 'That was a lot of requests at once. Wait a minute and try again.', { status: 429 });
   const once = idempotent(o.idempotency ?? memoryIdempotency(o.now));
   const max = o.maxBodyBytes ?? 100_000;
 
@@ -152,15 +165,15 @@ export function createApp(o: AppOptions) {
     if (url.pathname === '/health') return healthAnswer();
     if (url.pathname === '/ready') return readyAnswer(o.checks ?? {}, state);
     const caller = callerOf(m, o.trustProxy ?? 0);
-    if (!within(caller))
-      throw new AppError('too-many', 'That was a lot of requests at once. Wait a minute and try again.', { status: 429 });
     sameOrigin(method, m.headers, [...(o.origins ?? []), `http://${m.headers.host}`, `https://${m.headers.host}`]);
     const route = o.routes.map((r) => ({ r, params: r.method === method ? matchPath(r.path, url.pathname) : null })).find((x) => x.params);
     if (!route?.params) {
+      if (!withinPages(caller)) throw tooMany();
       const page = o.pages && (method === 'GET' || method === 'HEAD') ? await servePage(o.pages, url.pathname) : null;
       if (page) return page;
       throw new AppError('not-found', 'There is nothing at this address.', { status: 404 });
     }
+    if (!within(caller)) throw tooMany();
     const header = headerOf(m);
     const user = o.signIn ? await o.signIn(header) : null;
     if (o.signIn && !user && !route.r.public) throw new AppError('signed-out', 'Sign in to do this.', { status: 401 });

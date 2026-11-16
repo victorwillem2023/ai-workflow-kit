@@ -1,14 +1,14 @@
 // Checks of the kit's own files that need no installed project (scripts/selftest.mjs runs them first):
 //   longTopLevel   the 60-line rule the kit holds a project's functions to, for the kit's own top-level code too (a script run top
 //                  to bottom has no function the function check could see): the longest stretch of code outside any function.
-//                  Today's longer ones are named with their size and may shrink, never grow (the gate's steps, the scenario table).
+//                  Today's longer ones are named with their size and may shrink, never grow; a table of data at the left edge is not counted.
 //   agedFacts      a guide with prices or free tiers says when they were last checked ("Facts checked: 2026-11" or "Reviewed:
 //                  2026-11"); older than six months fails, so a release looks again; one with no date is listed
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const KNOWN = { 'payload/workflow/tools/gate.mjs': 147, 'scripts/skilltest.mjs': 171, 'scripts/selftest.mjs': 71, 'payload/workflow/tools/signoff.mjs': 66, 'payload/workflow/tools/infracheck.mjs': 61 };
+const KNOWN = { 'payload/workflow/tools/gate.mjs': 96, 'scripts/selftest.mjs': 71, 'payload/workflow/tools/signoff.mjs': 66, 'payload/workflow/tools/infracheck.mjs': 61 };
 
 /** The kit scripts whose top-level code runs longer than the rule allows: ['<file> <lines> (at most <n>: ...)']. */
 export async function longTopLevel(kit, kitScripts) {
@@ -17,8 +17,11 @@ export async function longTopLevel(kit, kitScripts) {
   const stretch = (f) => {
     const text = readFileSync(join(kit, f), 'utf8').replace(/\r\n/g, '\n');
     const inFn = new Set(functionsIn(f, text).flatMap((fn) => Array.from({ length: fn.to - fn.from + 1 }, (_, i) => fn.from + i)));
-    let run = 0, longest = 0;
+    // a table of data (`const SCENARIOS = {` ... `};` at the left edge) is a declaration, not steps: it does not count
+    let run = 0, longest = 0, inTable = false;
     text.split('\n').forEach((l, i) => {
+      if (inTable) { if (/^[}\]];?\s*$/.test(l)) inTable = false; return; }
+      if (!inFn.has(i) && /^(?:export\s+)?const\s+[\w$]+\s*=\s*[{[]\s*$/.test(l)) { inTable = true; return; }
       if (inFn.has(i)) run = 0;
       else if (l.trim() && !/^\s*(?:\/\/|\*|\/\*|import\b)/.test(l)) longest = Math.max(longest, ++run);
     });

@@ -96,7 +96,7 @@ export function signoffVerdict({ changed, paths, matches, read, signoffs, baseSi
   const mine = parseSignoffs(signoffs).filter((r) => r.fingerprint === print);
   if (mine.some((r) => keys.some((k) => checks(rowText({ date: r.date, who: r.who, print }), r.signature, k)))) return { ok: true, files, print };
   const why = !keys.length
-    ? `${SIGNERS} has no signer yet on the branch this change left: the owner runs npm run signoff -- --init and commits that on its own first.\n`
+    ? `${SIGNERS} has no signer yet on the branch this change left: the owner runs npm run signoff -- --init and commits it on main on its own first (node workflow/scripts/session.mjs --commit-notes "Sign-offs: the first signer"; no push needed).\n`
     : mine.length
       ? `${SIGNOFFS} has a row for this version of ${files.join(', ')}, but no signer in ${SIGNERS} signed it: it was not written by npm run signoff.\n`
       : `${files.join(', ')} ${files.length === 1 ? 'is' : 'are'} sensitive (sensitive.paths) and changed without a person's sign-off for this version.\n`;

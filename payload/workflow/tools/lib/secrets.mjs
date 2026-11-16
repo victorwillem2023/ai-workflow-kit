@@ -18,12 +18,10 @@ const KINDS = [
   // password = "long literal": a value read from the environment, a placeholder or a short word is not one
   ['a password or key written into the code', /\b(?:password|passwd|secret|token|api[_-]?key)\w*["']?\s*[:=]\s*["'`](?![^"'`]*(?:\$\{|\{\{|<|example|changeme|placeholder|xxxx|your[-_ ]))[^"'`\s]{16,}["'`]/i],
 ];
-// A database that only runs on the developer's computer: a dev compose file or an example env file (they describe the local
-// setup), or a password that is the user name again on a host with no dot in it, which is a compose service and never reached
-// from outside (postgres://postgres:postgres@db:5432/app). A real address still counts: app:password@db.example.com does.
-const DEV_FILE = /(?:^|\/)(?:docker-)?compose(?:\.[\w-]+)*\.ya?ml$|(?:^|\/)\.env\.(?:example|sample|template)$/;
-function devDatabase(file, line) {
-  if (DEV_FILE.test(file)) return true;
+// A database that only runs on the developer's computer: a password that is the user name again on a host with no dot in it,
+// which is a compose service and never reached from outside (postgres://postgres:postgres@db:5432/app). Which file it is in does
+// not matter: a real password in docker-compose.prod.yml or .env.example counts, and so does app:password@db.example.com.
+function devDatabase(_file, line) {
   const m = /\b[a-z][a-z0-9+.-]{1,20}:\/\/([^\s:/@'"`]+):([^@\s'"`/]+)@([\w-]+)(?=[:/'"`\s]|$)/i.exec(line);
   return !!m && m[1] === m[2];
 }

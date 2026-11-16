@@ -6,6 +6,7 @@ import { staleDocs, parseNameStatus } from './doccovers.mjs';
 import { imageProblems } from './dockercheck.mjs';
 import { ipRuleProblems, unlistedEgress } from './network.mjs';
 import { SIGNERS, SIGNOFFS, signoffVerdict } from './signoff.mjs';
+import { MAIN } from './branch.mjs';
 import { aiProblems } from './aicheck.mjs';
 import { editedMigrations } from './datacheck.mjs';
 
@@ -35,11 +36,13 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
   config.sensitive?.paths?.length && ['signoff', () => {
     // a change to money, health, legal or personal-data files needs a person's sign-off for this exact version (npm run signoff)
     const all = [...git('diff', '--name-only', base).split('\n'), ...git('ls-files', '--others', '--exclude-standard').split('\n')].filter(Boolean);
-    // each row is signed with a signer's private key and checked here with the public keys in SIGNERS.md as they are on the branch
-    // this change left (a key the change adds counts only when one of those endorsed it): the same on every computer and on CI
+    // each row is signed with a signer's private key and checked here with the public keys in SIGNERS.md as they are on main: where
+    // the branch left it, and the local main itself, so the first signer counts once committed there, before any push (a key the
+    // change adds counts only when one of those endorsed it); the same on every computer and on CI
+    const onMain = [gitOk('show', `${base}:${SIGNERS}`), gitOk('show', `${MAIN}:${SIGNERS}`)].filter(Boolean).join('\n');
     const v = signoffVerdict({
       changed: all, paths: config.sensitive.paths, matches: matchesAny, read: (f) => readText(f) ?? undefined,
-      signoffs: readText(SIGNOFFS), baseSigners: gitOk('show', `${base}:${SIGNERS}`), signers: readText(SIGNERS),
+      signoffs: readText(SIGNOFFS), baseSigners: onMain, signers: readText(SIGNERS),
     });
     return v.ok ? { ok: true, note: v.files.length ? `${v.files.length} signed` : '' } : { ok: false, out: v.line };
   }],

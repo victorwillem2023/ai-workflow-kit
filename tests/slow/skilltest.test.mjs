@@ -38,7 +38,7 @@ describe('the skill scenarios', () => {
     assert.match(run('plan-build-done-ship', '').problems.join(), /turn 1.*no spec/);
   });
   it('the read-only skills fail on a file change, a commit or a board write, and pass when nothing changed', () => {
-    for (const name of ['check-read-only', 'find-read-only', 'review-read-only', 'estimate-read-only', 'advise-read-only']) {
+    for (const name of ['check-read-only', 'find-read-only', 'review-read-only', 'estimate-read-only', 'advise-read-only', 'arch-read-only']) {
       assert.equal(run(name, '').ok, true, name);
       assert.match(run(name, 'edit-readme').problems.join(), /files changed/, name);
       assert.match(run(name, 'commit').problems.join(), /a commit was made/, name);
@@ -73,6 +73,8 @@ describe('the skill scenarios', () => {
     assert.match(run('market-spends-nothing', 'board').problems.join(), /without a yes/);
     assert.equal(run('market-spends-nothing', '').ok, true);
     assert.match(run('ui-board-first', 'commit').problems.join(), /a commit was made/);
+    assert.match(run('retro-asks-first', 'board').problems.join(), /before the owner answered/);
+    assert.equal(run('retro-asks-first', '').ok, true);
     assert.equal(run('ui-board-first', '').ok, true);
   });
   it("every scenario runs a command the scenarios' project has (none passes by the command being missing)", () => {

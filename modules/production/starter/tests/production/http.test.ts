@@ -178,3 +178,27 @@ describe('what a client cannot fake, and what the server serves', () => {
     assert.equal((await fetch(`${url}/api/open`)).status, 200);
   });
 });
+
+describe('a broken address and a busy office', () => {
+  it('answers a broken %-escape in a route path with 400, not a fault', async () => {
+    const url = await serve([{ method: 'GET', path: '/api/goals/:id', handler: (c) => ({ status: 200, body: { id: c.params.id } }) }]);
+    assert.equal((await fetch(`${url}/api/goals/%E0%A4%A`)).status, 400);
+  });
+  it('counts page files apart from routes, so a page and its assets do not use up the routes allowance', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pages-'));
+    try {
+      writeFileSync(join(dir, 'index.html'), '<h1>app</h1>');
+      const url = await serve([{ method: 'GET', path: '/api/x', handler: () => ({ status: 200, body: {} }) }], {
+        requestsPerMinute: 2,
+        pages: dir,
+      });
+      for (let i = 0; i < 5; i++) assert.equal((await fetch(`${url}/goals`)).status, 200, `page ${i}`);
+      assert.deepEqual(
+        [(await fetch(`${url}/api/x`)).status, (await fetch(`${url}/api/x`)).status, (await fetch(`${url}/api/x`)).status],
+        [200, 200, 429],
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

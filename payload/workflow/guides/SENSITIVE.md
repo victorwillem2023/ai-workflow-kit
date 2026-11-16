@@ -34,7 +34,7 @@ The folders and files listed under `sensitive.paths` in `workflow/config.json`, 
   still cannot sign without the passphrase, and a key it adds to SIGNERS.md counts for nothing: the gate trusts the signers on
   main, and a new one only when an existing signer endorsed it (`npm run signoff -- --add-signer "<name>" <key>`; the key from
   `--show-key` on the new person's computer, or copy your key file to your own second computer). The project's first signer goes
-  in on its own commit, before the first sign-off. What it does not stop: a person who means to cheat, and it is not meant to.
+  in on its own commit on main, before the first sign-off (`node workflow/scripts/session.mjs --commit-notes "Sign-offs: the first signer"` from the main folder; it counts at once, no push needed). What it does not stop: a person who means to cheat, and it is not meant to.
 - The sign-off holds a fingerprint of the files, so it covers exactly what was read. A change after it fails the gate again.
 - With pull requests on a paid or public repository, add a `CODEOWNERS` line for the same folders and require the owner's
   review on GitHub too: a second lock on the same door.

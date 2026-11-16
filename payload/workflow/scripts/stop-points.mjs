@@ -11,6 +11,7 @@
 // get around it with the same shell; the lock for that is on GitHub (branch protection, a required review: workflow/tools/README.md).
 // A refused command says why, so the agent stops and asks; the owner's own terminal is never held.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,8 +42,13 @@ function saidIn(sentence, word, ends) {
   if (!m) return false;
   const before = plain.slice(0, m.index);
   if (/^commit/.test(m[0]) && NOUN_BEFORE.test(before)) return false; // "the commit", "a commit button": a thing, not the act
-  return ends.test(plain.slice(m.index + m[0].length)) && !CONDITION.test(before) && !NOT.test(before.split(',').pop() ?? '')
-    && !/\b(?:not|isn'?t|aren'?t) (?:yet )?done\b|\bnot finished\b/.test(plain);
+  const after = plain.slice(m.index + m[0].length);
+  return ends.test(after) && !CONDITION.test(before) && !NOT.test(before.split(',').pop() ?? '')
+    && !/\b(?:not|isn'?t|aren'?t) (?:yet )?done\b|\bnot finished\b/.test(plain)
+    // "done, but the footer is still wrong": the rest takes it back
+    && !/^[\s,;:–-]*(?:but|except|though|although|however|only|still|yet)\b|\b(?:but|except|still)\b.*\b(?:wrong|broken|off|missing|fix|change|left)\b/.test(after)
+    // "well done", "you said it was done", "I thought it was done": praise or someone else's word, not the owner's
+    && !/\b(?:well|nicely|said|says|told me|thought|think|claimed|was|were)\s+(?:(?:it|that|this)\s+)?(?:(?:was|is)\s+)?$/.test(before);
 }
 
 /** What the owner's message allows: { commit, push, clear } (clear: they said wait or not yet, which takes an earlier word back). */
@@ -64,13 +70,15 @@ export function needsWord(command) {
   // the session script by its file or through npm (npm run session -- x --finish)
   const session = (flags) => new RegExp(`\\bsession(?:\\.mjs)?\\b[^|;&\\n]*--(?:${flags})\\b`).test(c);
   if (sub('push') || session('push') || /\bgh(?:\.exe)?\s+pr\s+merge\b/.test(c)) return 'push';
-  if (sub('commit') || sub('merge(?!\\s+--abort)') || session('finish|merge|commit-notes')) return 'commit';
+  // every git command that makes a commit: commit and merge, and cherry-pick, revert, am and rebase (stopping one is free)
+  if (['commit', 'merge', 'cherry-pick', 'revert', 'am', 'rebase'].some((n) => sub(`${n}(?!\\s+--(?:abort|quit))`)) || session('finish|merge|commit-notes')) return 'commit';
   return null;
 }
 
 // the owner's own files: the sign-off record, its signers, and this script's note
 const OWN = ['SIGNOFFS.md', 'SIGNERS.md', 'workflow-said.json'];
-const WRITES = /(?:(?<![\d&])>>?(?!\s*&|\s*\/dev\/null)|\btee\b|\bsed\s+(?:-\w*i|--in-place)|\bperl\s+-\w*i|\b(?:cp|mv|rm|truncate|dd|install|ln)\b|\b(?:write|append)File(?:Sync)?\b|\bcreateWriteStream\b|\bopen\s*\([^)]*['"][wa]|\bSet-Content\b|\bAdd-Content\b|\bOut-File\b|\bgit\s+(?:checkout|restore|apply|am)\b)/;
+// a command that writes files it names (a redirect is judged by where it points: reading the record into /tmp is fine)
+const WRITES = /(?:\btee\b|\bsed\s+(?:-\w*i|--in-place)|\bperl\s+-\w*i|\b(?:cp|mv|rm|truncate|dd|install|ln)\b|\b(?:write|append)File(?:Sync)?\b|\bcreateWriteStream\b|\bopen\s*\([^)]*['"][wa]|\bSet-Content\b|\bAdd-Content\b|\bOut-File\b|\bgit\s+(?:checkout|restore|apply|am)\b)/;
 const globRe = (g) => new RegExp(`^${g.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
 
 /** The names of the owner's files a command reaches, also through a glob (SIGN*.md, workflow-s*). */
@@ -84,8 +92,12 @@ function ownNamed(command) {
  * signers or this script's note (the settings deny only the Edit and Write tools there). Its reason, or null.
  */
 export function ownersOnly(command) {
-  const named = ownNamed(command);
-  if (!named.length || !WRITES.test(String(command))) return null;
+  const c = String(command ?? '');
+  // where each redirect writes: refused when that is one of the owner's files (`grep done SIGNOFFS.md > /tmp/o` only reads it)
+  const redirected = [...c.matchAll(/(?<![\d&])>>?\s*(["']?)([^\s"'`;&|<>()]+)\1/g)].map((m) => m[2]);
+  const intoOwn = ownNamed(redirected.join(' '));
+  const named = intoOwn.length ? intoOwn : WRITES.test(c) ? ownNamed(c) : [];
+  if (!named.length) return null;
   return named.includes('workflow-said.json') ? 'the stop points\' note is written only by the hook, from what the owner types'
     : `${named.join(' and ')} ${named.length === 1 ? 'is' : 'are'} written only by \`npm run signoff\`, in the owner's own terminal`;
 }
@@ -104,27 +116,39 @@ export function verdict(command, noted, now = Date.now()) {
 
 /** The text a person typed, from one line of Claude Code's transcript; null for anything else (a tool's result, the harness's own). */
 export function typedText(entry) {
-  if (entry?.type !== 'user' || entry.isMeta || entry.message?.role !== 'user') return null;
+  if (entry?.type !== 'user' || entry.message?.role !== 'user') return null;
+  // what the harness writes as a user turn: a summary after /compact, a subagent's own chat, meta lines
+  if (entry.isMeta || entry.isCompactSummary || entry.isSidechain || entry.isVisibleInTranscriptOnly) return null;
+  // Claude Code says who made each user turn: { kind: 'human' } for the person, 'task-notification' and others for the harness
+  if (entry.origin && entry.origin.kind !== 'human') return null;
   const c = entry.message.content;
   if (Array.isArray(c) && c.some((b) => b?.type === 'tool_result')) return null;
   const text = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b) => b?.type === 'text').map((b) => b.text ?? '').join('\n') : '';
-  // a slash command the person typed is recorded as its name and arguments: the arguments are their words
-  const args = /<command-args>([\s\S]*?)<\/command-args>/.exec(text);
-  if (args) return args[1];
-  return /^\s*<(?:command-|local-command|system-reminder)/.test(text) ? null : text;
+  // a slash command the person typed is recorded as its name and arguments: what they typed was "/name args"
+  const name = /<command-name>\/?([\w:-]+)<\/command-name>/.exec(text)?.[1];
+  if (name) return `/${name} ${/<command-args>([\s\S]*?)<\/command-args>/.exec(text)?.[1] ?? ''}`.trim();
+  return /^\s*<(?:command-|local-command|system-reminder|task-notification|user-prompt-submit-hook|bash-)/.test(text)
+    || /^\s*(?:This session is being continued from a previous conversation|Caveat: The messages below)/.test(text) ? null : text;
 }
 
-/** What the owner said in a transcript (JSONL text), as the note would hold it: { commit, push } times, a "wait" clearing them. */
-export function notedFromTranscript(jsonl) {
+/** A short fingerprint of what someone typed (spaces and case aside), as the prompt hook notes it and the tool hook checks it. */
+export const typedPrint = (text) => createHash('sha256').update(String(text ?? '').toLowerCase().replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 20);
+
+/**
+ * What the owner said in a transcript (JSONL text), as the note would hold it: { commit, push } times, a "wait" clearing them.
+ * Only an entry the prompt hook saw counts (`typed`: the fingerprints it noted): the hook runs on what the person types and on
+ * nothing else, so a summary, a task notice or a hook's message in the transcript can never say "done" for them.
+ */
+export function notedFromTranscript(jsonl, typed = new Set()) {
   let noted = {};
   for (const line of String(jsonl ?? '').split('\n')) {
     if (!line.trim()) continue;
     let entry;
     try { entry = JSON.parse(line); } catch { continue; }
     const text = typedText(entry);
-    if (text == null) continue;
+    if (text == null || !typed.has(typedPrint(text))) continue;
     const at = Date.parse(entry.timestamp ?? '') || 0;
-    const said = saidInPrompt(text);
+    const said = saidInPrompt(text.replace(/^\/[\w:-]+\s*/, ''));
     if (said.clear) noted = {};
     if (said.commit) noted.commit = at;
     if (said.push) noted.push = at;
@@ -146,10 +170,13 @@ export function noteKey(input, cwd) {
 }
 
 /** The note after the owner's message: their words set, a "wait" clears, and notes older than the hold are dropped. */
-export function nextNote(all, key, said, now = Date.now()) {
-  const kept = Object.fromEntries(Object.entries(all ?? {}).filter(([, v]) => v && typeof v === 'object'
-    && Math.max(v.commit ?? 0, v.push ?? 0) > now - HOLDS_MS));
-  const mine = said.clear ? {} : { ...(kept[key] ?? {}), ...(said.commit ? { commit: now } : {}), ...(said.push ? { push: now } : {}) };
+export function nextNote(all, key, said, now = Date.now(), print = null) {
+  const fresh = (v) => Math.max(v.commit ?? 0, v.push ?? 0, ...(v.typed ?? []).map((t) => t.at ?? 0)) > now - HOLDS_MS;
+  const kept = Object.fromEntries(Object.entries(all ?? {}).filter(([, v]) => v && typeof v === 'object' && fresh(v)));
+  // what the person typed, by its fingerprint, for the tool hook to check the transcript against (the last few hours, at most 200)
+  const typed = [...(kept[key]?.typed ?? []).filter((t) => t.at > now - HOLDS_MS), ...(print ? [{ h: print, at: now }] : [])].slice(-200);
+  const words = said.clear ? {} : { commit: kept[key]?.commit, push: kept[key]?.push, ...(said.commit ? { commit: now } : {}), ...(said.push ? { push: now } : {}) };
+  const mine = Object.fromEntries(Object.entries({ ...words, ...(typed.length ? { typed } : {}) }).filter(([, v]) => v != null));
   if (Object.keys(mine).length) kept[key] = mine; else delete kept[key];
   return kept;
 }
@@ -165,14 +192,16 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   const all = existsSync(file) ? readNote(file) : {};
   const key = noteKey(input, cwd);
   if (mode === '--prompt') {
-    const said = saidInPrompt(input.prompt);
-    if (said.commit || said.push || said.clear) writeFileSync(file, `${JSON.stringify(nextNote(all, key, said))}\n`);
+    // every message is noted by its fingerprint (the tool hook counts only those in the transcript); its words, when it has some
+    writeFileSync(file, `${JSON.stringify(nextNote(all, key, saidInPrompt(input.prompt), Date.now(), typedPrint(input.prompt)))}\n`);
     process.exit(0);
   }
   if (mode === '--tool') {
-    // Claude Code: the owner's words from the chat's transcript; another agent (no transcript): the note its plugin wrote
+    // Claude Code: the owner's words from the chat's transcript, only the messages the prompt hook saw; another agent (no
+    // transcript): the note its plugin wrote
     const transcript = input.transcript_path && existsSync(input.transcript_path) ? readFileSync(input.transcript_path, 'utf8') : null;
-    const v = verdict(input.tool_input?.command, transcript != null ? notedFromTranscript(transcript) : all[key]);
+    const typed = new Set((all[key]?.typed ?? []).map((t) => t.h));
+    const v = verdict(input.tool_input?.command, transcript != null ? notedFromTranscript(transcript, typed) : all[key]);
     if (!v.ok) { process.stderr.write(`${v.why}\n`); process.exit(2); }
     process.exit(0);
   }

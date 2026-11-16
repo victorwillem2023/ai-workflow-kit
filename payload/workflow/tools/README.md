@@ -169,13 +169,16 @@ What needs a public repository or a paid plan, and what stands in for it here:
 | a pull request merges only when its gate passed (`"flow": "pr"`) | `node workflow/scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
 
 **The stop points** (Claude Code hooks in `.claude/settings.local.json`, `workflow/scripts/stop-points.mjs`): an agent's `git commit`
-or `git merge` (also as `/usr/bin/git` or `git.exe`), and `--finish`, `--merge` or `--commit-notes` of the session script (also
+`git merge`, `cherry-pick`, `revert`, `am` or `rebase` (also as `/usr/bin/git` or `git.exe`), and `--finish`, `--merge` or `--commit-notes` of the session script (also
 through `npm run session`), is refused until the owner has said "done" (or "commit", "finish it", or a short "yes" to the skill's
 question) in that same chat in the last 3 hours; a `git push`, `--push` or `gh pr merge` until they said "push". The word counts
 only when nothing about other work follows it: a question ("is it done?"), a condition ("when you are done, tell me"), another
 meaning ("push the button", "a commit button", "done reading the plan") or quoted text does not, and "wait" or "not yet" takes it
-back. In Claude Code the hook reads the owner's words from the chat's own transcript, never from a file in the project or in
-`.git`, so a file the agent writes cannot say them; `node workflow/scripts/stop-points.mjs --status` says what the note holds (the
+back. In Claude Code the hook reads the owner's words from the chat's own transcript, and only the messages Claude Code marks as
+the person's own (`origin: human`) that the prompt hook also saw (it notes a fingerprint of each one): a summary after `/compact`,
+a task notice, a subagent's prompt or a hook's message never counts, and a file the agent writes cannot say them either. A
+reported "done" does not count ("well done", "you said it was done", "done, but the footer is still wrong").
+`node workflow/scripts/stop-points.mjs --status` says what the note holds (the
 note is for OpenCode's plugin, `.opencode/plugins/stop-points.js`, which `npm run harness` writes and which asks the same script).
 The hook also refuses an agent's shell command that writes `docs/company/SIGNOFFS.md`, `SIGNERS.md` or the note, globs included.
 What it is: a stop for an agent that would commit by mistake or take a shortcut. An agent that sets out to get around it with the

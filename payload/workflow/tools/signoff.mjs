@@ -4,7 +4,8 @@
 // needs it. Why and how it holds: workflow/tools/lib/signoff.mjs and workflow/guides/SENSITIVE.md.
 //   npm run signoff                    show the sensitive files this change touches, ask the checklist and the passphrase, sign
 //   npm run signoff -- --init          once per person: make your key (asks a passphrase); the project's first signer is added to
-//                                      docs/company/SIGNERS.md (commit that on its own, before the first sign-off)
+//                                      docs/company/SIGNERS.md (commit it on main on its own, before the first sign-off:
+//                                      node workflow/scripts/session.mjs --commit-notes "Sign-offs: the first signer"; no push needed)
 //   npm run signoff -- --show-key      your public key, to send to a signer who adds you
 //   npm run signoff -- --add-signer "<name>" <public key>   a signer adds another person (or your own second computer's key)
 //   --base <ref>                       compare with this commit instead of where the branch left main
@@ -69,7 +70,7 @@ if (args.includes('--init')) {
   if (!who) stop('no name');
   rl.close();
   writeFileSync(SIGNERS, `${signersText().replace(/\n*$/, '\n')}${signerRow({ who, key, date: today })}\n`);
-  console.log(`signoff: you are the first signer in ${SIGNERS}. Commit it on its own (the gate trusts signers once they are on main), then sign off changes.`);
+  console.log(`signoff: you are the first signer in ${SIGNERS}. Commit it on main on its own (the gate trusts the signers on main; no push needed): node workflow/scripts/session.mjs --commit-notes "Sign-offs: the first signer". Then sign off changes.`);
   process.exit(0);
 }
 

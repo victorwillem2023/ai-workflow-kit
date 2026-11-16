@@ -56,10 +56,14 @@ describe('secrets in a change', () => {
       assert.deepEqual(scan(`const url = "${ok}";`), [], ok);
     }
   });
-  it('a dev database passes: a compose file, an example env file, or user and password the same on a compose service', () => {
+  it('a dev database passes: user and password the same on a compose service, in any file; a real password never', () => {
     const dev = 'postgres' + '://postgres:postgres' + '@db:5432/app';
     assert.deepEqual(scan(`const url = "${dev}";`), []);
-    assert.deepEqual(scan(`DATABASE_URL: ${'postgres' + '://app:' + 'hunter22' + '@db:5432/app'}`, 'docker-compose.yml'), []);
+    assert.deepEqual(scan(`DATABASE_URL: ${dev}`, 'docker-compose.yml'), []);
+    // the file is no pass: a real password in a production compose file or an example env file still counts
+    const real = 'postgres' + '://app:' + 'Sup3rS3cret' + '@db.prod.internal/app';
+    assert.equal(scan(`DATABASE_URL=${real}`, '.env.example').length, 1);
+    assert.equal(scan(`DATABASE_URL: ${'postgres' + '://app:' + 'Sup3rS3cret' + '@db:5432/app'}`, 'docker-compose.prod.yml').length, 1);
     assert.deepEqual(scan(`const url = "${'postgres' + '://postgres:postgres' + '@db.example.com/app'}";`).length, 1, 'a real host still counts');
   });
   it('a tracked .env is named; .env.example is not', () => {

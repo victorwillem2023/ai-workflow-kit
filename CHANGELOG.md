@@ -2,6 +2,17 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.2.2**: **only what you typed says "done".** The stop points' transcript reader took any user turn, so a summary after
+  /compact or a task notice that said "all done" granted a commit; now a turn counts only when Claude Code marks it as the
+  person's (`origin: human`, checked against a real transcript) and the prompt hook saw it (it notes a fingerprint of each message,
+  and runs on nothing else). "Well done", "you said it was done" and "done, but the footer is still wrong" no longer count; git
+  cherry-pick, revert, am and rebase are held like commit; a redirect is refused only when it writes into the record (reading it
+  into /tmp is fine). **The secrets check no longer lets a file off**: 3.2.0 passed any connection string in a compose file or an
+  example env file, a real one included; now only a password that is the user name again on a compose service passes, in any
+  file. **The first signer counts once committed on the local main** (`session.mjs --commit-notes`), before any push. The server
+  answers a broken %-escape with 400, and counts page files apart from routes (ten times the routes' allowance). /arch and /retro
+  have scenarios: every skill has one (23). The top-level check counts steps, not a table of data (the scenario
+  table no longer counts; the gate's known stretch is 96 lines, from 147).
 - **3.2.1**: **the skill scenarios test what they say.** Their project had none of the parts most of them use (a lean install:
   no /launch, /market, /ui, /shape, /spike, /tidy, /estimate, /advise or /secops), so those scenarios would have passed by the
   command not being there; the project now has every part they use, and a scenario whose command is missing fails. Three more

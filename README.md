@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v3.x` tag** (now `v3.2.1`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
+> **Build on the latest `v3.x` tag** (now `v3.2.2`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
 > apps. An older project moves over by itself on its next update. The rule from 2.8 holds: a new part, guide or skill comes from a
 > real project running into its lack, never ahead of one. The guides written before that rule (the service mesh, paid ads and
