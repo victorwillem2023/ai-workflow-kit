@@ -59,6 +59,9 @@ the rule tests check every way a total can be bad.
   test checks the fake against it, so the fake cannot drift.
 
 ## The database in tests
+The testing module brings the shape as data.example.ts (the schema from the migrations, each test rolled back, a constraint, a
+query that shows only a person's own rows, a limit), runnable with Node's own SQLite; the security module brings a route test
+as tests/security/routes.example.ts (a good call, signed out, someone else's thing and another customer's, each refused).
 - **The same engine as production.** SQLite standing in for Postgres passes tests that fail in production (types, locking,
   constraints differ). SQLite in production: an in-memory or temporary file database. Postgres in production: a throwaway
   Postgres (a container, or a database per test run).

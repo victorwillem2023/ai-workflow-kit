@@ -77,7 +77,8 @@ The project's own table, filled at `/setup` and kept with the code (in `docs/SEC
 ## Tests
 - The deciding function: one table test with every role against every action, the "may never" rows too.
 - **Every route**: refuses a signed-out caller; refuses another user's id (and another customer's) with "not found"; refuses
-  a role that may not. `docs/workflow/TESTING.md`, *What every change needs*.
+  a role that may not. `docs/workflow/TESTING.md`, *What every change needs*; the shape, runnable, in the security module's
+  tests/security/routes.example.ts.
 - Sign-in, where the app owns the screens: a wrong password and an unknown account give the same answer; the tries run out;
   a reset link works once.
 - A test that passes only because a check was loosened is a finding, never a fix.
