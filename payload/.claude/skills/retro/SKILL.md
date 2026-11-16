@@ -18,7 +18,8 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
 2. Ask the owner, in one AskUserQuestion: what went well, what got in the way (a check that failed for no reason, a rework, a
    slow step, a card that was bigger than it looked), and, for each card on the script's *Did it work, due a look* line, what
    they saw for its sign. Write each answer on its card as `gh issue comment <n> --repo <board.repo> --body "Looked: <what they
-   saw>"` (that closes it on the list) and in `docs/PRODUCT.md`, *What we learned*; a sign that did not come true is a card
+   saw>"`, and add "Looked: <what they saw>" to its line under *Signs to look at* in `docs/PRODUCT.md` (either closes it on
+   the list); the lesson goes in `docs/PRODUCT.md`, *What we learned*; a sign that did not come true is a card
    to rethink the feature (`/idea`), never left unsaid.
 3. For each thing that got in the way: propose one fix in one line, the cheapest that lasts. A script or check when it can be
    checked, a line in a skill or doc otherwise. On a yes, run `/lesson <it>` for it (one at a time).

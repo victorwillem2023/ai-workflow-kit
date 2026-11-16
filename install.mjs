@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { movePathsBack, undoCorrections } from './doc-layout.mjs';
 import { runtimeNode } from './payload/workflow/tools/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
-import { ALL, inList, inMinimal, list, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
+import { ALL, inList, inMinimal, LIBRARY, list, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
 import { runMigrations } from './migrations/index.mjs';
 import { moveToWorkflowFolder } from './migrations/3.0.0-workflow-folder.mjs';
 import { moveKitPathsBack } from './kit-layout.mjs';
@@ -53,7 +53,7 @@ if (choices.error) {
     + 'The name, the repo, the prefix and the language are found when not given (package.json or the manifest, the git remote, the folder); without a GitHub remote, give --repo.');
   process.exit(1);
 }
-const { target, mark, force, update, take, skip, lang, LANGS, lean, withs, modules, parts, profile, gateOnly, team, without } = choices;
+const { target, mark, force, update, take, skip, lang, LANGS, lean, withs, modules, parts, library, profile, gateOnly, team, without } = choices;
 const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.includes(p) && paths.some((x) => key === x || key.startsWith(x)));
 // In a lean project the installed text never points at what is not there: a command of a part left out gets "(not installed)"
 // after it, and a guide left out loses its backticks (so the docs check does not take it for a file that should exist) and says
@@ -61,7 +61,7 @@ const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.i
 const absent = Object.entries(PARTS).filter(([p]) => !parts.includes(p));
 const absentSkills = absent.flatMap(([, paths]) => paths.map((x) => /^\.claude\/skills\/([\w-]+)\/$/.exec(x)?.[1]).filter(Boolean));
 // (a guide in a subject folder too: docs/run/LAUNCH.md since kit 2.9)
-const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^docs\/([\w-]+\/)?[\w-]+\.md$/.test(x)).map((x) => [x, p]));
+const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^(?:docs|workflow\/guides)\/([\w-]+\/)?[\w-]+\.md$/.test(x)).map((x) => [x, p]));
 // npm scripts that run a tool of a part left out (launch-check without market): not added to package.json, and not pointed at
 const scriptTool = (cmd) => /node (workflow\/tools\/[\w./-]+\.mjs)/.exec(cmd)?.[1];
 const absentScripts = Object.entries(JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'))).filter(([, cmd]) => scriptTool(cmd) && skippedPart(scriptTool(cmd))).map(([name]) => name);
@@ -77,7 +77,8 @@ function markAbsent(text) {
     t = t.replace(new RegExp(`\`/(${names})\\b([^\`\\n]*)\``, 'g'), (m) => `${m} (not installed)`);
     t = t.replace(new RegExp(`(^|[\\s("'])/(${names})\\b(?![\\w-]| \\(not)`, 'gm'), '$1/$2 (not installed)');
   }
-  for (const [doc, part] of absentDocs) t = t.replaceAll(`\`${doc}\``, `${doc} (with the ${part} part, not installed)`);
+  // a guide of the kit's library says where to read it and how to bring it in (lib/library.mjs)
+  for (const [doc, part] of absentDocs) t = t.replaceAll(`\`${doc}\``, part in LIBRARY ? `${doc} (in the kit's library: npm run library -- --show ${part}; --add ${part} brings it in)` : `${doc} (with the ${part} part, not installed)`);
   if (absentScripts.length) t = t.replace(new RegExp(`\`(npm run (?:${absentScripts.join('|')})\\b[^\`\\n]*)\``, 'g'), '$1 (not installed)');
   return t;
 }
@@ -292,7 +293,7 @@ const harness = gateOnly ? { status: 0, stdout: 'harness: none (the minimal prof
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
 spawnSync('git', ['-C', target, 'config', 'workflow.kit', kitPath], { stdio: 'ignore' });
-writeFileSync(markFile, `# which ai-workflow-kit this project came from and what it chose (install.mjs writes it; running it again goes by it). The sha lines: each machinery file as the kit wrote it.\n${recordLines({ version: kitVersion, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections: [...sectionsDone], profile, without }).join('\n')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+writeFileSync(markFile, `# which ai-workflow-kit this project came from and what it chose (install.mjs writes it; running it again goes by it). The sha lines: each machinery file as the kit wrote it.\n${recordLines({ version: kitVersion, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections: [...sectionsDone], profile, without, library }).join('\n')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
 // the report: what was done, what is the project's, and what to do next (install-steps.mjs)
 printReport({ kit, target, before, kitVersion, force, update, done, lang, langs: LANGS, profile, modules, lean, gateOnly, parts, without,
   kitPartsAdded, harnessLine, addedSettings, claudeAdded, lfHint, rulesRewritten, written, stages, unmarked, requestsBefore, layout,

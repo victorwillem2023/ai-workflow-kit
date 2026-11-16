@@ -10,11 +10,13 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v3.x` tag** (now `v3.1.0`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
+> **Build on the latest `v3.x` tag** (now `v3.2.0`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
 > apps. An older project moves over by itself on its next update. The rule from 2.8 holds: a new part, guide or skill comes from a
-> real project running into its lack, never ahead of one. The few guides written before that rule (the service mesh,
-> the cluster module, agent-to-agent, AdSense) say "Not yet tried in a real project" at their top.
+> real project running into its lack, never ahead of one. The guides written before that rule (the service mesh, paid ads and
+> AdSense, agent-to-agent) are **the kit's library**: no project gets them from the start; when an app could use one, the agent
+> reads it from the kit (`npm run library -- --list`, `--show <name>`) and brings it in on your yes (`--add <name>`). They say
+> "Not yet tried in a real project" at their top, as does the cluster module's guide.
 
 ```sh
 git clone https://github.com/victorwillem2023/ai-workflow-kit

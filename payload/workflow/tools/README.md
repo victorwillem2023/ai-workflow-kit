@@ -85,9 +85,10 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   only when `docs/company/SIGNOFFS.md` holds a row whose fingerprint matches those files as they are now. The owner writes it with
   `npm run signoff` in their own terminal after checking the change against its sources: it refuses input from a pipe, an agent
   or CI, asks the checklist (`sensitive.checklist` replaces the kit's four questions) and a typed-back code, and agents are
-  denied the command and the file. Each row is sealed with a key in git's own folder (`workflow-signoff.key`, never committed):
-  a row the gate cannot verify with it (a shell append, a hand edit) is refused, and on GitHub's runners, which never have the
-  key, only a sealed row counts. Any later edit needs a new sign-off. Why: `workflow/guides/SENSITIVE.md`.
+  denied the command and the files. Each row is signed with the signer's private key (encrypted with their passphrase, on their
+  computer) and checked with the public keys in `docs/company/SIGNERS.md` as they are on main, the same on every computer and on
+  CI; `npm run signoff -- --init` makes a person's key, `--add-signer` endorses another. Any later edit needs a new sign-off.
+  Why: `workflow/guides/SENSITIVE.md`.
 - **migrations** (when `data.migrations` lists where they are): a migration file that was there before the change and is edited,
   renamed or deleted fails; it has run somewhere, so a mistake is a new migration (`workflow/guides/DATA.md`). A new one passes.
 - **data and permissions** (advice): a changed file that builds SQL text from a value (a filled-in or joined string in
@@ -167,15 +168,19 @@ What needs a public repository or a paid plan, and what stands in for it here:
 | no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.local.json` and `opencode.jsonc` (`npm run harness` adds a rule the first gained to the second) deny `git push --no-verify`, `--force`, `-f` and another hooks path |
 | a pull request merges only when its gate passed (`"flow": "pr"`) | `node workflow/scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
 
-**The stop points** (Claude Code hooks in `.claude/settings.local.json`, `workflow/scripts/stop-points.mjs`): an agent's `git commit`,
-`--finish`, `--merge` or `--commit-notes` is refused until the owner has said "done" (or "commit", "finish it", or a short "yes"
-to the skill's question) in that same chat in the last 3 hours, and a `git push` or `--push` until they said "push". A question
-("is it done?"), a condition ("when you are done, tell me") or another meaning ("push the button") does not count, and "wait" or
-"not yet" takes the word back. The words are read from the owner's own messages (the hook sees only those), so an agent cannot
-give them; each chat has its own note, so a "done" in one never commits another chat's session. `node workflow/scripts/stop-points.mjs
---status` says what is noted. The same hook refuses an agent's shell command that writes `docs/company/SIGNOFFS.md` or reads the
-sign-off key, whatever the owner said. Your own terminal is never held. OpenCode gets the same through a plugin `npm run harness`
-writes (`.opencode/plugins/stop-points.js`), which asks the same script.
+**The stop points** (Claude Code hooks in `.claude/settings.local.json`, `workflow/scripts/stop-points.mjs`): an agent's `git commit`
+or `git merge` (also as `/usr/bin/git` or `git.exe`), and `--finish`, `--merge` or `--commit-notes` of the session script (also
+through `npm run session`), is refused until the owner has said "done" (or "commit", "finish it", or a short "yes" to the skill's
+question) in that same chat in the last 3 hours; a `git push`, `--push` or `gh pr merge` until they said "push". The word counts
+only when nothing about other work follows it: a question ("is it done?"), a condition ("when you are done, tell me"), another
+meaning ("push the button", "a commit button", "done reading the plan") or quoted text does not, and "wait" or "not yet" takes it
+back. In Claude Code the hook reads the owner's words from the chat's own transcript, never from a file in the project or in
+`.git`, so a file the agent writes cannot say them; `node workflow/scripts/stop-points.mjs --status` says what the note holds (the
+note is for OpenCode's plugin, `.opencode/plugins/stop-points.js`, which `npm run harness` writes and which asks the same script).
+The hook also refuses an agent's shell command that writes `docs/company/SIGNOFFS.md`, `SIGNERS.md` or the note, globs included.
+What it is: a stop for an agent that would commit by mistake or take a shortcut. An agent that sets out to get around it with the
+same shell (a script that commits, a command spelled another way) can; that is what GitHub's branch protection and a required
+review are for (the table above), and what a sign-off's signature holds against on its own.
 
 The guard lives in this clone's git hooks (the session folders share them). A clone on another computer or a cloud session has
 none until `npm run protect -- --local` runs there; the gate prints an `advice:` line when it is missing (never on GitHub's runners).

@@ -12,6 +12,7 @@ export function isNodeModule(spec: string): boolean;
 export interface Alias { dir: string; pattern: string; targets: string[] }
 export function aliasesFrom(tsconfigText: string, dir?: string): Alias[];
 export function projectAliases(apps: { root?: string }[] | undefined, read: (path: string) => string | null): Alias[];
+export function aliasesOfFile(file: string, read: (path: string) => string | null, scope?: string): Alias[];
 export function resolveImport(from: string, spec: string, known: Set<string>, aliases?: Alias[]): string | null;
 export function rustUses(text: string): string[];
 export function resolveRust(from: string, text: string, known: Set<string>): string[];

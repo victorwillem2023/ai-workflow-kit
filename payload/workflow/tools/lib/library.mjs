@@ -1,0 +1,39 @@
+// The kit's library: guides no project gets from the start, because few need them, kept in the kit for the moment one does. An
+// agent that sees the owner's app could use one (a service mesh, ads, agents of other makers) reads it straight from the kit
+// (`npm run library -- --show <name>`), uses it to find the right answer for this app, and brings it into the project only when
+// the owner says yes (`--add <name>`: the installer adds it as a part and keeps it current from then on). No I/O here.
+// `files`: the guide's place in a project; `when`: the sign that it may help, which the skills (/advise, /arch, /launch, /market)
+// and `--list` show; `read`: who reads it once it is in.
+
+export const LIBRARY = {
+  mesh: {
+    files: ['docs/run/MESH.md'],
+    title: 'a service mesh: whether the app needs one, which, and how to run it',
+    when: 'several services that call each other, with mutual TLS, retries or a canary between them wanted without code in each',
+    read: '/launch and /arch',
+  },
+  ads: {
+    files: ['docs/market/ADS.md'],
+    title: 'paid ads (Google Ads) and earning from ads on your own pages (AdSense)',
+    when: 'the owner asks about ads, buying traffic, or earning from the visitors of free pages',
+    read: '/market',
+  },
+  a2a: {
+    files: ['workflow/guides/A2A.md'],
+    title: 'agent to agent (A2A): handing work to agents of other makers',
+    when: 'the app must work with another organisation\'s agent, not only call a model or offer tools',
+    read: '/advise ai and /spec',
+  },
+};
+
+/** The library's names a project has taken: the record's `library=` line, plus any whose files the project has already. */
+export function libraryTaken(recorded, has = () => false) {
+  const listed = String(recorded ?? '').split(',').map((s) => s.trim()).filter((n) => n in LIBRARY);
+  const there = Object.entries(LIBRARY).filter(([, g]) => g.files.some((f) => has(f))).map(([n]) => n);
+  return [...new Set([...listed, ...there])].sort();
+}
+
+/** One line per guide for `--list` and the skills: name, what it is, when it may help, and whether this project has it. */
+export function libraryLines(taken = []) {
+  return Object.entries(LIBRARY).map(([n, g]) => `${n}${taken.includes(n) ? ' (in this project)' : ''}: ${g.title}. When: ${g.when}.`);
+}

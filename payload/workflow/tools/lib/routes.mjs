@@ -5,10 +5,17 @@
 //   ('use server'), a Python decorator (`@app.get(`), Go's `HandleFunc("/`, an axum or actix `.route("/`
 //   only in the server folder (`security.server`): the plain-Node shapes that also appear elsewhere (`pathname ===`, `req.url`,
 //   `createServer(`, `case '/goals'`, a `routes[...]` table)
+// A call that reads like a client is not a route: `api.get('/users')` with no handler after the path, a receiver that is a
+// client or a store (axios, http, cache, map...), or any call in the browser's code (`security.clientFolders`: src/web, src/client...).
 
 const METHODS = 'get|post|put|patch|delete|del|all|options|head|any|use|route|handle|Handle|HandleFunc|Get|Post|Put|Patch|Delete|on';
+// a framework's route: `<name>.post('/path', <a handler>)`, the handler a function, `async (c) =>` or a name (and middleware
+// before it); the receiver not a client or a store
+const CLIENTS = /^(?:axios|http|https|client|ky|got|request|superagent|\$http|fetcher|cache|map|store|storage|params|searchparams|headers|cookies|redis|db|kv|localstorage|sessionstorage|url|query)$/i;
+const ROUTE_CALL = new RegExp(String.raw`\b([\w$]+)\.(?:${METHODS})\s*\(\s*["'\`]\/[^"'\`]*["'\`]\s*,\s*(?:async\b|function\b|\(|[\w$.]+\s*(?:[,)]|=>))`);
+const routeCall = (line) => { const m = ROUTE_CALL.exec(line); return !!m && !CLIENTS.test(m[1]); };
+export const CLIENT_FOLDERS = ['src/web/', 'src/client/', 'src/components/', 'src/ui/', 'src/browser/', 'web/', 'client/'];
 const STRONG = [
-  new RegExp(String.raw`\b[\w$]+\.(?:${METHODS})\s*\(\s*["'\`]\/`),
   /\bexport\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/,
   /\bexport\s+const\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*=/,
   /^\s*["']use server["']/,
@@ -20,12 +27,16 @@ const LOOSE = /\bpathname\s*(?:===|!==|\.startsWith\(|\.endsWith\()|\breq(?:uest
 const COMMENT = /^\s*(?:\/\/|\*|\/\*|#)/;
 const API_PAGE = /(?:^|\/)pages\/api\/.+\.[mc]?[jt]sx?$/;
 
-/** True when the added lines of `file` open a server route. `server` is the server folder ('src/server/'). */
-export function addsRoute(file, lines, server = 'src/server/') {
+/**
+ * True when the added lines of `file` open a server route. `server` is the server folder ('src/server/'); `clientFolders` the
+ * browser's code, where a call is never a route (CLIENT_FOLDERS unless the config's `security.clientFolders` says otherwise).
+ */
+export function addsRoute(file, lines, server = 'src/server/', clientFolders = CLIENT_FOLDERS) {
   const code = lines.filter((l) => !COMMENT.test(l));
   if (!code.length) return false;
   if (API_PAGE.test(file) && code.some((l) => /\bexport\s+default\b/.test(l))) return true;
   if (code.some((l) => STRONG.some((re) => re.test(l)))) return true;
+  if (!clientFolders.some((d) => file.startsWith(d)) && code.some(routeCall)) return true;
   return file.startsWith(server) && code.some((l) => LOOSE.test(l));
 }
 

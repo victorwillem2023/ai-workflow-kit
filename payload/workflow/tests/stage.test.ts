@@ -59,3 +59,16 @@ describe('the stage nudge', () => {
     assert.ok(!BEFORE_DEPLOY.test('Deploy the app to staging'));
   });
 });
+
+describe("the kit's library", async () => {
+  const { LIBRARY, libraryLines, libraryTaken } = await import('../../workflow/tools/lib/library.mjs');
+  it('knows which guides a project has taken: its record, or a guide it already has', () => {
+    assert.deepEqual(libraryTaken('ads,unknown', () => false), ['ads']);
+    assert.deepEqual(libraryTaken(null, (f) => f === 'docs/run/MESH.md'), ['mesh']);
+  });
+  it('says for each guide what it is and when it helps, and which ones are in the project', () => {
+    const lines = libraryLines(['mesh']);
+    assert.equal(lines.length, Object.keys(LIBRARY).length);
+    assert.match(lines.find((l) => l.startsWith('mesh')) ?? '', /\(in this project\).*When: /);
+  });
+});

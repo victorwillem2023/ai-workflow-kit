@@ -37,4 +37,34 @@ describe('the skill scenarios', () => {
     assert.match(run('plan-build-done-ship', 'loop,bad-subject').problems.join(), /turn 3.*is not "Area: what changed"/);
     assert.match(run('plan-build-done-ship', '').problems.join(), /turn 1.*no spec/);
   });
+  it('the read-only skills fail on a file change, a commit or a board write, and pass when nothing changed', () => {
+    for (const name of ['check-read-only', 'find-read-only', 'review-read-only', 'estimate-read-only', 'advise-read-only']) {
+      assert.equal(run(name, '').ok, true, name);
+      assert.match(run(name, 'edit-readme').problems.join(), /files changed/, name);
+      assert.match(run(name, 'commit').problems.join(), /a commit was made/, name);
+      assert.match(run(name, 'board').problems.join(), /wrote to GitHub/, name);
+    }
+  });
+  it('idea-one-card wants exactly one card; tidy-asks-first no board write; debug-no-commit no commit', () => {
+    assert.equal(run('idea-one-card', 'board').ok, true);
+    assert.match(run('idea-one-card', '').problems.join(), /0 cards made, not one/);
+    assert.match(run('tidy-asks-first', 'board').problems.join(), /before the owner said yes/);
+    assert.equal(run('tidy-asks-first', '').ok, true);
+    assert.match(run('debug-no-commit', 'commit').problems.join(), /it committed/);
+    assert.equal(run('debug-no-commit', 'edit-readme').ok, true, 'finding and showing the fix is fine');
+  });
+  it('setup, secops, spike, work and shape: each caught when it breaks its promise, and passed when it keeps it', () => {
+    assert.match(run('setup-asks-first', 'own-rule').problems.join(), /it wrote before asking/);
+    assert.match(run('setup-asks-first', 'board').problems.join(), /before asking/);
+    assert.equal(run('setup-asks-first', '').ok, true);
+    assert.match(run('secops-asks-first', 'board').problems.join(), /without a yes/);
+    assert.equal(run('secops-asks-first', '').ok, true);
+    assert.match(run('spike-never-merged', 'commit').problems.join(), /main moved/);
+    assert.equal(run('spike-never-merged', '').ok, true);
+    assert.match(run('work-stops-for-yes', 'session').problems.join(), /a session folder was made before the owner said yes/);
+    assert.equal(run('work-stops-for-yes', '').ok, true);
+    assert.match(run('work-stops-for-yes', 'commit').problems.join(), /a commit was made/);
+    assert.equal(run('shape-no-code', '').ok, true);
+    assert.match(run('shape-no-code', 'commit').problems.join(), /a commit was made/);
+  });
 });

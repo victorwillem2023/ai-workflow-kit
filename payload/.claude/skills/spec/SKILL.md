@@ -19,16 +19,15 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    Its type label (`ui`, `feature`, `bug`, `workflow`; a `spike` card goes to /spike, not a spec) goes on the spec's "Card:" line; a card with none: ask which.
    Find what the feature does now in the guide part for it (`docs/GUIDE.md` lists them; open only that file in `docs/guide/`) and the files in `docs/MAP.md` (search them, don't read them
    whole) and open only the ranges you need.
-2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation). A card that adds a
-   service or a datastore, a platform or provider, changes a boundary, or is otherwise hard to undo: suggest `/arch` first
-   (the architecture board, `docs/run/SCALING.md`), and write the spec on its accepted decision. A change under `infra/` names
-   what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).
-   **AI or plain code**: when the card's job is one of the uses in `workflow/guides/AI-AGENTS.md` (*Where AI could make the app
-   better*: summarise, draft, sort, read a file, search by meaning, an assistant, MCP) and the project's rules let its data go to
-   a model, add one question in plain words: "Do it with AI (<what the person gets>, about <cost> per use) or plainly in code
-   (<what that gives>)?", plain code first when it does the job. With AI: the spec follows `workflow/guides/AI-SECURITY.md` (the
-   wrapper, the cases); without the `ai` module installed (no `src/server/ai.ts`), say that `node <kit>/install.mjs . --update
-   --with ai` adds it first. A fact the app relies on stays in code either way. No use fits: no question.
+2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation). Then, only when it applies:
+   - **Hard to undo** (a new service or datastore, a platform or provider, a boundary): suggest `/arch` first (the architecture
+     board, `docs/run/SCALING.md`) and write the spec on its accepted decision.
+   - **Under `infra/`**: the spec names what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).
+   - **AI or plain code**: the card's job is a use in `workflow/guides/AI-AGENTS.md` (*Where AI could make the app better*) and the
+     project's rules let its data go to a model: one question, "Do it with AI (<what the person gets>, about <cost> per use) or
+     plainly in code (<what that gives>)?", plain code first when it does the job. With AI the spec follows
+     `workflow/guides/AI-SECURITY.md`; no `src/server/ai.ts` yet: `node <kit>/install.mjs . --update --with ai` adds it first. A fact
+     the app relies on stays in code either way.
 3. Copy `workflow/tools/templates/spec.md` to `workflow/specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
    - The rule and who shares it: `grep -n` the rule's row in `docs/ARCHITECTURE.md`, *Rules and where each lives*; the change goes in

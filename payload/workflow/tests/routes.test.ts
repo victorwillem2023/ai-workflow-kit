@@ -62,3 +62,18 @@ describe('a test quiets the advice only for the file it is about', () => {
     assert.deepEqual(permissionAdvice(added, { signIn: true }).map((l) => l.split(' ')[1]), ['src/server/plans.ts']);
   });
 });
+
+describe('a client call is not a route, and a route outside src/ or in Python still is', () => {
+  it('a call with no handler, a call on a client or a store, and any call in the browser code are not routes', () => {
+    assert.equal(addsRoute('src/web/users.ts', ["const r = await api.get('/users');"]), false);
+    assert.equal(addsRoute('src/core/memo.ts', ["const hit = cache.get('/a');"]), false);
+    assert.equal(addsRoute('src/core/sync.ts', ["await axios.post('/api/goals', goal);"]), false);
+    assert.equal(addsRoute('src/web/app.ts', ["app.get('/x', handler);"]), false, 'the browser folder holds no server');
+    assert.equal(addsRoute('src/server/a.ts', ["router.get('/x', requireUser, list);"]), true);
+  });
+  it('gives the security advice for a Next.js route with no src/ folder and for a FastAPI route', () => {
+    assert.match(securityAdvice(diffOf('app/api/goals/route.ts', 'export async function POST(request: Request) {'))[0] ?? '', /app\/api\/goals\/route\.ts adds a server route/);
+    assert.match(securityAdvice(diffOf('app/main.py', '@app.post("/goals")'))[0] ?? '', /app\/main\.py adds a server route/);
+    assert.deepEqual(securityAdvice(diffOf('tests/test_main.py', '@app.post("/goals")')), [], 'a test is never looked at');
+  });
+});

@@ -11,6 +11,7 @@ if (does.includes('readme-other')) appendFileSync('README.md', '\nAnother line.\
 if (does.includes('own-rule')) appendFileSync('CLAUDE.md', '\n- Never rename an exported function without listing its users first.\n');
 if (does.includes('kit-part')) writeFileSync('CLAUDE.md', readFileSync('CLAUDE.md', 'utf8').replace('<!-- /kit:changing-code -->', '- Never rename an exported function.\n<!-- /kit:changing-code -->'));
 if (does.includes('board')) execFileSync('gh', ['issue', 'create', '--title', 'x'], { stdio: 'ignore', shell: process.platform === 'win32' });
+if (does.includes('session')) git('worktree', 'add', '-q', '-b', 'early', '../st-early');
 if (does.includes('commit')) { git('add', '-A'); git('commit', '-q', '--allow-empty', '-m', 'the agent committed'); }
 // the plan -> build -> done -> ship loop, one step per turn, read from the owner's message (`-p <prompt>`)
 const prompt = process.argv[process.argv.indexOf('-p') + 1] ?? '';

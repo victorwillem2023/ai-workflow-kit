@@ -3,6 +3,7 @@
 // data (the CSRF guard), and idempotency keys so a retried POST does its work once. Framework-free and pure apart from the
 // clock, so each is tested on its own; src/server/http.ts puts them in order.
 
+import { createHash } from 'node:crypto';
 import type { IncomingHttpHeaders } from 'node:http';
 import { AppError } from './errors';
 
@@ -51,7 +52,9 @@ export function parseJson(body: Buffer, type: string | undefined): unknown {
 /**
  * The CSRF guard: a request that changes data from a browser must come from one of our own origins. A browser always says
  * where a cross-site request comes from (`origin`, or `sec-fetch-site`); a request with neither is not from a browser page
- * (a script, another server) and carries no one's cookies by accident, so it passes here and is checked by sign-in instead.
+ * (a script, another server) and carries no one's cookies by accident, so it passes here. That is safe only together with
+ * sign-in: such a request must still prove who it is (with `signIn` set, http.ts refuses a route that is not `public` when no
+ * one is signed in), never be trusted for having no origin.
  */
 export function sameOrigin(method: string, headers: IncomingHttpHeaders, origins: string[]): void {
   if (!changesData(method)) return;
@@ -80,25 +83,30 @@ export function rateLimit(perMinute: number, now: () => number = Date.now) {
 }
 
 export type Stored = { status: number; body?: unknown; headers?: Record<string, string> };
+/** One kept answer: the request's fingerprint (requestPrint) with it, so the same key with another body is told apart. */
+export type Kept = { print: string; answer: Stored };
 /** Where answers to idempotent requests are kept: memory for one server; a table (the same two functions) for several. */
 export interface IdempotencyStore {
-  get(key: string): Promise<Stored | undefined>;
-  set(key: string, answer: Stored): Promise<void>;
+  get(key: string): Promise<Kept | undefined>;
+  set(key: string, kept: Kept): Promise<void>;
 }
+
+/** A short fingerprint of a request's body, kept with its answer. */
+export const requestPrint = (body: Buffer) => createHash('sha256').update(body).digest('hex').slice(0, 32);
 
 /** Answers kept in memory for a day (one server; they are lost on a restart, which only means a retry does the work again). */
 export function memoryIdempotency(now: () => number = Date.now, keepMs = 24 * 60 * 60 * 1000): IdempotencyStore {
-  const m = new Map<string, { at: number; answer: Stored }>();
+  const m = new Map<string, { at: number; kept: Kept }>();
   return {
     get: async (k) => {
       const hit = m.get(k);
-      if (hit && now() - hit.at < keepMs) return hit.answer;
+      if (hit && now() - hit.at < keepMs) return hit.kept;
       m.delete(k);
       return undefined;
     },
-    set: async (k, answer) => {
+    set: async (k, kept) => {
       if (m.size > 100_000) m.clear();
-      m.set(k, { at: now(), answer });
+      m.set(k, { at: now(), kept });
     },
   };
 }

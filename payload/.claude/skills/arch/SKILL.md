@@ -9,6 +9,7 @@ model: opus
 This is `/advise architecture <question>`: follow `.claude/skills/advise/SKILL.md` with the architecture panel
 (`docs/company/ADVISORS.md`, `docs/run/SCALING.md`, *The architecture board*). Use it for a new service or datastore, a platform or
 provider, a boundary, the repository shape, or anything else hard to undo; small or easily undone questions do not need it:
-say so and answer directly.
+say so and answer directly. A question about calls between services (a service mesh) or agents of other makers: the kit's library
+has a guide for it (`npm run library -- --show mesh`, `--show a2a`); bring it into the brief, and into the project only on a yes.
 
 **This project's own**: when `.claude/project/arch.md` exists, read it before you start: it holds this project's own steps and rules for /arch, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

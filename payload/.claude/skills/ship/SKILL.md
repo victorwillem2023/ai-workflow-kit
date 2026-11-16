@@ -53,8 +53,10 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    base moves the sessions on it onto main by itself; pass on what it says about them (one that could not move names
    `--restack <topic>`). Combined cards (`Card: #12, #14`) all move with the one commit.
    With `"flow": "pr"` in the config it opens a pull request instead: give the owner its address, and run `node workflow/scripts/session.mjs --merge <topic>` only when the owner says so.
-8. When the spec has a *How we will know it worked* line, put it on the card: `gh issue comment <n> --repo <board.repo> --body-file <file>`
-   ("Shipped. How we will know it worked: <sign>, look on <date>.").
+8. When the spec has a *How we will know it worked* line, write it under *Signs to look at* in `docs/PRODUCT.md` as
+   `- <date to look>: <sign> (<the commit's subject>)` (in the same commit), and when there is a card, on the card too:
+   `gh issue comment <n> --repo <board.repo> --body-file <file>` ("Shipped. How we will know it worked: <sign>, look on <date>.").
+   `npm run retro` reads both back once the date has come.
 9. Report in plain language, with an example where a term is technical: what changed, what the tests check, what you were unsure of.
 
 **This project's own**: when `.claude/project/ship.md` exists, read it before you start: it holds this project's own steps and rules for /ship, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

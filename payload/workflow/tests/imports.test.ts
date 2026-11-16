@@ -60,3 +60,22 @@ describe('path aliases from tsconfig (Next.js and shadcn/ui import with @/)', ()
     assert.equal(projectAliases([{ root: 'apps/web' }], read).length, 3);
   });
 });
+
+describe('aliases set somewhere else than tsconfig.json itself', () => {
+  const disk: Record<string, string> = {
+    'tsconfig.json': '{ "files": [], "references": [{ "path": "./tsconfig.app.json" }] }',
+    'tsconfig.app.json': '{ "extends": "./config/tsconfig.base.json", "include": ["src"] }',
+    'config/tsconfig.base.json': '{ "compilerOptions": { "paths": { "@/*": ["../src/*"] } } }',
+  };
+  const read = (p: string) => disk[p] ?? null;
+  it('follows references and extends, with paths relative to the file that sets them', () => {
+    const aliases = projectAliases([], read);
+    assert.ok(aliases.some((a) => a.pattern === '@/*' && a.targets[0] === 'src/*'), JSON.stringify(aliases));
+    const g = buildGraph(new Map(Object.entries({ 'src/core/a.ts': "import { b } from '@/server/b';\n", 'src/server/b.ts': 'export const b = 1;\n' })), [], { aliases });
+    assert.deepEqual(g.imports.get('src/core/a.ts'), ['src/server/b.ts']);
+  });
+  it('follows the imports of a .vue or .svelte file like any other', () => {
+    const g = buildGraph(new Map(Object.entries({ 'src/web/Card.vue': "<script setup lang=\"ts\">\nimport { b } from '../server/b';\n</script>\n", 'src/server/b.ts': 'export const b = 1;\n' })));
+    assert.deepEqual(g.imports.get('src/web/Card.vue'), ['src/server/b.ts']);
+  });
+});

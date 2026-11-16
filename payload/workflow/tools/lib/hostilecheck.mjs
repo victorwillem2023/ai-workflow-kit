@@ -1,7 +1,7 @@
 // Hostile-input check: from a diff, finds added code in the input folders (config security.inputFolders) that reads input, and
 // whether the diff also adds a test whose name says what is refused. Advice only; it looks at names, never judges the test.
 import { addedLines } from './securityscan.mjs';
-import { addsRoute, testSpeaksFor } from './routes.mjs';
+import { addsRoute, CLIENT_FOLDERS, testSpeaksFor } from './routes.mjs';
 
 const DEFAULT_FOLDERS = ['src/core/', 'src/server/'];
 const READS = /\bJSON\.parse\(|\breadFile(?:Sync)?\(|\bfetch\(|\bhttpClient\.\w+\(|\.formData\(|\.arrayBuffer\(|\.text\(\)|\.json\(\)|\breq(?:uest)?\.(?:url|body|headers)\b|\bfor\s+await\s*\(\s*(?:const|let)\s+\w+\s+of\s+req(?:uest)?\b/;
@@ -25,7 +25,7 @@ export function hostileAdvice(diff, extra = new Map(), security = {}) {
   const tests = refusalTests(added);
   return [...added].sort(([a], [b]) => a.localeCompare(b))
     .filter(([file, lines]) => /\.(?:ts|tsx|mjs|js)$/.test(file) && !/(?:^|\/)tests?\//.test(file)
-      && (folders.some((d) => file.startsWith(d)) || addsRoute(file, lines, security.server))
+      && (folders.some((d) => file.startsWith(d)) || addsRoute(file, lines, security.server, security.clientFolders ?? CLIENT_FOLDERS))
       && lines.some((l) => !/^\s*(?:\/\/|\*|\/\*)/.test(l) && READS.test(l)))
     .filter(([file]) => !tests.some(([t, lines]) => testSpeaksFor(file, t, lines)))
     .map(([file]) => `advice: ${file} reads input but no new test says what it refuses`);

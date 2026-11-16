@@ -114,6 +114,18 @@ describe('the kit\'s parts of CLAUDE.md', () => {
 });
 
 describe('profiles', () => {
+  it("the library's guides: no profile takes one; the record, --with or a guide the project has already does", () => {
+    const d = folder();
+    const p = (...a) => readChoices([d, '--repo', 'o/x', ...a], kit);
+    assert.ok(!['mesh', 'ads', 'a2a'].some((n) => p().parts.includes(n)), 'product takes none');
+    assert.deepEqual([p('--with', 'ads').library, p('--with', 'ads').parts.includes('ads')], [['ads'], true]);
+    assert.ok(p('--lean', '--with', 'mesh').parts.includes('mesh'), 'a lean project too');
+    mkdirSync(join(d, 'docs', 'run'), { recursive: true });
+    writeFileSync(join(d, 'docs', 'run', 'MESH.md'), '# mesh\n');
+    assert.deepEqual(p().library, ['mesh'], 'a project that has the guide keeps it on an update');
+    assert.deepEqual(recordLines({ version: '3.1.1', lang: 'ts', project: 'X', repo: 'o/x', prefix: 'x', modules: [], stages: [], skip: [], lean: false, parts: [], sections: [], library: ['mesh'] }).filter((l) => l.startsWith('library=')), ['library=mesh']);
+    rmSync(d, { recursive: true, force: true });
+  });
   it('a profile is a starting point: --with and --without adjust it, the record keeps it, another profile starts from its own', () => {
     const d = folder();
     const p = (...a) => readChoices([d, '--repo', 'o/x', ...a], kit);

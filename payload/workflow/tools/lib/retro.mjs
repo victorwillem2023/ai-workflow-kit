@@ -33,7 +33,8 @@ export function healthMoves(then, now, testsThen, testsNow) {
   return out.length ? out : ['no change in the known exceptions or the number of test files'];
 }
 
-const SIGN = /How we will know it worked:\s*(.+?),?\s+look on (\d{4}-\d{2}-\d{2})/i;
+// the sign and the first date after it, whatever the words between ("look on", "check by", "(2026-12-01)")
+const SIGN = /How we will know it worked:?\s*([\s\S]+?)[\s,;(]*(?:\b(?:look|check|see)\w*(?:\s+(?:again|back|at it))?\s+(?:on|by|after)\s+|\bby\s+|\bon\s+)?(\d{4}-\d{2}-\d{2})/i;
 const LOOKED = /^Looked(?: on \d{4}-\d{2}-\d{2})?:/i;
 
 /**
@@ -52,4 +53,22 @@ export function signsDue(issues, now = new Date()) {
     if (on <= today) out.push({ number: i.number, title: i.title, sign: sign.replace(/[.\s]+$/, ''), on });
   }
   return out.sort((a, b) => a.on.localeCompare(b.on));
+}
+
+const PRODUCT_SIGN = /^- (\d{4}-\d{2}-\d{2}):\s*(.+?)(?:\s+\(([^)]*)\))?\s*$/;
+
+/**
+ * The same from docs/PRODUCT.md, *Signs to look at*, where /ship writes every sign (with a board or without): one line each,
+ * "- <date>: <sign> (<what shipped>)"; a line with "Looked:" in it is done. [{ sign, on, what }], oldest first.
+ */
+export function signsDueInProduct(md, now = new Date()) {
+  const today = now.toISOString().slice(0, 10);
+  const lines = String(md ?? '').split('\n');
+  const start = lines.findIndex((l) => /^## Signs to look at\s*$/.test(l));
+  if (start < 0) return [];
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+  return lines.slice(start + 1, end < 0 ? undefined : end).map((l) => PRODUCT_SIGN.exec(l.trim()))
+    .filter((m) => m && !/\bLooked:/i.test(m[0]) && m[1] <= today)
+    .map((m) => ({ sign: m[2], on: m[1], what: m[3] ?? '' }))
+    .sort((a, b) => a.on.localeCompare(b.on));
 }

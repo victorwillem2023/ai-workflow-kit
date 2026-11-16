@@ -33,7 +33,8 @@ start where `docs/market/MARKET.md` is still empty, in `docs/market/GROWTH.md`'s
    no dark patterns, ever.
 7. **ads** (only once the page converts at a known rate): the channel that fits the users; for Google Ads Search the keyword
    groups, negatives, two ads per group, the daily budget, the stop rule and conversion tracking with Consent Mode
-   (`docs/market/GROWTH.md`, *Google Ads*). AdSense only for a content site with free traffic, never on the app or sensitive pages.
+   (`docs/market/ADS.md`, *Google Ads*: from the kit's library, `npm run library -- --show ads` to read it, `--add ads` on the owner's
+   yes). AdSense only for a content site with free traffic, never on the app or sensitive pages.
    Check the platform's policy for the product's category (health has its own) and say what it forbids. The owner creates the
    account, enters the card and presses start; you never hold the spending rights.
 8. **launch**: the checklist from `docs/market/GROWTH.md` against the real state, each box with its proof (a command's output, a

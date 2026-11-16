@@ -8,7 +8,7 @@ const FROM = /\b(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]/g;
 const SIDE = /\bimport\s*['"]([^'"]+)['"]/g;
 const DYNAMIC = /\bimport\s*\(\s*(?:['"]([^'"]+)['"]|`([^`$]+)`)\s*\)/g; // import('./x') and import(`./x`) without ${}
 const REQUIRE = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-const CODE = /\.(?:ts|tsx|mjs|js)$/;
+const CODE = /\.(?:[mc]?ts|tsx|[mc]?js|jsx|vue|svelte)$/;
 const BUILTIN = new Set(builtinModules);
 
 // Rust: `use crate::a::b::C;` and `mod name;`
@@ -128,10 +128,55 @@ export function aliasesFrom(tsconfigText, dir = '') {
   return out;
 }
 
-/** Every alias of the project: the root's tsconfig.json and each app's (`apps` in the config). `read(path)` is the text or null. */
+/**
+ * The compiler options a tsconfig file ends up with, `extends` followed (a relative base, or several; a package's base such as
+ * @tsconfig/node holds no aliases and is left out). As TypeScript does it: the file's own options win, and `paths` and `baseUrl`
+ * stay relative to the file that sets them, so each comes back with that file's folder ({ paths, pathsDir, baseUrl }).
+ */
+function effectiveOptions(file, read, seen = new Set()) {
+  if (seen.has(file)) return {};
+  seen.add(file);
+  const cfg = parseJsonc(String(read(file) ?? ''));
+  if (!cfg) return {};
+  const dir = posix.dirname(file) === '.' ? '' : posix.dirname(file);
+  let out = {};
+  for (const ext of [].concat(cfg.extends ?? [])) {
+    if (typeof ext !== 'string' || !/^\.\.?\//.test(ext)) continue;
+    const base = posix.normalize(posix.join(dir, ext));
+    out = { ...out, ...effectiveOptions(/\.json$/.test(base) ? base : `${base}.json`, read, seen) };
+  }
+  const own = cfg.compilerOptions ?? {};
+  if (own.paths) out = { ...out, paths: own.paths, pathsDir: dir };
+  if (own.baseUrl) out = { ...out, baseUrl: posix.normalize(posix.join(dir, own.baseUrl)).replace(/^\.$/, '') };
+  return out;
+}
+
+/** The aliases one tsconfig file gives, `extends` followed; applied to the files under `scope`. */
+export function aliasesOfFile(file, read, scope = '') {
+  const o = effectiveOptions(file, read);
+  const at = scope ? `${scope.replace(/\/$/, '')}/` : '';
+  // `paths` without a `baseUrl` are relative to the file that sets them; with one, to it
+  const root = o.baseUrl ?? o.pathsDir ?? '';
+  const from = (p) => posix.normalize(posix.join(root, p)).replace(/^\.\//, '');
+  const out = Object.entries(o.paths ?? {}).map(([pattern, targets]) => ({ dir: at, pattern, targets: [].concat(targets).map(from) }));
+  if (o.baseUrl != null) out.push({ dir: at, pattern: '*', targets: [from('*')] });
+  return out;
+}
+
+/**
+ * Every alias of the project: for the root and each app (`apps` in the config), its tsconfig.json, the files that one names in
+ * `references` (Vite's tsconfig.app.json), and a tsconfig.app.json or tsconfig.base.json beside it. `read(path)` is the text or null.
+ */
 export function projectAliases(apps, read) {
   const dirs = ['', ...(Array.isArray(apps) ? apps.map((a) => a.root).filter(Boolean) : [])];
-  return dirs.flatMap((d) => { const t = read(`${d ? `${d.replace(/\/$/, '')}/` : ''}tsconfig.json`); return t ? aliasesFrom(t, d) : []; });
+  return dirs.flatMap((d) => {
+    const at = d ? `${d.replace(/\/$/, '')}/` : '';
+    const main = parseJsonc(String(read(`${at}tsconfig.json`) ?? '')) ?? {};
+    const refs = (main.references ?? []).map((r) => (typeof r?.path === 'string' ? posix.normalize(`${at}${r.path}`) : null)).filter(Boolean)
+      .map((p) => (/\.json$/.test(p) ? p : `${p}/tsconfig.json`));
+    const files = [...new Set([`${at}tsconfig.json`, ...refs, `${at}tsconfig.app.json`, `${at}tsconfig.base.json`])].filter((f) => read(f) != null);
+    return files.flatMap((f) => aliasesOfFile(f, read, d));
+  });
 }
 
 /** The files an aliased import may be (`@/server/db` -> ['src/server/db']), for the aliases that apply to `from`. */

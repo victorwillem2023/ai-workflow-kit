@@ -2,6 +2,28 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.2.0**: **sign-offs are signatures.** 3.1.0 said "a sign-off an agent cannot write"; what it delivered was one an agent
+  would not write by accident (the key it sealed with was readable, the gate refused real rows on a second computer, and CI took
+  any seal). Now each signer has a key pair: the private key encrypted with a passphrase only they know (`npm run signoff --
+  --init`), the public key committed in `docs/company/SIGNERS.md`; each row is signed, and every computer and CI checks it the
+  same way against the signers on main (a key a change adds counts only when an existing signer endorsed it: `--add-signer`). A
+  row sealed by 3.1 is not a signature: run `--init`, commit SIGNERS.md on its own, and sign again. **The stop points read the
+  owner's words from Claude Code's transcript**, not from a file an agent could write; "done reading the plan", "a commit button"
+  and quoted words no longer count; `/usr/bin/git`, `npm run session -- --finish`, `git merge` and `gh pr merge` are held; writing
+  the record, the signers or the note through a glob is refused. The README now says what the stop points are: a stop for an
+  agent's mistake, not a lock against one that sets out to get around them (that is GitHub's branch protection). **The kit's
+  library**: the guides written ahead of any project's need (the service mesh, paid ads and AdSense, agent-to-agent) are no
+  longer installed; `npm run library -- --list` says when each helps, `--show` reads one from the kit, `--add` brings it in on
+  the owner's yes, and /advise, /arch, /launch and /market look there first (a project that has one keeps it). **The assembled
+  server**: the caller behind a proxy is counted from the right (`TRUST_PROXY` is the number of proxies), an idempotency key is
+  done once even for two requests at the same moment and refused with another body, the built pages are served (never the
+  server bundle), and an optional `signIn` refuses every route not marked `public`. Path aliases follow `extends` and
+  `references` (Vite's tsconfig.app.json), and .vue and .svelte files are code. A client call (`api.get('/users')`,
+  `cache.get`, anything in the browser's folders) is no longer a route; a Next.js app without src/ and Python routes get the
+  security advice. A dev database (`postgres:postgres@db`, a compose file) passes the secrets check. "How we will know it
+  worked" goes in `docs/PRODUCT.md` too, so `npm run retro` reads it without a board, in any wording with a date. The OpenCode
+  plugin has a test that loads it and calls its hooks. **18 skill scenarios** (added: the read-only skills, /idea, /tidy, /debug, /setup, /secops, /spike, /work, /shape),
+  and the skilltest workflow runs by itself on a change to a skill or the stop points.
 - **3.1.0**: **checks that do what they say.** The stop points read the owner's words by sentence: a short "yes" commits
   (never pushes), a question, a condition or another meaning ("push the button") does not count, "wait" takes the word back, and
   each chat keeps its own note. **A sign-off an agent cannot write**: each row of `docs/company/SIGNOFFS.md` is sealed with a key

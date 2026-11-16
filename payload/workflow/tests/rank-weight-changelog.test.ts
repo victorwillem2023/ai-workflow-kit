@@ -131,3 +131,16 @@ describe('how we will know it worked, read back', async () => {
     assert.deepEqual(signsDue([shipped(1, '2026-11-01', 'Looked: 14 plans, it worked.')], new Date('2026-11-16')), []);
   });
 });
+
+describe('the signs read back without a board, and in other words', async () => {
+  const { signsDue, signsDueInProduct } = await import('../../workflow/tools/lib/retro.mjs');
+  it('takes the first date after the sign, whatever the words between', () => {
+    const card = (body: string) => [{ number: 1, title: 't', comments: [{ body }] }];
+    assert.equal(signsDue(card('How we will know it worked: ten plans a week, check by 2026-11-01.'), new Date('2026-11-16'))[0]?.sign, 'ten plans a week');
+    assert.equal(signsDue(card('How we will know it worked: people come back (2026-11-02)'), new Date('2026-11-16'))[0]?.on, '2026-11-02');
+  });
+  it('reads docs/PRODUCT.md, Signs to look at: the due ones, not the looked-at or later ones, nor another section', () => {
+    const md = '# P\n\n## Signs to look at\n- 2026-11-01: ten plans a week (Plans: rest weeks)\n- 2026-11-03: x Looked: yes, 14\n- 2026-12-01: later\n\n## What we learned\n- 2026-10-01: not a sign\n';
+    assert.deepEqual(signsDueInProduct(md, new Date('2026-11-16')), [{ sign: 'ten plans a week', on: '2026-11-01', what: 'Plans: rest weeks' }]);
+  });
+});

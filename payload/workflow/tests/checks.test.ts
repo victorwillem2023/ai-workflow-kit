@@ -56,6 +56,12 @@ describe('secrets in a change', () => {
       assert.deepEqual(scan(`const url = "${ok}";`), [], ok);
     }
   });
+  it('a dev database passes: a compose file, an example env file, or user and password the same on a compose service', () => {
+    const dev = 'postgres' + '://postgres:postgres' + '@db:5432/app';
+    assert.deepEqual(scan(`const url = "${dev}";`), []);
+    assert.deepEqual(scan(`DATABASE_URL: ${'postgres' + '://app:' + 'hunter22' + '@db:5432/app'}`, 'docker-compose.yml'), []);
+    assert.deepEqual(scan(`const url = "${'postgres' + '://postgres:postgres' + '@db.example.com/app'}";`).length, 1, 'a real host still counts');
+  });
   it('a tracked .env is named; .env.example is not', () => {
     assert.deepEqual(envFiles(['.env', '.env.example', 'apps/api/.env.local', 'src/env.ts']), ['.env', 'apps/api/.env.local']);
   });

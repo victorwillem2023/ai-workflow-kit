@@ -4,7 +4,7 @@
 // - a new server route with no new test named for who is refused, in an app with sign-in (`security.signIn`): advice.
 // TypeScript, JavaScript, Python, Go and Rust; the advice never fails the gate.
 import { addedLines } from './securityscan.mjs';
-import { addsRoute, testSpeaksFor } from './routes.mjs';
+import { addsRoute, CLIENT_FOLDERS, testSpeaksFor } from './routes.mjs';
 
 /** The migrations a change edits, renames or deletes: [{ file, how }], from `git diff --name-status -M <base>`. */
 export function editedMigrations(nameStatus, globs, matches) {
@@ -66,7 +66,7 @@ export function permissionAdvice(added, security = {}) {
   const server = security.server ?? 'src/server/';
   const tests = [...added].filter(([f, lines]) => TESTS.test(f) && lines.some((l) => WHO.test(l)));
   return [...added].sort(([a], [b]) => a.localeCompare(b))
-    .filter(([f, lines]) => !TESTS.test(f) && addsRoute(f, lines, server))
+    .filter(([f, lines]) => !TESTS.test(f) && addsRoute(f, lines, server, security.clientFolders ?? CLIENT_FOLDERS))
     .filter(([f]) => !tests.some(([t, lines]) => testSpeaksFor(f, t, lines)))
     .map(([f]) => `advice: ${f} adds a route but no new test says who is refused (signed out, another user's id): workflow/guides/PERMISSIONS.md, *Tests*`);
 }

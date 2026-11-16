@@ -1,8 +1,27 @@
 # The skill scenarios (scripts/skilltest.mjs) with the real Claude Code: an agent runs each skill on a throwaway project and the
-# script checks what it did. It costs money (a few cents to a dollar a scenario), so it only runs when started by hand
-# (Actions, "skilltest", Run workflow), with the ANTHROPIC_API_KEY secret set in the repository's settings.
+# script checks what it did. It costs money (roughly $0.50 to $1 for all of them), so it runs only when it can catch something:
+# on a push or pull request that changes a skill, the stop-point hook or the rules every agent reads, and by hand (Actions,
+# "skilltest", Run workflow, optionally naming scenarios). It needs the ANTHROPIC_API_KEY secret in the repository's settings;
+# without it (a fork's pull request, a repository that never set it) the run says so and passes.
 name: skilltest
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'payload/.claude/skills/**'
+      - 'modules/*/payload/.claude/skills/**'
+      - 'payload/workflow/scripts/stop-points.mjs'
+      - 'starter/CLAUDE.md'
+      - 'starter/settings.local.json'
+      - 'scripts/skilltest.mjs'
+  pull_request:
+    paths:
+      - 'payload/.claude/skills/**'
+      - 'modules/*/payload/.claude/skills/**'
+      - 'payload/workflow/scripts/stop-points.mjs'
+      - 'starter/CLAUDE.md'
+      - 'starter/settings.local.json'
+      - 'scripts/skilltest.mjs'
   workflow_dispatch:
     inputs:
       scenarios:
@@ -11,6 +30,10 @@ on:
         default: ''
 permissions:
   contents: read
+# one run per branch at a time: a newer push makes the older run stop, so a busy day is not paid for twice
+concurrency:
+  group: skilltest-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   skilltest:
     runs-on: ubuntu-latest
@@ -25,7 +48,9 @@ jobs:
       - run: npm install -g @anthropic-ai/claude-code
       - run: git config --global user.name "Skill test" && git config --global user.email skilltest@example.invalid
       # the names through the environment, never pasted into the command (what is typed into a form is not trusted as shell)
-      - run: node scripts/skilltest.mjs $SCENARIOS
+      - run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "skilltest: no ANTHROPIC_API_KEY secret here, so the scenarios were not run"; exit 0; fi
+          node scripts/skilltest.mjs $SCENARIOS
         env:
           SCENARIOS: ${{ inputs.scenarios }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

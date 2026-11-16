@@ -35,7 +35,8 @@ With personal data (answer 4 of the product questions), `together` also keeps th
 (`{ "name": "privacy", "when": ["<the schema file>"], "needs": ["docs/company/PRIVACY.md"] }`).
 
 ## Sensitive and access
-**Sensitive and access**: `sensitive.paths` from answer 3 (the gate's *signoff* check; an empty list until there is such code);
+**Sensitive and access**: `sensitive.paths` from answer 3 (the gate's *signoff* check; an empty list until there is such code;
+when it is set, tell the owner to run `npm run signoff -- --init` in their own terminal once and commit `docs/company/SIGNERS.md` on its own);
 with accounts, `security.signIn: true`, the sign-in and permission code under `sensitive.paths`, and the roles table of
 `workflow/guides/PERMISSIONS.md` (who may what, and what never) in *Rules for code* of the security page, each rule with its
 row in *Rules and where each lives*. With stored data: the folder that owns the queries, a `boundaries` rule so only it uses

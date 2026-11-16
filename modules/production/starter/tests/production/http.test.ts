@@ -1,9 +1,12 @@
 // The assembled server (src/server/http.ts, server.ts) and its request guards (src/server/httpguards.ts): every guard the guides
 // ask for is on every route, tested through a real node:http server on a free port.
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
-import { createApp, matchPath, type Route } from '../../src/server/http';
+import { callerOf, createApp, matchPath, type Route } from '../../src/server/http';
 import { rateLimit, readBody, sameOrigin } from '../../src/server/httpguards';
 import { createLogger } from '../../src/server/log';
 import { start } from '../../src/server/server';
@@ -111,5 +114,67 @@ describe('the request guards one by one', () => {
     assert.deepEqual([ok('a'), ok('a'), ok('b')], [true, false, true]);
     t = 61_000;
     assert.equal(ok('a'), true, 'a minute later it is open again');
+  });
+});
+
+describe('what a client cannot fake, and what the server serves', () => {
+  const socket = { remoteAddress: '10.0.0.9' } as never;
+  it('takes the caller from the proxy it trusts, counted from the right, never the left end the client sent', () => {
+    const m = { headers: { 'x-forwarded-for': '1.2.3.4, 203.0.113.7' }, socket };
+    assert.equal(callerOf(m, 1), '203.0.113.7');
+    assert.equal(callerOf(m, 0), '10.0.0.9', 'no proxy trusted: the connection');
+    assert.equal(callerOf({ headers: {}, socket }, 1), '10.0.0.9');
+  });
+  it('runs two requests with the same idempotency key at the same moment once, and refuses the key with another body', async () => {
+    let made = 0;
+    const url = await serve([
+      {
+        method: 'POST',
+        path: '/api/pay',
+        handler: async () => {
+          await new Promise((r) => setTimeout(r, 30));
+          return { status: 201, body: { n: ++made } };
+        },
+      },
+    ]);
+    const pay = (body: string) =>
+      fetch(`${url}/api/pay`, { method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': 'k2' }, body });
+    const [a, b] = await Promise.all([pay('{"amount":5}'), pay('{"amount":5}')]);
+    assert.deepEqual([await a.json(), await b.json()], [{ n: 1 }, { n: 1 }]);
+    assert.equal(made, 1);
+    assert.equal((await pay('{"amount":500}')).status, 422);
+  });
+  it('serves the built pages, index.html for an app path, and never the server bundle or a file outside', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pages-'));
+    try {
+      mkdirSync(join(dir, 'assets'));
+      writeFileSync(join(dir, 'index.html'), '<h1>app</h1>');
+      writeFileSync(join(dir, 'assets', 'a.js'), 'console.log(1)');
+      writeFileSync(join(dir, 'server.js'), 'secret server code');
+      const url = await serve([], { pages: dir });
+      assert.match(await (await fetch(`${url}/goals/42`)).text(), /<h1>app/);
+      const js = await fetch(`${url}/assets/a.js`);
+      assert.match(js.headers.get('cache-control') ?? '', /immutable/);
+      assert.equal((await fetch(`${url}/server.js`)).status, 404);
+      // a way out of the folder ends inside it: the app's page, never the file beside the folder
+      writeFileSync(join(dir, '..', 'pages-secret.txt'), 'secret');
+      assert.match(await (await fetch(`${url}/..%2f..%2fetc%2fpasswd`)).text(), /<h1>app/);
+      assert.equal((await fetch(`${url}/..%2fpages-secret.txt`)).status, 404);
+      rmSync(join(dir, '..', 'pages-secret.txt'), { force: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('with sign-in, refuses a route to no one signed in unless it is public, and gives the route the user', async () => {
+    const url = await serve(
+      [
+        { method: 'GET', path: '/api/me', handler: (c) => ({ status: 200, body: { id: c.user?.id } }) },
+        { method: 'GET', path: '/api/open', public: true, handler: () => ({ status: 200, body: {} }) },
+      ],
+      { signIn: (h) => (h('authorization') === 'Bearer good' ? { id: 'u1' } : null) },
+    );
+    assert.equal((await fetch(`${url}/api/me`)).status, 401);
+    assert.deepEqual(await (await fetch(`${url}/api/me`, { headers: { authorization: 'Bearer good' } })).json(), { id: 'u1' });
+    assert.equal((await fetch(`${url}/api/open`)).status, 200);
   });
 });

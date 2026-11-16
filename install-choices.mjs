@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, resolve } from 'node:path';
+import { LIBRARY, libraryTaken } from './payload/workflow/tools/lib/library.mjs';
 
 /**
  * Each module says what the installer needs to know about it in modules/<name>/module.json (in a full install by default or only
@@ -40,15 +41,19 @@ export function moduleNeeds(modules, { framework = false } = {}) {
 // full install; with --lean none, unless named with --with (--lean --with shape,tidy). The build loop itself (setup, next, idea,
 // work, spec, build, ship, review, check, find, docs, debug, lesson, the gate, the board, the map, sessions) is always there.
 // A part's guides and tools travel with it (a lean project without /market has no GROWTH.md either).
-export const PARTS = {
+const CORE_PARTS = {
   shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/'],
   estimate: ['.claude/skills/estimate/'],
   advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/run/BUY-OR-HOST.md', 'docs/run/SCALING.md', 'docs/company/STAGES.md', 'docs/company/ROADMAP.md'],
-  launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MESH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],
+  launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],
   market: ['.claude/skills/market/', 'docs/market/GROWTH.md', 'docs/market/MARKET.md', 'workflow/tools/launchcheck.mjs', 'workflow/tools/lib/launchcheck.mjs', 'workflow/tools/lib/launchcheck.d.mts', 'workflow/tests/launchcheck.test.ts'],
   retro: ['.claude/skills/retro/'],
   secops: ['.claude/skills/secops/', '.github/workflows/secops.yml'], 'setup-check': ['.github/workflows/setup.yml'],
 };
+// the library's guides are parts too (so leaving one out, marking the text that names it and bringing it in work as for any
+// part), but no profile takes them: a project takes one when it needs it (npm run library -- --add <name>; lib/library.mjs)
+export const PARTS = { ...CORE_PARTS, ...Object.fromEntries(Object.entries(LIBRARY).map(([n, g]) => [n, g.files])) };
+export { LIBRARY };
 
 /**
  * The profiles: a named starting point for how much of the kit a project takes (--profile <name>; --with and --without adjust
@@ -153,8 +158,11 @@ export function readChoices(args, kit) {
   const modules = [...new Set([...picked, ...withs.filter((w) => !(w in PARTS))])].filter((m) => !without.includes(m));
   const unknown = [...modules, ...without].find((m) => ![...ALL, ...OPTIONAL].includes(m) && !(m in PARTS));
   if (unknown) return { error: `Unknown module or part "${unknown}". Modules: ${ALL.join(', ')}; with --with: ${OPTIONAL.join(', ')}; parts: ${Object.keys(PARTS).join(', ')}` };
-  const parts = (lean ? withs.filter((w) => w in PARTS) : Object.keys(PARTS)).filter((p) => !without.includes(p));
-  return { target, mark, installed, force, update, check, take: pathList(opt('--take')), skip, lang, LANGS, project, repo, prefix, lean, withs, modules, parts, from, kitPathFlag: opt('--kit-path'),
+  // the library's guides this project has taken (the record, --with, or a guide it has already), on any profile
+  const library = libraryTaken([recorded(mark, 'library'), ...withs.filter((w) => w in LIBRARY)].filter(Boolean).join(','), (f) => existsSync(join(target, f)))
+    .filter((n) => !without.includes(n));
+  const parts = [...new Set([...(lean ? withs.filter((w) => w in CORE_PARTS) : Object.keys(CORE_PARTS)), ...library])].filter((p) => !without.includes(p));
+  return { target, mark, installed, force, update, check, take: pathList(opt('--take')), skip, lang, LANGS, project, repo, prefix, lean, withs, modules, parts, library, from, kitPathFlag: opt('--kit-path'),
     profile, gateOnly: Boolean(P.gateOnly), team: Boolean(P.team), without, profileChanged: Boolean(was && was !== profile) };
 }
 
@@ -162,12 +170,12 @@ export function readChoices(args, kit) {
  * The record's lines, the same on every computer and every kit commit (the kit's place on this computer is in git config,
  * workflow.kit, never in the committed file): the version and its tag, where the kit lives, and every choice.
  */
-export function recordLines({ version, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections, profile = null, without = [] }) {
+export function recordLines({ version, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections, profile = null, without = [], library = [] }) {
   return [
     `version=${version}`, `ref=v${version}`, ...(kitRepo ? [`kitRepo=${kitRepo}`] : []),
     `lang=${lang}`, `project=${project}`, `repo=${repo}`, `prefix=${prefix}`, ...(profile ? [`profile=${profile}`] : []),
     ...(without.length ? [`without=${without.join(',')}`] : []),
     `modules=${modules.join(',')}`, `stages=${stages.join(',')}`, ...(skip.length ? [`skip=${skip.join(',')}`] : []),
-    ...(lean ? ['lean=1', `parts=${parts.join(',')}`] : []), `sections=${sections.join(',')}`,
+    ...(lean ? ['lean=1', `parts=${parts.filter((x) => !(x in LIBRARY)).join(',')}`] : []), ...(library.length ? [`library=${library.join(',')}`] : []), `sections=${sections.join(',')}`,
   ];
 }

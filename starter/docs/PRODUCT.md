@@ -21,5 +21,9 @@ plan starts from this page, and it changes when what we learn changes it. Short,
 ## When we stop or change course
 <what would make us drop it or turn>
 
+## Signs to look at
+Written by `/ship` for each feature whose spec says how we will know it worked, read back by `npm run retro` once the date has
+come: `- <date to look>: <the sign> (<what shipped>)`. After looking, add "Looked: <what you saw>" to the line.
+
 ## What we learned
 <one line per lesson, with its date and where it came from (a spike's note in docs/decisions/, a user, the numbers)>

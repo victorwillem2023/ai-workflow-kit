@@ -7,3 +7,5 @@ export function ownersOnly(command: string): string | null;
 export function verdict(command: string, noted: Noted | undefined, now?: number): { ok: boolean; why?: string };
 export function noteKey(input: { session_id?: string } | undefined, cwd: string): string;
 export function nextNote(all: Record<string, Noted>, key: string, said: Said, now?: number): Record<string, Noted>;
+export function typedText(entry: unknown): string | null;
+export function notedFromTranscript(jsonl: string): Noted;

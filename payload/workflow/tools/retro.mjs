@@ -3,8 +3,8 @@
 // health moved since a week ago (from workflow/tools/baseline.json and the test files), and the board's counts.
 //   npm run retro
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { healthMoves, shipping, signsDue } from './lib/retro.mjs'; import { ghRun } from './lib/gh.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { healthMoves, shipping, signsDue, signsDueInProduct } from './lib/retro.mjs'; import { ghRun } from './lib/gh.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim(); } catch { return null; } };
 process.chdir(git('rev-parse', '--show-toplevel'));
@@ -28,14 +28,18 @@ else console.log('Health since a week ago: no commit that old yet');
 const board = spawnSync(process.execPath, ['workflow/tools/board.mjs', '--next', '3'], { encoding: 'utf8', timeout: 60_000 });
 console.log(`Next on the board:\n${String(board.stdout || board.stderr).trim().split('\n').filter((l) => !l.startsWith('>')).join('\n')}`);
 
-// "how we will know it worked", as /ship wrote it on each card: the ones whose date has come (/retro asks the owner to look)
+// "how we will know it worked": the signs whose date has come (/retro asks the owner to look), from docs/PRODUCT.md, where /ship
+// writes every one, and from the cards' comments when there is a board (an older project's /ship wrote them only there)
+const product = existsSync('docs/PRODUCT.md') ? signsDueInProduct(readFileSync('docs/PRODUCT.md', 'utf8'), now) : [];
+let cards = [];
 const repo = config.board?.repo;
 if (repo) {
   const found = ghRun(['issue', 'list', '--repo', repo, '--state', 'all', '--search', '"How we will know it worked" in:comments', '--json', 'number,title,comments', '--limit', '100'], undefined, { timeout: 60_000 });
-  let issues = null;
-  try { issues = found.status === 0 ? JSON.parse(found.stdout) : null; } catch { issues = null; }
-  const due = issues ? signsDue(issues, now) : null;
-  if (due === null) console.log('Did it work: the board could not be read, so the signs to look at are not listed');
-  else if (!due.length) console.log('Did it work: nothing due a look');
-  else console.log(`Did it work, due a look:\n${due.map((d) => `  #${d.number} ${d.title}: ${d.sign} (look on ${d.on})`).join('\n')}\n  (after looking: gh issue comment <n> --body "Looked: <what you saw>")`);
+  try { cards = found.status === 0 ? signsDue(JSON.parse(found.stdout), now) : null; } catch { cards = null; }
 }
+const lines = [
+  ...product.map((d) => `  ${d.what || 'shipped'}: ${d.sign} (look on ${d.on}; docs/PRODUCT.md)`),
+  ...(cards ?? []).filter((c) => !product.some((d) => d.sign === c.sign)).map((d) => `  #${d.number} ${d.title}: ${d.sign} (look on ${d.on})`),
+];
+if (lines.length) console.log(`Did it work, due a look:\n${lines.join('\n')}\n  (after looking: add "Looked: <what you saw>" to its line in docs/PRODUCT.md, and on the card when it has one)`);
+else console.log(`Did it work: nothing due a look${cards === null ? ' in docs/PRODUCT.md (the board could not be read)' : ''}`);

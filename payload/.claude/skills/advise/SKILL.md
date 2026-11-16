@@ -16,6 +16,9 @@ panel looks at the project as it is and names the three changes it would make fi
    real); `docs/PRODUCT.md`, `docs/company/ROADMAP.md` (the stage; for the `roadmap` panel also `docs/company/STAGES.md`, what each stage needs and its sign), `project.audience` and `launch` in the config, `docs/company/COSTS.md` (via
    `npm run costs`), `docs/STACK.md`, earlier records in `docs/decisions/`, the last load test and SecOps numbers when they bear
    on it. Never secrets, `.env`, or personal or health data in the brief.
+   **The kit's library**: `npm run library -- --list` says which guides a project takes only when it needs them, and when each
+   helps; a question that touches one (a service mesh, ads, agents of other makers) brings its guide into the brief: `--show <name>` reads one from the kit to weigh it here, and `--add <name>` brings it into the project
+   only on the owner's yes.
    For the `ai` panel also `workflow/guides/AI-AGENTS.md` (*Where AI could make the app better*), `security.egress`,
    `sensitive.paths` and every line in `CLAUDE.md`, the folder notes and `docs/PRODUCT.md` about data that never goes to a
    model or leaves the app: the brief starts with those rules, and an idea that needs such data is out before it is weighed.

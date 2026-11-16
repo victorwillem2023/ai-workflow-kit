@@ -1,12 +1,13 @@
 // The human sign-off for sensitive files (money, health, legal texts, personal data): a change to a file under
-// `sensitive.paths` in workflow/config.json passes the gate only when docs/company/SIGNOFFS.md holds a row whose fingerprint is the
-// fingerprint of those files as they are now, sealed by `npm run signoff`. Only a person at a terminal can run it, so a model cannot
-// approve its own work; any later edit to those files changes the fingerprint and needs a new sign-off.
-// The seal: an HMAC of the row made with a key kept in git's own folder (workflow-signoff.key, never committed, made by the first
-// sign-off on this computer). A row written by hand, by a shell append or by an agent has no seal that checks out, and the gate
-// refuses it; the stop-point hook also refuses an agent's shell command that writes the record or reads the key. On a computer
-// without the key (GitHub's runners, a second clone) the gate can only see that the row is sealed, and says so.
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+// `sensitive.paths` in workflow/config.json passes the gate only when docs/company/SIGNOFFS.md holds a row for the files as they
+// are now, signed by one of the people in docs/company/SIGNERS.md. Why: workflow/guides/SENSITIVE.md.
+// How it holds: each signer has a key pair (ed25519, node:crypto). The private key stays on their computer, encrypted with a
+// passphrase only they know (`npm run signoff -- --init` makes it); the public key is committed in SIGNERS.md. A row is signed
+// with the private key, so writing one needs the passphrase: an agent that reads every file on the computer still cannot make
+// one, and any computer (a second one, GitHub's runners) can check one with the committed public keys.
+// Which signers count: the ones on the branch the change left (main), plus a new one that one of them endorsed; a key added in
+// the change itself counts for nothing until then. The first signer of a project goes in on its own (`--init`), before a sign-off.
+import { createHash, generateKeyPairSync, sign, verify } from 'node:crypto';
 
 /** The questions a person answers with "yes" before signing; `sensitive.checklist` in the config replaces them. */
 export const CHECKLIST = [
@@ -16,8 +17,8 @@ export const CHECKLIST = [
   'No personal or sensitive data goes anywhere docs/company/PRIVACY.md does not say it goes.',
 ];
 
-/** The key's file name in git's own folder (`git rev-parse --git-common-dir`). */
-export const KEY_FILE = 'workflow-signoff.key';
+export const SIGNOFFS = 'docs/company/SIGNOFFS.md';
+export const SIGNERS = 'docs/company/SIGNERS.md';
 
 /** The changed files that are sensitive (`changed` may hold deleted files: deleting a rule is a change too). */
 export const sensitiveFiles = (changed, paths, matches) => [...new Set(changed)].filter((f) => matches(f, paths)).sort();
@@ -29,48 +30,79 @@ export function fingerprint(files, read) {
   return h.digest('hex').slice(0, 16);
 }
 
-/** The seal of one row: the HMAC of its date, who and fingerprint with this computer's key. */
-export const seal = (key, { date, who, print }) => createHmac('sha256', String(key)).update(`${date}\0${who}\0${print}`).digest('hex').slice(0, 24);
-
-/** The rows of docs/company/SIGNOFFS.md: | date | who | fingerprint | files | seal | */
-export function parseSignoffs(md) {
-  const out = [];
-  for (const line of String(md ?? '').split('\n')) {
-    const c = line.split('|').map((x) => x.trim());
-    if (c.length < 6 || !/^\d{4}-\d{2}-\d{2}$/.test(c[1]) || !/^[0-9a-f]{16}$/.test(c[3])) continue;
-    const sealed = /^[0-9a-f]{24}$/.test(c[5] ?? '') ? c[5] : null;
-    out.push({ date: c[1], who: c[2], fingerprint: c[3], files: c[4].split(',').map((x) => x.trim().replace(/`/g, '')).filter(Boolean), seal: sealed });
-  }
-  return out;
+/** A new key pair: the public key (base64, for SIGNERS.md) and the private key (PEM, encrypted with the passphrase). */
+export function makeKey(passphrase) {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'der' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem', cipher: 'aes-256-cbc', passphrase },
+  });
+  return { publicKey: publicKey.toString('base64'), privateKey };
 }
 
-/** The row `npm run signoff` appends (with the seal made from `key`). */
-export const signoffRow = ({ date, who, print, files, key }) => {
+const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
+const toKey = (b64) => ({ key: Buffer.from(b64, 'base64'), format: 'der', type: 'spki' });
+const signText = (text, privateKey, passphrase) => sign(null, Buffer.from(text), { key: privateKey, passphrase }).toString('base64');
+const checks = (text, signature, publicKey) => {
+  try { return B64.test(signature) && verify(null, Buffer.from(text), toKey(publicKey), Buffer.from(signature, 'base64')); } catch { return false; }
+};
+const rowText = ({ date, who, print }) => `signoff\0${date}\0${who}\0${print}`;
+const signerText = ({ who, key }) => `signer\0${who}\0${key}`;
+
+/** The rows of a markdown table whose first cell matches `first`: the trimmed cells after it. */
+const rows = (md, first) => String(md ?? '').split('\n').map((l) => l.split('|').map((x) => x.trim()))
+  .filter((c) => c.length >= 4 && first.test(c[1] ?? '')).map((c) => c.slice(1, -1));
+
+/** The rows of SIGNOFFS.md: | date | who | fingerprint | files | signature | */
+export function parseSignoffs(md) {
+  return rows(md, /^\d{4}-\d{2}-\d{2}$/).filter((c) => /^[0-9a-f]{16}$/.test(c[2] ?? ''))
+    .map((c) => ({ date: c[0], who: c[1], fingerprint: c[2], files: (c[3] ?? '').split(',').map((x) => x.trim().replace(/`/g, '')).filter(Boolean), signature: c[4] ?? '' }));
+}
+
+/** The rows of SIGNERS.md: | who | public key | added | endorsed by | (the key in backticks or bare; "first" for the first signer) */
+export function parseSigners(md) {
+  return rows(md, /\S/).filter((c) => B64.test((c[1] ?? '').replace(/`/g, '')) && (c[1] ?? '').replace(/`/g, '').length > 40)
+    .map((c) => ({ who: c[0], key: c[1].replace(/`/g, ''), added: c[2] ?? '', endorsed: (c[3] ?? '').replace(/`/g, '') }));
+}
+
+/** The row `npm run signoff` appends, signed with the signer's private key. */
+export function signoffRow({ date, who, print, files, privateKey, passphrase }) {
   const name = String(who).replace(/\|/g, '/');
-  return `| ${date} | ${name} | ${print} | ${files.map((f) => `\`${f}\``).join(', ')} | ${seal(key, { date, who: name, print })} |`;
-};
+  return `| ${date} | ${name} | ${print} | ${files.map((f) => `\`${f}\``).join(', ')} | ${signText(rowText({ date, who: name, print }), privateKey, passphrase)} |`;
+}
 
-const sealOk = (row, key) => {
-  if (!row.seal) return false;
-  if (key == null) return true; // no key on this computer: only that it is sealed can be seen
-  const want = Buffer.from(seal(key, { date: row.date, who: row.who, print: row.fingerprint }));
-  return want.length === row.seal.length && timingSafeEqual(want, Buffer.from(row.seal));
-};
+/** A row of SIGNERS.md: the first signer ("first"), or one endorsed by an existing signer's private key. */
+export function signerRow({ who, key, date, endorser }) {
+  const name = String(who).replace(/\|/g, '/');
+  const by = endorser ? signText(signerText({ who: name, key }), endorser.privateKey, endorser.passphrase) : 'first';
+  return `| ${name} | \`${key}\` | ${date} | ${by === 'first' ? 'first' : `\`${by}\``} |`;
+}
 
-/** The gate's verdict: { ok, files, print, line, unchecked }. `key` is this computer's key, or null where there is none. */
-export function signoffVerdict({ changed, paths, matches, read, signoffs, key = null }) {
+/**
+ * The public keys that count: the signers on the branch the change left (`baseSigners`, SIGNERS.md there), and the ones the
+ * change adds that one of those endorsed. With none on that branch, nothing counts yet: the first signer goes in on its own.
+ */
+export function trustedKeys(baseSigners, nowSigners) {
+  const base = parseSigners(baseSigners).map((s) => s.key);
+  const added = parseSigners(nowSigners).filter((s) => !base.includes(s.key) && base.some((k) => checks(signerText(s), s.endorsed, k)));
+  return [...base, ...added.map((s) => s.key)];
+}
+
+/** The gate's verdict: { ok, files, print, line }. `baseSigners`/`signers`: SIGNERS.md where the branch left main, and now. */
+export function signoffVerdict({ changed, paths, matches, read, signoffs, baseSigners, signers }) {
   const files = sensitiveFiles(changed, paths, matches);
   if (!files.length) return { ok: true, files };
   const print = fingerprint(files, read);
-  const rows = parseSignoffs(signoffs).filter((r) => r.fingerprint === print);
-  if (rows.some((r) => sealOk(r, key))) return { ok: true, files, print, unchecked: key == null };
-  const forged = rows.length > 0;
+  const keys = trustedKeys(baseSigners, signers);
+  const mine = parseSignoffs(signoffs).filter((r) => r.fingerprint === print);
+  if (mine.some((r) => keys.some((k) => checks(rowText({ date: r.date, who: r.who, print }), r.signature, k)))) return { ok: true, files, print };
+  const why = !keys.length
+    ? `${SIGNERS} has no signer yet on the branch this change left: the owner runs npm run signoff -- --init and commits that on its own first.\n`
+    : mine.length
+      ? `${SIGNOFFS} has a row for this version of ${files.join(', ')}, but no signer in ${SIGNERS} signed it: it was not written by npm run signoff.\n`
+      : `${files.join(', ')} ${files.length === 1 ? 'is' : 'are'} sensitive (sensitive.paths) and changed without a person's sign-off for this version.\n`;
   return {
     ok: false, files, print,
-    line: (forged
-      ? `docs/company/SIGNOFFS.md has a row for this version of ${files.join(', ')}, but its seal is missing or does not check out: it was not written by npm run signoff on this computer.\n`
-      : `${files.join(', ')} ${files.length === 1 ? 'is' : 'are'} sensitive (sensitive.paths) and changed without a person's sign-off for this version.\n`) +
-      'The owner checks the change against its source and runs npm run signoff in a terminal (an agent cannot: it needs a person typing).\n' +
+    line: `${why}The owner checks the change against its source and runs npm run signoff in a terminal (it asks for their passphrase: an agent cannot sign).\n` +
       'Any later edit to these files needs a new sign-off. Read workflow/guides/SENSITIVE.md for what to check.',
   };
 }

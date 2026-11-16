@@ -18,6 +18,9 @@ in `docs/run/IAC.md`, releases and user testing in `docs/run/RELEASES.md`. Nothi
    `sensitive.paths`, `docs/run/ENVIRONMENTS.md`, `docs/PRODUCTION.md` (what the app already does for production: settings,
    logs, health, stopping), `launch` in `workflow/config.json` if it is set, and the card if one was named. A cluster chosen:
    `docs/run/CLUSTER.md` too.
+   **The kit's library**: `npm run library -- --list` says which guides a project takes only when it needs them, and when each
+   helps; several services that call each other: the mesh guide (`mesh`); `--show <name>` reads one from the kit to weigh it here, and `--add <name>` brings it into the project
+   only on the owner's yes.
    Say back in five lines: the users and load expected in the first year, where the data may live, what must never be lost,
    how long it may be down, and the budget a month if the owner said one. Ask for what is missing, in one message.
 2. **The decisions, one message each, in `docs/run/LAUNCH.md`'s order** (1 to 9). For each: the usual start from the doc, what it
