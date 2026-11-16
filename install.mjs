@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { movePathsBack, undoCorrections } from './doc-layout.mjs';
 import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
-import { ALL, inList, list, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
+import { ALL, inList, inMinimal, list, MINIMAL_SCRIPTS, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
 import { runMigrations } from './migrations/index.mjs';
 import { whatChanged } from './install-report.mjs';
 import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages, unmarkInstalled } from './install-docs.mjs';
@@ -49,7 +49,7 @@ if (choices.error) {
     + 'The name, the repo, the prefix and the language are found when not given (package.json or the manifest, the git remote, the folder); without a GitHub remote, give --repo.');
   process.exit(1);
 }
-const { target, mark, force, update, take, skip, lang, LANGS, lean, withs, modules, parts } = choices;
+const { target, mark, force, update, take, skip, lang, LANGS, lean, withs, modules, parts, profile, gateOnly, team, without } = choices;
 const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.includes(p) && paths.some((x) => key === x || key.startsWith(x)));
 // In a lean project the installed text never points at what is not there: a command of a part left out gets "(not installed)"
 // after it, and a guide left out loses its backticks (so the docs check does not take it for a file that should exist) and says
@@ -81,6 +81,8 @@ const { repo, project, prefix } = choices;
 if (!existsSync(target)) { console.error(`${target} does not exist. Make the project folder (and git init) first.`); process.exit(1); }
 // --dry-run: the same run on a copy of the project, and what it changed there (install-plan.mjs); nothing here is written
 if (args.includes('--dry-run')) process.exit((await import('./install-plan.mjs')).dryRun({ kit, target, args: args.filter((a) => a !== '--dry-run') }));
+// --uninstall: the kit out again, the project's own work kept (install-uninstall.mjs; --dry-run first shows it)
+if (args.includes('--uninstall')) { console.log((await import('./install-uninstall.mjs')).uninstall({ target, kit }).join('\n')); process.exit(0); }
 const vars = {
   PROJECT: project, REPO: repo, OWNER: repo.split('/')[0], PREFIX: prefix,
   TESTS: LANGS[lang].config?.tests ?? LANGS[lang].tests ?? 'tests/*.test.ts',
@@ -182,7 +184,7 @@ function copyTree(from, overwrite) {
     const key = rel.replace(/\\/g, '/');
     const machinery = overwriteOnly(from);
     // a part left out: its machinery is not shipped, and its starter pages (docs/market/MARKET.md, docs/company/ROADMAP.md) are not made
-    if (skippedPart(key)) continue;
+    if (skippedPart(key) || (gateOnly && !inMinimal(key))) continue;
     // a file the project skips: not written, and kept out of the clean-up of files the kit no longer ships
     if (inList(skip, key)) { if (machinery) shipped.add(key); done.skipped.push(key); continue; }
     // a stage the project has not reached: not written (and not an orphan either: it comes back when the stage is entered)
@@ -258,7 +260,9 @@ for (const { key: m, part } of modules.flatMap(sectionFiles)) {
   const names = [...text.matchAll(/`([^`]+)`/g)].map((x) => x[0]);
   const has = readFileSync(claude, 'utf8');
   const there = names.length > 0 && names.filter((n) => has.includes(n)).length * 2 >= names.length;
-  if (title && !sectionsDone.has(m) && !has.includes(title) && !there) writeFileSync(claude, has.replace(/\n*$/, '\n') + text);
+  // between the kit's markers, like the starter's own kit parts, so --uninstall can take it out and leave the rest
+  const tag = `module-${m.replace(/:/g, '-')}`;
+  if (title && !sectionsDone.has(m) && !has.includes(title) && !there) writeFileSync(claude, `${has.replace(/\n*$/, '\n')}<!-- kit:${tag} -->\n${text.replace(/\s*$/, '')}\n<!-- /kit:${tag} -->\n`);
   sectionsDone.add(m);
 }
 // the gate's baseline, empty, so the docs can name it from the first day
@@ -289,6 +293,8 @@ Object.assign(scripts, LANGS[lang].scripts ?? {});
 // a module's own scripts (modules/<name>/package-scripts.json)
 for (const m of modules) if (existsSync(join(kit, 'modules', m, 'package-scripts.json'))) Object.assign(scripts, JSON.parse(readFileSync(join(kit, 'modules', m, 'package-scripts.json'), 'utf8')));
 for (const name of absentScripts) delete scripts[name];
+// the minimal profile: only the checks' own scripts
+if (gateOnly) for (const name of Object.keys(scripts)) if (!MINIMAL_SCRIPTS.includes(name)) delete scripts[name];
 const own = { ...(pkg.scripts ?? {}) };
 if (/no test specified/.test(own.test ?? '')) delete own.test;
 // the project's scripts first and in their order, the kit's it lacks after them; written back in its own layout, and only when changed
@@ -320,6 +326,11 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
 // lacks; each module's own settings (install-config.mjs)
 const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: done.added.includes('workflow.config.json'), claudeGrowth });
 migrate('config');
+// the team profile: pull requests and a team audience in a config this run wrote (docs/workflow/TEAM.md); an existing one is the project's
+if (team && done.added.includes('workflow.config.json')) {
+  const at = join(target, 'workflow.config.json'), was = readFileSync(at, 'utf8'), c = JSON.parse(was);
+  writeFileSync(at, rewriteJson(was, { ...c, project: { ...c.project, audience: 'team' }, session: { ...c.session, flow: 'pr' } }));
+}
 // a part or module added later: the "(not installed)" marks in the project's own text come out where it is there now
 const unmarked = update ? unmarkInstalled({ target }) : [];
 
@@ -334,12 +345,12 @@ const lfHint = writeProjectFiles({ target, kit, lang, langs: LANGS, modules, upd
 if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(process.execPath, ['docs/flow/build-requests.mjs'], { cwd: target, encoding: 'utf8' });
 
 // the OpenCode commands (and, when missing, opencode.jsonc), so every agent can run /setup at once
-const harness = spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
+const harness = gateOnly ? { status: 0, stdout: 'harness: none (the minimal profile has no commands)' } : spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
 spawnSync('git', ['-C', target, 'config', 'workflow.kit', kitPath], { stdio: 'ignore' });
-writeFileSync(markFile, `# which ai-workflow-kit this project came from and what it chose (install.mjs writes it; running it again goes by it). The sha lines: each machinery file as the kit wrote it.\n${recordLines({ version: kitVersion, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections: [...sectionsDone] }).join('\n')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
-const shape = `modules: ${modules.join(', ') || 'none'}${lean ? `; lean, parts: ${parts.join(', ') || 'none'} (add one later: --update --with <part>; every part: --update --full)` : ''}`;
+writeFileSync(markFile, `# which ai-workflow-kit this project came from and what it chose (install.mjs writes it; running it again goes by it). The sha lines: each machinery file as the kit wrote it.\n${recordLines({ version: kitVersion, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections: [...sectionsDone], profile, without }).join('\n')}\n${[...stamp].filter(([f]) => existsSync(join(target, f))).sort().map(([f, h]) => `sha ${h} ${f}`).join('\n')}\n`);
+const shape = `profile: ${profile}; modules: ${modules.join(', ') || 'none'}${lean && !gateOnly ? `; parts: ${parts.join(', ') || 'none'}` : ''}${without.length ? `; left out: ${without.join(', ')}` : ''}. Another: --profile minimal|solo|product|team, or --with / --without <part>`;
 console.log(before ? `Updated ${target} from kit ${before} to ${kitVersion} (${shape})` : `Installed kit ${kitVersion} into ${target} (${shape})`);
 if (before && !force && !update) console.log('  without --force the machinery files that exist were kept: run again with --force to take the new version of them');
 console.log(`  added ${done.added.length} files, replaced ${done.replaced.length}, kept ${done.kept.length} that already existed${done.kept.length && !force ? ' (--force replaces the machinery, never your starter files)' : ''}`);

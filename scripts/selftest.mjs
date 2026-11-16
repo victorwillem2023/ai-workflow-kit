@@ -47,6 +47,9 @@ const VARIANTS = {
   python: { args: ['--lang', 'python'], needs: ['uv'], after: [['uv', ['sync', '--quiet']]], files: { 'src/selftest/__init__.py': 'def add(a: int, b: int) -> int:\n    return a + b\n', 'tests/test_add.py': 'from selftest import add\n\n\ndef test_add() -> None:\n    assert add(1, 2) == 3\n' } },
   go: { args: ['--lang', 'go'], needs: ['go'], prepare: [['go', ['mod', 'init', 'example.com/selftest']]], files: { 'internal/add/add.go': 'package add\n\n// Add adds two numbers.\nfunc Add(a, b int) int { return a + b }\n', 'internal/add/add_test.go': 'package add\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fatal("1 + 2")\n\t}\n}\n' } },
   rust: { args: ['--lang', 'rust'], needs: ['cargo', 'cargo-machete', 'cargo-audit'], prepare: [['cargo', ['init', '--lib', '--name', 'selftest', '--vcs', 'none', '--quiet']]] },
+  // minimal: the gate and its checks only (no skills, no CLAUDE.md, no guides): every check must pass without them
+  // (with code of its own: minimal brings no example code, and a project that takes only the gate has some)
+  minimal: { args: ['--profile', 'minimal'], files: { 'src/core/add.ts': '// Adds two numbers.\nexport function add(a: number, b: number): number {\n  return a + b;\n}\n', 'tests/add.test.ts': "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nimport { add } from '../src/core/add';\n\ntest('adds two numbers', () => assert.equal(add(1, 2), 3));\n" } },
   // messy: an old project with debt, its own settings and a board, made with an older kit and updated (scripts/selftest-messy.mjs)
   messy: { args: [], messy: true, needs: ['tar'] },
 };
@@ -77,12 +80,13 @@ function asOlderKitLeftIt(dir) {
   const hash = (t) => createHash('sha1').update(String(t).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
   writeFileSync(mark, readFileSync(mark, 'utf8').replace(/^sha (\S+) (.+)$/gm, (line, h, f) => (existsSync(join(dir, f)) ? `sha ${hash(readFileSync(join(dir, f), 'utf8'))} ${f}` : line)));
   // a run-stage page of the project's own (a deploy page /setup filled), pointing at a kit guide of that stage: it must keep leading somewhere
-  writeFileSync(join(dir, 'docs', 'DEPLOY.md'), "# Deploying (the project's own page)\n\nThe edge and its certificates: `docs/INFRA.md`.\n");
+  // (only where the kit's docs are: the minimal profile has none, so no page of the project's points at a kit guide)
+  if (existsSync(join(dir, 'docs', 'PRODUCT.md'))) writeFileSync(join(dir, 'docs', 'DEPLOY.md'), "# Deploying (the project's own page)\n\nThe edge and its certificates: `docs/INFRA.md`.\n");
   // the helpers an older kit did not have (src/server/trace.ts ...): the update adds them
   for (const h of HELPERS) if (existsSync(join(dir, h))) rmSync(join(dir, h));
   // CLAUDE.md exactly at its budget, as a project near it is: the move's longer paths must not fail its gate
   const cfg = JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8'));
-  if (cfg.budget?.['CLAUDE.md']) cfg.budget['CLAUDE.md'] = Buffer.byteLength(readFileSync(join(dir, 'CLAUDE.md'), 'utf8'));
+  if (cfg.budget?.['CLAUDE.md'] && existsSync(join(dir, 'CLAUDE.md'))) cfg.budget['CLAUDE.md'] = Buffer.byteLength(readFileSync(join(dir, 'CLAUDE.md'), 'utf8'));
   // a setting of the project's own in a list the kit also fills (an extra input folder): an update must keep it
   if (cfg.security?.inputFolders) cfg.security.inputFolders.push('src/races/');
   writeFileSync(join(dir, 'workflow.config.json'), `${JSON.stringify(cfg, null, 2)}\n`);
@@ -95,7 +99,7 @@ const HELPERS = ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.
  */
 function missingDocPointers(dir) {
   const onDemand = new Set(['docs/run/INFRA-MAP.md', 'docs/MAP.md', 'docs/README.md']);
-  const files = [...walkMd(join(dir, '.claude')), ...walkMd(join(dir, 'docs')), join(dir, 'CLAUDE.md')];
+  const files = [...walkMd(join(dir, '.claude')), ...walkMd(join(dir, 'docs')), join(dir, 'CLAUDE.md')].filter((f) => existsSync(f));
   const out = [];
   for (const f of files) readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
     for (const m of line.matchAll(/`(docs\/[\w/-]+\.md)`/g)) if (!onDemand.has(m[1]) && !existsSync(join(dir, m[1]))) out.push(`${f.slice(dir.length + 1)}:${i + 1}: ${m[1]}`);
@@ -293,7 +297,9 @@ async function runVariant(name) {
     await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
     await converges({ name, dir, git, step });
     return 'passed';
-  } catch {
+  } catch (e) {
+    // a check that failed has said so; anything else (a crash in the self-test itself) is said here, never swallowed
+    if (!/^(mentions|doc pointers|docs without a reader|old doc paths|step 1|create|kit files taken for the project|settings lost|docs not moved|doc pointers after the update)$/.test(e.message) && !steps.includes(false) && !/^[a-z ]+$/.test(e.message)) console.log(`FAIL ${name}: ${e.stack ?? e.message}`);
     return 'failed';
   } finally {
     if (process.argv.includes('--keep')) console.log(`kept: ${dir}`);

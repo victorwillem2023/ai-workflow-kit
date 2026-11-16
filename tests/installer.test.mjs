@@ -2,7 +2,7 @@
 // reflowing it, the record and the choices, the kit's marked parts of CLAUDE.md, and moving doc paths. npm run test:quick
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -107,6 +107,44 @@ describe('the kit\'s parts of CLAUDE.md', () => {
     const text = readFileSync(join(d, 'CLAUDE.md'), 'utf8');
     assert.ok(text.includes('<!-- kit:how-we-work -->'), 'an untouched part is the kit\'s now');
     assert.ok(text.includes('- Our own line.') && !text.includes('<!-- kit:writing-style -->'), 'a changed part stays the project\'s');
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('profiles', () => {
+  it('a profile is a starting point: --with and --without adjust it, the record keeps it, another profile starts from its own', () => {
+    const d = folder();
+    const p = (...a) => readChoices([d, '--repo', 'o/x', ...a], kit);
+    assert.deepEqual([p().profile, p().lean, p().parts.length > 5], ['product', false, true], 'a new project: product');
+    assert.deepEqual([p('--lean').profile, p('--lean').parts], ['solo', []], '--lean is solo');
+    assert.equal(p('--profile', 'minimal').gateOnly, true);
+    assert.equal(p('--profile', 'team').team, true);
+    assert.ok(!p('--without', 'market,ui').parts.includes('market') && !p('--without', 'market,ui').modules.includes('ui'));
+    assert.match(p('--profile', 'huge').error, /Unknown profile "huge"/);
+    writeFileSync(join(d, '.workflow-kit'), 'version=2.10.0\nrepo=o/x\nprofile=product\nwithout=market\nmodules=ui,map\n');
+    assert.deepEqual([p().profile, p().parts.includes('market'), p().modules], ['product', false, ['ui', 'map']], 'the record keeps what was left out');
+    assert.deepEqual([p('--with', 'market').parts.includes('market')], [true], '--with brings it back');
+    assert.deepEqual([p('--profile', 'solo').parts, p('--profile', 'solo').modules, p('--profile', 'solo').profileChanged], [[], [], true], 'solo starts from its own');
+    writeFileSync(join(d, '.workflow-kit'), 'version=2.9.11\nrepo=o/x\nlean=1\nparts=shape\n');
+    assert.deepEqual([p().profile, p().parts], ['solo', ['shape']], 'a lean project from before profiles is solo, its parts kept');
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('uninstall', () => {
+  it('takes out the kit\'s files as it wrote them, its parts of CLAUDE.md and its scripts, and keeps what the project changed or wrote', () => {
+    const d = folder({ 'CLAUDE.md': '# Mine\n\nOur notes.\n', 'package.json': '{ "name": "x", "scripts": { "dev": "vite" } }\n' });
+    spawnSync('git', ['init', '-q'], { cwd: d });
+    const installed = spawnSync(process.execPath, [join(kit, 'install.mjs'), d, '--repo', 'o/x'], { encoding: 'utf8' });
+    assert.equal(installed.status, 0, installed.stderr);
+    writeFileSync(join(d, 'tools', 'workflow', 'README.md'), 'changed by the project\n');
+    const said = spawnSync(process.execPath, [join(kit, 'install.mjs'), d, '--uninstall'], { encoding: 'utf8' }).stdout;
+    assert.match(said, /The kit is out of/);
+    assert.equal(readFileSync(join(d, 'CLAUDE.md'), 'utf8').trim(), '# Mine\n\nOur notes.');
+    assert.deepEqual(JSON.parse(readFileSync(join(d, 'package.json'), 'utf8')).scripts, { dev: 'vite' });
+    assert.ok(existsSync(join(d, 'tools', 'workflow', 'README.md')) && !existsSync(join(d, 'tools', 'workflow', 'gate.mjs')), 'the changed one stays, the rest goes');
+    assert.ok(!existsSync(join(d, '.workflow-kit')) && !existsSync(join(d, '.claude', 'skills')));
+    assert.match(said, /kept, because you changed them[\s\S]*tools\/workflow\/README\.md/);
     rmSync(d, { recursive: true, force: true });
   });
 });

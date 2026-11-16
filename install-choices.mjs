@@ -50,6 +50,27 @@ export const PARTS = {
   secops: ['.claude/skills/secops/', '.github/workflows/secops.yml'], 'setup-check': ['.github/workflows/setup.yml'],
 };
 
+/**
+ * The profiles: a named starting point for how much of the kit a project takes (--profile <name>; --with and --without adjust
+ * it; the record keeps it, and running with another profile moves the project there). --lean is solo, --full is product.
+ */
+export const PROFILES = {
+  minimal: { what: 'the gate and its checks only: no commands, no board, no sessions', lean: true, gateOnly: true },
+  solo: { what: 'the build loop: /next /idea /work /spec /build /ship and the helpers, the board, sessions, the stop points', lean: true },
+  product: { what: 'solo and the stages: shape, spike, tidy, estimate, advise, launch, market, retro, secops, and every module', lean: false },
+  team: { what: 'product, with pull requests and a required review, and the team roles', lean: false, team: true },
+};
+
+/**
+ * What a minimal install keeps (the gate, the checks' own tools and settings, CI); every other kit file is left out, so a
+ * project that wants only the safety net has no commands, no CLAUDE.md and no guides of the kit's.
+ */
+export const MINIMAL = ['tools/workflow/', 'scripts/packages.mjs', 'scripts/packages.d.mts', '.github/workflows/gate.yml', 'workflow.config.json',
+  '.gitignore', 'gitignore.txt', 'package-scripts.json', '.tool-versions', 'tsconfig.json', 'biome.json', 'knip.json', '.gitattributes', 'pyproject.toml', 'Cargo.toml', 'go.mod'];
+export const inMinimal = (key) => MINIMAL.some((m) => (m.endsWith('/') ? key.startsWith(m) : key === m));
+/** The npm scripts a minimal install adds: the checks and what they run. */
+export const MINIMAL_SCRIPTS = ['test', 'test:full', 'typecheck', 'gate', 'gate:all', 'map'];
+
 export const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
 // --take and --skip name files, folders (tools/workflow/** or tools/workflow/) or, for --take, all
 export const pathList = (s) => String(s ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
@@ -117,24 +138,35 @@ export function readChoices(args, kit) {
   const prefix = pick('prefix', '--prefix', () => cfg.session?.prefix ?? (repo ? repo.split('/')[1] : basename(target)).toLowerCase().replace(/[^a-z0-9-]/g, '-'));
   if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'repo' };
   const skip = [...new Set([...pathList(recorded(mark, 'skip')), ...pathList(opt('--skip'))])];
-  const lean = args.includes('--lean') || (remembers && !args.includes('--full') && /^lean=1$/m.test(mark));
-  const withs = [...new Set([...list(opt('--with')), ...(remembers && !args.includes('--lean') ? list(recorded(mark, 'parts')) : [])])];
-  const picked = opt('--modules') === 'none' ? [] : opt('--modules') ? list(opt('--modules')) : remembers && /^modules=/m.test(mark) ? list(recorded(mark, 'modules')) : lean ? [] : ALL;
-  const modules = [...new Set([...picked, ...withs.filter((w) => !(w in PARTS))])];
-  const unknown = modules.find((m) => ![...ALL, ...OPTIONAL].includes(m));
-  if (unknown) return { error: `Unknown module or part "${unknown}". Modules: ${ALL.join(', ')}; with --with: ${OPTIONAL.join(', ')}; parts (with --lean): ${Object.keys(PARTS).join(', ')}` };
-  const parts = lean ? withs.filter((w) => w in PARTS) : Object.keys(PARTS);
-  return { target, mark, installed, force, update, check, take: pathList(opt('--take')), skip, lang, LANGS, project, repo, prefix, lean, withs, modules, parts, from, kitPathFlag: opt('--kit-path') };
+  // the profile: a named starting point (--profile, or the old --lean / --full), then --with and --without; a project keeps its
+  // own, and one from before profiles is solo when it was lean, else product
+  const was = remembers ? recorded(mark, 'profile') ?? (/^lean=1$/m.test(mark) ? 'solo' : installed ? 'product' : null) : null;
+  const profile = opt('--profile') ?? (args.includes('--lean') ? 'solo' : args.includes('--full') ? 'product' : was ?? 'product');
+  const P = PROFILES[profile];
+  if (!P) return { error: `Unknown profile "${profile}". Profiles: ${Object.entries(PROFILES).map(([n, p]) => `${n} (${p.what})`).join('; ')}` };
+  const lean = P.lean;
+  // what the project added or left out before counts while it stays on the same profile; a new profile starts from its own
+  const same = was === profile;
+  const without = [...new Set([...list(opt('--without')), ...(same ? list(recorded(mark, 'without')) : [])])].filter((w) => !list(opt('--with')).includes(w));
+  const withs = [...new Set([...list(opt('--with')), ...(same && lean ? list(recorded(mark, 'parts')) : [])])].filter((w) => !list(opt('--without')).includes(w));
+  const picked = opt('--modules') === 'none' ? [] : opt('--modules') ? list(opt('--modules')) : same && /^modules=/m.test(mark) ? list(recorded(mark, 'modules')) : lean ? [] : ALL;
+  const modules = [...new Set([...picked, ...withs.filter((w) => !(w in PARTS))])].filter((m) => !without.includes(m));
+  const unknown = [...modules, ...without].find((m) => ![...ALL, ...OPTIONAL].includes(m) && !(m in PARTS));
+  if (unknown) return { error: `Unknown module or part "${unknown}". Modules: ${ALL.join(', ')}; with --with: ${OPTIONAL.join(', ')}; parts: ${Object.keys(PARTS).join(', ')}` };
+  const parts = (lean ? withs.filter((w) => w in PARTS) : Object.keys(PARTS)).filter((p) => !without.includes(p));
+  return { target, mark, installed, force, update, check, take: pathList(opt('--take')), skip, lang, LANGS, project, repo, prefix, lean, withs, modules, parts, from, kitPathFlag: opt('--kit-path'),
+    profile, gateOnly: Boolean(P.gateOnly), team: Boolean(P.team), without, profileChanged: Boolean(was && was !== profile) };
 }
 
 /**
  * The record's lines, the same on every computer and every kit commit (the kit's place on this computer is in git config,
  * workflow.kit, never in the committed file): the version and its tag, where the kit lives, and every choice.
  */
-export function recordLines({ version, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections }) {
+export function recordLines({ version, kitRepo, lang, project, repo, prefix, modules, stages, skip, lean, parts, sections, profile = null, without = [] }) {
   return [
     `version=${version}`, `ref=v${version}`, ...(kitRepo ? [`kitRepo=${kitRepo}`] : []),
-    `lang=${lang}`, `project=${project}`, `repo=${repo}`, `prefix=${prefix}`,
+    `lang=${lang}`, `project=${project}`, `repo=${repo}`, `prefix=${prefix}`, ...(profile ? [`profile=${profile}`] : []),
+    ...(without.length ? [`without=${without.join(',')}`] : []),
     `modules=${modules.join(',')}`, `stages=${stages.join(',')}`, ...(skip.length ? [`skip=${skip.join(',')}`] : []),
     ...(lean ? ['lean=1', `parts=${parts.join(',')}`] : []), `sections=${sections.join(',')}`,
   ];
