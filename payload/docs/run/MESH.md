@@ -1,5 +1,9 @@
 # Service mesh: whether you need one, which one, and how to run it
 
+> **Not yet tried in a real project.** This guide was written before the kit's rule that a part comes from a real project's need
+> (README). Read it as a starting point, not as tested advice: check each step against the tool's own docs, and when a project
+> first uses it, the kit's version is reworked from what that project found (or removed).
+
 A service mesh is a layer that handles the calls between your own services: every call encrypted and proven (mutual TLS),
 retries and timeouts, splitting traffic for a canary, and a metric for every call, without code in the app. It costs a lot to
 run. This doc helps decide if it is time, picks one, and says how to run it with the kit. Read by the section.

@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        variant: [full, lean, cluster, vite, python, go, rust, messy]
+        variant: [full, lean, minimal, cluster, vite, python, go, rust, messy]
         include:
           - { os: windows-latest, variant: full }
           - { os: windows-latest, variant: lean }

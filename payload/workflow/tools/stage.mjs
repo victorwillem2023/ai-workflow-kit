@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { listCards } from './lib/board.mjs';
 import { shipping } from './lib/retro.mjs';
 import { BEFORE_DEPLOY, readRoadmap, stageNudges } from './lib/stage.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { ghRun } from './lib/gh.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim(); } catch { return null; } };
 process.chdir(git('rev-parse', '--show-toplevel') ?? '.');
@@ -44,14 +45,7 @@ if (enterAt >= 0) {
   process.exit(0);
 }
 
-// gh with an argument list and no shell; on Windows also where its installer puts it
-let ghPath = 'gh';
-const run = (args, input) => {
-  const go = () => spawnSync(ghPath, args, { input, encoding: 'utf8', shell: false, windowsHide: true, maxBuffer: 64 << 20 });
-  let res = go();
-  if (res.error?.code === 'ENOENT' && process.platform === 'win32' && ghPath === 'gh') { ghPath = 'C:\\Program Files\\GitHub CLI\\gh.exe'; res = go(); }
-  return res;
-};
+const run = (args, input) => ghRun(args, input); // lib/gh.mjs
 let cards = null;
 try { if (board?.project) cards = listCards(board, run, { wholeText: true }).filter((c) => c.column); } catch { cards = null; }
 

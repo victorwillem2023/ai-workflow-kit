@@ -85,7 +85,9 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   only when `docs/company/SIGNOFFS.md` holds a row whose fingerprint matches those files as they are now. The owner writes it with
   `npm run signoff` in their own terminal after checking the change against its sources: it refuses input from a pipe, an agent
   or CI, asks the checklist (`sensitive.checklist` replaces the kit's four questions) and a typed-back code, and agents are
-  denied the command and the file. Any later edit needs a new sign-off. Why: `workflow/guides/SENSITIVE.md`.
+  denied the command and the file. Each row is sealed with a key in git's own folder (`workflow-signoff.key`, never committed):
+  a row the gate cannot verify with it (a shell append, a hand edit) is refused, and on GitHub's runners, which never have the
+  key, only a sealed row counts. Any later edit needs a new sign-off. Why: `workflow/guides/SENSITIVE.md`.
 - **migrations** (when `data.migrations` lists where they are): a migration file that was there before the change and is edited,
   renamed or deleted fails; it has run somewhere, so a mistake is a new migration (`workflow/guides/DATA.md`). A new one passes.
 - **data and permissions** (advice): a changed file that builds SQL text from a value (a filled-in or joined string in
@@ -166,10 +168,14 @@ What needs a public repository or a paid plan, and what stands in for it here:
 | a pull request merges only when its gate passed (`"flow": "pr"`) | `node workflow/scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
 
 **The stop points** (Claude Code hooks in `.claude/settings.local.json`, `workflow/scripts/stop-points.mjs`): an agent's `git commit`,
-`--finish`, `--merge` or `--commit-notes` is refused until the owner has typed "done" (or "commit", "finish it") in the chat in
-the last 3 hours, and a `git push` or `--push` until they typed "push". The words are read from the owner's own messages (the
-hook sees only those), so an agent cannot give them; `node workflow/scripts/stop-points.mjs --status` says what is noted. Your own
-terminal is never held. OpenCode has no such hook: there the skills' wording is the only stop.
+`--finish`, `--merge` or `--commit-notes` is refused until the owner has said "done" (or "commit", "finish it", or a short "yes"
+to the skill's question) in that same chat in the last 3 hours, and a `git push` or `--push` until they said "push". A question
+("is it done?"), a condition ("when you are done, tell me") or another meaning ("push the button") does not count, and "wait" or
+"not yet" takes the word back. The words are read from the owner's own messages (the hook sees only those), so an agent cannot
+give them; each chat has its own note, so a "done" in one never commits another chat's session. `node workflow/scripts/stop-points.mjs
+--status` says what is noted. The same hook refuses an agent's shell command that writes `docs/company/SIGNOFFS.md` or reads the
+sign-off key, whatever the owner said. Your own terminal is never held. OpenCode gets the same through a plugin `npm run harness`
+writes (`.opencode/plugins/stop-points.js`), which asks the same script.
 
 The guard lives in this clone's git hooks (the session folders share them). A clone on another computer or a cloud session has
 none until `npm run protect -- --local` runs there; the gate prints an `advice:` line when it is missing (never on GitHub's runners).
@@ -311,10 +317,10 @@ answered from `npm run map -- --find` with paths and lines.
 **Columns**: Backlog, Needs a board or decision, Ready, In progress, Waiting for your check, Blocked, Done. "Set this on
 blocked, waiting for X" is `--block`; the comment keeps the reason on the card.
 
-**Type labels**: every card has exactly one of `ui`, `feature`, `bug`, `workflow`; an area label (`area: Backend`) comes
+**Type labels**: every card has exactly one of `ui`, `feature`, `bug`, `workflow`, `spike` (the config's `board.types`); an area label (`area: Backend`) comes
 second. The type picks the route through the work: *ui* = the mockup board first, then the build, changes kept to
 `src/web`; *feature* = a plan with named tests first; *bug* = a failing test first, a plan only if large; *workflow* =
-like a feature, nothing in the app changes.
+like a feature, nothing in the app changes; *spike* = a throwaway try with a time limit and a decision note, never merged (`/spike`).
 
 **`/work <n>`** (`.claude/skills/work/SKILL.md`) is the one entry in plain words: it reads the card, takes the route its
 type label says, plans and stops for a yes, builds in a session folder (`/build`), moves the card to *Waiting for your

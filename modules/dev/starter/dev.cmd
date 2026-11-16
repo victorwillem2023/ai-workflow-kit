@@ -5,7 +5,14 @@ setlocal
 cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
-  echo {{PROJECT}} needs Node.js 22 or newer. Get the LTS installer from https://nodejs.org and run this again.
+  echo {{PROJECT}} needs Node.js 26 or newer. Get the installer from https://nodejs.org and run this again.
+  pause
+  exit /b 1
+)
+rem the kit pins Node 26 (.tool-versions); an older one fails later with an unclear message
+for /f "tokens=1 delims=v." %%v in ('node -v') do set NODE_MAJOR=%%v
+if %NODE_MAJOR% LSS 26 (
+  echo {{PROJECT}} needs Node.js 26 or newer; this computer has version %NODE_MAJOR%. Get the installer from https://nodejs.org and run this again.
   pause
   exit /b 1
 )

@@ -1,5 +1,9 @@
 # Running on a Kubernetes cluster
 
+> **Not yet tried in a real project.** The cluster module (its chart, the Argo CD applications and this guide) was written before the kit's rule that a part comes from a real project's need
+> (README). Read it as a starting point, not as tested advice: check each step against the tool's own docs, and when a project
+> first uses it, the kit's version is reworked from what that project found (or removed).
+
 The cluster module (`install.mjs --with cluster`) adds a Helm chart for the app (`deploy/helm/app/`) and an Argo CD application
 per environment (`deploy/gitops/argocd/`). Use it when `/launch` chose a cluster (`docs/run/LAUNCH.md`, *One server, a container
 host, serverless or a cluster*); one server needs none of it. Read by the section.

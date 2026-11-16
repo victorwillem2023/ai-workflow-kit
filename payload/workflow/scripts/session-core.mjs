@@ -7,6 +7,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkPackages, describeMissing } from './packages.mjs';
 import { stopMessage, stopSessionServer } from './session-stop.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { ghRun } from '../tools/lib/gh.mjs';
 
 export const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
@@ -85,16 +86,8 @@ export function catchUp(s) {
   console.log(`main was ${s.behind} commit${s.behind === 1 ? '' : 's'} behind origin/main and is up to date now.`);
 }
 
-/** gh with an argument list and no shell, for the board library; on Windows also where its installer puts it. */
-export let ghPath = 'gh';
-
-export function ghRun(args, input) {
-  const custom = process.env.WORKFLOW_GH;
-  const go = () => spawnSync(custom ? process.execPath : ghPath, custom ? [custom, ...args] : args, { input, encoding: 'utf8', shell: false, windowsHide: true, maxBuffer: 64 << 20 });
-  let res = go();
-  if (!custom && res.error?.code === 'ENOENT' && process.platform === 'win32' && ghPath === 'gh') { ghPath = 'C:\\Program Files\\GitHub CLI\\gh.exe'; res = go(); }
-  return res;
-}
+/** gh with an argument list and no shell, for the board library (the kit's one runner: workflow/tools/lib/gh.mjs). */
+export { ghRun };
 
 /** Runs fn(lib, boardConfig, ghRun); any failure is one warning line, because the board never blocks a start or a finish. */
 export async function onBoard(what, fn) {

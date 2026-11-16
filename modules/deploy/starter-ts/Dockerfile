@@ -1,6 +1,6 @@
 # One image that runs the same on a laptop, a small server and a cloud host. Three steps:
 #   deps:  the production libraries only (npm ci --omit=dev), from the lock file
-#   build: everything needed to build (`npm run build`); thrown away afterwards
+#   build: everything needed to build (`npm run build` for the pages, `npm run build:server` for dist/server.js); thrown away afterwards
 #   run:   distroless Node (no shell, no package manager, no OS tools to attack with), as the nonroot user, holding only
 #          what runs: the built app (dist/), its production libraries and package.json. Nothing else from the repository:
 #          no source, tests, docs, scripts, git history or settings (.dockerignore keeps them out of the build too).
@@ -18,7 +18,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run build --if-present && npm run build:server --if-present
 
 # the same Debian (13, trixie) as the build steps, so a native library built there runs here
 FROM gcr.io/distroless/nodejs26-debian13:nonroot

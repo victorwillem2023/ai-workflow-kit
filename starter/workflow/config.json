@@ -101,12 +101,7 @@
     }
   },
   "harness": {
-    "opencode": {
-      "model": "deepseek/deepseek-v4-pro",
-      "cheapModel": "opencode/glm-5.3-flash-free",
-      "smallModel": "opencode/deepseek-v4.1-flash-free",
-      "exploreModel": "deepseek/deepseek-flash"
-    },
+    "opencode": { "$comment": "the models are the kit's (DEFAULTS in workflow/tools/lib/harness.mjs); name model, planModel, cheapModel, smallModel or exploreModel here only to choose another" },
     "private": [".env", "data/"],
     "agentsMd": false
   },

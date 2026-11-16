@@ -20,7 +20,6 @@
 //   --close <number> "<reason>"  close a card the owner decided against, the reason as its last comment
 //   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
 // A failure prints one plain sentence and exits 1.
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -28,18 +27,10 @@ import { renderTriage, triage, triageLine } from './lib/triage.mjs';
 import { adoptCard, closeCard, createCard, dependCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 import { inbox, rankCards, STARTABLE, TOOL_ISSUES, topTie, waitingCards } from './lib/rank.mjs';
 import { renderTree } from './lib/cardgraph.mjs';
+import { ghRun } from './lib/gh.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const WINDOWS_GH = 'C:\\Program Files\\GitHub CLI\\gh.exe';
-
-// gh with an argument list and no shell; on Windows also where its installer puts it when the PATH lacks it.
-let ghPath = 'gh';
-function run(args, input) {
-  const go = () => spawnSync(ghPath, args, { input, encoding: 'utf8', shell: false, windowsHide: true, maxBuffer: 64 << 20 });
-  let res = go();
-  if (res.error?.code === 'ENOENT' && process.platform === 'win32' && ghPath === 'gh') { ghPath = WINDOWS_GH; res = go(); }
-  return res;
-}
+const run = (args, input) => ghRun(args, input); // lib/gh.mjs
 
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };

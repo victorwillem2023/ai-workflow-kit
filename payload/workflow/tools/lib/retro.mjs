@@ -32,3 +32,24 @@ export function healthMoves(then, now, testsThen, testsNow) {
   if (testsThen != null && testsNow != null && testsThen !== testsNow) out.push(`test files: ${testsThen} -> ${testsNow}`);
   return out.length ? out : ['no change in the known exceptions or the number of test files'];
 }
+
+const SIGN = /How we will know it worked:\s*(.+?),?\s+look on (\d{4}-\d{2}-\d{2})/i;
+const LOOKED = /^Looked(?: on \d{4}-\d{2}-\d{2})?:/i;
+
+/**
+ * The shipped cards whose "how we will know it worked" is due a look: [{ number, title, sign, on }], oldest first. Read from
+ * the comment /ship writes ("Shipped. How we will know it worked: <sign>, look on <date>."); a later comment starting
+ * "Looked:" (what /retro writes once the owner looked) closes it. `issues`: gh's JSON, { number, title, comments: [{ body }] }.
+ */
+export function signsDue(issues, now = new Date()) {
+  const today = now.toISOString().slice(0, 10);
+  const out = [];
+  for (const i of issues ?? []) {
+    const bodies = (i.comments ?? []).map((c) => String(c.body ?? ''));
+    const at = bodies.findLastIndex((b) => SIGN.test(b));
+    if (at < 0 || bodies.slice(at + 1).some((b) => LOOKED.test(b.trim()))) continue;
+    const [, sign, on] = SIGN.exec(bodies[at]);
+    if (on <= today) out.push({ number: i.number, title: i.title, sign: sign.replace(/[.\s]+$/, ''), on });
+  }
+  return out.sort((a, b) => a.on.localeCompare(b.on));
+}

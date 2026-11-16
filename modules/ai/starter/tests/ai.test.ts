@@ -31,8 +31,14 @@ const make = (o: Partial<AiSettings> & { provider: Provider }) =>
   });
 
 const Summary = z.object({ summary: z.string().max(200) });
-const ask = (ai: ReturnType<typeof createAi>, notes = 'Easy 5 km run, felt good.') =>
-  ai.ask({ feature: 'summary', userId: 'u1', instructions: 'Summarise the workout.', untrusted: { notes }, schema: Summary });
+const askOf = (userId: string, notes = 'Easy 5 km run, felt good.') => ({
+  feature: 'summary',
+  userId,
+  instructions: 'Summarise the workout.',
+  untrusted: { notes },
+  schema: Summary,
+});
+const ask = (ai: ReturnType<typeof createAi>, notes?: string) => ai.ask(askOf('u1', notes));
 const refusal = async (p: Promise<unknown>) => {
   try {
     await p;
@@ -158,5 +164,51 @@ describe('the caps and prices are required', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the hard stop, retries and the rate limit', () => {
+  it('lets calls at the same moment pass the monthly cap no further than it allows', async () => {
+    // $1 per answer token and one token per answer: each call's worst case and real cost are both $1, so a $3 month allows three
+    const ai = make({
+      provider: fakeProvider(() => ({ summary: 'ok' }), { input: 10, output: 1 }),
+      price: { input: 0, output: 1_000_000 },
+      maxOutputTokens: 1,
+      monthlyBudgetUsd: 3,
+    });
+    const outcomes = await Promise.all(Array.from({ length: 5 }, (_, i) => refusal(ai.ask(askOf(`u${i}`)))));
+    assert.deepEqual(outcomes.sort(), [null, null, null, 'budget', 'budget'].sort());
+  });
+  it('tries a busy provider again, waiting longer each time, and gives up at once on a plain error', async () => {
+    let calls = 0;
+    const busy: Provider = async (c) => {
+      calls++;
+      if (calls < 3) throw Object.assign(new Error('overloaded'), { status: 529 });
+      return fakeProvider(() => ({ summary: 'ok' }))(c);
+    };
+    assert.deepEqual(await ask(make({ provider: busy, backoffMs: 1 })), { summary: 'ok' });
+    assert.equal(calls, 3);
+    let bad = 0;
+    const wrong: Provider = async () => {
+      bad++;
+      throw Object.assign(new Error('bad request'), { status: 400 });
+    };
+    assert.equal(await refusal(ask(make({ provider: wrong, backoffMs: 1 }))), 'failed');
+    assert.equal(bad, 1, 'a request the provider refuses is not sent again');
+  });
+  it('gives the reservation back when the call failed, so a broken provider does not use up the month', async () => {
+    const spend = memorySpend();
+    const wrong: Provider = async () => {
+      throw Object.assign(new Error('bad request'), { status: 400 });
+    };
+    await refusal(ask(make({ provider: wrong, spend, now: () => new Date('2026-11-16T10:00:00Z') })));
+    assert.equal(await spend.spent('month:2026-11'), 0);
+  });
+  it('stops one user past their calls a minute, and not the others', async () => {
+    const ai = make({ provider: fakeProvider(() => ({ summary: 'ok' })), userCallsPerMinute: 2 });
+    await ai.ask(askOf('u1'));
+    await ai.ask(askOf('u1'));
+    assert.equal(await refusal(ai.ask(askOf('u1'))), 'rate');
+    assert.deepEqual(await ai.ask(askOf('u2')), { summary: 'ok' });
   });
 });

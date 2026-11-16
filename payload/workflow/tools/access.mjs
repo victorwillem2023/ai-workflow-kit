@@ -4,9 +4,10 @@
 //   npm run access              print the review
 //   npm run access -- --publish open it as an issue labelled "access-review" (a checklist to work through)
 //   npm run access -- --done    set "Last review: <today>" in docs/company/ACCESS.md, after every line is settled
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { accessReport, compareAccess, parseAccess } from './lib/access.mjs';
+import { ghRun } from './lib/gh.mjs';
 
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
@@ -15,11 +16,7 @@ const args = process.argv.slice(2);
 const FILE = 'docs/company/ACCESS.md';
 const today = new Date().toISOString().slice(0, 10);
 
-function gh(a, input) {
-  const go = (cmd) => spawnSync(cmd, a, { input, encoding: 'utf8', shell: false, windowsHide: true, timeout: 60_000, maxBuffer: 16 << 20 });
-  const res = go('gh');
-  return res.error?.code === 'ENOENT' && process.platform === 'win32' ? go('C:\\Program Files\\GitHub CLI\\gh.exe') : res;
-}
+const gh = (a, input) => ghRun(a, input, { timeout: 60_000 }); // lib/gh.mjs
 const list = (path, pick) => { const r = gh(['api', '--paginate', path]); if (r.status !== 0) return null; try { return pick(JSON.parse(r.stdout)); } catch { return null; } };
 
 if (!existsSync(FILE)) { console.log(`access: ${FILE} is missing (install.mjs --update writes it): list who should have access there first`); process.exit(1); }

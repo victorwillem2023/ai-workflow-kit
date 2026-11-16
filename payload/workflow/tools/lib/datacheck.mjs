@@ -4,6 +4,7 @@
 // - a new server route with no new test named for who is refused, in an app with sign-in (`security.signIn`): advice.
 // TypeScript, JavaScript, Python, Go and Rust; the advice never fails the gate.
 import { addedLines } from './securityscan.mjs';
+import { addsRoute, testSpeaksFor } from './routes.mjs';
 
 /** The migrations a change edits, renames or deletes: [{ file, how }], from `git diff --name-status -M <base>`. */
 export function editedMigrations(nameStatus, globs, matches) {
@@ -53,19 +54,20 @@ export function sqlAdvice(added) {
   return out;
 }
 
-const ROUTE = /\bpathname\s*(?:===|\.startsWith\()|\bcase\s+['"`]\/[\w/-]*['"`]|\b(?:app|router|api|server|mux|r)\.(?:get|post|put|patch|delete|all|route|handle|Handle|HandleFunc|Get|Post|Put|Patch|Delete)\s*\(\s*["'`]\/|@(?:app|router|api)\.(?:get|post|put|patch|delete)\(|\.route\(\s*["']\//;
 const WHO = /signed[\s_-]?out|not[\s_]signed[\s_]in|without[\s_](?:a[\s_])?(?:session|sign-?in)|another[\s_]?(?:user|customer|account|tenant)|someone[\s_]?else|other[\s_]?(?:user|customer|tenant)|anonymous/i;
 
 /**
- * The advice lines for routes added without a test that says who is refused: one per file in the server folder
- * (`security.server`), none when the change also adds a test named for a signed-out caller or another user's thing.
+ * The advice lines for routes added without a test that says who is refused: one per file that adds a route (lib/routes.mjs, the
+ * same routes as the security advice), none for a file an added test speaks for (named after it, or importing it) with a name
+ * for a signed-out caller or another user's thing. One such test elsewhere in the change does not quiet the others.
  */
 export function permissionAdvice(added, security = {}) {
   if (!security.signIn) return [];
   const server = security.server ?? 'src/server/';
-  if ([...added].some(([f, lines]) => TESTS.test(f) && lines.some((l) => WHO.test(l)))) return [];
+  const tests = [...added].filter(([f, lines]) => TESTS.test(f) && lines.some((l) => WHO.test(l)));
   return [...added].sort(([a], [b]) => a.localeCompare(b))
-    .filter(([f, lines]) => f.startsWith(server) && !TESTS.test(f) && lines.some((l) => !COMMENT.test(l) && ROUTE.test(l)))
+    .filter(([f, lines]) => !TESTS.test(f) && addsRoute(f, lines, server))
+    .filter(([f]) => !tests.some(([t, lines]) => testSpeaksFor(f, t, lines)))
     .map(([f]) => `advice: ${f} adds a route but no new test says who is refused (signed out, another user's id): workflow/guides/PERMISSIONS.md, *Tests*`);
 }
 

@@ -9,6 +9,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { KINDS, k6Script, readSummary } from './lib/load.mjs';
+import { isProduction } from './lib/production.mjs';
 
 const K6 = 'grafana/k6:1.0.0'; // renovate: docker
 
@@ -20,7 +21,8 @@ if (!kind) { console.log(`usage: npm run load -- <kind> [--url <address>]\n${Obj
 const load = config.performance?.load ?? {};
 const goals = config.performance?.goals ?? {};
 const url = (args.includes('--url') ? args[args.indexOf('--url') + 1] : load.url) ?? `http://127.0.0.1:${config.session?.mainPort ?? 8787}`;
-if (/^https:\/\//.test(url) && url === config.deploy?.url && !args.includes('--yes-production')) {
+// production is deploy.url or deploy.environments.production.url (what /launch writes), any path on the same host: lib/production.mjs
+if (isProduction(url, config) && !args.includes('--yes-production')) {
   console.log(`load: ${url} is production. A load test there is planned, never by the way: add --yes-production when the owner said so.`);
   process.exit(1);
 }

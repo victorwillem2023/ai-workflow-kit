@@ -37,6 +37,9 @@ export function uninstall({ target, kit }) {
     .filter((d) => existsSync(d)).flatMap((d) => readdirSync(d)));
   const oc = join(target, '.opencode', 'commands');
   if (existsSync(oc)) for (const f of readdirSync(oc)) if (kitSkills.has(f.replace(/\.md$/, ''))) { remove(target, join(oc, f)); removed.push(`.opencode/commands/${f}`); }
+  // and the stop-point plugin npm run harness writes (generated too: the kit's own whatever is in it)
+  const plugin = join(target, '.opencode', 'plugins', 'stop-points.js');
+  if (existsSync(plugin)) { remove(target, plugin); removed.push('.opencode/plugins/stop-points.js'); }
   // 3. the kit's parts of every CLAUDE.md (the root one and the folder notes), between their markers; the project's own text stays
   const notes = (spawnSync('git', ['-C', target, 'ls-files', '--cached', '--others', '--exclude-standard', 'CLAUDE.md', '*/CLAUDE.md'], { encoding: 'utf8' }).stdout ?? '')
     .split('\n').filter((f) => f && existsSync(join(target, f)));

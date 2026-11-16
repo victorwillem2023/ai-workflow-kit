@@ -18,7 +18,7 @@ import { testPlan } from './lib/testplan.mjs';
 import { errorRuleFindings, notRead } from './lib/errorrules.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { buildGraph, affectedTests } from './lib/graph.mjs';
+import { buildGraph, affectedTests, projectAliases } from './lib/graph.mjs';
 import { findViolations, newViolations } from './lib/boundaries.mjs';
 import { oversize, sizeVerdict, updateSizes, sizeNote } from './lib/size.mjs';
 import { globToRegExp, matchesAny } from './lib/glob.mjs';
@@ -71,7 +71,8 @@ for (const f of listFiles()) {
   if (isCode(f)) files.set(f, readFileSync(f, 'utf8'));
   else others.push(f);
 }
-const graph = buildGraph(files, others);
+const readIf = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : null);
+const graph = buildGraph(files, others, { aliases: projectAliases(config.apps, readIf) }); // @/ imports followed too
 const isTest = (f) => globToRegExp(config.tests).test(f);
 
 const baselineFile = config.baseline;

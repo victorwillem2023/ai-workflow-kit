@@ -100,9 +100,9 @@ It is a brief, not the design: redraw it on the project's tokens and parts as va
    from the board, update `docs/STYLE.md` only for a new token, component or rule, then `/ship <topic>`.
 
 ## Done checklist (say it in every stop of stage 2)
-Tokens only, no inline styles, matches the board (or the difference said), one primary button per view, meaning not by colour
-alone, 44 px targets, keyboard works, light and dark, phone width, before and after pictures shown, the notes file and the README
-row current.
+The one in `src/web/CLAUDE.md` (*Done checklist for any UI change*: tokens only, no inline styles, matches the board, one primary
+button per view, meaning not by colour alone, 44 px targets, keyboard, light and dark, phone width), and for a board: before and
+after pictures shown, the notes file and the README row current. A change to the list is made there, never only here.
 
 **Blocked** (waiting for the pick, an outside service, another card): `npm run board -- --block <n> "waiting for <what>"`. If the
 board cannot be reached, say so in one line and carry on.

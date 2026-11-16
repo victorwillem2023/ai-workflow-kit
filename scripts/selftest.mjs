@@ -34,7 +34,7 @@ const has = (cmd) => [['--version'], ['version']].some((a) => spawnSync(cmd, a, 
 const KIT_TESTS_IN = ['full'];
 const VARIANTS = {
   // full: the run stage entered (docs/run/ there); every other variant without it, as a new project starts
-  full: { args: ['--with', 'ai', '--stage', 'run'] },
+  full: { args: ['--with', 'ai,map', '--stage', 'run'] },
   // lean: no installed text may name a command that is not installed without saying so
   lean: { args: ['--lean'], check: unmarkedMentions },
   cluster: { args: ['--with', 'cluster'], needs: ['docker'] },

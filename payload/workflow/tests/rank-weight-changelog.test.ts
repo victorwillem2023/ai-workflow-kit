@@ -117,3 +117,17 @@ describe('load tests', async () => {
     assert.match(slow.lines.join('\n'), /TOO SLOW[\s\S]*TOO MANY[\s\S]*where it broke/);
   });
 });
+
+describe('how we will know it worked, read back', async () => {
+  const { signsDue } = await import('../../workflow/tools/lib/retro.mjs');
+  const shipped = (n: number, on: string, ...more: string[]) => ({ number: n, title: `card ${n}`,
+    comments: [{ body: `Shipped. How we will know it worked: ten plans made in a week, look on ${on}.` }, ...more.map((body) => ({ body }))] });
+  it('lists the signs whose date has come, oldest first, and not the later ones', () => {
+    const due = signsDue([shipped(2, '2026-11-10'), shipped(1, '2026-11-01'), shipped(3, '2026-12-01')], new Date('2026-11-16T09:00:00Z'));
+    assert.deepEqual(due.map((d) => [d.number, d.on]), [[1, '2026-11-01'], [2, '2026-11-10']]);
+    assert.equal(due[0].sign, 'ten plans made in a week');
+  });
+  it('a "Looked:" comment after it closes it', () => {
+    assert.deepEqual(signsDue([shipped(1, '2026-11-01', 'Looked: 14 plans, it worked.')], new Date('2026-11-16')), []);
+  });
+});

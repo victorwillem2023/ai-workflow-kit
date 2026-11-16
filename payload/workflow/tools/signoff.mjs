@@ -4,13 +4,14 @@
 //   npm run signoff             show the sensitive files this change touches, ask the checklist, write the row
 //   npm run signoff -- --base <ref>   compare with this commit instead of where the branch left main
 // Only at a terminal with a person typing: no input from a pipe, a typed-back code, and agents are denied the command in
-// .claude/settings.local.json. This keeps a model from approving its own work; it does not stop a person who means to cheat.
+// .claude/settings.local.json. Each row is sealed with a key in git's own folder (lib/signoff.mjs), so a row written any other way
+// does not count. This keeps a model from approving its own work; it does not stop a person who means to cheat.
 import { execFileSync } from 'node:child_process';
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { matchesAny } from './lib/glob.mjs';
-import { CHECKLIST, fingerprint, parseSignoffs, sensitiveFiles, signoffRow } from './lib/signoff.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { CHECKLIST, KEY_FILE, fingerprint, parseSignoffs, sensitiveFiles, signoffRow, signoffVerdict } from './lib/signoff.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 process.chdir(git('rev-parse', '--show-toplevel'));
@@ -26,7 +27,11 @@ const files = sensitiveFiles(changed, paths, matchesAny);
 if (!files.length) { console.log('signoff: this change touches no sensitive file'); process.exit(0); }
 const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : undefined);
 const print = fingerprint(files, read);
-if (parseSignoffs(read(FILE)).some((r) => r.fingerprint === print)) { console.log(`signoff: this version is already signed (${print})`); process.exit(0); }
+// this computer's key for the seal, in git's own folder (never committed): made by the first sign-off here
+const keyFile = `${git('rev-parse', '--git-common-dir')}/${KEY_FILE}`;
+const key = existsSync(keyFile) ? readFileSync(keyFile, 'utf8').trim() : null;
+if (key && signoffVerdict({ changed: files, paths, matches: matchesAny, read, signoffs: read(FILE), key }).ok) { console.log(`signoff: this version is already signed (${print})`); process.exit(0); }
+if (parseSignoffs(read(FILE)).some((r) => r.fingerprint === print)) console.log('signoff: SIGNOFFS.md has a row for this version that npm run signoff did not seal here; it does not count. Sign it yourself below.\n');
 
 if (!process.stdin.isTTY || !process.stdout.isTTY || process.env.CI) {
   console.log('signoff: refused. A sign-off is a person checking the change, so it runs only in a terminal with someone typing (not from an agent, a pipe or CI).');
@@ -45,6 +50,8 @@ const code = String(randomInt(1000, 9999));
 if ((await rl.question(`Type ${code} to sign: `)).trim() !== code) stop('the code did not match');
 rl.close();
 
-if (!existsSync(FILE)) writeFileSync(FILE, '# Sign-offs\n\nOne row per checked version of the sensitive files (`sensitive.paths`), written by `npm run signoff`, never by hand or by an agent. Read workflow/guides/SENSITIVE.md for what is checked.\n\n| Date | Who | Fingerprint | Files |\n|---|---|---|---|\n');
-appendFileSync(FILE, `${signoffRow({ date: new Date().toISOString().slice(0, 10), who, print, files })}\n`);
+const sealKey = key ?? randomBytes(32).toString('hex');
+if (!key) writeFileSync(keyFile, `${sealKey}\n`, { mode: 0o600 });
+if (!existsSync(FILE)) writeFileSync(FILE, '# Sign-offs\n\nOne row per checked version of the sensitive files (`sensitive.paths`), written by `npm run signoff`, never by hand or by an agent: each row is sealed with a key only this computer has, and a row without a good seal does not count. Read workflow/guides/SENSITIVE.md for what is checked.\n\n| Date | Who | Fingerprint | Files | Seal |\n|---|---|---|---|---|\n');
+appendFileSync(FILE, `${signoffRow({ date: new Date().toISOString().slice(0, 10), who, print, files, key: sealKey })}\n`);
 console.log(`signoff: signed ${files.length} file${files.length === 1 ? '' : 's'} (${print}) in ${FILE}; it goes in the same commit as the change`);

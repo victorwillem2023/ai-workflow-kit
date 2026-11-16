@@ -57,15 +57,30 @@ describe('a session built on top of another one', () => {
     assert.ok(run(r, '--finish', 'screen').ok);
   });
 
-  it('a base whose built work is not committed is refused, with the commit to make', () => {
+  it('a base whose built work is not committed is saved as a checkpoint on its own branch, and its finish needs the approved subject', () => {
     const r = makeRepo();
     assert.ok(run(r, 'rules').ok);
-    commitIn(r.wt('rules'), 'rules.txt', 'rules\n', 'Plan: rules');
-    writeFileSync(join(r.wt('rules'), 'more.txt'), 'built, not committed\n');
+    writeFileSync(join(r.wt('rules'), 'rules.txt'), 'built, not committed\n');
     const made = run(r, 'screen', '--on', 'rules');
-    assert.equal(made.ok, false);
-    assert.match(made.out, /"rules" has uncommitted work, which a session on top of it would not get[\s\S]*git commit -m/);
-    assert.equal(existsSync(r.wt('screen')), false, 'no session was made');
+    assert.ok(made.ok, made.out);
+    assert.match(made.out, /Saved "rules"'s uncommitted work as a checkpoint on its own branch/);
+    assert.ok(existsSync(join(r.wt('screen'), 'rules.txt')), 'the stacked session has the built work');
+    assert.match(git(r.wt('rules'), 'log', '-1', '--format=%s'), /^checkpoint: rules/);
+    assert.equal(git(r.main, 'rev-list', '--count', 'main..rules'), '1', 'nothing reached main');
+    const bare = run(r, '--finish', 'rules', '--no-checks');
+    assert.equal(bare.ok, false);
+    assert.match(bare.out, /is a checkpoint[\s\S]*--subject/);
+    assert.ok(run(r, '--finish', 'rules', '--no-checks', '--subject', 'Plan: the rules', '--body', 'Why it is there.').ok);
+    assert.equal(git(r.main, 'log', '-1', '--format=%s%n%b', 'main').trim(), 'Plan: the rules\nWhy it is there.');
+  });
+
+  it('a session with an earlier commit finishes under the subject the owner approved, not the first commit\'s', () => {
+    const r = makeRepo();
+    assert.ok(run(r, 'goal').ok);
+    commitIn(r.wt('goal'), 'a.txt', 'a\n', 'wip');
+    commitIn(r.wt('goal'), 'b.txt', 'b\n', 'Goals: set a goal and see it on the plan');
+    assert.ok(run(r, '--finish', 'goal', '--no-checks', '--subject', 'Goals: set a goal and see it on the plan').ok);
+    assert.equal(git(r.main, 'log', '-1', '--format=%s', 'main'), 'Goals: set a goal and see it on the plan');
   });
 
   it('a base that is on main already is not stacked on', () => {

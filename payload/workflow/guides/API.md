@@ -1,7 +1,8 @@
 # APIs: how they are built, documented and shared
 
-The kit's rules for an API the app offers, to its own screens first and to customers later. Most of it is checked by a
-script; the rest is in `/spec` and `/review`. Read by the section.
+The kit's rules for an API the app offers, to its own screens first and to customers later. The kit ships **no API check of its
+own**: the description and breaking-change checks below are `checks` entries the project adds with its first public route (two
+lines of config, shown in each rule); until then these rules are held by `/spec` and `/review`. Read by the section.
 
 ## One description, made from the code
 - The API is described in **OpenAPI 3.1**, generated from the code, never written beside it: with Hono and Zod
@@ -9,8 +10,10 @@ script; the rest is in `/spec` and `/review`. Read by the section.
   write `openapi.json`. Fastify, NestJS, FastAPI (Python) and huma (Go) do the same.
 - `openapi.json` is committed and checked like the file map: a `checks` entry runs the generator and fails when the committed
   file differs, so the description can never be older than the code.
+  `{ "name": "openapi", "command": "npm run openapi && git diff --exit-code openapi.json", "when": ["src/server/**"] }`
 - **Breaking changes are caught in the pipeline**: `oasdiff breaking` (open source) compares `openapi.json` with `main`'s and
   fails on a removed field, a new required input or a changed type. A breaking change needs a new version (below).
+  `{ "name": "api-breaking", "command": "git show origin/main:openapi.json > /tmp/base.json && oasdiff breaking /tmp/base.json openapi.json --fail-on ERR", "when": ["openapi.json"] }`
 
 ## Design rules
 | Rule | Why |

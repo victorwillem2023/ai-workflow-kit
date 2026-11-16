@@ -1,6 +1,6 @@
 // Which IP addresses are not on the public internet (this computer, the local network, link-local, shared
 // address space, multicast, and the IPv6 forms that carry an IPv4 address). Pure, so the browser build can
-// use it too; the DNS lookup that feeds it is in src/server/hostguard.ts.
+// use it too; the DNS lookup that feeds it is in src/server/safefetch.ts (dnsGuard).
 
 const v4 = (s: string): number[] | null => {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);

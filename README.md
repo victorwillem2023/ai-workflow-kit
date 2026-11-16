@@ -10,10 +10,11 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v3.x` tag** (now `v3.0.0`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
+> **Build on the latest `v3.x` tag** (now `v3.1.0`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
 > apps. An older project moves over by itself on its next update. The rule from 2.8 holds: a new part, guide or skill comes from a
-> real project running into its lack, never ahead of one.
+> real project running into its lack, never ahead of one. The few guides written before that rule (the service mesh,
+> the cluster module, agent-to-agent, AdSense) say "Not yet tried in a real project" at their top.
 
 ```sh
 git clone https://github.com/victorwillem2023/ai-workflow-kit
@@ -28,7 +29,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Idea** | `/idea`: one card per idea, bug or wish on a GitHub board; `/shape`: is it worth building (the problem, today's alternative, the first ten users, the smallest version, when to stop); `/spike`: a throwaway try of the riskiest part |
 | **Plan** | `/setup`: who it is for, the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to do next and which command, by value for the effort, at any point; `/tidy` (`npm run board -- --triage`): the board kept from piling up; `/estimate`: a change's work and cost from `docs/company/COSTS.md`; `/advise`: up to three advisors on a choice, citing the docs; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
-| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit (distroless for TypeScript and Go, a slim image for Python and Rust); a page-weight budget once there are screens. **Not yet**: browser smoke and accessibility tests |
+| **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit (distroless for TypeScript and Go, a slim image for Python and Rust); a page-weight budget once there are screens. browser smoke and accessibility tests are added by `/setup` as a project check (Playwright, from `stack.md`) once there are screens: **not yet** shipped as kit code |
 | **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`workflow/guides/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/run/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/run/IAC.md`); deploys go from GitHub to staging by themselves, and to production only when you run it (or a required reviewer approves, checked before it deploys); `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
 | **Grow** | the loop back: feedback and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/market/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/market/MARKET.md`. **Not yet**: feature-flag code (how to add it: `workflow/guides/LIFECYCLE.md`), a help button in the app linking the feedback form, and errors from the tracker becoming issues by themselves |
 
@@ -92,13 +93,15 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
              tests/security/security.test.ts (hostile-input tests), src/core/permissions.ts (who may do what: one function, a table test), docs/SECURITY.md
   testing/   tests/clock.ts (fake clock: a 4 s wait costs milliseconds), tests/fakes.example.ts (fakeDeps + fixed NOW pattern), tests/builders.example.ts (test data)
   dev/       dev.cmd, start.cmd (Windows: install on first run, check packages and port), scripts/dev-check.mjs, .env.example
-  map/       docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
+  map/       (opt in: --with map) docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
   deploy/    a Dockerfile per language, workflow/scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
              npm run smoke; npm run rollback; --env staging|production), docs/run/DEPLOY.md, .github/workflows/release.yml (after the gate: one image per commit,
              scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit), .github/workflows/deploy.yml
              (after a release: staging by itself; production when you run it, or after a required reviewer's approval)
   production/ src/server/config.ts (settings checked at start-up), src/server/log.ts (JSON logs, secrets and personal fields hidden),
-             src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), tests/production/, docs/PRODUCTION.md,
+             src/server/shutdown.ts (/health, /ready, stopping without cutting requests off), src/server/http.ts + server.ts (the assembled
+             server: security headers, rate limit, same-origin check, body cap, idempotency keys; npm run build:server makes dist/server.js),
+             tests/production/, docs/PRODUCTION.md,
              docs/company/PRIVACY.md (the record of personal data: the start of what the GDPR asks, not legal advice)
   cluster/   (optional, --with cluster) deploy/helm/app (a Helm chart: not root, read-only, no capabilities, a disruption budget,
              autoscaling, a NetworkPolicy, a Gateway API route; values per environment), deploy/gitops/argocd (one Application

@@ -6,7 +6,7 @@
 // It costs real money (a few cents to a dollar a run), so it is never part of the self-test: run it by hand, or from the GitHub
 // workflow skilltest.yml (started by hand, with an API key).
 //   node scripts/skilltest.mjs                    every scenario
-//   node scripts/skilltest.mjs ship-before-done   only those named;  --list   say what each checks;  --keep  leave the folders
+//   node scripts/skilltest.mjs ship-before-done   only those named (a scenario of several turns runs them in one chat, --continue);  --list   say what each checks;  --keep  leave the folders
 //   node scripts/skilltest.mjs --agent <command>  another agent CLI that takes `-p <prompt>` (tests/slow/skilltest.test.mjs uses a fake)
 import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -76,6 +76,44 @@ export const SCENARIOS = {
       ...(!/CLAUDE\.md|\.claude\/project\//.test(after.status) && !ghCalls.some((a) => a[0] === 'issue' && a[1] === 'create') ? ['the rule was written nowhere (no CLAUDE.md, no .claude/project file, no card)'] : []),
     ],
   },
+  'plan-build-done-ship': {
+    what: 'the whole loop in one chat: a spec that waits for a yes, a build in a session folder with no commit, then one commit on main only after "done"',
+    turns: [
+      {
+        prompt: '/spec add a line to the README that welcomes new riders. Name the topic "welcome".',
+        check: ({ before, after, dir }) => [
+          ...(after.commits > before.commits ? ['it committed while only planning'] : []),
+          ...(!existsSync(join(dir, 'workflow/specs/welcome.md')) ? ['no spec at workflow/specs/welcome.md'] : []),
+          ...(existsSync(join(dirname(dir), 'st-welcome')) ? ['it started building before the owner approved the spec'] : []),
+        ],
+      },
+      {
+        prompt: 'The spec is good. /build welcome',
+        maxTurns: 40,
+        check: ({ previous, after, dir }) => {
+          const session = join(dirname(dir), 'st-welcome');
+          return [
+            ...(after.commits > previous.commits ? ['it committed before the owner tried it and said done'] : []),
+            ...(!existsSync(session) ? ['no session folder ../st-welcome'] : []),
+            ...(existsSync(session) && !/welcome/i.test(readFileSync(join(session, 'README.md'), 'utf8')) ? ['the README in the session folder does not welcome anyone'] : []),
+          ];
+        },
+      },
+      {
+        prompt: 'I tried it and it is done. Ship it.',
+        maxTurns: 40,
+        check: ({ before, dir }) => {
+          const added = Number(git(dir, 'rev-list', '--count', `${before.head}..main`));
+          const subject = added ? git(dir, 'log', '-1', '--format=%s', 'main') : '';
+          return [
+            ...(added !== 1 ? [`main has ${added} new commits, not one`] : []),
+            ...(added === 1 && !/^[A-Z][\w /-]*: /.test(subject) ? [`the subject "${subject}" is not "Area: what changed"`] : []),
+            ...(added === 1 && !/welcome/i.test(git(dir, 'show', 'main:README.md')) ? ['the commit on main does not hold the README line'] : []),
+          ];
+        },
+      },
+    ],
+  },
 };
 
 /** A lean install, committed, with or without the packages the gate needs: made once, removed when the process ends. */
@@ -98,7 +136,7 @@ function template(deps) {
 }
 
 /** The project's state the checks compare. */
-const state = (dir) => ({ commits: commits(dir), status: git(dir, 'status', '--porcelain'), kitParts: existsSync(join(dir, 'CLAUDE.md')) ? kitParts(readFileSync(join(dir, 'CLAUDE.md'), 'utf8')) : '' });
+const state = (dir) => ({ commits: commits(dir), head: git(dir, 'rev-parse', 'main'), status: git(dir, 'status', '--porcelain'), kitParts: existsSync(join(dir, 'CLAUDE.md')) ? kitParts(readFileSync(join(dir, 'CLAUDE.md'), 'utf8')) : '' });
 
 /**
  * One scenario in a new throwaway project: { name, ok, problems, cost, said }. `agent`: the command that takes `-p <prompt>`;
@@ -123,11 +161,23 @@ export function runScenario(name, { agent = 'claude', deps = true, keep = false 
     // through a shell (Windows, where the CLI is a .cmd file) every argument is quoted, or the prompt arrives cut at its first space
     const shell = win && cmd !== process.execPath;
     const quote = (a) => (shell && /[\s"&|<>^()]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a);
-    const r = spawnSync(cmd, [...pre, '-p', s.prompt, '--output-format', 'json', '--max-turns', '25', '--permission-mode', 'acceptEdits'].map(quote), { cwd: dir, env, encoding: 'utf8', shell, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
-    let out = {};
-    try { out = JSON.parse(r.stdout); } catch { out = { result: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().slice(-2000) }; }
-    const problems = s.check({ dir, before, after: state(dir), ghWrites: writes(log), ghCalls: calls(log) });
-    return { name, ok: problems.length === 0, problems, cost: out.total_cost_usd ?? null, said: String(out.result ?? '').slice(0, 600), dir: keep ? dir : null };
+    // a scenario is one message, or several turns of one chat (`--continue` after the first), each checked when it ends
+    const turns = s.turns ?? [{ prompt: s.prompt, check: s.check }];
+    const problems = [];
+    let cost = null, said = '', last = before;
+    for (const [i, t] of turns.entries()) {
+      const r = spawnSync(cmd, [...pre, ...(i ? ['--continue'] : []), '-p', t.prompt, '--output-format', 'json', '--max-turns', String(t.maxTurns ?? 25), '--permission-mode', 'acceptEdits'].map(quote), { cwd: dir, env, encoding: 'utf8', shell, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
+      let out = {};
+      try { out = JSON.parse(r.stdout); } catch { out = { result: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().slice(-2000) }; }
+      if (out.total_cost_usd != null) cost = (cost ?? 0) + out.total_cost_usd;
+      said = String(out.result ?? '').slice(0, 600);
+      const now = state(dir);
+      const found = t.check({ dir, before, previous: last, after: now, ghWrites: writes(log), ghCalls: calls(log) });
+      problems.push(...(turns.length > 1 ? found.map((p) => `turn ${i + 1} ("${t.prompt.slice(0, 40)}"): ${p}`) : found));
+      last = now;
+      if (found.length && turns.length > 1) break; // a later turn builds on this one: no use going on
+    }
+    return { name, ok: problems.length === 0, problems, cost, said, dir: keep ? dir : null };
   } finally {
     if (!keep) rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }

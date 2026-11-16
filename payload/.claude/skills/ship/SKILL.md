@@ -46,7 +46,9 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    body = a few lines of what the feature now does. Add the Co-Authored-By line the session gives. The subject is also the
    line users read in the changelog (`npm run changelog` groups the subjects by area; a release writes them into `CHANGELOG.md`
    with `--release <version>`), so show it to the owner first as "Changelog: <subject>" and change it if it says how, not what.
-7. `node workflow/scripts/session.mjs --finish <topic>` (squash, rebase on the local `main`, typecheck, tests; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node workflow/scripts/session.mjs --push` sends them; run it only when the owner says so.
+   Keep the approved subject and body: step 7 passes them, so the finished commit carries them even when the session already
+   had a commit (a checkpoint a stacked session saved, an earlier round).
+7. `node workflow/scripts/session.mjs --finish <topic> --subject "<approved subject>" --body "<body, with the Co-Authored-By line>"` (squash under that message, rebase on the local `main`, typecheck, tests; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node workflow/scripts/session.mjs --push` sends them; run it only when the owner says so.
    A session built on another one ("Starts on: <topic>") is refused until that one is finished: ship that one first. Finishing a
    base moves the sessions on it onto main by itself; pass on what it says about them (one that could not move names
    `--restack <topic>`). Combined cards (`Card: #12, #14`) all move with the one commit.

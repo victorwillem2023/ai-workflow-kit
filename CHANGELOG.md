@@ -2,6 +2,25 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.1.0**: **checks that do what they say.** The stop points read the owner's words by sentence: a short "yes" commits
+  (never pushes), a question, a condition or another meaning ("push the button") does not count, "wait" takes the word back, and
+  each chat keeps its own note. **A sign-off an agent cannot write**: each row of `docs/company/SIGNOFFS.md` is sealed with a key
+  in git's own folder and the gate refuses one whose seal does not check out; the hook refuses a shell command that writes the
+  record or reads the key (a row signed before 3.1 has no seal: sign that change again). The layer rules, test picking, the
+  untested check and the map follow **path aliases** (`@/...` from tsconfig, per app). **One route pattern** for the security and
+  the "who is refused" advice (any `x.post('/...')`, Next.js handlers, server actions), and each advice line is quieted only by a
+  test about that file. The secrets check catches a password in a connection string and a JWT. The load test and the
+  certificate check read production from `deploy.environments` too. **The AI wrapper** reserves the budget before the call
+  (calls at the same moment cannot pass the cap), retries with back-off and has a rate limit per user. **Stacking** saves the
+  base's loose work as a checkpoint itself, and `--finish --subject` keeps the subject the owner approved (`/ship` passes it).
+  **An assembled server** in the production module (`src/server/http.ts`, `server.ts`): security headers, a body cap, a rate
+  limit, a same-origin check and idempotency keys on every route; `npm run build:server` makes the image's `dist/server.js`.
+  OpenCode gets the **stop points** through a plugin `npm run harness` writes. `npm run retro` lists the "how we will know it
+  worked" signs that are due. A multi-turn skill scenario (plan, build, done, ship) and the minimal profile in CI. Lighter
+  skills (`/spec` and `/setup` read their conditional rules from `when.md`); the **map module is opt-in** (`--with map`) and
+  loads no outside fonts; guides written ahead of a project's need say so. Docs that disagreed with the code now agree (TypeScript
+  is the default language, browser tests, API checks, the deploy page, Node 26, the card types, one UI checklist). The kit's own
+  code keeps its rules: one gh runner (`lib/gh.mjs`), the OpenCode models in one place, `install.mjs` in steps.
 - **3.0.0**: **the kit's own files are under `workflow/`**, so the project's root is the project's: `workflow/config.json` (was
   `workflow.config.json`), `workflow/record` (`.workflow-kit`), `workflow/tools/` (`tools/workflow/`), `workflow/tests/`
   (`tests/workflow/`), `workflow/scripts/` (the kit's scripts that were in `scripts/` among the project's own), `workflow/guides/`

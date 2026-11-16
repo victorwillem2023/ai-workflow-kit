@@ -1,9 +1,12 @@
 // Security-trigger scan: reads the added lines of a diff and names the files whose new code opens a server
 // route, reads an uploaded or fetched file, or makes an outbound fetch. Advice only; the gate never fails on it.
-const DEFAULTS = { code: 'src/', server: 'src/server/' };
+import { addsRoute } from './routes.mjs';
+
+const DEFAULTS ={ code: 'src/', server: 'src/server/' };
 const triggers = (cfg) => [
   { name: 'an outbound fetch', re: /\bfetch\(|\bhttps?\.(?:request|get)\(|\bhttpClient\.\w+\(|\bnew\s+WebSocket\(/ },
-  { name: 'a server route', only: (f) => f.startsWith(cfg.server), re: /\bpathname\s*(?:===|!==|\.startsWith\(|\.endsWith\()|\breq(?:uest)?\.url\b|\bcreateServer\(|\broutes?\s*\[|\bcase\s+['"`]\/[\w/-]*['"`]/ },
+  // a route anywhere (app.post('/x'), a Next.js POST handler) or a plain-Node one in the server folder: lib/routes.mjs
+  { name: 'a server route', all: (file, lines) => addsRoute(file, lines, cfg.server) },
   { name: 'a file read', re: /\breadFile(?:Sync)?\(|\bcreateReadStream\(|\.formData\(|\.arrayBuffer\(|\bmultipart\b|\bFileReader\b/ },
 ];
 
@@ -31,7 +34,7 @@ export function securityAdvice(diff, extra = new Map(), security = {}) {
   const advice = [];
   for (const [file, lines] of [...added].sort(([a], [b]) => a.localeCompare(b))) {
     if (!file.startsWith(cfg.code) || !/\.(?:ts|tsx|mjs|js)$/.test(file)) continue;
-    const found = TRIGGERS.filter((t) => (!t.only || t.only(file)) && lines.some((l) => !/^\s*(?:\/\/|\*|\/\*)/.test(l) && t.re.test(l))).map((t) => t.name);
+    const found = TRIGGERS.filter((t) => (t.all ? t.all(file, lines) : lines.some((l) => !/^\s*(?:\/\/|\*|\/\*)/.test(l) && t.re.test(l)))).map((t) => t.name);
     if (found.length) advice.push(`advice: ${file} adds ${found.join(' and ')}: run the security-review skill before --finish`);
   }
   return advice;

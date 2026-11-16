@@ -18,7 +18,10 @@
 2. Asks the running app which version it is.
 3. Runs `deploy.command` from `workflow/config.json`; `{version}` in it becomes the commit, for example `3f2a9c1d04be`.
 4. Waits until the app answers with the new version (`deploy.waitSeconds`, 120 by default).
-5. If it never does, runs `deploy.rollback` with the version from step 2 and says so.
+5. Watches it before calling it good (the canary: `deploy.watch`, 5 minutes by default, `/health` every 15 seconds, and
+   `deploy.watch.errors` when the project names a command that counts errors).
+6. If it never comes up or fails the watch, runs `deploy.rollback` with the version from step 2 and says so.
+`--env <name>` does the same for one of `deploy.environments` (staging, production), with that environment's settings.
 
 ## The health address (the app's side of the deal)
 `GET /health` answers 200 with `{ "ok": true, "version": "<commit>" }`. The version is the environment variable `APP_VERSION`,
@@ -30,5 +33,9 @@ Migrations run <when, and the command>. A migration must still work with the old
 one deploy, stop using the old one in the next, remove it in a third. Otherwise putting the old version back breaks the app.
 
 ## From GitHub instead of your computer
-<Not set up. When wanted: a workflow that runs `node workflow/scripts/deploy.mjs` after the gate passes on main, with the host's token as a
-repository secret.>
+`.github/workflows/deploy.yml` ships with this module: after the release workflow built the image on main, it deploys to staging by
+itself (the same script: health check, the watch, a rollback), and to production only when a person runs it by hand (Actions,
+deploy, Run workflow, production), or after staging when the repository variable `PRODUCTION_AFTER_STAGING` is `true` and the
+`production` environment has required reviewers. Each environment is skipped while `deploy.environments` does not name it, so
+nothing deploys from GitHub until `/launch` writes them. The host's credentials are that environment's secrets
+(<their names: `DEPLOY_SSH_KEY`, `DEPLOY_TOKEN`>); `docs/run/CICD.md` says how it fits.

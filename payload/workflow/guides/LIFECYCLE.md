@@ -9,7 +9,7 @@ they become real (choosing a cluster for an app with no users yet is waste). Rea
 | 1. Idea | a card per idea, bug or wish | `/idea`, the board | always |
 | 2. Plan | the product questions, the stack, the layers; a spec per feature | `/setup`, `docs/STACK.md`, `/spec` | at the start; per card |
 | 3. Build | tests first, a session per card, checks by scripts | `/work`, `/build`, the gate | per card |
-| 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit; browser smoke and accessibility tests (**not yet**) | `/ship`, `.github/workflows/` | per card |
+| 4. Ship | one commit when the owner says done, the gate on GitHub, a release image per commit; browser smoke and accessibility tests (**not yet** kit code: `/setup` adds Playwright as a project check with the first screen) | `/ship`, `.github/workflows/` | per card |
 | 5. Run | a host, infrastructure as code, secrets, data, monitoring, deploys without downtime | the basis now (`docs/PRODUCTION.md`); `/launch` for the rest | the first deploy card |
 | 6. Grow | a launch, people finding it, feedback becoming cards | `/market`, `docs/market/GROWTH.md`, the launch check | when it works for its first users |
 | 7. A small company | money in, a legal entity, terms, support, more than one person with access | *7. A small company* below | when someone pays, or a second person joins |

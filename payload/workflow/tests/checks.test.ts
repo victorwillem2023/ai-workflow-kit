@@ -45,6 +45,17 @@ describe('secrets in a change', () => {
     assert.deepEqual(scan(`const ${pw}; // not a secret: a test value`), []);
     assert.deepEqual(scan(`"integrity": "${aws}"`, 'package-lock.json'), []);
   });
+  it('refuses a password in a connection string and a signed token (JWT)', () => {
+    const url = 'postgres' + '://app:' + 'password' + '@db.internal:5432/app';
+    assert.deepEqual(scan(`const url = "${url}";`), [{ file: 'src/a.ts', kind: 'a password in a connection string' }]);
+    const jwt = ['eyJ' + 'hbGciOiJIUzI1NiJ9', 'eyJ' + 'zdWIiOiIxMjM0NTY3ODkwIn0', 'dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U'].join('.');
+    assert.deepEqual(scan(`Authorization: Bearer ${jwt}`), [{ file: 'src/a.ts', kind: 'a signed token (JWT)' }]);
+  });
+  it('a connection string filled in from the environment, a placeholder or one on this computer passes', () => {
+    for (const ok of ['postgres' + '://app:${DB_PASSWORD}@db/app', 'postgres' + '://app:<password>@host/app', 'postgres' + '://postgres:postgres@localhost:5432/dev', 'https://example.com/a:b@c']) {
+      assert.deepEqual(scan(`const url = "${ok}";`), [], ok);
+    }
+  });
   it('a tracked .env is named; .env.example is not', () => {
     assert.deepEqual(envFiles(['.env', '.env.example', 'apps/api/.env.local', 'src/env.ts']), ['.env', 'apps/api/.env.local']);
   });

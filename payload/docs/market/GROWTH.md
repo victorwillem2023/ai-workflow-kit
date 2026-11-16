@@ -127,6 +127,10 @@ conditions and limit remarketing; ads must not imply they know the viewer's heal
 Read the policy for your category before the first ad; keep tracking tags off every page that shows health data.
 
 ## AdSense: earning from ads on your own pages
+> **Not yet tried in a real project.** This section was written before the kit's rule that a part comes from a real project's need
+> (README). Read it as a starting point, not as tested advice: check each step against the tool's own docs, and when a project
+> first uses it, the kit's version is reworked from what that project found (or removed).
+
 AdSense is the other side: Google shows ads on your site and pays you per view or click.
 - **It fits** a content site with a lot of free traffic (guides, tools, calculators), where ads pay for the hosting.
 - **It does not fit** a paid app, a sign-up page, or any page with personal or health data: ads slow the page, distract from

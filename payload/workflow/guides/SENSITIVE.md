@@ -27,8 +27,12 @@ The folders and files listed under `sensitive.paths` in `workflow/config.json`, 
 
 ## Why a script and a person, not the model
 - The model cannot sign: `npm run signoff` needs a person typing at a terminal (input from a pipe or an agent is refused, and a
-  typed-back code is asked), and the agent's settings deny it the command and the record file. That stops a model from
-  approving its own work; it does not stop a person who means to cheat, and it is not meant to.
+  typed-back code is asked), and the agent's settings deny it the command and the record file. Each row carries a seal made
+  with a key only this computer has (in git's own folder); the gate refuses a row whose seal does not check out, so a row
+  appended by a shell command does not count, and the stop-point hook refuses an agent's command that writes the record or
+  reads the key. That stops a model from approving its own work; it does not stop a person who means to cheat, and it is not
+  meant to. GitHub's runners have no key: there a sealed row is taken as it is, so the check that counts is the one on the
+  computer that signed (the gate before `--finish`).
 - The sign-off holds a fingerprint of the files, so it covers exactly what was read. A change after it fails the gate again.
 - With pull requests on a paid or public repository, add a `CODEOWNERS` line for the same folders and require the owner's
   review on GitHub too: a second lock on the same door.

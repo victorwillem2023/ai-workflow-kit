@@ -4,14 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{PROJECT}} app map</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Bitter:wght@600&display=swap" rel="stylesheet">
 <style>
 /* layout idea: a left rail of stages, one stage at a time as an indented yes/no tree with status pills */
 :root{
   --bg:#eef1ee; --panel:#ffffff; --ink:#17251f; --muted:#5b6b64; --line:#c5cec8; --accent:#1d5fa8;
   --ask:#6b3fa0; --ask-bg:#ece2f7; --ok:#1f7a4d; --ok-bg:#dff1e6; --weak:#8a5a00; --weak-bg:#fbeecb; --gap:#a3312b; --gap-bg:#f9dedb; --un:#55606b; --un-bg:#e3e7ea;
-  --display:'Bitter',Georgia,serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --display:Georgia,'Iowan Old Style',serif; --body:system-ui,-apple-system,'Segoe UI',sans-serif; --mono:ui-monospace,'Cascadia Mono',Menlo,monospace; /* the computer's own fonts: the page loads nothing from outside */
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#121815; --panel:#1b2420; --ink:#e6ede9; --muted:#9aaba3; --line:#39463f; --accent:#7db4f0;

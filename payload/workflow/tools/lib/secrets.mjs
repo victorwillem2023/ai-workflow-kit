@@ -9,6 +9,12 @@ const KINDS = [
   ['a Stripe live key', /\b[sr]k_live_[0-9a-zA-Z]{20,}/],
   ['a Slack token', /\bxox[baprs]-[0-9A-Za-z-]{20,}/],
   ['a Google API key', /\bAIza[0-9A-Za-z_-]{35}\b/],
+  // a signed token (JWT): three base64url parts, the first two JSON ({" is eyJ), so a session or service token pasted in
+  ['a signed token (JWT)', /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
+  // a password in a connection string (postgres://app:<password>@db, redis, amqp, mongodb+srv, smtp...); a value filled
+  // in from the environment (${PASSWORD}, $PASSWORD, %s, {password}), a placeholder, or a database on this computer only
+  // (localhost, 127.0.0.1: the dev compose file's) is not one
+  ['a password in a connection string', /\b[a-z][a-z0-9+.-]{1,20}:\/\/[^\s:/@'"`]*:(?![^@\s'"`]*(?:\$|\{|%s|<|\*\*\*|example|changeme|placeholder|xxxx|your[-_ ]))[^@\s'"`/]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])\b)[\w.-]+/i],
   // password = "long literal": a value read from the environment, a placeholder or a short word is not one
   ['a password or key written into the code', /\b(?:password|passwd|secret|token|api[_-]?key)\w*["']?\s*[:=]\s*["'`](?![^"'`]*(?:\$\{|\{\{|<|example|changeme|placeholder|xxxx|your[-_ ]))[^"'`\s]{16,}["'`]/i],
 ];

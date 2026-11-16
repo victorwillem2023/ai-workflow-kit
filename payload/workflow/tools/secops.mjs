@@ -17,6 +17,8 @@ import { forOthers } from './lib/audience.mjs';
 import { drillDue } from './lib/drill.mjs';
 import { accessDue, combine, fromCerts, fromGitleaks, fromOsv, fromSemgrep, fromTrivy, report } from './lib/secops.mjs';
 import { ipRuleProblems } from './lib/network.mjs';
+import { productionHosts } from './lib/production.mjs';
+import { ghRun } from './lib/gh.mjs';
 
 const args = process.argv.slice(2);
 const opt = (n) => (args.includes(n) ? args[args.indexOf(n) + 1] : undefined);
@@ -37,18 +39,14 @@ const COVERS = {
   gitleaks: 'secrets anywhere in git\'s history (gitleaks)',
 };
 
-function gh(a, input) {
-  const custom = process.env.WORKFLOW_GH;
-  const go = (cmd) => spawnSync(custom ? process.execPath : cmd, custom ? [custom, ...a] : a, { input, encoding: 'utf8', shell: false, windowsHide: true, timeout: 60_000, maxBuffer: 64 << 20 });
-  const res = go('gh');
-  return res.error?.code === 'ENOENT' && process.platform === 'win32' ? go('C:\\Program Files\\GitHub CLI\\gh.exe') : res;
-}
+const gh = (a, input) => ghRun(a, input, { timeout: 60_000 }); // lib/gh.mjs
 const readJson = (f) => { try { return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null; } catch { return null; } };
 
-// the app's public addresses: `security.domains` in the config, else the host of `deploy.url`
+// the app's public addresses: `security.domains` in the config, else the production hosts (deploy.url, and what /launch writes
+// under deploy.environments: lib/production.mjs)
 function domains() {
   if (config.security?.domains?.length) return config.security.domains;
-  try { return config.deploy?.url ? [new URL(config.deploy.url).hostname] : []; } catch { return []; }
+  return productionHosts(config);
 }
 // one TLS handshake per address, reading when its certificate ends
 const certOf = (host) => new Promise((done) => {

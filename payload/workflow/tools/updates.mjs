@@ -3,9 +3,10 @@
 //   npm run updates               the security alerts, then each waiting pull request and what to do with it
 //   npm run updates -- --short    one line (the start of /work, the health screen)
 // Reads GitHub through gh and changes nothing. GitHub that cannot be reached is one line, never a failure (exit 0).
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { autoMerges, holdSnippet, judgePr, readAlerts, runtimeNode, shortLine, toolImages, updateTools } from './lib/updates.mjs';
+import { ghRun } from './lib/gh.mjs';
 
 const short = process.argv.includes('--short');
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
@@ -13,13 +14,7 @@ const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const repo = String(config.board?.repo ?? '').includes('/') ? config.board.repo : `${config.board?.owner}/${config.board?.repo}`;
 const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : undefined);
 
-// gh with an argument list and no shell; on Windows also where its installer puts it. WORKFLOW_GH (tests): a node script that stands in for gh.
-function gh(args) {
-  const custom = process.env.WORKFLOW_GH;
-  const go = (cmd) => spawnSync(custom ? process.execPath : cmd, custom ? [custom, ...args] : args, { encoding: 'utf8', shell: false, windowsHide: true, timeout: 30_000, maxBuffer: 64 << 20 });
-  const res = go('gh');
-  return res.error?.code === 'ENOENT' && process.platform === 'win32' ? go('C:\\Program Files\\GitHub CLI\\gh.exe') : res;
-}
+const gh = (args) => ghRun(args, undefined, { timeout: 30_000 }); // lib/gh.mjs
 const json = (res) => { try { return JSON.parse(res.stdout); } catch { return null; } };
 
 const list = (author) => gh(['pr', 'list', '--repo', repo, '--author', author, '--state', 'open', '--limit', '50', '--json', 'number,title,body,url,statusCheckRollup']);

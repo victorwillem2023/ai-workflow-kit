@@ -23,9 +23,10 @@ When the card it needs is **built** (in *Waiting for your check*: the owner is t
 pushed, the work does not wait:
 - finished on the local main already: start from main as usual (main has it; `--push` is not needed first);
 - built in its own session, not finished: start on top of it: `node workflow/scripts/session.mjs <topic> --card <n> --on <its topic>`
-  (`/build` does this from the spec's "Starts on: <topic>" line). The new session has the other one's work, as committed:
-  builders do not commit while the owner tries it, so first commit the base's work in its folder as one commit with its
-  feature's subject (`--finish` squashes later rounds into it; `session.mjs` refuses `--on` while the base has loose work).
+  (`/build` does this from the spec's "Starts on: <topic>" line). The new session has the other one's work as it is now:
+  builders do not commit while the owner tries it, so `--on` saves the base's uncommitted work itself, as a checkpoint on the
+  base's own branch (nothing reaches main, so it is not the owner's "done"; never run `git commit` for it yourself, the hook
+  refuses that). When the base ships, `/ship` passes the approved subject to `--finish`, which replaces the checkpoint's.
 
 The rules that keep it safe, all checked by `session.mjs`:
 - the base is finished first (its check comes first); finishing the stacked one before it is refused;

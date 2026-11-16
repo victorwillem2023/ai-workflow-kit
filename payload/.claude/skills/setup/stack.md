@@ -64,9 +64,13 @@ Rules that keep a stack future-proof:
 - **Every new library is a decision in `docs/STACK.md`** with the owner's yes; the gate prints an `advice:` line for one that isn't.
 
 ## 1. Language
-Rust by default: the compiler catches most of an agent's mistakes before a test runs. TypeScript when most of the work is a
-browser screen. Python for data, notebooks or machine learning (run through uv). Go for a small network service a team already runs
-in Go. An existing project keeps its language. `starter/lang.json` in the kit has each one's commands.
+TypeScript by default: it is the language the kit checks in full (the production module, the fake clock, picking the tests a
+change reaches, and the security, hostile-input and error checks read TypeScript; for Python, Go and Rust they say "not checked"
+instead, and the production module is not there yet). Rust when the owner wants the compiler to catch most of an agent's mistakes
+before a test runs and accepts those gaps (layer rules, the import map and the SQL advice do read it). Python for data, notebooks
+or machine learning (run through uv). Go for a small network service a team already runs in Go. An existing project keeps its
+language. `starter/lang.json` in the kit has each one's commands; tell the owner in one line what the kit does not check for the
+language picked.
 
 ## 1b. What runs the JavaScript (only for TypeScript)
 Ask it, never assume it. Three sound choices; say which fits this app and why:
@@ -159,7 +163,9 @@ Playwright: `npm init playwright@latest`, then in `checks` of the config (the ga
 with `--all`; `setup` runs on GitHub only, on your own computer the browser is installed once):
 `{ "name": "e2e", "command": "npx playwright test --reporter=line", "when": ["src/web/**", "e2e/**"], "setup": "npx playwright install --with-deps chromium" }`
 
-With screens this is **not optional**: "does it work for a person" is a test, not only the owner trying a URL. Start with one
+With screens this is **not optional**, and the kit ships no browser test of its own: `/setup` adds Playwright as above the day
+the first screen is planned (the README and LIFECYCLE.md say "not yet" for that reason). "Does it work for a person" is a test, not
+only the owner trying a URL. Start with one
 smoke test per main screen (it opens, the main action works) and an accessibility scan on each (`@axe-core/playwright`): it
 fails on a missing label, too little contrast or a button the keyboard cannot reach.
 ```ts

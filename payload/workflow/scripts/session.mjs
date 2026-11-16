@@ -8,9 +8,9 @@
 //                                               the owner's check); finishing the other one moves this one onto main by itself
 //   node workflow/scripts/session.mjs --restack <topic>  move a session that was built on another one onto main, once that one is finished (what
 //                                               --finish does by itself; by hand after uncommitted work or a conflict was in the way)
-//   node workflow/scripts/session.mjs --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"]
+//   node workflow/scripts/session.mjs --finish <topic> [--subject "<s>"] [--body "<b>"] [--no-checks] [--keep-commits] [--partial "<what is left>"]
 //                                               put the branch into the LOCAL main, not onto origin: squash the branch into ONE commit (with the
-//                                               first commit's message; --keep-commits for a big rework that is several), rebase it on main (a
+//                                               --subject the owner approved, else the first commit's message; --keep-commits for a big rework that is several), rebase it on main (a
 //                                               conflict only in the file map is solved by making the map again), re-make the map into the same
 //                                               commit, typecheck and test, move main forward, take the session away, move the card to
 //                                               "Waiting for your check" (with --no-checks the folder and branch stay until --clean --yes); with --partial the card is only partly done: it stays in "In progress"
@@ -53,14 +53,17 @@ async function make(topic, card, on) {
   if (on !== undefined) {
     if (FLOW === 'pr') throw new Error('--on is for the direct flow; with pull requests, start from main once the other one is merged.');
     if (!branchExists(on)) throw new Error(`There is no session "${on}" to build on (node workflow/scripts/session.mjs --list).`);
-    if (isAncestor(main, on, MAIN)) console.log(`"${on}" is on main already, so this session starts from main.`);
-    else {
-      from = on;
-      // builders do not commit while the owner tries it, so the built work is often loose: without a commit the new session would not have it
-      if (existsSync(folderOf(on)) && looseWork(folderOf(on))) {
-        throw new Error(`"${on}" has uncommitted work, which a session on top of it would not get. Commit it there first, as one commit with the feature's subject (--finish squashes later rounds into it):\n  cd "${folderOf(on)}" && git add -A && git commit -m "<Area: what changed>"`);
-      }
+    // builders do not commit while the owner tries it, so the built work is often loose, with no commit of its own yet: without one
+    // the new session would not have it. It is saved here as a checkpoint on the base's own branch: nothing reaches main, so it is not the owner's stop
+    // point (the agent never runs git commit for it), and --finish later squashes it under the subject the owner approves.
+    if (existsSync(folderOf(on)) && looseWork(folderOf(on))) {
+      git(folderOf(on), 'add', '-A');
+      git(folderOf(on), 'commit', '-q', '-m', `${CHECKPOINT} ${on}: built, waiting for the owner's check`);
+      console.log(`Saved "${on}"'s uncommitted work as a checkpoint on its own branch (not on main; --finish ${on} replaces its message with the approved one).`);
     }
+    // (only now: a base whose work is all uncommitted would look as if it were on main already)
+    if (isAncestor(main, on, MAIN)) console.log(`"${on}" is on main already, so this session starts from main.`);
+    else from = on;
   }
   catchUp(mainState(false));
   const taken = usedPorts();
@@ -123,6 +126,19 @@ function drop(topic) {
  * (typecheck and tests, unless --no-checks) and main moves forward. The main folder is never switched to another branch and
  * another session's branch or files in it are never touched: when it is on another branch, only the main ref moves.
  */
+/** The first word of a checkpoint commit's subject: work saved by --on, waiting for the owner's check, never a feature's subject. */
+const CHECKPOINT = 'checkpoint:';
+
+/** The finished commit's message: the approved --subject (and --body), else the first commit's; never a checkpoint's. */
+function finishMessage(dir, base, o) {
+  if (o.subject !== undefined && !o.subject.trim()) throw new Error('--subject needs the approved subject, for example --subject "Plans: a rest week every fourth week".');
+  if (o.subject) return [o.subject.trim(), o.body?.trim()].filter(Boolean).join('\n\n');
+  const first = git(dir, 'rev-list', '--reverse', `${base}..HEAD`).split('\n')[0];
+  const kept = git(dir, 'log', '-1', '--format=%B', first);
+  if (kept.startsWith(CHECKPOINT) && !o.keepCommits) throw new Error(`The first commit is a checkpoint ("${kept.split('\n')[0]}"): finish with the subject the owner approved, --subject "<Area: what changed>".`);
+  return kept;
+}
+
 async function finish(topic, o) {
   if (o.partial !== undefined && !o.partial.trim()) throw new Error('--partial needs the words for what is left, for example --partial "the map part".');
   const dir = folderOf(topic);
@@ -138,13 +154,15 @@ async function finish(topic, o) {
   const own = Number(git(dir, 'rev-list', '--count', 'main..HEAD'));
   if (own === 0) throw new Error(`Nothing to finish: "${topic}" has no commits of its own on top of main.`);
   const original = git(dir, 'rev-parse', 'HEAD');
+  const message = finishMessage(dir, base, o);
   try {
-    if (own > 1 && !o.keepCommits) {
-      const first = git(dir, 'rev-list', '--reverse', `${base}..HEAD`).split('\n')[0];
+    if (!o.keepCommits && (own > 1 || o.subject)) {
+      // one commit, under the message the owner approved (/ship step 6: --subject, --body); without one, the first commit's,
+      // unless that is a checkpoint (a stacked base saved by --on), which is never a feature's subject
       const msgFile = join(dir, '.git-squash-message');
-      writeFileSync(msgFile, `${git(dir, 'log', '-1', '--format=%B', first)}\n`);
+      writeFileSync(msgFile, `${message}\n`);
       try { git(dir, 'reset', '--soft', base); git(dir, 'commit', '-q', '-F', msgFile); } finally { rmSync(msgFile, { force: true }); }
-      console.log(`Squashed ${own} commits into one: ${git(dir, 'log', '-1', '--format=%s')}`);
+      console.log(own > 1 ? `Squashed ${own} commits into one: ${git(dir, 'log', '-1', '--format=%s')}` : `Committed as: ${git(dir, 'log', '-1', '--format=%s')}`);
     }
     rebaseOn(dir, MAIN, `Rebasing "${topic}" on main`, { mapConflicts: !o.keepCommits });
     remakeMap(dir);
@@ -336,10 +354,10 @@ try {
   else if (a === '--merge' && b) await merge(b);
   else if (a === '--remove' && b) remove(b);
   else if (a === '--drop' && b) drop(b);
-  else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial') });
+  else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> | --restack <topic> | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

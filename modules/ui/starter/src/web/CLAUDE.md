@@ -30,11 +30,12 @@ card first and leave a comment on it when you stop.
    as the board, its notes file and its README row. A card that is not labelled `ui` and turns out to need one: stop and ask to
    relabel or split it. **A small tweak to a part that exists**: a fast live draft is allowed, no board, one pass, then the owner tries it.
 6. **Browser feedback** is one numbered list per round: one pass per round, with before and after pictures (`workflow/scripts/shots.mjs`).
-6. If you must deviate from a board, say so in the commit body and in your reply, and write it in the board's notes file (`docs/STYLE.md`
+7. If you must deviate from a board, say so in the commit body and in your reply, and write it in the board's notes file (`docs/STYLE.md`
    too when a token, component or rule changes). Never leave code and style sheet disagreeing.
 
-Rules 1 to 4, 6 and the checklist below hold for every edit in `src/web`, whatever the card's label; only the board, the
+Rules 1 to 4, 7 and the checklist below hold for every edit in `src/web`, whatever the card's label; only the board, the
 pictures and the numbered feedback rounds are kept to `ui` cards.
 
-**Done checklist for any UI change** (say it in the reply): tokens only, no inline styles, matches the board, 44 px targets,
+**Done checklist for any UI change** (say it in the reply; `/ui` adds its board items to this one list): tokens only, no inline
+styles, matches the board (or the difference said), one primary button per view, meaning not by colour alone, 44 px targets,
 keyboard works, light and dark, phone width, the board card closed if one shipped.

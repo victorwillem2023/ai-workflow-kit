@@ -1,4 +1,9 @@
 export const HOLDS_MS: number;
-export function saidInPrompt(prompt: string): { commit: boolean; push: boolean };
+type Said = { commit: boolean; push: boolean; clear: boolean };
+type Noted = { commit?: number; push?: number };
+export function saidInPrompt(prompt: string): Said;
 export function needsWord(command: string): 'commit' | 'push' | null;
-export function verdict(command: string, noted: { commit?: number; push?: number } | undefined, now?: number): { ok: boolean; why?: string };
+export function ownersOnly(command: string): string | null;
+export function verdict(command: string, noted: Noted | undefined, now?: number): { ok: boolean; why?: string };
+export function noteKey(input: { session_id?: string } | undefined, cwd: string): string;
+export function nextNote(all: Record<string, Noted>, key: string, said: Said, now?: number): Record<string, Noted>;

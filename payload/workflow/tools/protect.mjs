@@ -5,10 +5,11 @@
 //   node workflow/tools/protect.mjs --check   say what is in place; changes nothing
 // The GitHub rule needs gh, admin rights, and a public repository or a paid plan; when GitHub refuses, the local guard still works.
 // A hook that is already there and is not ours is left alone and named.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ruleset, verdict, hookText, repoName } from './lib/protect.mjs';
+import { ghRun } from './lib/gh.mjs';
 
 const args = process.argv.slice(2);
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
@@ -16,13 +17,7 @@ const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: '
 const hook = join(resolve(root, execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).trim()), 'hooks', 'pre-push');
 const flow = (() => { try { return JSON.parse(readFileSync(join(root, 'workflow/config.json'), 'utf8')).session?.flow; } catch { return undefined; } })();
 const ours = () => existsSync(hook) && readFileSync(hook, 'utf8').includes('workflow/tools/protect.mjs');
-// gh with an argument list and no shell; on Windows also where its installer puts it. WORKFLOW_GH (tests): a node script that stands in for gh.
-function gh(a, input) {
-  const custom = process.env.WORKFLOW_GH;
-  const go = (cmd) => spawnSync(custom ? process.execPath : cmd, custom ? [custom, ...a] : a, { input, encoding: 'utf8', shell: false, windowsHide: true });
-  const res = go('gh');
-  return res.error?.code === 'ENOENT' && process.platform === 'win32' ? go('C:\\Program Files\\GitHub CLI\\gh.exe') : res;
-}
+const gh = (a, input) => ghRun(a, input); // lib/gh.mjs: no shell, gh's Windows place, WORKFLOW_GH in tests
 
 function local() {
   if (existsSync(hook) && !ours()) return `this computer: not set. ${hook} is someone else's hook; add the guard to it by hand (node workflow/tools/protect.mjs --print-hook)`;

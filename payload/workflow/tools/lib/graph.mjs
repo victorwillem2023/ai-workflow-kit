@@ -99,17 +99,78 @@ export function isNodeModule(spec) {
   return spec.startsWith('node:') || BUILTIN.has(spec.split('/')[0]);
 }
 
-export function resolveImport(from, spec, known) {
-  if (!spec.startsWith('.')) return null;
-  const base = posix.join(posix.dirname(from), spec);
-  const stem = base.replace(/\.(?:js|mjs)$/, '');
-  // a folder stands for its index file (`import('../variants')` is src/variants/index.tsx)
-  const tries = [base, base + '.ts', base + '.tsx', base + '.mjs', base + '.js', base + '/index.ts', base + '/index.tsx', base + '/index.mjs', base + '/index.js', stem + '.ts', stem + '.tsx'];
-  return tries.find((t) => known.has(t)) ?? null;
+/** A tsconfig's text without its comments and trailing commas (tsconfig is JSON with comments), parsed; null when it is not. */
+function parseJsonc(text) {
+  let out = '', i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === '"') { const end = /"(?:[^"\\]|\\.)*"/y; end.lastIndex = i; const m = end.exec(text); out += m ? m[0] : c; i += m ? m[0].length : 1; continue; }
+    if (c === '/' && text[i + 1] === '/') { while (i < text.length && text[i] !== '\n') i++; continue; }
+    if (c === '/' && text[i + 1] === '*') { const e = text.indexOf('*/', i + 2); i = e < 0 ? text.length : e + 2; continue; }
+    out += c; i++;
+  }
+  try { return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1')); } catch { return null; }
 }
 
-// files: Map<path, text> of code files; others: paths of non-code files that exist (css, json, html).
-export function buildGraph(files, others = []) {
+/**
+ * The path aliases a tsconfig sets (`"paths": { "@/*": ["./src/*"] }`, `"baseUrl": "src"`), with their targets from the project's
+ * root: [{ dir, pattern, targets }]. `dir` is the tsconfig's folder ('' at the root, 'apps/web/' for an app): its aliases apply to
+ * the files under it. Next.js, shadcn/ui and Vite starters import with `@/`, so without these the layer rules and test picking
+ * would not see those imports at all.
+ */
+export function aliasesFrom(tsconfigText, dir = '') {
+  const opts = parseJsonc(String(tsconfigText ?? ''))?.compilerOptions ?? {};
+  const at = dir ? `${dir.replace(/\/$/, '')}/` : '';
+  const base = posix.normalize(at + (opts.baseUrl ?? '.')).replace(/^\.$/, '');
+  const from = (p) => posix.normalize(posix.join(base, p)).replace(/^\.\//, '');
+  const out = Object.entries(opts.paths ?? {}).map(([pattern, targets]) => ({ dir: at, pattern, targets: [].concat(targets).map(from) }));
+  if (opts.baseUrl) out.push({ dir: at, pattern: '*', targets: [from('*')] });
+  return out;
+}
+
+/** Every alias of the project: the root's tsconfig.json and each app's (`apps` in the config). `read(path)` is the text or null. */
+export function projectAliases(apps, read) {
+  const dirs = ['', ...(Array.isArray(apps) ? apps.map((a) => a.root).filter(Boolean) : [])];
+  return dirs.flatMap((d) => { const t = read(`${d ? `${d.replace(/\/$/, '')}/` : ''}tsconfig.json`); return t ? aliasesFrom(t, d) : []; });
+}
+
+/** The files an aliased import may be (`@/server/db` -> ['src/server/db']), for the aliases that apply to `from`. */
+function aliasTargets(from, spec, aliases) {
+  const out = [];
+  for (const a of aliases) {
+    if (a.dir && !from.startsWith(a.dir)) continue;
+    const star = a.pattern.indexOf('*');
+    const [pre, post] = star < 0 ? [a.pattern, ''] : [a.pattern.slice(0, star), a.pattern.slice(star + 1)];
+    if (star < 0 ? spec !== a.pattern : !(spec.startsWith(pre) && spec.endsWith(post) && spec.length >= pre.length + post.length)) continue;
+    const rest = star < 0 ? '' : spec.slice(pre.length, spec.length - post.length);
+    for (const t of a.targets) out.push(t.replace('*', rest));
+  }
+  return out;
+}
+
+const candidates = (base) => {
+  const stem = base.replace(/\.(?:js|mjs)$/, '');
+  // a folder stands for its index file (`import('../variants')` is src/variants/index.tsx)
+  return [base, base + '.ts', base + '.tsx', base + '.mjs', base + '.js', base + '/index.ts', base + '/index.tsx', base + '/index.mjs', base + '/index.js', stem + '.ts', stem + '.tsx'];
+};
+
+export function resolveImport(from, spec, known, aliases = []) {
+  if (!spec.startsWith('.')) {
+    // the nearest tsconfig first (an app's own before the root's), then the longest alias (`@/*` before baseUrl's `*`); the
+    // first that names a project file wins, and a package name stays outside
+    const order = [...aliases].sort((a, b) => b.dir.length - a.dir.length || b.pattern.length - a.pattern.length);
+    for (const t of aliasTargets(from, spec, order)) {
+      const hit = candidates(t).find((c) => known.has(c));
+      if (hit) return hit;
+    }
+    return null;
+  }
+  return candidates(posix.join(posix.dirname(from), spec)).find((t) => known.has(t)) ?? null;
+}
+
+// files: Map<path, text> of code files; others: paths of non-code files that exist (css, json, html);
+// aliases: what aliasesFrom read from the project's tsconfig files (`@/server/db` is then followed like `../server/db`).
+export function buildGraph(files, others = [], { aliases = [] } = {}) {
   const known = new Set([...files.keys(), ...others]);
   const imports = new Map(); // file -> resolved project files it imports
   const nodeImports = new Map(); // file -> node: modules it imports
@@ -134,15 +195,15 @@ export function buildGraph(files, others = []) {
       uses.set(file, r.uses);
       continue;
     }
-    uses.set(file, importsOf(text).filter((s) => !s.startsWith('.')));
+    const outside = [];
     for (const spec of importsOf(text)) {
-      if (isNodeModule(spec)) { nodes.push(spec.startsWith('node:') ? spec : 'node:' + spec); continue; }
-      const to = resolveImport(file, spec, known);
-      if (!to) continue;
+      if (isNodeModule(spec)) { nodes.push(spec.startsWith('node:') ? spec : 'node:' + spec); outside.push(spec); continue; }
+      const to = resolveImport(file, spec, known, aliases);
+      if (!to) { if (!spec.startsWith('.')) outside.push(spec); continue; }
       resolved.push(to);
-      if (!importedBy.has(to)) importedBy.set(to, new Set());
-      importedBy.get(to).add(file);
+      link(file, to);
     }
+    uses.set(file, outside);
     imports.set(file, resolved);
     nodeImports.set(file, nodes);
   }

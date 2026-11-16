@@ -30,4 +30,11 @@ describe('the skill scenarios', () => {
     assert.match(run('lesson-outside-kit-parts', 'kit-part').problems.join(), /changed a kit part of CLAUDE\.md/);
     assert.match(run('lesson-outside-kit-parts', '').problems.join(), /the rule was written nowhere/, 'doing nothing is not keeping the lesson');
   });
+  it('plan-build-done-ship passes the whole loop, and fails a commit before "done" or a subject that is not "Area: what changed"', () => {
+    const good = run('plan-build-done-ship', 'loop');
+    assert.equal(good.ok, true, good.problems.join('\n'));
+    assert.match(run('plan-build-done-ship', 'loop,build-commits').problems.join(), /turn 2.*committed before the owner tried it/);
+    assert.match(run('plan-build-done-ship', 'loop,bad-subject').problems.join(), /turn 3.*is not "Area: what changed"/);
+    assert.match(run('plan-build-done-ship', '').problems.join(), /turn 1.*no spec/);
+  });
 });

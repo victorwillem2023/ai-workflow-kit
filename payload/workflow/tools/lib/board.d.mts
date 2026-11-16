@@ -1,4 +1,4 @@
-/** `types`: the type labels (ui, feature, bug, workflow); when set, a card needs exactly one. */
+/** `types`: the type labels (ui, feature, bug, workflow, spike); when set, a card needs exactly one. */
 /** `labels`: the area, effort and feasibility labels /idea may use; `--init` makes them and `--check` reports the ones the repo lacks. */
 export interface Board { owner: string; repo: string; project: number; field?: string; columns: string[]; types?: string[]; labelColor?: string; labels?: { areas?: string[]; value?: string[]; effort?: string[]; feasibility?: string[]; milestone?: string[] } }
 export interface GhResult { status: number | null; stdout: string; stderr: string; error?: Error & { code?: string } }

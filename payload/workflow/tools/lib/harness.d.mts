@@ -5,3 +5,4 @@ export function shellPatterns(claudeSettings: unknown, kind?: "allow" | "deny"):
 export function opencodeConfig(o: { project: string; cfg?: Partial<typeof DEFAULTS>; claudeSettings?: unknown; private?: string[] }): string;
 export function addMissingRules(text: string, claudeSettings: unknown): { text: string; added: string[]; manual: string[] };
 export function agentsMd(project: string): string;
+export const OPENCODE_PLUGIN: string;

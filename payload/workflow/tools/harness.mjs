@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { addMissingRules, commandFile, opencodeConfig, agentsMd } from './lib/harness.mjs';
+import { addMissingRules, commandFile, opencodeConfig, agentsMd, OPENCODE_PLUGIN } from './lib/harness.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -23,6 +23,13 @@ if (h.opencode === false) { console.log('harness: OpenCode is off in workflow/co
 const skillsDir = join('.claude', 'skills');
 const skills = existsSync(skillsDir) ? readdirSync(skillsDir).filter((n) => existsSync(join(skillsDir, n, 'SKILL.md'))).sort() : [];
 const stale = [];
+// the stop points for OpenCode: a plugin that asks the same script as Claude Code's hooks (lib/harness.mjs, OPENCODE_PLUGIN)
+// (only with skills: a project with none, the minimal profile, has no flow to stop and no OpenCode commands)
+const plugin = join('.opencode', 'plugins', 'stop-points.js');
+if (skills.length && !same(read(plugin), OPENCODE_PLUGIN)) {
+  stale.push(plugin);
+  if (!check) { mkdirSync(join('.opencode', 'plugins'), { recursive: true }); writeFileSync(plugin, OPENCODE_PLUGIN); }
+}
 for (const name of skills) {
   const want = commandFile(name, readFileSync(join(skillsDir, name, 'SKILL.md'), 'utf8'), h.opencode || {});
   const file = join('.opencode', 'commands', `${name}.md`);

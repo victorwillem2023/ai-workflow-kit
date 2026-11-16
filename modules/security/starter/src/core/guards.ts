@@ -1,6 +1,6 @@
 // Small input guards: the pattern for anything read from a request, an uploaded file or a third-party page.
-// Every one has a size or count cap; every refusal has a test whose name says what is refused (tests/security/guards.test.ts).
-// Pure, so the browser can use them too.
+// Every one has a size or count cap; every refusal has a test whose name says what is refused (tests/security/security.test.ts,
+// *the input guards*). Pure, so the browser can use them too.
 
 /** A link that is safe to put in an `href`: http or https only. Returns the normalised address, or null (javascript:, data:, file:, relative...). */
 export function safeHref(value: unknown, maxLength = 2048): string | null {

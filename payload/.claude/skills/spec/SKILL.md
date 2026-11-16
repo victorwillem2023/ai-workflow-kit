@@ -16,7 +16,7 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    first (the pitch page: problem, first users, the smallest version, the stop rule). Ship the narrowest version first; the
    rest of the vision becomes cards for later, not this spec.
 1. Read the card: `npm run board -- --show <n>` (title, column, labels, text). Never read the whole board.
-   Its type label (`ui`, `feature`, `bug`, `workflow`) goes on the spec's "Card:" line; a card with none: ask which.
+   Its type label (`ui`, `feature`, `bug`, `workflow`; a `spike` card goes to /spike, not a spec) goes on the spec's "Card:" line; a card with none: ask which.
    Find what the feature does now in the guide part for it (`docs/GUIDE.md` lists them; open only that file in `docs/guide/`) and the files in `docs/MAP.md` (search them, don't read them
    whole) and open only the ranges you need.
 2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation). A card that adds a
@@ -31,10 +31,6 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    --with ai` adds it first. A fact the app relies on stays in code either way. No use fits: no question.
 3. Copy `workflow/tools/templates/spec.md` to `workflow/specs/<topic>.md`, put the card number(s) on its "Card:" line, and fill
    every section (the "Card stays open after this spec" line says `yes, what is left` when the card is only partly done, so `/ship` keeps it in In progress). Short, plain English.
-   - The app map (with the map module): `npm run board -- --map` shows the ends this card is on, and `grep -n` in
-     `docs/flow/map.js` finds the decisions it touches. Name each end the change moves (gap to built, a new end, a weak one
-     fixed), put `docs/flow/map.js` under "Files that change", and give every decision it touches its file (`f: 'src/...'`),
-     so the gate can tell when that code changes without its node.
    - The rule and who shares it: `grep -n` the rule's row in `docs/ARCHITECTURE.md`, *Rules and where each lives*; the change goes in
      the file that row names, and the spec lists the kinds of case that share it (CLAUDE.md, 11 to 14).
    - **When it fails**: for each thing that can go wrong (bad input, a service down, a missing record), the error the person
@@ -45,32 +41,12 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
      so `/ship` holds the commit to it. No: "none".
    - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one. Which level each
      belongs to, and the tests a route, a bug or a query always brings: `workflow/guides/TESTING.md`, *What every change needs*.
-   - **Stored data** (a table, a column, a query, a migration): the spec names them as `workflow/guides/DATA.md`, *In a spec*,
-     says: the migration and whether it destroys anything (then it is an open question for the owner), the constraint that
-     holds each new rule, the index.
-   - **Who may do it**: a new route, screen or stored thing says who may read and change it and what everyone else gets,
-     with a test per refusal (`workflow/guides/PERMISSIONS.md`, *Permissions: the rules*). Sign-in and permission code is sensitive.
-   - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
-   - **A screen** (added or changed, on any card): its four states (loading, empty, error, full: what the person sees in each),
-     where its data comes from, and for a form each field's message ("Enter a date after today"): `workflow/guides/SCREENS.md`.
-   - **Email, payments, uploads, a scheduled job or dates and times**: the rules of that part's section in
-     `workflow/guides/COMMON.md` that the change must keep, each with its test (a payment's webhook twice, a file of the wrong type,
-     the day the clocks change). Payments are sensitive.
-   - **Code no test reaches yet** (an older project: in the gate's *untested* list): the first tests pin what it does today,
-     before the change (`workflow/guides/TAKEOVER.md`, *2. A test before the first change*).
-   - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
-     order, so `/build` can run them as waves. Only when it pays for itself: a large card whose packages are each a few hundred
-     lines of real work on files of their own; small, medium or tangled work stays one builder (splitting it costs more in
-     set-up and joining than it saves). Offer the split as a choice in plain words, never decided silently: "One builder: about <time>. Or <n> builders at once, each on its own files: about <shorter
-     time>, for about the same cost in total plus a little for joining them, and one more thing to check at the seams."
-     The owner says which, before `/build`; the spec holds the packages only when they chose the split.
    - Security: any new endpoint, file reader or outbound fetch gets limits listed and a `security-review` before finish.
      A new endpoint follows `workflow/guides/API.md` (schema, errors, paging, limits, who may call it); a new outside host goes in
      `security.egress` (the owner says yes: what data goes there).
-   - Sensitive (a file under `sensitive.paths`: money, health, legal texts, personal data): a *Sources* list. Every number, rate,
-     limit or legal sentence the code will hold names where it comes from (a law with its article, a contract, a price list, a
-     file in `docs/sources/`), and the tests' expected values come from there, worked out by the owner. Anything with no source
-     is an open question for the owner, never filled in from what the model remembers (`workflow/guides/SENSITIVE.md`).
+   - **When the change has one of these, read its section in `.claude/skills/spec/when.md`** (and only that one): the app map
+     module; stored data; a new route, screen or stored thing (who may do it); a `ui` card; a screen; email, payments, uploads,
+     a scheduled job or dates; code no test reaches yet; a big job that might split into work packages; a sensitive file.
 4. Fill in "Suggested model for the build" (Sonnet by default: the plan is decided, building it is coding; Opus only if a design
    decision is left or a sensitive file is touched, with one reason).
    Show the owner a summary, including that line, and stop with one line: "Happy with it? Open a new chat here and type

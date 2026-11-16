@@ -4,7 +4,7 @@
 //   npm run retro
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { healthMoves, shipping } from './lib/retro.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { healthMoves, shipping, signsDue } from './lib/retro.mjs'; import { ghRun } from './lib/gh.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim(); } catch { return null; } };
 process.chdir(git('rev-parse', '--show-toplevel'));
@@ -27,3 +27,15 @@ else console.log('Health since a week ago: no commit that old yet');
 // the board: what can be started, and what waits off it (the board script does the reading; nothing here asks a model)
 const board = spawnSync(process.execPath, ['workflow/tools/board.mjs', '--next', '3'], { encoding: 'utf8', timeout: 60_000 });
 console.log(`Next on the board:\n${String(board.stdout || board.stderr).trim().split('\n').filter((l) => !l.startsWith('>')).join('\n')}`);
+
+// "how we will know it worked", as /ship wrote it on each card: the ones whose date has come (/retro asks the owner to look)
+const repo = config.board?.repo;
+if (repo) {
+  const found = ghRun(['issue', 'list', '--repo', repo, '--state', 'all', '--search', '"How we will know it worked" in:comments', '--json', 'number,title,comments', '--limit', '100'], undefined, { timeout: 60_000 });
+  let issues = null;
+  try { issues = found.status === 0 ? JSON.parse(found.stdout) : null; } catch { issues = null; }
+  const due = issues ? signsDue(issues, now) : null;
+  if (due === null) console.log('Did it work: the board could not be read, so the signs to look at are not listed');
+  else if (!due.length) console.log('Did it work: nothing due a look');
+  else console.log(`Did it work, due a look:\n${due.map((d) => `  #${d.number} ${d.title}: ${d.sign} (look on ${d.on})`).join('\n')}\n  (after looking: gh issue comment <n> --body "Looked: <what you saw>")`);
+}
