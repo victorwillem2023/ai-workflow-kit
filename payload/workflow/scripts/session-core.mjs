@@ -6,7 +6,7 @@ import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkPackages, describeMissing } from './packages.mjs';
-import { stopMessage, stopSessionServer } from './session-stop.mjs';
+import { stopMessage, stopSessionServer } from './session-stop.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 export const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
@@ -59,10 +59,10 @@ export function mainState(strict) {
   // a repo whose remote was added after git init has no origin/HEAD (a clone does), and tools that compare with the default
   // branch (Claude Code's security-review) stop without it: point it at origin/main, a local ref only
   if (!gitQuiet(main, 'rev-parse', '--verify', '--quiet', 'refs/remotes/origin/HEAD') && gitQuiet(main, 'rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main')) {
-    gitQuiet(main, 'remote', 'set-head', 'origin', 'main');
+    gitQuiet(main, 'remote', 'set-head', 'origin', MAIN);
   }
   const log = (range) => git(main, 'log', '--format=%h %s', range).split('\n').filter(Boolean);
-  const onMain = git(main, 'branch', '--show-current') === 'main';
+  const onMain = git(main, 'branch', '--show-current') === MAIN;
   return {
     ahead: log('origin/main..main'),
     behind: Number(git(main, 'rev-list', '--count', 'main..origin/main')),
@@ -80,7 +80,7 @@ export function catchUp(s) {
     throw new Error(`main has ${waiting(s.ahead.length)} that ${s.ahead.length === 1 ? 'is' : 'are'} not pushed (${s.ahead.map((c) => c.slice(c.indexOf(' ') + 1)).join('; ')}) and origin/main has ${s.behind} new commit${s.behind === 1 ? '' : 's'}. Run: node workflow/scripts/session.mjs --push (it replays yours on top).`);
   }
   if (!s.behind) return;
-  if (git(main, 'branch', '--show-current') === 'main') git(main, 'merge', '--ff-only', 'origin/main');
+  if (git(main, 'branch', '--show-current') === MAIN) git(main, 'merge', '--ff-only', ORIGIN_MAIN);
   else git(main, 'fetch', 'origin', 'main:main');
   console.log(`main was ${s.behind} commit${s.behind === 1 ? '' : 's'} behind origin/main and is up to date now.`);
 }

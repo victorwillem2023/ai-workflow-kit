@@ -42,18 +42,18 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkS
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder } from './session-stop.mjs';
 import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, stopServer, ensurePackages, rebaseOn, remakeMap, runChecks, gh } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, serve, onOf, branchExists, stackedOn, restack } from './session-extras.mjs';
+import { sync, checkMain, commitNotes, carryNotes, serve, onOf, branchExists, stackedOn, restack } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 async function make(topic, card, on) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
   if (card !== undefined && !/^[1-9][0-9]*(,[1-9][0-9]*)*$/.test(card)) throw new Error('--card takes the number of a board card, like --card 42 (or --card 12,14 for cards built as one).');
   const dir = folderOf(topic);
   if (existsSync(dir)) throw new Error(`${dir} exists already.`);
-  let from = 'main';
+  let from = MAIN;
   if (on !== undefined) {
     if (FLOW === 'pr') throw new Error('--on is for the direct flow; with pull requests, start from main once the other one is merged.');
     if (!branchExists(on)) throw new Error(`There is no session "${on}" to build on (node workflow/scripts/session.mjs --list).`);
-    if (isAncestor(main, on, 'main')) console.log(`"${on}" is on main already, so this session starts from main.`);
+    if (isAncestor(main, on, MAIN)) console.log(`"${on}" is on main already, so this session starts from main.`);
     else {
       from = on;
       // builders do not commit while the owner tries it, so the built work is often loose: without a commit the new session would not have it
@@ -68,7 +68,7 @@ async function make(topic, card, on) {
   while (taken.has(port) || !(await free(port))) port++;
   ensurePackages('before the new session');
   git(main, 'worktree', 'add', '-b', topic, dir, from);
-  if (from !== 'main') git(main, 'config', `branch.${topic}.kitOn`, from);
+  if (from !== MAIN) git(main, 'config', `branch.${topic}.kitOn`, from);
   symlinkSync(join(main, 'node_modules'), join(dir, 'node_modules'), 'junction');
   const env = join(dir, '.env');
   // the copy keeps the keys but not main's own PORT or the session.env names: a second line would be ambiguous
@@ -80,7 +80,7 @@ async function make(topic, card, on) {
     git(main, 'config', `branch.${topic}.card`, card);
     await moveAndSay(card, 'In progress', `Session "${topic}" started: folder ${dir}`);
   }
-  const stacked = from !== 'main' ? `\n  on:     ${from} (built on top of it; when "${from}" is finished this one moves onto main by itself)` : '';
+  const stacked = from !== MAIN ? `\n  on:     ${from} (built on top of it; when "${from}" is finished this one moves onto main by itself)` : '';
   // no link here: whether there is anything to open depends on the change (a screen, or rules with nothing to see yet)
   console.log(`Session "${topic}" is ready.\n  folder: ${dir}\n  branch: ${topic}${stacked}\n  port:   ${port} (only for a change with a screen: node workflow/scripts/session.mjs --serve ${topic} starts it)`);
 }
@@ -90,7 +90,7 @@ function remove(topic) {
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   // check everything first: a refusal must leave the session as it was
   if (looseWork(dir)) throw new Error(`${dir} has uncommitted work. Commit it (or ask the owner) first.`);
-  try { git(main, 'merge-base', '--is-ancestor', topic, 'main'); }
+  try { git(main, 'merge-base', '--is-ancestor', topic, MAIN); }
   catch { throw new Error(`Branch "${topic}" is not merged into main yet. Finish it first: node workflow/scripts/session.mjs --finish ${topic}`); }
   stopServer(dir);
   const held = removeFolder(main, dir) === 'held';
@@ -131,10 +131,10 @@ async function finish(topic, o) {
   if (looseWork(dir)) throw new Error(`${dir} has uncommitted work. Commit it first (or ask the owner).`);
   const on = onOf(topic);
   // built on another session: that one is finished first (its check comes first), which moves this one onto main
-  if (on && branchExists(on) && !isAncestor(main, on, 'main')) throw new Error(`"${topic}" is built on top of "${on}", which is not finished yet. Finish "${on}" first (that moves "${topic}" onto main by itself), then this one.`);
+  if (on && branchExists(on) && !isAncestor(main, on, MAIN)) throw new Error(`"${topic}" is built on top of "${on}", which is not finished yet. Finish "${on}" first (that moves "${topic}" onto main by itself), then this one.`);
   if (on && !restack(topic)) throw new Error(`"${topic}" could not move onto main yet (see above). Nothing was finished.`);
   catchUp(mainState(false));
-  const base = git(dir, 'merge-base', 'main', 'HEAD');
+  const base = git(dir, 'merge-base', MAIN, 'HEAD');
   const own = Number(git(dir, 'rev-list', '--count', 'main..HEAD'));
   if (own === 0) throw new Error(`Nothing to finish: "${topic}" has no commits of its own on top of main.`);
   const original = git(dir, 'rev-parse', 'HEAD');
@@ -146,7 +146,7 @@ async function finish(topic, o) {
       try { git(dir, 'reset', '--soft', base); git(dir, 'commit', '-q', '-F', msgFile); } finally { rmSync(msgFile, { force: true }); }
       console.log(`Squashed ${own} commits into one: ${git(dir, 'log', '-1', '--format=%s')}`);
     }
-    rebaseOn(dir, 'main', `Rebasing "${topic}" on main`, { mapConflicts: !o.keepCommits });
+    rebaseOn(dir, MAIN, `Rebasing "${topic}" on main`, { mapConflicts: !o.keepCommits });
     remakeMap(dir);
   } catch (e) {
     if (git(dir, 'rev-parse', 'HEAD') !== original) git(dir, 'reset', '--hard', original);
@@ -156,7 +156,7 @@ async function finish(topic, o) {
   const card = cardOf(topic);
   const subject = git(dir, 'log', '-1', '--format=%s');
   if (FLOW === 'pr') return openPullRequest(topic, dir, card, subject, o);
-  if (git(main, 'branch', '--show-current') === 'main') git(main, 'merge', '--ff-only', topic);
+  if (git(main, 'branch', '--show-current') === MAIN) git(main, 'merge', '--ff-only', topic);
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone
   // the sessions built on this one leave its old commits behind and sit on main now (or say what is in the way)
   for (const s of stackedOn(topic)) restack(s, original);
@@ -178,7 +178,7 @@ async function openPullRequest(topic, dir, card, subject, o) {
   try { git(dir, 'push', '--force-with-lease', '-u', 'origin', `${topic}:${topic}`); }
   catch (e) { throw new Error(`origin did not take branch "${topic}" (${(e.stderr?.toString() ?? '').trim().split('\n').pop() || 'refused'}).`); }
   const seen = ghRun(['pr', 'view', topic, '--json', 'url,state', '--jq', 'select(.state=="OPEN") | .url']);
-  const url = seen.status === 0 && seen.stdout.trim() ? seen.stdout.trim() : gh('pr', 'create', '--base', 'main', '--head', topic, '--fill');
+  const url = seen.status === 0 && seen.stdout.trim() ? seen.stdout.trim() : gh('pr', 'create', '--base', MAIN, '--head', topic, '--fill');
   if (card && o.partial !== undefined) await sayPartial(card, `Pull request: ${url} (${subject}). Still open: ${o.partial.trim()}`);
   else if (card) await moveAndSay(card, 'Waiting for your check', `Pull request: ${url} (${subject})`);
   console.log(`Pull request: ${url}\nGitHub runs the checks on it; the session folder stays for fixes (finish again to update it).\nWhen the checks are green and the owner says so: node workflow/scripts/session.mjs --merge ${topic}`);
@@ -217,7 +217,7 @@ function push(o) {
   const s = mainState(true);
   if (!s.ahead.length) { catchUp(s); console.log('Nothing to push: no finished feature is waiting.'); return; }
   if (s.loose.length) throw new Error(looseMessage(s.loose));
-  const refused = (e) => new Error(`origin/main did not take it (${(e.stderr?.toString() ?? '').split('\n').find((l) => /rejected|denied|fatal|error/i.test(l))?.trim() ?? 'refused'}). Someone may have pushed first: run --push again.`);
+  const refused = (e) => new Error(`${ORIGIN_MAIN} did not take it (${(e.stderr?.toString() ?? '').split('\n').find((l) => /rejected|denied|fatal|error/i.test(l))?.trim() ?? 'refused'}). Someone may have pushed first: run --push again.`);
   if (!s.behind) {
     try { git(main, 'push', 'origin', 'main:main'); } catch (e) { throw refused(e); }
     console.log(`Pushed ${waiting(s.ahead.length)} to origin/main.`);
@@ -225,17 +225,17 @@ function push(o) {
   }
   const tmp = join(dirname(main), `${PREFIX}-pushing`);
   if (existsSync(tmp)) throw new Error(`${tmp} is left from a push that was interrupted. Remove it (git worktree remove --force "${tmp}") and run --push again.`);
-  const old = git(main, 'rev-parse', 'main');
-  git(main, 'worktree', 'add', '--detach', tmp, 'main');
+  const old = git(main, 'rev-parse', MAIN);
+  git(main, 'worktree', 'add', '--detach', tmp, MAIN);
   try {
     symlinkSync(join(main, 'node_modules'), join(tmp, 'node_modules'), 'junction');
-    console.log(`origin/main has ${s.behind} new commit${s.behind === 1 ? '' : 's'}: replaying ${waiting(s.ahead.length)} on top.`);
-    rebaseOn(tmp, 'origin/main', 'Replaying the finished features on origin/main', { mapConflicts: true });
+    console.log(`${ORIGIN_MAIN} has ${s.behind} new commit${s.behind === 1 ? '' : 's'}: replaying ${waiting(s.ahead.length)} on top.`);
+    rebaseOn(tmp, ORIGIN_MAIN, 'Replaying the finished features on origin/main', { mapConflicts: true });
     remakeMap(tmp);
     if (!o.noChecks) runChecks(tmp, '--push');
     const now = git(tmp, 'rev-parse', 'HEAD');
     try { git(tmp, 'push', 'origin', 'HEAD:main'); } catch (e) { throw refused(e); }
-    if (git(main, 'branch', '--show-current') === 'main') git(main, 'reset', '--keep', now);
+    if (git(main, 'branch', '--show-current') === MAIN) git(main, 'reset', '--keep', now);
     else git(main, 'update-ref', 'refs/heads/main', now, old);
     console.log(`Pushed ${waiting(s.ahead.length)} to origin/main.`);
   } finally {
@@ -256,7 +256,7 @@ const sameDir = (x, y) => resolve(x).toLowerCase() === resolve(y).toLowerCase();
 function sessionState(branch, dir) {
   if (!branch || !existsSync(dir)) return '';
   if (looseWork(dir)) return 'uncommitted';
-  try { git(main, 'merge-base', '--is-ancestor', branch, 'main'); } catch { return ''; }
+  try { git(main, 'merge-base', '--is-ancestor', branch, MAIN); } catch { return ''; }
   return gitQuiet(main, 'reflog', 'show', '--format=%H', `refs/heads/${branch}`).split('\n').filter(Boolean).length > 1 ? 'merged' : '';
 }
 

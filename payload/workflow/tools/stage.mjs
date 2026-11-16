@@ -11,7 +11,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { listCards } from './lib/board.mjs';
 import { shipping } from './lib/retro.mjs';
-import { BEFORE_DEPLOY, readRoadmap, stageNudges } from './lib/stage.mjs';
+import { BEFORE_DEPLOY, readRoadmap, stageNudges } from './lib/stage.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim(); } catch { return null; } };
 process.chdir(git('rev-parse', '--show-toplevel') ?? '.');
@@ -59,13 +59,13 @@ const milestone = board?.labels?.milestone?.[0];
 const done = (c) => c.state !== 'open' || c.column === 'Done';
 const v1 = cards && milestone ? cards.filter((c) => c.labels.includes(milestone)) : null;
 const decisions = existsSync('docs/decisions') ? readdirSync('docs/decisions') : [];
-const log = git('log', 'main', '--first-parent', '--since=9.weeks', '--format=%cI%x09%s') ?? '';
+const log = git('log', MAIN, '--first-parent', '--since=9.weeks', '--format=%cI%x09%s') ?? '';
 const commits = log.split('\n').filter(Boolean).map((l) => { const [date, ...rest] = l.split('\t'); return { date, subject: rest.join('\t') }; });
 const weeks = shipping(commits, new Date()).weeks;
 const roadmapAt = 'docs/company/ROADMAP.md';
 const roadmapChanged = existsSync(roadmapAt) ? git('log', '-1', '--format=%ct', '--', roadmapAt) : null;
 const roadmap = existsSync(roadmapAt) ? { ...readRoadmap(readFileSync(roadmapAt, 'utf8')), daysSinceChange: roadmapChanged ? Math.floor((Date.now() / 1000 - Number(roadmapChanged)) / 86400) : 0 } : null;
-const lastRetro = git('log', 'main', '-1', '--format=%ct', '--grep=retro of week', '-i');
+const lastRetro = git('log', MAIN, '-1', '--format=%ct', '--grep=retro of week', '-i');
 
 const lines = stageNudges({
   firstVersion: v1 ? { total: v1.length, open: v1.filter((c) => !done(c)).length } : null,

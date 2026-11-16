@@ -4,7 +4,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { git, gitQuiet, here, main, PREFIX, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, ensurePackages, npmRun, rebaseOn, gh } from './session-core.mjs';
+import { git, gitQuiet, here, main, PREFIX, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, ensurePackages, npmRun, rebaseOn, gh } from './session-core.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 /**
  * Docs and settings left in the main folder (by /docs, /lesson, /shape or the owner's own edits): any .md file, the workflow config,
@@ -48,7 +48,7 @@ export function checkMain() {
  */
 export function commitNotes(subject) {
   if (!subject) throw new Error('Say what the commit is: node workflow/scripts/session.mjs --commit-notes "Docs: what changed"');
-  if (git(main, 'branch', '--show-current') !== 'main') throw new Error('The main folder is not on main.');
+  if (git(main, 'branch', '--show-current') !== MAIN) throw new Error('The main folder is not on main.');
   const files = looseFiles();
   if (!files.length) { console.log('The main folder has nothing to commit.'); return; }
   const code = files.filter((f) => !NOTE.test(f));
@@ -119,12 +119,12 @@ export function restack(topic, oldTip) {
   if (!fork) throw new Error(`"${topic}" does not say where it left "${base}". Move it by hand: cd "${dir}" && git rebase --onto main <the last commit of ${base} it has>`);
   git(main, 'config', `branch.${topic}.kitFork`, fork);
   // moved already (by hand after a conflict, or an earlier run): nothing left to do
-  if (existsSync(dir) && isAncestor(dir, 'main', 'HEAD')) { forget(topic); return true; }
+  if (existsSync(dir) && isAncestor(dir, MAIN, 'HEAD')) { forget(topic); return true; }
   if (!existsSync(dir) || looseWork(dir)) {
     console.log(`"${topic}" was built on "${base}" and still sits on it: commit its work, then run node workflow/scripts/session.mjs --restack ${topic}`);
     return false;
   }
-  try { rebaseOn(dir, 'main', `Moving "${topic}" onto main`, { mapConflicts: true, from: fork }); }
+  try { rebaseOn(dir, MAIN, `Moving "${topic}" onto main`, { mapConflicts: true, from: fork }); }
   catch (e) { console.log(`${e.message}\nWhen that is solved: node workflow/scripts/session.mjs --restack ${topic}`); return false; }
   forget(topic);
   console.log(`"${topic}" was built on "${base}" and now sits on main.`);
@@ -140,7 +140,7 @@ export function restack(topic, oldTip) {
 export function carryNotes(topic) {
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
-  if (git(main, 'branch', '--show-current') !== 'main') throw new Error('The main folder is not on main.');
+  if (git(main, 'branch', '--show-current') !== MAIN) throw new Error('The main folder is not on main.');
   const status = execFileSync('git', ['status', '--porcelain', '-uall'], { cwd: main, encoding: 'utf8' }).split('\n').filter(Boolean)
     .map((l) => ({ code: l.slice(0, 2), file: l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, '') })).filter((x) => !/^node_modules\/?$/.test(x.file));
   if (!status.length) { console.log('The main folder has no notes to carry.'); return; }

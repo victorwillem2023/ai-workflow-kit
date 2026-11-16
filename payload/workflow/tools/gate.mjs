@@ -37,7 +37,7 @@ import { nodeOutOfStep, tofuUnpinned, unpinnedTools } from './lib/versions.mjs';
 import { namingProblems } from './lib/naming.mjs';
 import { policySteps, dataAdvice } from './lib/policy.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
-import { secretsIn, envFiles } from './lib/secrets.mjs';
+import { secretsIn, envFiles } from './lib/secrets.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -51,7 +51,7 @@ const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 <
 const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
 // what the change is compared with: --base, or where this branch left main (no commit yet: git's empty tree, all new)
-const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? (gitOk('rev-parse', '--verify', 'HEAD') ? 'HEAD' : '4b825dc642cb6eb9a060e54bf8d69288fbee4904');
+const base = baseArg ?? gitOk('merge-base', 'HEAD', ORIGIN_MAIN) ?? gitOk('merge-base', 'HEAD', MAIN) ?? (gitOk('rev-parse', '--verify', 'HEAD') ? 'HEAD' : '4b825dc642cb6eb9a060e54bf8d69288fbee4904');
 
 function listFiles() {
   const all = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean);

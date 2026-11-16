@@ -10,13 +10,13 @@ import { randomInt } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { matchesAny } from './lib/glob.mjs';
-import { CHECKLIST, fingerprint, parseSignoffs, sensitiveFiles, signoffRow } from './lib/signoff.mjs';
+import { CHECKLIST, fingerprint, parseSignoffs, sensitiveFiles, signoffRow } from './lib/signoff.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 process.chdir(git('rev-parse', '--show-toplevel'));
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const args = process.argv.slice(2);
-const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', 'origin/main') ?? git('merge-base', 'HEAD', 'main') ?? 'HEAD';
+const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', ORIGIN_MAIN) ?? git('merge-base', 'HEAD', MAIN) ?? 'HEAD';
 const FILE = 'docs/company/SIGNOFFS.md';
 
 const paths = config.sensitive?.paths ?? [];

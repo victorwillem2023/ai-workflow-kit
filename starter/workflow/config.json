@@ -48,6 +48,7 @@
   "data": { "migrations": ["**/migrations/**/*.sql", "**/migrations/*.{ts,js,py,go}", "drizzle/**/*.sql", "alembic/versions/*.py"] },
   "checks": [
     { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched .", "when": ["src/**", "tests/**", "biome.json"] },
+    { "name": "leaks", "command": "node workflow/tools/leaks.mjs", "all": true },
     { "name": "unused", "command": "node workflow/tools/unused.mjs", "all": true },
     { "name": "audit", "command": "npm audit --audit-level=high", "all": true },
     { "name": "infra", "command": "node workflow/tools/infracheck.mjs", "when": ["deploy/helm/**", "infra/**"] },

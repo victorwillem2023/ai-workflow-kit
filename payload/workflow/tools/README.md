@@ -355,6 +355,10 @@ The skills live once, in `.claude/skills/<name>/SKILL.md`; every agent reads tho
   spec, so the planning context is not sent again on every feedback round.
 
 ## Commits and sessions (the details behind CLAUDE.md)
+**A main branch with another name** ("trunk", "master", "develop"): `"git": { "main": "<name>" }` in `workflow/config.json`. The
+gate compares with it, sessions start from it, finish onto it and push it, and the retro and the stage read its history; the
+skills and guides still say "main" for it.
+
 **Commits.** One feature, one session, one commit; the owner says when it is done. Don't commit while the owner is trying it (one exception: a session another one is stacked on gets one commit first, `.claude/skills/work/together.md`);
 after feedback change the files (`--amend` only while unpushed). Write the message once: `--finish` keeps the first commit's,
 `--keep-commits` only for a big rework (say so in the message). `--finish` puts it on the local `main`;
