@@ -2,6 +2,28 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **2.10.0**: **the installer converges**: the same command gives the same result on a new project, an existing one or one that
+  has the kit. `.workflow-kit` now holds every choice (also the language, the name, the repo and the prefix), so running the
+  installer again updates (a flag changes only its own choice; `--force` replaces the machinery and keeps the choices), and what
+  no flag or record says is read from the project: its manifest, its git remote, or its own `workflow.config.json` (a project
+  from before the record). The kit's place on this computer is in git config (`workflow.kit`), not the committed record; `ref=`
+  is the version's tag. The self-test runs it again with no flags after the update and fails on any change.
+  **`--dry-run`** runs the same installer on a copy of the project and lists what it would add, change, move and remove.
+  **Into an existing project**: each file of the project's at a kit place is named, an existing CLAUDE.md gets the kit's
+  marked parts at its end (its own text kept, its budget grown to fit), and `package.json` keeps its layout with its own scripts
+  first. **A place for the project's own**: each skill reads `.claude/project/<command>.md` (this project's own steps, saying
+  where each goes; never in place of the owner's yes, the gate or a sign-off); the kit's parts of CLAUDE.md sit between
+  `<!-- kit:... -->` markers, and an update replaces one only when it is what the project's kit version wrote (from that
+  version's tag), so a part the owner changed stays theirs and is named; *This project's own rules* is where `/lesson` writes.
+  **Migrations**: the kit's version history moved out of the installer into `migrations/`, one step per version, run once when
+  the recorded version is older, each still looking before it acts. **What changed for you**: after an update, each kit
+  version's headlines since the project's, the commands whose text changed, and the app map's request group when it changed.
+  Each module describes itself in `modules/<name>/module.json`; `gate.yml` is filled in the same pass as the rest (no special
+  cases); a part added later takes its "(not installed)" marks out of the project's text. `npm run test:quick` checks the
+  installer's helpers in a second (the self-test runs it first). **Build-stage guides with their checks** (testing, data,
+  sign-in and permissions: `docs/workflow/TESTING.md`, `DATA.md`, `PERMISSIONS.md`): a migration edited after it was there
+  fails, SQL built from a value gets an advice line, and with `security.signIn` a new route without a "who is refused" test
+  does too; `/setup` asks about accounts and stored data.
 - **2.9.11**: **the self-test has an old, messy project** (Trailsmith at 2.8 the model): an app with debt (an unused file and
   export, a page over its weight budget), made with the kit of the v2.8.5 tag and passing that kit's gate, then given its own
   settings, a board, an area label, an input folder, a rule in CLAUDE.md and a page of its own. It is updated with this kit,
