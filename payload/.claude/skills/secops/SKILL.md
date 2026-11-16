@@ -25,7 +25,7 @@ The weekly run (`.github/workflows/secops.yml`) writes the report; this skill tu
      that the old value stays in git's history and must be treated as leaked;
    - a setup mistake (Dockerfile, infrastructure files): the change the report names.
    Stop for the owner's yes, per fix or for all of them.
-4. **On yes**: a fix of a few lines goes through the bug route in a session (`/work` style: `node scripts/session.mjs <topic>`,
+4. **On yes**: a fix of a few lines goes through the bug route in a session (`/work` style: `node workflow/scripts/session.mjs <topic>`,
    the test first, the gate, the owner tries it, one commit on "done"); anything larger becomes a card (`/idea` with the finding,
    the label `bug` and `area` from the file). Then a comment on the report issue: what was decided for each finding.
 5. **Write it down**: a fixed or accepted finding gets its line in `docs/SECURITY.md` (*Fixed*, or *Known gaps* with the card).

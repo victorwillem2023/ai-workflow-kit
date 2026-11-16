@@ -20,5 +20,5 @@ What goes elsewhere:
 - a rule for all the work, not one command: `CLAUDE.md`, *This project's own rules* (the kit's parts there are between
   `<!-- kit:... -->` markers; an update replaces only those);
 - a rule about one folder: that folder's `CLAUDE.md`;
-- a setting the kit has (a path, a list, a choice): `workflow.config.json`;
+- a setting the kit has (a path, a list, a choice): `workflow/config.json`;
 - a rule a machine can check: a check (`/lesson` says which).

@@ -1,4 +1,4 @@
-// Kit 2.9.7: the unused check runs knip through tools/workflow/unused.mjs (with a baseline) instead of knip itself. A project
+// Kit 2.9.7: the unused check runs knip through workflow/tools/unused.mjs (with a baseline) instead of knip itself. A project
 // whose check still has the kit's old command gets the new one; a command the project changed is its own and stays.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -9,11 +9,11 @@ export default {
   what: 'the unused check with a baseline',
   phase: 'config',
   run({ target, kit, fill }) {
-    const at = join(target, 'workflow.config.json');
+    const at = join(target, 'workflow/config.json');
     if (!existsSync(at)) return {};
     const was = readFileSync(at, 'utf8');
     const cfg = JSON.parse(was);
-    const kits = JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8'))).checks ?? [];
+    const kits = JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow/config.json'), 'utf8'))).checks ?? [];
     const said = [];
     for (const c of cfg.checks ?? []) {
       const now = kits.find((k) => k.name === c.name)?.command;

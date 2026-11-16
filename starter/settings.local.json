@@ -5,10 +5,10 @@
       "Bash(npm test:*)",
       "Bash(npm run map:*)",
       "Bash(npm run harness:*)",
-      "Bash(node tools/workflow/gate.mjs:*)",
-      "Bash(node tools/workflow/map.mjs:*)",
+      "Bash(node workflow/tools/gate.mjs:*)",
+      "Bash(node workflow/tools/map.mjs:*)",
       "Bash(npm run board:*)",
-      "Bash(node tools/workflow/board.mjs:*)",
+      "Bash(node workflow/tools/board.mjs:*)",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
@@ -16,42 +16,42 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git worktree:*)",
-      "Bash(node scripts/session.mjs:*)",
+      "Bash(node workflow/scripts/session.mjs:*)",
       "Bash(npm run updates:*)",
-      "Bash(node tools/workflow/updates.mjs:*)",
+      "Bash(node workflow/tools/updates.mjs:*)",
       "Bash(npm run secops:*)",
-      "Bash(node tools/workflow/secops.mjs:*)",
+      "Bash(node workflow/tools/secops.mjs:*)",
       "Bash(npm run setup-check:*)",
       "Bash(npm run access:*)",
-      "Bash(node tools/workflow/access.mjs:*)",
+      "Bash(node workflow/tools/access.mjs:*)",
       "Bash(npm run changelog:*)",
-      "Bash(node tools/workflow/changelog.mjs:*)",
-      "Bash(node tools/workflow/perfbudget.mjs:*)",
+      "Bash(node workflow/tools/changelog.mjs:*)",
+      "Bash(node workflow/tools/perfbudget.mjs:*)",
       "Bash(npm run retro:*)",
-      "Bash(node tools/workflow/retro.mjs:*)",
+      "Bash(node workflow/tools/retro.mjs:*)",
       "Bash(npm run load:*)",
-      "Bash(node tools/workflow/load.mjs:*)",
+      "Bash(node workflow/tools/load.mjs:*)",
       "Bash(npm run infra-check:*)",
-      "Bash(node tools/workflow/infracheck.mjs:*)",
+      "Bash(node workflow/tools/infracheck.mjs:*)",
       "Bash(npm run infra-plan:*)",
       "Bash(npm run drill:*)",
-      "Bash(node tools/workflow/drill.mjs:*)",
+      "Bash(node workflow/tools/drill.mjs:*)",
       "Bash(npm run launch-check:*)",
-      "Bash(node tools/workflow/launchcheck.mjs:*)",
+      "Bash(node workflow/tools/launchcheck.mjs:*)",
       "Bash(npm run costs:*)",
-      "Bash(node tools/workflow/costs.mjs:*)",
+      "Bash(node workflow/tools/costs.mjs:*)",
       "Bash(npm run cost:*)",
-      "Bash(node tools/workflow/sessioncost.mjs:*)",
+      "Bash(node workflow/tools/sessioncost.mjs:*)",
       "Bash(npm run coverage:*)",
-      "Bash(node tools/workflow/coverage.mjs:*)"
+      "Bash(node workflow/tools/coverage.mjs:*)"
     ],
     "deny": [
       "Bash(npm run signoff:*)",
-      "Bash(node tools/workflow/signoff.mjs:*)",
+      "Bash(node workflow/tools/signoff.mjs:*)",
       "Bash(npm run infra-apply:*)",
-      "Bash(node tools/workflow/infraplan.mjs --apply:*)",
+      "Bash(node workflow/tools/infraplan.mjs --apply:*)",
       "Bash(npm run infra-plan * --allow-destroy*)",
-      "Bash(node tools/workflow/infraplan.mjs * --allow-destroy*)",
+      "Bash(node workflow/tools/infraplan.mjs * --allow-destroy*)",
       "Bash(tofu apply:*)",
       "Bash(terraform apply:*)",
       "Bash(pulumi up:*)",
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node scripts/stop-points.mjs --prompt"
+            "command": "node workflow/scripts/stop-points.mjs --prompt"
           }
         ]
       }
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node scripts/stop-points.mjs --tool"
+            "command": "node workflow/scripts/stop-points.mjs --tool"
           }
         ]
       }

@@ -1,1 +1,1 @@
-Board pictures from scripts/shots.mjs.
+Board pictures from workflow/scripts/shots.mjs.

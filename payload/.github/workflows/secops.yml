@@ -2,7 +2,7 @@
 # and infrastructure files (Trivy), and secrets anywhere in git's history (gitleaks), as one report in plain words: an issue
 # labelled "security-report" (last week's is closed). It never fails on a finding: it reports. Library fixes that exist come as
 # pull requests by themselves (Renovate, or Dependabot security updates); /secops in a session proposes the rest.
-# The scanner versions live in tools/workflow/secops.mjs (SCANNERS).
+# The scanner versions live in workflow/tools/secops.mjs (SCANNERS).
 name: secops
 on:
   schedule:
@@ -23,13 +23,13 @@ jobs:
         with:
           node-version-file: .tool-versions
       - name: Scan
-        run: node tools/workflow/secops.mjs --scan-to secops-out
+        run: node workflow/tools/secops.mjs --scan-to secops-out
       - name: Write the report
-        run: node tools/workflow/secops.mjs --report secops-out --out secops-report.md
+        run: node workflow/tools/secops.mjs --report secops-out --out secops-report.md
       - name: Publish it as this week's issue
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node tools/workflow/secops.mjs --publish secops-report.md
+        run: node workflow/tools/secops.mjs --publish secops-report.md
       - name: Keep the scanners' own output for 30 days
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

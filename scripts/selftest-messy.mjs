@@ -100,6 +100,6 @@ export function ownWorkLost(dir) {
   // the kit's sections the project never touched are the kit's now, with their markers
   for (const part of ['how-we-work', 'docs-before-memory']) if (!claude.includes(`<!-- kit:${part} -->`)) lost.push(`CLAUDE.md: the kit's ${part} was not brought up to date`);
   if (!existsSync(join(dir, 'notes', 'ROUTES.md'))) lost.push('notes/ROUTES.md');
-  if (!JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8')).house) lost.push('workflow.config.json: house');
+  if (!JSON.parse(readFileSync(join(dir, 'workflow/config.json'), 'utf8')).house) lost.push('workflow/config.json: house');
   return lost;
 }

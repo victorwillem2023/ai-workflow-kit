@@ -14,7 +14,7 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
    files with the most lines no test runs): the figure, and the top file as a card offer when it holds a rule. Say what they show in four lines at most: the trend, anything that got worse,
    anything that got better. No praise, no blame: what happened. A project that started with debt (an older codebase): say how
    the baseline moved, and offer one card for the riskiest untested file when it has not shrunk for a month
-   (`docs/workflow/TAKEOVER.md`, *3. Work the baseline down*).
+   (`workflow/guides/TAKEOVER.md`, *3. Work the baseline down*).
 2. Ask the owner, in one AskUserQuestion: what went well, what got in the way (a check that failed for no reason, a rework, a
    slow step, a card that was bigger than it looked), and whether anything from *How we will know it worked* is due a look
    (`docs/PRODUCT.md`, *What we learned*).

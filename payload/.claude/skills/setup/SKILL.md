@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Set up {{PROJECT}} for the AI workflow right after the kit is installed: interviews the owner, then fills CLAUDE.md, workflow.config.json, the guide, docs/ARCHITECTURE.md and the folder notes from the answers and the code, writes the OpenCode commands, makes the board, and runs the gate. Run once, from the main folder.
+description: Set up {{PROJECT}} for the AI workflow right after the kit is installed: interviews the owner, then fills CLAUDE.md, workflow/config.json, the guide, docs/ARCHITECTURE.md and the folder notes from the answers and the code, writes the OpenCode commands, makes the board, and runs the gate. Run once, from the main folder.
 model: opus
 ---
 
@@ -14,15 +14,15 @@ Read, briefly: `package.json` (scripts, dependencies), `tsconfig.json` or the eq
 the source root (`ls`, not every file), `README.md` if there is one, `git log --oneline | head -20`. Find what you can answer
 yourself: the stack, the dev, build, test and typecheck commands, the folders that look like layers.
 A new, empty project: skip to the questions and say the answers will become the plan for the first folders.
-**A project that already has code**: follow `docs/workflow/TAKEOVER.md` from *1. Accept today as the starting line*: the folder
+**A project that already has code**: follow `workflow/guides/TAKEOVER.md` from *1. Accept today as the starting line*: the folder
 notes describe the code as it is ("today: ...; aim: ..."), the baseline is its own commit before any change, and the first
 cards are tests around the riskiest untested code, never a big clean-up. Say that path to the owner in three lines.
-**A team** (`project.audience: team`, question 0): ask the roles of `docs/workflow/TEAM.md` (who decides, who reviews) and write
+**A team** (`project.audience: team`, question 0): ask the roles of `workflow/guides/TEAM.md` (who decides, who reviews) and write
 them in `CLAUDE.md`, *This project's own rules*; propose `"flow": "pr"` with a required review.
 
 ## 2. Ask the owner (AskUserQuestion, each with your best guess as the recommended option; an existing project: at most two rounds)
 0. **Who it is for**: just you (a personal, learning or hobby project), your team or company, or customers (people outside,
-   who may pay). Write it as `project.audience` (`me`, `team`, `customers`) in `workflow.config.json`. It decides how much of the
+   who may pay). Write it as `project.audience` (`me`, `team`, `customers`) in `workflow/config.json`. It decides how much of the
    kit speaks up: for `me`, nothing about access reviews, restore drills, launch, market, privacy texts or "does this already
    exist?" unless the owner asks; they stay in the kit, one command away. It can change any day (a hobby that gets users).
 1. **What the app does**, in one or two sentences, and for whom.
@@ -46,10 +46,10 @@ them in `CLAUDE.md`, *This project's own rules*; propose `"flow": "pr"` with a r
 3. **Untrusted input**: where does outside data come in (requests, uploads, third-party pages, webhooks)? Will the server ever be
    reachable by other people (a tunnel, a deploy)?
    - **Sensitive work**: which parts handle money, health or safety advice, legal texts, personal data or access (propose the
-     folders from the code or the plan; `docs/workflow/SENSITIVE.md`, *What counts*)? Those become `sensitive.paths`: every change there
+     folders from the code or the plan; `workflow/guides/SENSITIVE.md`, *What counts*)? Those become `sensitive.paths`: every change there
      needs the owner's own sign-off. Who checks the sources (the owner, an accountant, a lawyer, an expert)?
    - **Accounts and stored data**: do people sign in, and who may see whose things (the roles, in the owner's words;
-     `docs/workflow/PERMISSIONS.md`)? What does the app store, and where (`docs/workflow/DATA.md`)? Neither yet: skip.
+     `workflow/guides/PERMISSIONS.md`)? What does the app store, and where (`workflow/guides/DATA.md`)? Neither yet: skip.
 4. **The dev loop**: the command the owner runs while working, its port, and whether it restarts by itself.
 5. **The board**: the area labels (offer 3 to 6 from the folders and the app's parts), and whether the GitHub project exists already.
 6. **Files every feature touches** (the shared files for parallel work), if any beyond `README.md` and the guide.
@@ -59,11 +59,11 @@ them in `CLAUDE.md`, *This project's own rules*; propose `"flow": "pr"` with a r
 7. **The quality score**: is there a set of real cases whose pass count should never drop (typed requests and what must come
    out, sample files, recorded inputs)? If yes: the command that runs them and prints "N of M", for `quality` in the config.
 8. **Agents and models**: Claude Code only, or OpenCode too (and which paid and free models; the kit's defaults are in
-   `workflow.config.json` under `harness`)? Which folders hold private data that must never be read or sent to a model provider?
+   `workflow/config.json` under `harness`)? Which folders hold private data that must never be read or sent to a model provider?
 Only real decisions; never ask what the code already says.
 
 ## 3. Write (show a short summary of each before writing it)
-- **`workflow.config.json`**: `roots`, `tests`, `commands` (typecheck, testAll, testFiles), `code` and `testPicking` for a language
+- **`workflow/config.json`**: `roots`, `tests`, `commands` (typecheck, testAll, testFiles), `code` and `testPicking` for a language
   other than TypeScript, `functions`, `quality` from answer 7 (`{ "command": "npm run cases", "when": ["src/**"] }`), `boundaries` from answer 2,
   `security.inputFolders` and `security.server` from answer 3, `session.mainPort` from answer 4, `board.labels.areas` from answer 5
   (keep the effort and feasibility lists unless the owner changes them), `harness` from answer 8 (`"opencode": false` for
@@ -78,7 +78,7 @@ Only real decisions; never ask what the code already says.
   read by `grep -n`. A new project: headings only; they fill as code arrives. Its first line under the title says what it
   covers (`<!-- covers new files: src/<folder>/** -->`), so the gate asks for it when a part comes or goes; give each guide part
   and other hand-written doc the covers line of the files it describes. Facts the config already holds go in a generated block
-  (`<!-- generated: layers -->`, `versions`, `settings`, `sensitive`, `naming`; `tools/workflow/README.md`, *What it checks*), never typed.
+  (`<!-- generated: layers -->`, `versions`, `settings`, `sensitive`, `naming`; `workflow/tools/README.md`, *What it checks*), never typed.
 - **The guide** (for users): `docs/GUIDE.md` is the index, one line per part; each part is a file in `docs/guide/` with a
   link back to the index (`docs/guide/getting-started.md` is the pattern). A new project: one or two parts. And
   **`docs/ARCHITECTURE.md`** (the layers, the flow of a request, where state lives, and *Rules and where each lives*: the kinds of case this app has and
@@ -86,7 +86,7 @@ Only real decisions; never ask what the code already says.
 - When the ui module is installed: in `src/web/CLAUDE.md` fill *New feature here* and *Rules here*, and `docs/code/web.md`; leave `docs/STYLE.md` for the first `/ui` board
   (its tokens come from there), unless the owner already has a brand: then put its colours in the tokens file (`ui.tokens`, `src/web/styles.css` by default; set it where the project keeps them) and `docs/STYLE.md`.
 - When the ui module is **not** installed (no `src/web/CLAUDE.md`): take the *UI style* section, the board and picture lines and
-  the `docs/design` paths out of `CLAUDE.md`, and the `ui` type out of `workflow.config.json`.
+  the `docs/design` paths out of `CLAUDE.md`, and the `ui` type out of `workflow/config.json`.
 - When the map module is installed (`docs/flow/`): the questions and the kinds in `docs/REQUESTS.md` from answer 1, the first
   real parts in `docs/flow/map.js` (an end not built yet is `gap`), then `node docs/flow/build-requests.mjs`.
 - **After a framework starter** (Vite, Next.js, SvelteKit): `package.json` needs the scripts `dev.cmd` and `start.cmd` call
@@ -95,7 +95,7 @@ Only real decisions; never ask what the code already says.
   linter: with Biome, take the starter's ESLint config and packages out. With a UI framework, `ui.boards` in the config is
   `components`: `/ui` draws its variants as real components (the installer sets it when it finds the framework).
 - When the security module is installed: the first lines of `docs/SECURITY.md` (how to share a link safely, from answer 3).
-- **Checks that follow from the stack** (`workflow.config.json`; `tools/workflow/README.md`, *What it checks*): with a database,
+- **Checks that follow from the stack** (`workflow/config.json`; `workflow/tools/README.md`, *What it checks*): with a database,
   `together` keeps table and migration in one change (`{ "name": "migration", "when": ["<the schema file>"], "needs": ["<the migrations folder>/**"] }`);
   with screens, the `e2e` entry of `stack.md` part 7 in `checks` (required: a smoke test and an accessibility scan per main
   screen) and `performance.files` pointing at the built files (the `page weight` check); `knip.json` when the app starts somewhere else than `src/index.ts`.
@@ -107,7 +107,7 @@ Only real decisions; never ask what the code already says.
   place codes in *Names of things in the system* and `naming.resources`, the files whose lists stay alphabetical in `naming.sorted`.
 - **Sensitive and access**: `sensitive.paths` from answer 3 (the gate's *signoff* check; an empty list until there is such code);
   with accounts, `security.signIn: true`, the sign-in and permission code under `sensitive.paths`, and the roles table of
-  `docs/workflow/PERMISSIONS.md` (who may what, and what never) in *Rules for code* of the security page, each rule with its
+  `workflow/guides/PERMISSIONS.md` (who may what, and what never) in *Rules for code* of the security page, each rule with its
   row in *Rules and where each lives*. With stored data: the folder that owns the queries, a `boundaries` rule so only it uses
   the database library (`{ "name": "only the data folder talks to the database", "from": "src/**", "except": ["src/<data folder>/**"],
   "forbidUse": ["<the database library>"] }`), and `data.migrations` set to where this stack's migrations are;
@@ -116,7 +116,7 @@ Only real decisions; never ask what the code already says.
   the rest waits for `/launch`. `security.domains`: the app's public addresses once it has any (their certificates are watched).
   `security.egress`: every outside host the code calls today (the gate's *network* check), and `docs/run/NETWORK.md` from answer 3.
   AI inside the app (stack.md 6b): `ai.wrapper`, the one file that calls the model, and its first hostile cases in `quality`.
-- **Tools**: for each tool the project uses that `docs/workflow/TOOLS.md` lists under *Leaving*, one line to the owner with what replaced it
+- **Tools**: for each tool the project uses that `workflow/guides/TOOLS.md` lists under *Leaving*, one line to the owner with what replaced it
   and what moving costs; never change it without a yes (it becomes a card).
 - **Versions**: `.tool-versions` with the exact Node (and any other tool) the app uses, the same Node in the `Dockerfile` and
   `@types/node`; the gate's *versions* check must pass. Renovate: say the owner installs its GitHub app for the repository
@@ -124,7 +124,7 @@ Only real decisions; never ask what the code already says.
 - **Security**: `npm run secops -- --enable` (Dependabot alerts and security updates); the weekly report starts with the first push.
 - When the production module is installed (`docs/PRODUCTION.md`): fill the first rows of `docs/company/PRIVACY.md` from the product
   answers (what is kept, why, where; "not decided" where it is not), and the logger's `personal` list from them. Don't ask
-  about hosts, clusters or queues now: `docs/workflow/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
+  about hosts, clusters or queues now: `workflow/guides/LIFECYCLE.md` says they are decided by `/launch` when the first deploy card comes.
   Another language than TypeScript: write the same three parts (checked settings, safe logs, health and stopping) in the
   language's own way when the server is first built, and point `docs/PRODUCTION.md` at those files when the run stage starts.
 - The deploy is the run stage's (`/launch` starts it and brings `docs/run/`): do not fill deploy pages now. Write `.env.example`;
@@ -139,7 +139,7 @@ npm run protect                # main can no longer be deleted or rewritten: a g
 npx biome check --write src tests   # TypeScript, once: a framework starter's files into the kit's format; fix what it cannot
 npm run map
 npm run harness                 # .opencode/commands from the skills; opencode.jsonc when missing (AGENTS.md only with harness.agentsMd)
-node tools/workflow/gate.mjs --update-baseline
+node workflow/tools/gate.mjs --update-baseline
 npm run gate
 ```
 `npm run protect` says in one line when GitHub refuses (a private repository on the free plan): pass it on, the local guard is enough to go on.

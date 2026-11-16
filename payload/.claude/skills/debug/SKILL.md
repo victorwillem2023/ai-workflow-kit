@@ -12,8 +12,8 @@ only asked why.
 1. **What was seen.** In one or two lines: what the owner did, what they expected, what happened instead. Ask once for what
    is missing: the screen and the values used, and **the reference** the error showed ("reference 4f2a...") or the time it
    happened. A failed call on the page also printed it in the console: `POST /api/goal 400: ... (reference ...)`.
-2. **Its lines in the log.** With a reference: `node scripts/logs.mjs <topic> --ref <reference>` for a session's server (no
-   topic: `node scripts/logs.mjs` lists them), or search the main server's output for it. Without one: `--level warn` around
+2. **Its lines in the log.** With a reference: `node workflow/scripts/logs.mjs <topic> --ref <reference>` for a session's server (no
+   topic: `node workflow/scripts/logs.mjs` lists them), or search the main server's output for it. Without one: `--level warn` around
    that time. Read the request's lines in order: the request line (`POST /api/goal 400 12 ms`), what it was doing (`doing=`), the
    ids, and the error with its `caused by` chain: the last cause is usually the real one. No log line at all is a finding in
    itself: that path logs nothing (step 5 adds it).

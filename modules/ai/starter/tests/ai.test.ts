@@ -1,4 +1,4 @@
-// The model wrapper (src/server/ai.ts): every guard of docs/workflow/AI-SECURITY.md, with a fake provider, so nothing is sent anywhere.
+// The model wrapper (src/server/ai.ts): every guard of workflow/guides/AI-SECURITY.md, with a fake provider, so nothing is sent anywhere.
 
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';

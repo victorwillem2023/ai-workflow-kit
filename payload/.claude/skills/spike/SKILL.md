@@ -13,7 +13,7 @@ not the feature: its code is thrown away, so it skips the spec, tests first and 
    the one question the spike answers and what counts as "yes" (something the owner can see or a number), and the time
    limit (default: this one chat, about an hour of work). On the owner's yes go on. No card yet: make one with
    `npm run board -- --add "Spike: <question>" --label spike --label "<area>"`.
-2. **A session of its own**: `node scripts/session.mjs spike-<topic> --card <n>` (the name must start with `spike-`). Work only
+2. **A session of its own**: `node workflow/scripts/session.mjs spike-<topic> --card <n>` (the name must start with `spike-`). Work only
    in `../{{PREFIX}}-spike-<topic>/spikes/<topic>/`; nothing in `src/` changes. Hard-code, skip edge cases, use fake data. Still:
    no real secrets in it, no personal or health data, nothing sent to an outside service the owner has not named.
 3. **Show it**: how to run it (a URL, a command), what it shows, and the answer to the question in plain words. Stop for the
@@ -26,7 +26,7 @@ not the feature: its code is thrown away, so it skips the spec, tests first and 
    - Build it: make or update the real card with what the spike proved (`npm run board -- --add ... --body-file` or a comment),
      then it goes the normal way (`/work <n>`: spec, tests first).
    - Drop it, or the idea changed: say so on the card and close it, or reword it.
-   - Then `node scripts/session.mjs --drop spike-<topic>` (the code goes; it refuses without the note), and commit only the note
+   - Then `node workflow/scripts/session.mjs --drop spike-<topic>` (the code goes; it refuses without the note), and commit only the note
      in the main folder when the owner says to commit ("Decisions: <question>").
 Never move spike code into `src/` by copying: the real card rebuilds it with tests. The gate fails when `spikes/` reaches main.
 

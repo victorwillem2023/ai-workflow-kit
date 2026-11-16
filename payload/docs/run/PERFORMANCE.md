@@ -4,7 +4,7 @@ Speed is a feature people feel before they read a word, and capacity is what kee
 treats both like the rest: goals written down, checked by scripts that pass or fail the same way every run. Read by the section.
 
 ## Goals first
-`performance` in `workflow.config.json` holds the pass lines; every test below checks against them:
+`performance` in `workflow/config.json` holds the pass lines; every test below checks against them:
 | Goal | Start with | Why that number |
 |---|---|---|
 | `maxKb`: what a page downloads, compressed | 250 KB | a mid-range phone on a slow 4G network shows it in about 3 seconds |
@@ -16,7 +16,7 @@ Raise a goal only with the owner's yes and why, the same as a file that grows.
 ## The screens
 | Check | How | When |
 |---|---|---|
-| **Page weight** | the gate's `page weight` check (`tools/workflow/perfbudget.mjs`): the built files, compressed, against `maxKb` | every change to screens or the build |
+| **Page weight** | the gate's `page weight` check (`workflow/tools/perfbudget.mjs`): the built files, compressed, against `maxKb` | every change to screens or the build |
 | **Core Web Vitals** (how fast the main content shows, how fast a tap answers, how much the page jumps: LCP under 2.5 s, INP under 200 ms, CLS under 0.1) | Lighthouse CI (`@lhci/cli`, open source) on the main screens, in `checks` with assertions on those numbers | when screens change, on GitHub (it needs a browser); the real numbers of real users come from the analytics or a RUM script later |
 | **Accessibility and a working main action** | the e2e smoke tests with the axe scan (`stack.md` part 7) | every change to screens |
 Fixes, in order of how much they give: load a heavy part only on the screen that uses it (`import()`), smaller images in a modern
@@ -43,6 +43,6 @@ staging on the same size of server as production.
   test when it guards a rule ("plans a year in under 50 ms").
 - **Queries**: one query per screen, not one per row (the N+1 trap: a list that asks the database once per item); an index for
   every column you filter or sort on; `EXPLAIN QUERY PLAN` (SQLite) or `EXPLAIN ANALYZE` (Postgres) on the slow ones; pages,
-  never unbounded lists (`docs/workflow/API.md`).
+  never unbounded lists (`workflow/guides/API.md`).
 - **Work that can wait goes to a queue**: emails, exports, AI calls, image resizing; the request answers at once.
 - **Caching** only where the data allows it, with the time it may be stale named, and never one user's data for another.

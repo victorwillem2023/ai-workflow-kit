@@ -42,7 +42,7 @@ export function dryRun({ kit, target, args }) {
       const by = new Map();
       for (const r of rows) {
         const parts = r[1].split('/');
-        const depth = r[1].startsWith('.') || r[1].startsWith('docs/') ? 2 : 1; // .claude/skills/, docs/workflow/: one level deeper
+        const depth = r[1].startsWith('.') || r[1].startsWith('docs/') ? 2 : 1; // .claude/skills/, workflow/guides/: one level deeper
         const key = parts.length > depth ? `${parts.slice(0, depth).join('/')}/` : r[1];
         by.set(key, (by.get(key) ?? 0) + 1);
       }

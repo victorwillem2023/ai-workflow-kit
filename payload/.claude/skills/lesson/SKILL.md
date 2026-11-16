@@ -9,7 +9,7 @@ model: haiku
 A correction that is only said once is made again next week. Pick the first that fits, and do only that:
 
 1. **It can be checked by a machine** (a file that must not grow, a folder that must not import another, a word that must not
-   appear): say which check in `tools/workflow/` would catch it and make a card: `npm run board -- --add "<title>" --label workflow`.
+   appear): say which check in `workflow/tools/` would catch it and make a card: `npm run board -- --add "<title>" --label workflow`.
    Do not write the check here.
 2. **It is about one folder**: one line in that folder's `CLAUDE.md`, under *Rules here*.
 3. **It is about how we work**: one line in the root `CLAUDE.md`, under *This project's own rules* (a project from before

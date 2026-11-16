@@ -1,4 +1,4 @@
 {
-  "ignore": ["tools/**", "scripts/**", "tests/workflow/**", "tests/*.example.ts", "docs/**", "cases/**"],
+  "ignore": ["tools/**", "scripts/**", "workflow/tests/**", "tests/*.example.ts", "docs/**", "cases/**"],
   "ignoreDependencies": ["@biomejs/biome"]
 }

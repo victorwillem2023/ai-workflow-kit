@@ -10,7 +10,7 @@ model: opus
 chat that built it: the builder does not grade its own work. Change no file.
 Work in the session folder `../{{PREFIX}}-<topic>`.
 
-1. Read `specs/<topic>.md`, then `git diff main --stat` and the diff of the files that matter (not generated ones).
+1. Read `workflow/specs/<topic>.md`, then `git diff main --stat` and the diff of the files that matter (not generated ones).
 2. Answer these, each with the file and line when the answer is no:
    - **Does it do what the spec says the user sees?** Name anything missing, and anything built that the spec never asked for.
    - **Were tests bent to pass?** List every existing test whose expectation changed (`git diff main -- tests`), and whether
@@ -20,19 +20,19 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
      computer may ask, a new limit or permission) that has no row in that table, whatever the spec's "New rules" line says.
    - **Can someone reach what is not theirs?** Every new route or query checks, on the server, that this thing belongs to the
      person the session names; nothing takes a user, customer or role from the request; another's id answers "not found"; a
-     test says so (`docs/workflow/PERMISSIONS.md`, *Permissions: the rules*).
+     test says so (`workflow/guides/PERMISSIONS.md`, *Permissions: the rules*).
    - **Is the data change safe?** A schema change is a migration that works while the old version still runs and destroys
      nothing the spec did not name; values are passed as parameters; a list has a limit; no query per row
-     (`docs/workflow/DATA.md`).
+     (`workflow/guides/DATA.md`).
    - **Would each new test fail for the mistake it is named for?** One that asserts nothing, repeats the code's own sum or
-     fakes the app's own code is a finding (`docs/workflow/TESTING.md`).
+     fakes the app's own code is a finding (`workflow/guides/TESTING.md`).
    - **A screen: are its four states there, and can everyone use it?** Loading, empty, error and full as the spec names them;
      each form message says what to do; every action works with the keyboard and has a name; nothing is said by colour alone
-     (`docs/workflow/SCREENS.md`). Compare with the board's picture when there is one (`docs/design/png/`).
+     (`workflow/guides/SCREENS.md`). Compare with the board's picture when there is one (`docs/design/png/`).
    - **Is it slow where it does not need to be?** A query or a fetch inside a loop, a whole table read to show ten rows, a list
      with no limit, a heavy library for one small use, work on every keystroke; the page weight line of the gate when screens
      changed (`docs/run/PERFORMANCE.md`, when the project has it).
-   - **Email, payments, uploads, jobs, time**: the rules of `docs/workflow/COMMON.md` for the part it touches, above all: a
+   - **Email, payments, uploads, jobs, time**: the rules of `workflow/guides/COMMON.md` for the part it touches, above all: a
      webhook checked and acted on once, a file's type from its content, a job safe to run twice, a day stored as a date.
    - **Is anything outside the spec touched?** `npm run gate` prints `scope:` lines for those files.
    - **If it fails, does the log say what and where?** Each error a person or a dependency can cause is an `AppError` with

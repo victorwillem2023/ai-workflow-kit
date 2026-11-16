@@ -1,7 +1,7 @@
 # {{PROJECT}}: running in production
 
 What every feature keeps to from the first day, so the first deploy is not a rewrite. Nothing here needs a host to be chosen:
-that comes later, with `/launch`, when the first card needs it (`docs/workflow/LIFECYCLE.md`, *Run*). Read by the section.
+that comes later, with `/launch`, when the first card needs it (`workflow/guides/LIFECYCLE.md`, *Run*). Read by the section.
 
 ## Settings
 - Read only through `src/server/config.ts`: one `defineSettings({ ... })` with every name, its kind and default, checked once at
@@ -41,6 +41,6 @@ that comes later, with `/launch`, when the first card needs it (`docs/workflow/L
 
 ## Personal data
 - `docs/company/PRIVACY.md` lists every kind of personal data: what, why, how long, where, who else sees it. A change to the tables
-  changes that page in the same commit (`together` in `workflow.config.json`).
+  changes that page in the same commit (`together` in `workflow/config.json`).
 - Each person can get everything stored about them, and have it deleted. Build both with the first table that holds personal
   data, not later.

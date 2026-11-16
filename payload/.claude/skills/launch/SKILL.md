@@ -12,11 +12,11 @@ in `docs/run/IAC.md`, releases and user testing in `docs/run/RELEASES.md`. Nothi
 
 0. **Only when it is wanted.** For `project.audience: me` with no wish to put it online for others, say in one line that
    `/launch` is optional (a home server or the computer it runs on is fine) and stop unless the owner goes on.
-   **Start the run stage** when `docs/run/` is not there yet: `node tools/workflow/stage.mjs --enter run` brings its guides and
+   **Start the run stage** when `docs/run/` is not there yet: `node workflow/tools/stage.mjs --enter run` brings its guides and
    the project's run pages (deploy, environments, production, recovery). Say so in one line.
-1. **What we know.** Read `docs/PRODUCT.md` (who uses it, how many, where), `docs/STACK.md`, `docs/workflow/SENSITIVE.md` and
+1. **What we know.** Read `docs/PRODUCT.md` (who uses it, how many, where), `docs/STACK.md`, `workflow/guides/SENSITIVE.md` and
    `sensitive.paths`, `docs/run/ENVIRONMENTS.md`, `docs/PRODUCTION.md` (what the app already does for production: settings,
-   logs, health, stopping), `launch` in `workflow.config.json` if it is set, and the card if one was named. A cluster chosen:
+   logs, health, stopping), `launch` in `workflow/config.json` if it is set, and the card if one was named. A cluster chosen:
    `docs/run/CLUSTER.md` too.
    Say back in five lines: the users and load expected in the first year, where the data may live, what must never be lost,
    how long it may be down, and the budget a month if the owner said one. Ask for what is missing, in one message.
@@ -27,9 +27,9 @@ in `docs/run/IAC.md`, releases and user testing in `docs/run/RELEASES.md`. Nothi
    *Names of things in the system*): confirm the app code, the environment codes and the place codes for the chosen platform
    now, and the labels every resource carries (`launch.labels`), before any resource exists.
 3. **The record.** Write `docs/decisions/<date>-launch.md`: each decision, the choice, the reason, the price that day, and what
-   would change it. Set `launch` in `workflow.config.json` (`platform`, `iac`, `shape`, `database`, `loadBalancer`, `region`,
+   would change it. Set `launch` in `workflow/config.json` (`platform`, `iac`, `shape`, `database`, `loadBalancer`, `region`,
    `labels`, `credentials`: the names of the environment variables the tool needs, never their values). Stop for the owner's yes.
-4. **The code, in a session** (`node scripts/session.mjs launch --card <n>`): `infra/<env>/` stacks in the chosen tool, one per
+4. **The code, in a session** (`node workflow/scripts/session.mjs launch --card <n>`): `infra/<env>/` stacks in the chosen tool, one per
    environment, the names built in one place (`docs/CONVENTIONS.md`), state in a bucket with locking, a firewall that refuses
    all but what `docs/run/NETWORK.md` allows, a startup script that passes the infra check (`docs/run/IAC.md`, *Startup scripts*), and
    tests with mocked providers where the tool has them. `deploy.environments` (staging, production) with the host's deploy and

@@ -4,7 +4,7 @@
 //   node install.mjs <target-folder> --project ... --repo ... --check     list the machinery files that differ from the kit; changes nothing
 //   node install.mjs <target-folder> --project ... --repo ... --update    bring an existing project up to this kit without losing its own changes:
 //       a machinery file the project never changed is replaced, one it changed is kept and listed (--take <path,path> takes the kit's
-//       for those), missing files are added, and settings the kit has and the project lacks are added to workflow.config.json.
+//       for those), missing files are added, and settings the kit has and the project lacks are added to workflow/config.json.
 //   --lean: only the build loop (the gate, the board, the map, sessions and the skills setup, next, idea, work, spec, build,
 //       ship, review, check, find, docs, lesson), no modules unless --modules names them, and none of the parts (shape, spike,
 //       tidy, estimate, advise, launch, market, retro, secops, setup-check) unless --with names them. Remembered: an update stays
@@ -12,15 +12,15 @@
 //   --modules none: no modules at all.
 //   --lang ts (default) | rust | python | go: the check and test commands of starter/lang.json; a language other than ts
 //   leaves the TypeScript starter files out (tsconfig.json, the .ts examples of the modules).
-// 1. payload/  (skills, tools/workflow, scripts, tests/workflow, docs/workflow/WORKFLOW.md, docs/workflow/TOKENS.md): the generic machinery. Copied as is, with
+// 1. payload/  (skills, workflow/tools, scripts, workflow/tests, workflow/guides/WORKFLOW.md, workflow/guides/TOKENS.md): the generic machinery. Copied as is, with
 //    {{PROJECT}} {{REPO}} {{OWNER}} {{PREFIX}} filled in. Existing files are kept unless --force.
-// 2. starter/  (CLAUDE.md, workflow.config.json, tsconfig.json, the guide, docs/code, folder CLAUDE.md files, STYLE.md ...): YOUR files to edit.
+// 2. starter/  (CLAUDE.md, workflow/config.json, tsconfig.json, the guide, docs/code, folder CLAUDE.md files, STYLE.md ...): YOUR files to edit.
 //    Copied only when missing, never overwritten (not even with --force).
 // 3. modules/<name>/{payload,starter}  (ui, security, testing, dev; all by default, or pick with --modules): the same two kinds.
 //    ui = /ui skill, screenshots, style sheet, DOM helper, board template, STYLE.md; security = network guard, safe fetch, input guards,
 //    debug-handle gate and their tests, SECURITY.md; testing = fake clock, fakes pattern; dev = dev.cmd, start.cmd, dev-check;
 //    map = the app map (docs/flow: a page of yes/no trees of what the app decides) and the request pages (docs/REQUESTS.md);
-//    deploy = a Dockerfile, npm run deploy / smoke / rollback (scripts/deploy.mjs), docs/run/DEPLOY.md.
+//    deploy = a Dockerfile, npm run deploy / smoke / rollback (workflow/scripts/deploy.mjs), docs/run/DEPLOY.md.
 // 4. package.json gets the test/test:full/typecheck/gate/gate:all/map/board/harness scripts (the project's own win, except npm's
 //    placeholder test); .gitignore gets the kit's lines; .github/dependabot.yml (weekly updates) is written when missing. The OpenCode commands are written last (`npm run harness` again after a skill changes).
 //    Nothing is committed.
@@ -30,10 +30,12 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { movePathsBack, undoCorrections } from './doc-layout.mjs';
-import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
+import { runtimeNode } from './payload/workflow/tools/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
 import { ALL, inList, inMinimal, list, MINIMAL_SCRIPTS, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
 import { runMigrations } from './migrations/index.mjs';
+import { moveToWorkflowFolder } from './migrations/3.0.0-workflow-folder.mjs';
+import { moveKitPathsBack } from './kit-layout.mjs';
 import { whatChanged } from './install-report.mjs';
 import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages, unmarkInstalled } from './install-docs.mjs';
 
@@ -42,6 +44,8 @@ const args = process.argv.slice(2);
 const opt =(name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 // every choice, from the flags, then the project's record, then what the project says (install-choices.mjs): run again, the same
 // command converges on the same result (a project with the record is updated; a flag changes the record, never resets the rest)
+// kit 3.0: an older project's kit files move under workflow/ first, the record and settings among them (--check moves nothing)
+const layout = args[0] && !args[0].startsWith('--') && !args.includes('--check') && existsSync(resolve(args[0])) ? moveToWorkflowFolder(resolve(args[0])) : { said: [], claudeGrowth: 0 };
 const choices = readChoices(args, kit);
 if (choices.error && !['usage', 'repo'].includes(choices.error)) { console.error(choices.error); process.exit(1); }
 if (choices.error) {
@@ -59,7 +63,7 @@ const absentSkills = absent.flatMap(([, paths]) => paths.map((x) => /^\.claude\/
 // (a guide in a subject folder too: docs/run/LAUNCH.md since kit 2.9)
 const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^docs\/([\w-]+\/)?[\w-]+\.md$/.test(x)).map((x) => [x, p]));
 // npm scripts that run a tool of a part left out (launch-check without market): not added to package.json, and not pointed at
-const scriptTool = (cmd) => /node (tools\/workflow\/[\w./-]+\.mjs)/.exec(cmd)?.[1];
+const scriptTool = (cmd) => /node (workflow\/tools\/[\w./-]+\.mjs)/.exec(cmd)?.[1];
 const absentScripts = Object.entries(JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'))).filter(([, cmd]) => scriptTool(cmd) && skippedPart(scriptTool(cmd))).map(([name]) => name);
 function markAbsent(text) {
   if (!absent.length && !stageDocs.length && !moduleDocs.length) return text;
@@ -93,7 +97,6 @@ const vars = {
 const ciSteps = (LANGS[lang].ci ?? []).map((l) => `      ${l}\n`).join('');
 const fill = (text) => text.replace(/\{\{(PROJECT|REPO|OWNER|PREFIX|TESTS|TEST_TIPS)\}\}/g, (_, k) => vars[k])
   .replace(/^[ \t]*# another language: add its toolchain here.*\r?\n/m, ciSteps);
-
 // Stage folders (kit 2.9.1): a stage's docs are not written until the project reaches it (docs/run/ with /launch, docs/market/
 // with /market); what a stage or a module left out would bring is marked where it is named (install-docs.mjs)
 for (const s of list(opt('--stage'))) if (!(s in STAGE_FOLDERS)) { console.error(`Unknown stage "${s}". Stages: ${Object.keys(STAGE_FOLDERS).join(', ')}`); process.exit(1); }
@@ -121,7 +124,7 @@ const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 // where the kit is on this computer, for stage.mjs --enter: this clone's git config (workflow.kit), never the committed record
 const kitPath = resolve(opt('--kit-path') ?? kit).replace(/\\/g, '/');
 const kitRepo = spawnSync('git', ['-C', kit, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout?.trim() || '';
-const markFile = join(target, '.workflow-kit');
+const markFile = join(target, 'workflow/record');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
 // the app map's request group as it was, to say after the update when it came out different (install-report.mjs)
 const requestsBefore = existsSync(join(target, 'docs', 'flow', 'requests.js')) ? readFileSync(join(target, 'docs', 'flow', 'requests.js'), 'utf8') : null;
@@ -142,14 +145,14 @@ const readIn = (f) => (existsSync(join(target, f)) ? readFileSync(join(target, f
 const projectNode = runtimeNode({ pkg: pkgBefore, toolVersions: readIn('.tool-versions'), dockerfile: readIn('Dockerfile'), nvmrc: readIn('.nvmrc') ?? readIn('.node-version') });
 const nodeMajor = (projectNode ?? runtimeNode({ toolVersions: readFileSync(join(kit, 'starter', '.tool-versions'), 'utf8') }))?.major;
 const nodeTypes = nodeMajor ? `@types/node@^${nodeMajor}` : '@types/node';
-// what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in .workflow-kit), so an update can
+// what each machinery file looked like when the kit last wrote it ("sha <hash> <file>" lines in workflow/record), so an update can
 // tell a file the project changed from one only the kit changed
 const hash = (text) => createHash('sha1').update(String(text).replace(/\r\n/g, '\n')).digest('hex').slice(0, 16);
 const written = new Map((existsSync(markFile) ? readFileSync(markFile, 'utf8') : '').split(/\r?\n/).map((l) => /^sha (\S+) (.+)$/.exec(l)).filter(Boolean).map((m) => [m[2], m[1]]));
 const stamp = new Map(written);
-// A kit file nobody changed: the same as the kit wrote it (its stamp), or so once the doc paths kit 2.9 moved are put back (an update
+// A kit file nobody changed: the same as the kit wrote it (its stamp), or so once the paths kit 2.9 and 3.0 moved are put back (an update
 // from before 2.9 rewrites them in every file, the kit's too, and that is not the project changing the file).
-const untouched = (key, text) => written.has(key) && [text, movePathsBack(text), undoCorrections(text), movePathsBack(undoCorrections(text))]
+const untouched = (key, text) => written.has(key) && [text, moveKitPathsBack(text)].flatMap((t) => [t, movePathsBack(t), undoCorrections(t), movePathsBack(undoCorrections(t))])
   .some((t) => written.get(key) === hash(t));
 // --update: an older project's docs move into their folders, and old doc paths are rewritten, before anything is copied
 // (install-docs.mjs)
@@ -157,7 +160,7 @@ let claudeGrowth = 0; // bytes the longer doc paths added to CLAUDE.md (its budg
 // what changed in the kit since the project's version, one step per version (migrations/): run once, each looking before it acts
 const migrated = [];
 const migrate = (phase) => { if (update) migrated.push(runMigrations(phase, { from: before, target, kit, fill, written, stamp })); return migrated.at(-1) ?? {}; };
-claudeGrowth = migrate('before').claudeGrowth ?? 0;
+claudeGrowth = (migrate('before').claudeGrowth ?? 0) + layout.claudeGrowth;
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
 // does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
 const HELPERS = lang === 'ts' ? needs.helpers : [];
@@ -239,7 +242,7 @@ const rulesRewritten = update ? rewriteChangedRules({ target, kit, fill, rules: 
 migrate('claude');
 
 // a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end. "Once" is remembered in
-// .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
+// workflow/record (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
 // record is recognised by the heading or by the first file or command the section names.
 const sectionsDone = new Set((/^sections=(.*)$/m.exec(existsSync(markFile) ? readFileSync(markFile, 'utf8') : '')?.[1] ?? '').split(',').filter(Boolean));
 // A module may have more than one (claude-section-<name>.md, remembered as <module>:<name>), so a section added later still reaches
@@ -266,7 +269,7 @@ for (const { key: m, part } of modules.flatMap(sectionFiles)) {
   sectionsDone.add(m);
 }
 // the gate's baseline, empty, so the docs can name it from the first day
-const basePath = join(target, 'tools', 'workflow', 'baseline.json');
+const basePath = join(target, 'workflow', 'tools', 'baseline.json');
 if (!existsSync(basePath)) writeFileSync(basePath, JSON.stringify({ boundaries: [], sizes: {}, docs: [] }, null, 2) + '\n');
 
 // starter files that are not meant to live at their own name
@@ -322,13 +325,13 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
   }
 }
 
-// workflow.config.json: a fresh one fitted to the framework and language; on --update the settings the kit has and the project
-// lacks; each module's own settings (install-config.mjs)
-const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: done.added.includes('workflow.config.json'), claudeGrowth });
+// the config: a fresh one fitted to framework and language; on --update what the project lacks (install-config.mjs). (Paths as git writes them)
+const wrote = (path) => done.added.some((f) => f.replace(/\\/g, '/') === path);
+const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: wrote('workflow/config.json'), claudeGrowth });
 migrate('config');
-// the team profile: pull requests and a team audience in a config this run wrote (docs/workflow/TEAM.md); an existing one is the project's
-if (team && done.added.includes('workflow.config.json')) {
-  const at = join(target, 'workflow.config.json'), was = readFileSync(at, 'utf8'), c = JSON.parse(was);
+// the team profile: pull requests and a team audience in a config this run wrote (workflow/guides/TEAM.md); an existing one is the project's
+if (team && wrote('workflow/config.json')) {
+  const at = join(target, 'workflow/config.json'), was = readFileSync(at, 'utf8'), c = JSON.parse(was);
   writeFileSync(at, rewriteJson(was, { ...c, project: { ...c.project, audience: 'team' }, session: { ...c.session, flow: 'pr' } }));
 }
 // a part or module added later: the "(not installed)" marks in the project's own text come out where it is there now
@@ -345,7 +348,7 @@ const lfHint = writeProjectFiles({ target, kit, lang, langs: LANGS, modules, upd
 if (existsSync(join(target, 'docs', 'flow', 'build-requests.mjs'))) spawnSync(process.execPath, ['docs/flow/build-requests.mjs'], { cwd: target, encoding: 'utf8' });
 
 // the OpenCode commands (and, when missing, opencode.jsonc), so every agent can run /setup at once
-const harness = gateOnly ? { status: 0, stdout: 'harness: none (the minimal profile has no commands)' } : spawnSync(process.execPath, ['tools/workflow/harness.mjs'], { cwd: target, encoding: 'utf8' });
+const harness = gateOnly ? { status: 0, stdout: 'harness: none (the minimal profile has no commands)' } : spawnSync(process.execPath, ['workflow/tools/harness.mjs'], { cwd: target, encoding: 'utf8' });
 const harnessLine = harness.status === 0 ? harness.stdout.trim() : `harness: not written (${(harness.stderr || harness.stdout).trim().split('\n')[0]}); run npm run harness in the project`;
 
 spawnSync('git', ['-C', target, 'config', 'workflow.kit', kitPath], { stdio: 'ignore' });
@@ -358,13 +361,13 @@ console.log(`  added ${done.added.length} files, replaced ${done.replaced.length
 const collided = update ? [] : done.kept.filter((f) => !['package.json', 'CLAUDE.md', 'README.md', '.gitignore'].includes(f.replace(/\\/g, '/')));
 if (kitPartsAdded.length) console.log(`  CLAUDE.md is yours and stays so; the kit's rules its commands rely on were added at its end, between <!-- kit: --> markers (an update keeps those current): ${kitPartsAdded.join('; ')}`);
 if (collided.length) console.log(`  yours, at a place the kit also writes (kept as they are; where the kit's rules name one, compare it with the kit's in ${kit}):\n${collided.map((f) => `    ${f.replace(/\\/g, '/')}`).join('\n')}`);
-if (done.skipped.length) console.log(`  skipped, as the project asked (skip= in .workflow-kit, --skip adds more): ${done.skipped.length} file${done.skipped.length === 1 ? '' : 's'}`);
+if (done.skipped.length) console.log(`  skipped, as the project asked (skip= in workflow/record, --skip adds more): ${done.skipped.length} file${done.skipped.length === 1 ? '' : 's'}`);
 // a kit file the project's ignore rules hide is never committed (a rule like *UCT.md hid docs/PRODUCT.md): written now or there before
 const hidden = (spawnSync('git', ['check-ignore', '--stdin'], { cwd: target, input: [...done.added, ...done.replaced, ...done.kept].map((f) => f.replace(/\\/g, '/')).join('\n'), encoding: 'utf8' }).stdout ?? '').split('\n').filter(Boolean);
 if (hidden.length) console.log(`  hidden by .gitignore, so git will not commit them (add a !<path> line, or narrow the rule):\n${hidden.map((f) => `    ${f}`).join('\n')}`);
 console.log(`  ${harnessLine}`);
 if (update) {
-  if (addedSettings.length) console.log(`  settings added to workflow.config.json: ${addedSettings.join(', ')}`);
+  if (addedSettings.length) console.log(`  settings added to workflow/config.json: ${addedSettings.join(', ')}`);
   if (claudeAdded.length) console.log(`  rules added to .claude/settings.local.json: ${claudeAdded.join(', ')}`);
   if (lfHint) console.log(lfHint);
   if (rulesRewritten.length) console.log(`  CLAUDE.md: the kit's own text brought up to date, yours left as it is (${rulesRewritten.join('; ')})`);
@@ -372,17 +375,18 @@ if (update) {
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
   if (done.stageNamed.length) console.log(`  kept from a stage not reached yet, because the project's own pages point at them: ${done.stageNamed.join(', ')}`);
   if (done.helpers.length) console.log(`  helpers the kit's rules name, added (never replacing one): ${done.helpers.join(', ')}`);
-  if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
+  if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node workflow/tools/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
   if (unmarked.length) console.log(`  "(not installed)" taken out where it is installed now, in: ${unmarked.join(', ')}`);
   for (const l of whatChanged({ kit, target, before, now: kitVersion, replaced: done.replaced, requestsBefore })) console.log(`  ${l}`);
+  for (const l of layout.said) console.log(`  ${l}`);
   const ran = migrated.flatMap((m) => m.ran);
   if (ran.length) console.log(`  the kit's changes since ${before} (migrations/): ${ran.join('; ')}\n${migrated.flatMap((m) => m.said).map((l) => `  ${l}`).join('\n')}`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
-  if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');
-  if (framework && JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).ui?.boards === 'html') console.log('  not changed: "ui": { "boards": "html" } although the project has a UI framework. Set it to "components" to have /ui draw its variants as real components.');
-  console.log('  then: step 1 below, npm run map, node tools/workflow/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
+  if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow/config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched .", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');
+  if (framework && JSON.parse(readFileSync(join(target, 'workflow/config.json'), 'utf8')).ui?.boards === 'html') console.log('  not changed: "ui": { "boards": "html" } although the project has a UI framework. Set it to "components" to have /ui draw its variants as real components.');
+  console.log('  then: step 1 below, npm run map, node workflow/tools/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all');
 }
 if (update) { console.log(`  step 1: ${lang === 'ts' ? `npm i -D tsx typescript ${nodeTypes} knip${happyDom}${aiLibs}` : LANGS[lang].needs}`); process.exit(0); }
 console.log(`

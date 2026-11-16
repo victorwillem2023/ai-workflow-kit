@@ -1,5 +1,5 @@
 // Makes docs/flow/requests.js from the request pages (docs/REQUESTS.md and docs/requests/*.md, or where `map.requests` in
-// workflow.config.json says: { index, folder }), so the app map shows them as its first group. The words come from the index
+// workflow/config.json says: { index, folder }), so the app map shows them as its first group. The words come from the index
 // page: the group is its title up to the first comma, the kinds' section its "## The kinds ..." heading, the questions' intro
 // its "The one rule:" line, and a section's map intro an "On the map: ..." line under its heading. The pages stay the one place
 // to edit; run this after changing one:
@@ -14,7 +14,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
 const read = (p) => readFileSync(join(root, p), 'utf8').replace(/\r\n/g, '\n');
 let places = {};
-try { places = JSON.parse(read('workflow.config.json')).map?.requests ?? {}; } catch { /* no config: the kit's places */ }
+try { places = JSON.parse(read('workflow/config.json')).map?.requests ?? {}; } catch { /* no config: the kit's places */ }
 const indexAt = places.index ?? 'docs/REQUESTS.md';
 const folderAt = (places.folder ?? 'docs/requests/').replace(/\/?$/, '/');
 const STATUS = { built: undefined, decided: 'decided', 'being built': 'building', open: 'open' };

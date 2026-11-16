@@ -1,4 +1,4 @@
-// The settings part of install.mjs: Claude Code's allow and deny rules, workflow.config.json (a UI framework's boards, another
+// The settings part of install.mjs: Claude Code's allow and deny rules, workflow/config.json (a UI framework's boards, another
 // language's commands, on --update the settings the kit has and the project lacks, each module's own settings, and the CLAUDE.md
 // budget the kit's doc move grew), and the project files written once (Dependabot, .gitignore lines, .gitattributes). Each
 // function gets what it works on as arguments; install.mjs runs them in order.
@@ -100,7 +100,7 @@ export function addClaudeRules({ target, kit }) {
     const list = (mine.permissions[kind] ??= []);
     for (const r of kitRules[kind] ?? []) if (!list.includes(r)) { list.push(r); added.push(`${kind} ${r}`); }
   }
-  // the kit's hooks (the stop points: scripts/stop-points.mjs) the project lacks, by their command; the project's own stay
+  // the kit's hooks (the stop points: workflow/scripts/stop-points.mjs) the project lacks, by their command; the project's own stay
   for (const [event, groups] of Object.entries(kits.hooks ?? {})) for (const g of groups) {
     const have = (mine.hooks ??= {})[event] ??= [];
     const known = have.flatMap((x) => (x.hooks ?? []).map((h) => h.command));
@@ -112,13 +112,13 @@ export function addClaudeRules({ target, kit }) {
 }
 
 /**
- * workflow.config.json, after the files are copied. A config just written: a UI framework draws /ui variants as components, another
+ * workflow/config.json, after the files are copied. A config just written: a UI framework draws /ui variants as components, another
  * language gets its commands. On --update: the settings the kit has and the project lacks (a whole key, or a check or import rule
  * by its name; nothing is changed), and the CLAUDE.md budget grows by the bytes the kit's doc move alone added. Always: each
  * module's own settings (modules/<name>/config.json). Returns the settings added, one line each.
  */
 export function settleConfig({ target, kit, fill, langConfig, framework, modules, update, justWritten, claudeGrowth }) {
-  const cfgPath = join(target, 'workflow.config.json');
+  const cfgPath = join(target, 'workflow/config.json');
   const added = [];
   // (written again only when something changes, so a fresh config keeps the starter's own layout)
   if (justWritten) {
@@ -129,7 +129,7 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
   }
   if (update && !justWritten) {
     const mine = readJson(cfgPath);
-    const kits = { ...JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8'))), ...(langConfig ?? {}) };
+    const kits = { ...JSON.parse(fill(readFileSync(join(kit, 'starter', 'workflow/config.json'), 'utf8'))), ...(langConfig ?? {}) };
     for (const [k, v] of Object.entries(kits)) {
       if (!(k in mine)) {
         mine[k] = k === 'checks' ? v.filter((c) => c.name !== 'lint') : v;
@@ -197,7 +197,7 @@ export function knipEntries(target) {
   const pkg = (() => { try { return JSON.parse(read('package.json')); } catch { return {}; } })();
   if (pkg.knip || KNIP_CONFIGS.some((f) => existsSync(join(target, f)))) return null;
   const scripts = Object.values(pkg.scripts ?? {}).join('\n');
-  const ran = [...scripts.matchAll(/\bnode\s+([\w./-]+\.m?[jt]s)\b/g)].map((m) => m[1]).filter((f) => !f.startsWith('tools/workflow/'));
+  const ran = [...scripts.matchAll(/\bnode\s+([\w./-]+\.m?[jt]s)\b/g)].map((m) => m[1]).filter((f) => !f.startsWith('workflow/tools/'));
   const texts = [scripts, ...ran.map(read), ...['vite.config.ts', 'vite.config.js', 'vite.config.mjs'].map(read)];
   const found = new Set();
   for (const t of texts) for (const m of t.matchAll(/['"`](?:\.\/)?((?:src|app|web|client|server)\/[\w./-]+\.(?:m?[jt]sx?))['"`]/g)) found.add(m[1]);

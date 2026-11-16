@@ -41,7 +41,7 @@ export const SCENARIOS = {
       const session = join(dirname(dir), 'st-demo');
       git(dir, 'worktree', 'add', '-q', '-b', 'demo', session);
       const spec = '# Demo\n\nCard: none\n\n## What the user sees\nA line in the README saying hello.\n\n## Files that change\n- README.md\n';
-      for (const d of [dir, session]) { mkdirSync(join(d, 'specs'), { recursive: true }); writeFileSync(join(d, 'specs', 'demo.md'), spec); }
+      for (const d of [dir, session]) { mkdirSync(join(d, 'workflow/specs'), { recursive: true }); writeFileSync(join(d, 'workflow/specs', 'demo.md'), spec); }
       const readme = join(session, 'README.md');
       writeFileSync(readme, `${existsSync(readme) ? readFileSync(readme, 'utf8') : '# Skill Test\n'}\nHello.\n`);
     },

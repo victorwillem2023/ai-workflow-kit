@@ -11,6 +11,8 @@ import { detectLang, detectProject, inList, readChoices, recorded, recordLines, 
 import { mergeKitBlocks, rewriteChangedRules, unmarkInstalled } from '../install-docs.mjs';
 import { movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
 import { due, older, STEPS } from '../migrations/index.mjs';
+import { moveKitPaths, moveKitPathsBack, oldKitPaths } from '../kit-layout.mjs';
+import { moveToWorkflowFolder } from '../migrations/3.0.0-workflow-folder.mjs';
 import { changesSince } from '../install-report.mjs';
 
 const kit = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -65,7 +67,7 @@ describe('the record and the choices', () => {
     rmSync(d, { recursive: true, force: true });
   });
   it('a project with the record is updated by a plain run, and a flag changes only its own choice', () => {
-    const d = folder({ '.workflow-kit': 'version=2.9.11\nlang=go\nproject=Trail\nrepo=o/trail\nprefix=tr\nmodules=map\nlean=1\nparts=shape\n' });
+    const d = folder({ 'workflow/record': 'version=2.9.11\nlang=go\nproject=Trail\nrepo=o/trail\nprefix=tr\nmodules=map\nlean=1\nparts=shape\n' });
     const plain = readChoices([d], kit);
     assert.equal(plain.update, true);
     assert.deepEqual([plain.lang, plain.project, plain.repo, plain.prefix, plain.lean, plain.modules.join(), plain.parts.join()], ['go', 'Trail', 'o/trail', 'tr', true, 'map', 'shape']);
@@ -78,7 +80,7 @@ describe('the record and the choices', () => {
   it('without a repo it says so, and --take and --skip take folders', () => {
     const d = folder();
     assert.equal(readChoices([d], kit).error, 'repo');
-    assert.ok(inList(['tools/workflow/**'], 'tools/workflow/gate.mjs'));
+    assert.ok(inList(['workflow/tools/**'], 'workflow/tools/gate.mjs'));
     assert.ok(inList(['all'], 'anything'));
     assert.ok(!inList(['tools/'], 'scripts/x.mjs'));
     rmSync(d, { recursive: true, force: true });
@@ -88,12 +90,12 @@ describe('the record and the choices', () => {
 describe('the kit\'s parts of CLAUDE.md', () => {
   const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, 'X');
   it('an existing CLAUDE.md keeps its own text and gets the kit\'s parts it lacks at its end', () => {
-    const d = folder({ 'CLAUDE.md': '# Mine\n\nOur notes.\n', 'workflow.config.json': '{ "budget": { "CLAUDE.md": 100 } }\n' });
+    const d = folder({ 'CLAUDE.md': '# Mine\n\nOur notes.\n', 'workflow/config.json': '{ "budget": { "CLAUDE.md": 100 } }\n' });
     const added = mergeKitBlocks({ target: d, kit, fill });
     const text = readFileSync(join(d, 'CLAUDE.md'), 'utf8');
     assert.ok(text.startsWith('# Mine\n\nOur notes.\n'));
     assert.ok(added.length >= 5 && text.includes('<!-- kit:how-we-work -->'));
-    assert.ok(JSON.parse(readFileSync(join(d, 'workflow.config.json'), 'utf8')).budget['CLAUDE.md'] >= Buffer.byteLength(text), 'the budget fits');
+    assert.ok(JSON.parse(readFileSync(join(d, 'workflow/config.json'), 'utf8')).budget['CLAUDE.md'] >= Buffer.byteLength(text), 'the budget fits');
     assert.deepEqual(mergeKitBlocks({ target: d, kit, fill }), [], 'a second time adds nothing');
     rmSync(d, { recursive: true, force: true });
   });
@@ -102,7 +104,7 @@ describe('the kit\'s parts of CLAUDE.md', () => {
     if (!tags) return; // a copy of the kit without its tags: nothing to compare with (the installer says so)
     const old = fill(spawnSync('git', ['show', 'v2.9.11:starter/CLAUDE.md'], { cwd: kit, encoding: 'utf8' }).stdout);
     const changed = old.replace(/^## Writing style.*$/m, (h) => `${h}\n- Our own line.`);
-    const d = folder({ 'CLAUDE.md': changed, '.workflow-kit': 'version=2.9.11\n' });
+    const d = folder({ 'CLAUDE.md': changed, 'workflow/record': 'version=2.9.11\n' });
     rewriteChangedRules({ target: d, kit, fill });
     const text = readFileSync(join(d, 'CLAUDE.md'), 'utf8');
     assert.ok(text.includes('<!-- kit:how-we-work -->'), 'an untouched part is the kit\'s now');
@@ -121,11 +123,12 @@ describe('profiles', () => {
     assert.equal(p('--profile', 'team').team, true);
     assert.ok(!p('--without', 'market,ui').parts.includes('market') && !p('--without', 'market,ui').modules.includes('ui'));
     assert.match(p('--profile', 'huge').error, /Unknown profile "huge"/);
-    writeFileSync(join(d, '.workflow-kit'), 'version=2.10.0\nrepo=o/x\nprofile=product\nwithout=market\nmodules=ui,map\n');
+    mkdirSync(join(d, 'workflow'), { recursive: true });
+    writeFileSync(join(d, 'workflow/record'), 'version=2.10.0\nrepo=o/x\nprofile=product\nwithout=market\nmodules=ui,map\n');
     assert.deepEqual([p().profile, p().parts.includes('market'), p().modules], ['product', false, ['ui', 'map']], 'the record keeps what was left out');
     assert.deepEqual([p('--with', 'market').parts.includes('market')], [true], '--with brings it back');
     assert.deepEqual([p('--profile', 'solo').parts, p('--profile', 'solo').modules, p('--profile', 'solo').profileChanged], [[], [], true], 'solo starts from its own');
-    writeFileSync(join(d, '.workflow-kit'), 'version=2.9.11\nrepo=o/x\nlean=1\nparts=shape\n');
+    writeFileSync(join(d, 'workflow/record'), 'version=2.9.11\nrepo=o/x\nlean=1\nparts=shape\n');
     assert.deepEqual([p().profile, p().parts], ['solo', ['shape']], 'a lean project from before profiles is solo, its parts kept');
     rmSync(d, { recursive: true, force: true });
   });
@@ -137,14 +140,14 @@ describe('uninstall', () => {
     spawnSync('git', ['init', '-q'], { cwd: d });
     const installed = spawnSync(process.execPath, [join(kit, 'install.mjs'), d, '--repo', 'o/x'], { encoding: 'utf8' });
     assert.equal(installed.status, 0, installed.stderr);
-    writeFileSync(join(d, 'tools', 'workflow', 'README.md'), 'changed by the project\n');
+    writeFileSync(join(d, 'workflow', 'tools', 'README.md'), 'changed by the project\n');
     const said = spawnSync(process.execPath, [join(kit, 'install.mjs'), d, '--uninstall'], { encoding: 'utf8' }).stdout;
     assert.match(said, /The kit is out of/);
     assert.equal(readFileSync(join(d, 'CLAUDE.md'), 'utf8').trim(), '# Mine\n\nOur notes.');
     assert.deepEqual(JSON.parse(readFileSync(join(d, 'package.json'), 'utf8')).scripts, { dev: 'vite' });
-    assert.ok(existsSync(join(d, 'tools', 'workflow', 'README.md')) && !existsSync(join(d, 'tools', 'workflow', 'gate.mjs')), 'the changed one stays, the rest goes');
-    assert.ok(!existsSync(join(d, '.workflow-kit')) && !existsSync(join(d, '.claude', 'skills')));
-    assert.match(said, /kept, because you changed them[\s\S]*tools\/workflow\/README\.md/);
+    assert.ok(existsSync(join(d, 'workflow', 'tools', 'README.md')) && !existsSync(join(d, 'workflow', 'tools', 'gate.mjs')), 'the changed one stays, the rest goes');
+    assert.ok(!existsSync(join(d, 'workflow/record')) && !existsSync(join(d, '.claude', 'skills')));
+    assert.match(said, /kept, because you changed them[\s\S]*workflow\/tools\/README\.md/);
     rmSync(d, { recursive: true, force: true });
   });
 });
@@ -183,6 +186,51 @@ describe('migrations', () => {
     const versions = STEPS.map((s) => s.version);
     assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
     for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
+  });
+});
+
+describe('the kit under workflow/ (3.0)', () => {
+  it('moves every old kit path once, never a word or a path that only ends the same way, and back again', () => {
+    const cases = [
+      ['node tools/workflow/gate.mjs --all', 'node workflow/tools/gate.mjs --all'],
+      ['see `workflow.config.json` and `.workflow-kit`.', 'see `workflow/config.json` and `workflow/record`.'],
+      ['in specs/<topic>.md and ../app-x/specs/x.md', 'in workflow/specs/<topic>.md and ../app-x/workflow/specs/x.md'],
+      ['the waiting specs, and mydocs/workflow/x', 'the waiting specs, and mydocs/workflow/x'],
+      ['node scripts/session.mjs --finish; node scripts/build.mjs', 'node workflow/scripts/session.mjs --finish; node scripts/build.mjs'],
+      ['ends a sentence: workflow.config.json.', 'ends a sentence: workflow/config.json.'],
+    ];
+    for (const [old, now] of cases) {
+      assert.equal(moveKitPaths(old), now);
+      assert.equal(moveKitPaths(now), now, 'twice changes nothing more');
+      assert.equal(moveKitPathsBack(now), old);
+      assert.deepEqual(oldKitPaths(now), []);
+    }
+  });
+  it('is quick on a long line with no spaces (a data file, minified code)', () => {
+    let x = 12345, s = '';
+    while (s.length < 450_000) { x = (x * 1103515245 + 12345) % 2147483648; s += x.toString(36); }
+    const t0 = Date.now();
+    moveKitPaths(`${s} tools/workflow/gate.mjs`);
+    assert.ok(Date.now() - t0 < 2000, 'it once took hours here');
+  });
+  it('an older project\'s kit files move with git, its text follows, and its settings find the kit\'s tests', () => {
+    const d = folder({
+      '.workflow-kit': 'version=2.10.0\nsha 0123456789abcdef tools/workflow/gate.mjs\n', 'tools/workflow/gate.mjs': '// gate\n',
+      'workflow.config.json': '{\n  "roots": ["src", "tests"],\n  "tests": "tests/**/*.test.ts"\n}\n', 'CLAUDE.md': 'Run `node tools/workflow/gate.mjs`.\n',
+      'scripts/build.mjs': '// the project\'s own\n', 'tsconfig.json': '{ "include": ["src", "tests"] }\n',
+    });
+    spawnSync('git', ['init', '-q'], { cwd: d });
+    spawnSync('git', ['add', '-A'], { cwd: d });
+    const r = moveToWorkflowFolder(d);
+    assert.ok(existsSync(join(d, 'workflow', 'tools', 'gate.mjs')) && existsSync(join(d, 'workflow', 'record')) && existsSync(join(d, 'scripts', 'build.mjs')));
+    assert.equal(readFileSync(join(d, 'CLAUDE.md'), 'utf8'), 'Run `node workflow/tools/gate.mjs`.\n');
+    assert.match(readFileSync(join(d, 'workflow', 'record'), 'utf8'), /sha 0123456789abcdef workflow\/tools\/gate\.mjs/);
+    const cfg = JSON.parse(readFileSync(join(d, 'workflow', 'config.json'), 'utf8'));
+    assert.deepEqual([cfg.tests, cfg.roots], ['{tests,workflow/tests}/**/*.test.ts', ['src', 'tests', 'workflow']]);
+    assert.deepEqual(JSON.parse(readFileSync(join(d, 'tsconfig.json'), 'utf8')).include, ['src', 'tests', 'workflow']);
+    assert.match(r.said[0], /moved under workflow\//);
+    assert.deepEqual(moveToWorkflowFolder(d).moved, [], 'a second time does nothing');
+    rmSync(d, { recursive: true, force: true });
   });
 });
 

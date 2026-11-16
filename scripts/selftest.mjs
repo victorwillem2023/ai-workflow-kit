@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The kit checks itself: install it into a fresh project in a temporary folder, the way a person would, and run everything
 // there: the file map, the first baseline and the full gate. Then do it again with --update over the result, so an update is
-// proven too. Used by .github/workflows/selftest.yml. The kit's own tests (tests/workflow, about a minute) run once per run, in
+// proven too. Used by .github/workflows/selftest.yml. The kit's own tests (workflow/tests, about a minute) run once per run, in
 // the full variant's first gate and in the messy project after its update; every other gate runs the project's own tests and
 // every check. First of all, tests/ (the installer's helpers, a second): npm run test:quick runs only those.
 //   node scripts/selftest.mjs [<variant>...] [--keep]      no variant: full. --keep leaves the folders for a look
@@ -16,12 +16,14 @@
 //   messy     an old project made with an older kit tag, with debt, its own settings and a board, then updated (needs the tags)
 // A variant whose tools are missing on this computer says so and is skipped; CI installs them and runs them all.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CORRECTIONS, MOVES, movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
+import { FILE_MOVES, FOLDER_MOVES, moveKitPaths, moveKitPathsBack, oldKitPaths } from '../kit-layout.mjs';
+import { newConfigText } from '../migrations/3.0.0-workflow-folder.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const win = process.platform === 'win32';
@@ -57,19 +59,24 @@ const VARIANTS = {
 /** Every mention of a skill the project does not have (in its skills, docs and CLAUDE.md) that does not say "(not installed)". */
 /** The project's text files (tracked and new, not ignored), with the kit's stamp file, which names paths too. */
 const projectText = (dir) => [...execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: dir, encoding: 'utf8', maxBuffer: 64 << 20 })
-  .split('\n').filter((f) => f && /\.(md|mjs|cjs|js|ts|tsx|mts|json|ya?ml|html|tpl|txt|toml|py|go|rs)$/.test(f) && existsSync(join(dir, f))), '.workflow-kit'];
+  .split('\n').filter((f) => f && /\.(md|mjs|cjs|js|ts|tsx|mts|json|ya?ml|html|tpl|txt|toml|py|go|rs)$/.test(f) && existsSync(join(dir, f))), ...['workflow/record', 'workflow/record', '.gitignore'].filter((f) => existsSync(join(dir, f)))];
 /** Every old doc path (from before kit 2.9) still named in the project: "file: docs/X.md". */
 function oldDocPaths(dir) {
-  return projectText(dir).flatMap((f) => oldPaths(readFileSync(join(dir, f), 'utf8')).map((p) => `${f}: ${p}`));
+  // the 2.9 doc paths and the 3.0 kit paths (kit-layout.mjs) alike
+  return projectText(dir).flatMap((f) => { const t = readFileSync(join(dir, f), 'utf8'); return [...oldPaths(t), ...oldKitPaths(t)].map((p) => `${f}: ${p}`); });
 }
 /** The project as a kit from before 2.9 left it: every doc back at the top of docs/, every path in its text the old one. */
 function asOlderKitLeftIt(dir) {
+  // the kit's files back out of workflow/ as before 3.0 (the specs, ignored by git, as files), then the docs as before 2.9
+  const back = (from, to) => { if (!existsSync(join(dir, to)) || existsSync(join(dir, from))) return; mkdirSync(dirname(join(dir, from)), { recursive: true }); try { execFileSync('git', ['mv', to, from], { cwd: dir, stdio: 'ignore' }); } catch { renameSync(join(dir, to), join(dir, from)); } };
+  for (const [from, to] of FILE_MOVES) back(from, to);
+  for (const [from, to] of FOLDER_MOVES) back(from.slice(0, -1), to.slice(0, -1));
   for (const [from, to] of MOVES) if (existsSync(join(dir, to))) execFileSync('git', ['mv', to, from], { cwd: dir, stdio: 'ignore' });
-  const text = () => projectText(dir).filter((x) => x !== '.workflow-kit');
-  for (const f of text()) { const was = readFileSync(join(dir, f), 'utf8'); const back = movePathsBack(was); if (back !== was) writeFileSync(join(dir, f), back); }
+  const text = () => projectText(dir).filter((x) => x !== '.workflow-kit' && x !== 'workflow/record');
+  for (const f of text()) { const was = readFileSync(join(dir, f), 'utf8'); const old = movePathsBack(moveKitPathsBack(was)); if (old !== was) writeFileSync(join(dir, f), old); }
   const mark = join(dir, '.workflow-kit');
   // and the record says so: a kit from before 2.9 (the update's steps since then, migrations/, run by that version)
-  writeFileSync(mark, movePathsBack(readFileSync(mark, 'utf8')).replace(/^version=.*$/m, 'version=2.8.5'));
+  writeFileSync(mark, movePathsBack(moveKitPathsBack(readFileSync(mark, 'utf8'))).replace(/^version=.*$/m, 'version=2.8.5'));
   // PRODUCTION.md where kit 2.9.0 to 2.9.2 put it (docs/run/), so the update's correction is proven too
   if (existsSync(join(dir, 'docs', 'PRODUCTION.md'))) {
     mkdirSync(join(dir, 'docs', 'run'), { recursive: true });
@@ -92,7 +99,6 @@ function asOlderKitLeftIt(dir) {
   writeFileSync(join(dir, 'workflow.config.json'), `${JSON.stringify(cfg, null, 2)}\n`);
 }
 const HELPERS = ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.ts', 'tests/production/debugging.test.ts'];
-
 /**
  * Every doc the installed skills, docs and CLAUDE.md point at in backticks is there: a stage not reached yet, or a part left out,
  * says so instead of pointing at nothing. (A path with a placeholder, a glob, or a page a tool writes on demand is not counted.)
@@ -106,7 +112,6 @@ function missingDocPointers(dir) {
   });
   return out;
 }
-
 /**
  * Every installed doc has a reader: a skill, a tool, a script or CLAUDE.md names it, so it is read at the moment it steers the
  * owner and is not just there. (Folder notes, generated pages and the project's own content folders are not counted.)
@@ -115,7 +120,7 @@ function docsWithoutReader(dir) {
   const docs = walkMd(join(dir, 'docs')).map((f) => f.slice(dir.length + 1).replace(/\\/g, '/'))
     .filter((d) => !/^docs\/(MAP|README)\.md$|\/README\.md$|^docs\/(guide|code|design|decisions|requests|sources|flow)\//.test(d));
   const walkAll = (d) => (existsSync(d) ? readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walkAll(join(d, e.name)) : [join(d, e.name)])) : []);
-  const readers = [...walkAll(join(dir, '.claude')), ...walkAll(join(dir, 'tools')), ...walkAll(join(dir, 'scripts')), join(dir, 'CLAUDE.md')]
+  const readers = [...walkAll(join(dir, '.claude')), ...walkAll(join(dir, 'workflow')), ...walkAll(join(dir, 'scripts')), join(dir, 'CLAUDE.md')]
     .filter((f) => /\.(md|mjs|js|ts)$/.test(f) && existsSync(f)).map((f) => readFileSync(f, 'utf8')).join('\n');
   return docs.filter((d) => !readers.includes(d));
 }
@@ -177,17 +182,17 @@ async function runMessy({ name, dir, step, git, install }) {
   for (const part of line ? line.split('&&').map((p) => p.trim().split(/\s+/).slice(2)) : []) await step(`npm i ${part.join(' ')}`, 'npm', ['install', '--no-audit', '--no-fund', '--silent', ...part]);
   // (what the update means to change is not lost: the moved doc paths, a kit check's old command that the kit replaced)
   const { OLD_COMMANDS } = await import(pathToFileURL(join(kit, 'install-config.mjs')).href);
-  const after = JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8'));
-  const meant = JSON.parse(movePaths(JSON.stringify(before)));
+  const after = JSON.parse(readFileSync(join(dir, 'workflow/config.json'), 'utf8'));
+  const meant = JSON.parse(newConfigText(moveKitPaths(movePaths(JSON.stringify(before, null, 2)))));
   for (const c of meant.checks ?? []) if (OLD_COMMANDS[c.name]?.includes(c.command)) c.command = after.checks.find((x) => x.name === c.name)?.command;
   verdict(name, 'the update keeps every setting and page the project had', [
     ...configLost(meant, after),
     ...ownWorkLost(dir)]);
   verdict(name, 'after the update every doc pointed at is there', missingDocPointers(dir));
-  await step('file map', process.execPath, ['tools/workflow/map.mjs']);
-  await step('baseline, as the update says', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
+  await step('file map', process.execPath, ['workflow/tools/map.mjs']);
+  await step('baseline, as the update says', process.execPath, ['workflow/tools/gate.mjs', '--update-baseline']);
   // (the kit's own tests here too: an old project with a board set is where they found real bugs)
-  await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all'], { WORKFLOW_KIT_TESTS: '1' });
+  await step('full gate after the update', process.execPath, ['workflow/tools/gate.mjs', '--all'], { WORKFLOW_KIT_TESTS: '1' });
   await converges({ name, dir, git, step });
   return 'passed';
 }
@@ -260,12 +265,12 @@ async function runVariant(name) {
     for (const [cmd, args] of v.after ?? []) await step(`${cmd} ${args.join(' ')}`, cmd, args);
     git('add', '-A');
     git('commit', '-q', '-m', 'Start from the kit');
-    await step('file map', process.execPath, ['tools/workflow/map.mjs']);
-    await step('first baseline', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
+    await step('file map', process.execPath, ['workflow/tools/map.mjs']);
+    await step('first baseline', process.execPath, ['workflow/tools/gate.mjs', '--update-baseline']);
     // the full gate runs the project's whole test suite (npm test) itself: no separate run of it
-    // the kit's own tests (tests/workflow) run once per self-test, here in the full variant's first gate (KIT_TESTS_IN); every
+    // the kit's own tests (workflow/tests) run once per self-test, here in the full variant's first gate (KIT_TESTS_IN); every
     // other gate runs the project's own tests and every check (WORKFLOW_KIT_TESTS=0), which is most of the time saved
-    await step('full gate', process.execPath, ['tools/workflow/gate.mjs', '--all'], { WORKFLOW_KIT_TESTS: KIT_TESTS_IN.includes(name) ? '1' : '0' });
+    await step('full gate', process.execPath, ['workflow/tools/gate.mjs', '--all'], { WORKFLOW_KIT_TESTS: KIT_TESTS_IN.includes(name) ? '1' : '0' });
     git('add', '-A');
     git('commit', '-q', '-m', 'The first baseline');
     // the update starts from the layout an older kit left (every doc at the top of docs/), so moving a project over is proven too
@@ -273,7 +278,7 @@ async function runVariant(name) {
     git('add', '-A');
     git('commit', '-q', '-m', 'As a kit from before 2.9 left it');
     // (with the doc paths the update moves already moved: a path that moved is not a setting lost)
-    const configBefore = JSON.parse(movePaths(readFileSync(join(dir, 'workflow.config.json'), 'utf8')));
+    const configBefore = JSON.parse(newConfigText(moveKitPaths(movePaths(readFileSync(join(dir, 'workflow.config.json'), 'utf8')))));
     const updated = await step('update over itself', process.execPath, [...install.filter((a, i) => !(a === '--with' || install[i - 1] === '--with' || a === '--lean')), '--update']);
     // nothing of the kit's may be taken for the project's own work: the move rewrote paths in kit files, nobody changed them
     // (only the kit's own files: "the kit's version differs"; a project page kept in a stage not reached is rightly its own)
@@ -281,7 +286,7 @@ async function runVariant(name) {
     console.log(`${claimed ? 'FAIL' : 'ok  '} ${name}: the update takes no kit file for the project's own${claimed ? `:\n${claimed}` : ''}`);
     if (claimed) throw new Error('kit files taken for the project');
     // every value the project's config had is still there after the update (it may only add): a list the kit also fills keeps the project's own entries
-    const lost = configLost(configBefore, JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8')));
+    const lost = configLost(configBefore, JSON.parse(readFileSync(join(dir, 'workflow/config.json'), 'utf8')));
     console.log(`${lost.length ? 'FAIL' : 'ok  '} ${name}: the update keeps every setting the project had${lost.length ? `:\n${lost.slice(0, 20).join('\n')}` : ''}`);
     if (lost.length) throw new Error('settings lost');
     const left = [...oldDocPaths(dir), ...[...MOVES, ...CORRECTIONS].filter(([from]) => existsSync(join(dir, from))).map(([from]) => `${from} was not moved`),
@@ -293,8 +298,8 @@ async function runVariant(name) {
     console.log(`${after.length ? 'FAIL' : 'ok  '} ${name}: after the update every doc pointed at is there${after.length ? `:\n${after.slice(0, 20).join('\n')}` : ''}`);
     if (after.length) throw new Error('doc pointers after the update');
     // what the update's own last lines ask for: the map (the docs index changed with the docs)
-    await step('file map after the update', process.execPath, ['tools/workflow/map.mjs']);
-    await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+    await step('file map after the update', process.execPath, ['workflow/tools/map.mjs']);
+    await step('full gate after the update', process.execPath, ['workflow/tools/gate.mjs', '--all']);
     await converges({ name, dir, git, step });
     return 'passed';
   } catch (e) {
@@ -322,14 +327,14 @@ const jobs = Math.max(1, Number(jobsAt >= 0 ? process.argv[jobsAt + 1] : 0) || M
 }
 // the kit keeps its own rule: no script of its own over 400 lines (the riskiest ones grow fastest: install, sessions)
 const kitScripts = [...readdirSync(kit).filter((f) => f.endsWith('.mjs')), ...readdirSync(join(kit, 'scripts')).map((f) => `scripts/${f}`),
-  ...readdirSync(join(kit, 'payload', 'scripts')).map((f) => `payload/scripts/${f}`)].filter((f) => f.endsWith('.mjs'));
+  ...readdirSync(join(kit, 'payload', 'workflow', 'scripts')).map((f) => `payload/workflow/scripts/${f}`)].filter((f) => f.endsWith('.mjs'));
 const tooBig = kitScripts.map((f) => [f, readFileSync(join(kit, f), 'utf8').split('\n').length]).filter(([, n]) => n > 400);
 console.log(`${tooBig.length ? 'FAIL' : 'ok  '} the kit's own scripts are at most 400 lines${tooBig.length ? `: ${tooBig.map(([f, n]) => `${f} ${n}`).join(', ')}` : ''}`);
 if (tooBig.length) process.exit(1);
 // facts that age (a price, a free tier) in the kit's guides: a guide that has them says when they were last checked ("Facts
 // checked: 2026-11" or "Reviewed: 2026-11"); older than six months fails, so a release looks again; one with no date is listed
 {
-  const guides = [join(kit, 'payload', 'docs'), ...readdirSync(join(kit, 'modules')).map((m) => join(kit, 'modules', m, 'payload', 'docs'))]
+  const guides = [join(kit, 'payload', 'docs'), join(kit, 'payload', 'workflow', 'guides'), ...readdirSync(join(kit, 'modules')).flatMap((m) => [join(kit, 'modules', m, 'payload', 'docs'), join(kit, 'modules', m, 'payload', 'workflow', 'guides')])]
     .filter((d) => existsSync(d)).flatMap((d) => readdirSync(d, { recursive: true }).map((f) => join(d, String(f)))).filter((f) => f.endsWith('.md'));
   const now = new Date();
   const months = (y, m) => (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
@@ -349,19 +354,20 @@ if (tooBig.length) process.exit(1);
 {
   const { rewriteJson } = await import(pathToFileURL(join(kit, 'install-config.mjs')).href);
   const { rewriteChangedRules } = await import(pathToFileURL(join(kit, 'install-docs.mjs')).href);
-  const cfg = readFileSync(join(kit, 'starter', 'workflow.config.json'), 'utf8').replace(/\r\n/g, '\n');
+  const cfg = readFileSync(join(kit, 'starter', 'workflow/config.json'), 'utf8').replace(/\r\n/g, '\n');
   const sameLayout = rewriteJson(cfg, JSON.parse(cfg)) === cfg;
   const tmpRules = mkdtempSync(join(tmpdir(), 'kit-rules-'));
+  mkdirSync(join(tmpRules, 'workflow'));
   // chosen "own": the new sentence; never chosen: the old rule stays and the config says so (notes go in with the feature)
   const oldRule = 'No docs-only,\n  tests-only or "fix after a check" commits.\n';
   writeFileSync(join(tmpRules, 'CLAUDE.md'), oldRule);
-  writeFileSync(join(tmpRules, 'workflow.config.json'), '{ "commits": { "notes": "own" } }\n');
+  writeFileSync(join(tmpRules, 'workflow/config.json'), '{ "commits": { "notes": "own" } }\n');
   const rewritten = rewriteChangedRules({ target: tmpRules }).length === 1 && !readFileSync(join(tmpRules, 'CLAUDE.md'), 'utf8').includes('docs-only');
   writeFileSync(join(tmpRules, 'CLAUDE.md'), oldRule);
-  writeFileSync(join(tmpRules, 'workflow.config.json'), '{\n  "name": "x"\n}\n');
+  writeFileSync(join(tmpRules, 'workflow/config.json'), '{\n  "name": "x"\n}\n');
   rewriteChangedRules({ target: tmpRules });
   const kept = readFileSync(join(tmpRules, 'CLAUDE.md'), 'utf8') === oldRule
-    && JSON.parse(readFileSync(join(tmpRules, 'workflow.config.json'), 'utf8')).commits?.notes === 'with-feature';
+    && JSON.parse(readFileSync(join(tmpRules, 'workflow/config.json'), 'utf8')).commits?.notes === 'with-feature';
   const ruled = rewritten && kept;
   rmSync(tmpRules, { recursive: true, force: true });
   console.log(`${sameLayout && ruled ? 'ok  ' : 'FAIL'} the installer keeps a config's layout and updates the kit's old wording${sameLayout ? '' : ' (the config is reflowed)'}${ruled ? '' : ' (the old rule stays)'}`);

@@ -2,11 +2,11 @@
 <!-- A /ui board (stage 1). Copy this file to docs/design/<Name>.html, then replace the ??? parts.
      Rules: the real tokens only (linked below, no hex, no new size or radius); variants A, B, C side by side, each with a letter,
      a one-line name and what it costs; one variant marked as recommended; the phone width drawn for the recommended one; the real
-     words the app would show; the states that matter (empty, loading, error). `node scripts/shots.mjs` takes the four pictures. -->
+     words the app would show; the states that matter (empty, loading, error). `node workflow/scripts/shots.mjs` takes the four pictures. -->
 <html lang="en"><head><meta charset="utf-8"><title>Board ???: ??? (proposed)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="../../src/web/styles.css">
-<script>/* dark when the browser (or scripts/shots.mjs --theme dark) asks for it; the tokens switch on data-theme */if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.setAttribute('data-theme','dark');</script>
+<script>/* dark when the browser (or workflow/scripts/shots.mjs --theme dark) asks for it; the tokens switch on data-theme */if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.setAttribute('data-theme','dark');</script>
 <style>
   /* the board's own layout, built from the tokens */
   .board { max-width: 1320px; margin: 0 auto; padding: var(--s6); display: flex; flex-direction: column; gap: var(--s5); }

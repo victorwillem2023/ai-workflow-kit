@@ -32,7 +32,7 @@ export function markDeps(root) {
   writeFileSync(join(root, MARK), depsHash(root) + '\n');
 }
 
-/** The port the server will use: PORT in the environment, else in .env, else 8787 (match session.mainPort in workflow.config.json). */
+/** The port the server will use: PORT in the environment, else in .env, else 8787 (match session.mainPort in workflow/config.json). */
 export function serverPort(root, env = process.env) {
   if (Number(env.PORT)) return Number(env.PORT);
   const p = join(root, '.env');

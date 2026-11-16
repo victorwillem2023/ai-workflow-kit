@@ -1,5 +1,5 @@
-# waiting specs are local (the template is in tools/workflow/templates/)
-specs/
+# waiting specs are local (the template is in workflow/tools/templates/)
+workflow/specs/
 # Claude session notes (keep CLAUDE.md current instead)
 PROGRESS.md
 NEXT-SESSION.md

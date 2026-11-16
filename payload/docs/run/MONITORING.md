@@ -68,7 +68,7 @@ A small product, one or a few servers in the EU, sensitive data that never leave
 it leaves the app (Sentry's and GlitchTip's `beforeSend`, the OpenTelemetry collector's redaction and attribute processors), and
 test it: a test that makes an error with sensitive data and checks the event that would be sent holds none. A monitoring
 service that receives personal data is a processor: it needs a data processing agreement and an EU region
-(`docs/workflow/SENSITIVE.md`, and the project's privacy doc when it has one).
+(`workflow/guides/SENSITIVE.md`, and the project's privacy doc when it has one).
 
 ## With AI agents
 
@@ -76,7 +76,7 @@ service that receives personal data is a processor: it needs a data processing a
   answer "what broke after the last deploy?" with the error, the release and the trace. It never gets rights to silence alerts
   or delete data.
 - **Log text is untrusted.** A user agent, a URL or an error message can carry text aimed at the agent ("ignore your
-  instructions..."). The agent treats it as data (`docs/workflow/AI-SECURITY.md`), and the error tracker scrubs secrets before an agent
+  instructions..."). The agent treats it as data (`workflow/guides/AI-SECURITY.md`), and the error tracker scrubs secrets before an agent
   or an AI root-cause feature sees them.
 - **AI features inside the tools** (Sentry's Seer, Grafana's assistant, Datadog's Bits) send your events to a model: off for
   projects with sensitive data unless the agreement covers it.

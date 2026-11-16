@@ -9,7 +9,7 @@ import { older } from './migrations/index.mjs';
 export function changesSince(changelog, from, to) {
   const entries = [...changelog.matchAll(/^- \*\*(\d+\.\d+\.\d+)\*\*[^\n]*(?:\n {2}[^\n]*)*/gm)];
   return entries
-    // (one line per entry; code spans out first, since `tools/workflow/**` is not bold)
+    // (one line per entry; code spans out first, since `workflow/tools/**` is not bold)
     .map(([text, version]) => ({ version, headlines: [...text.replace(/\n\s+/g, ' ').replace(/`[^`]*`/g, '…').slice(text.indexOf('**', 4) + 2).matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1].replace(/[:.]\s*$/, '').trim()) }))
     .filter((e) => (!from || older(from, e.version)) && !older(to, e.version));
 }

@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { CORRECTIONS, MOVES, movePaths } from './doc-layout.mjs';
+import { moveKitPaths } from './kit-layout.mjs';
 
 /** The stages and the folder each brings: docs/run/ with /launch, docs/market/ with /market. */
 export const STAGE_FOLDERS = { run: { folder: 'docs/run/', by: '/launch' }, market: { folder: 'docs/market/', by: '/market' } };
@@ -69,7 +70,7 @@ export function moveOldDocs({ target, written, stamp }) {
     moved.push(from);
   }
   const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
-  const specs = existsSync(join(target, 'specs')) ? readdirSync(join(target, 'specs')).map((f) => `specs/${f}`) : [];
+  const specs = existsSync(join(target, 'workflow/specs')) ? readdirSync(join(target, 'workflow/specs')).map((f) => `workflow/specs/${f}`) : [];
   const rewritten = [], specsNaming = [];
   for (const f of [...new Set([...listed.split('\n'), ...specs])].filter((x) => x && PROJECT_TEXT.test(x) && !x.startsWith('node_modules/'))) {
     // history stays as it was written (the changelog, decision records)
@@ -81,7 +82,7 @@ export function moveOldDocs({ target, written, stamp }) {
     const now = was.split('\n').map((line) => (ALL_MOVE_TARGETS.some((to) => line.includes(to)) ? line : movePaths(line))).join('\n');
     if (now === was) continue;
     // a waiting spec is the owner's approved text: named, not changed (/build and /ship read the docs at their new places)
-    if (f.startsWith('specs/')) { specsNaming.push(f); continue; }
+    if (f.startsWith('workflow/specs/')) { specsNaming.push(f); continue; }
     writeFileSync(p, now); rewritten.push(f);
     if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was);
   }
@@ -183,7 +184,7 @@ const sectionAt = (text, heading) => {
  */
 function updateKitBlocks({ target, kit, fill, text }) {
   const said = [];
-  const mark = existsSync(join(target, '.workflow-kit')) ? readFileSync(join(target, '.workflow-kit'), 'utf8') : '';
+  const mark = existsSync(join(target, 'workflow/record')) ? readFileSync(join(target, 'workflow/record'), 'utf8') : '';
   const version = /^version=(.+)$/m.exec(mark)?.[1]?.trim();
   const fresh = kitBlocks(fill(readFileSync(join(kit, 'starter', 'CLAUDE.md'), 'utf8')));
   if (!version || !fresh.size) return { text, said };
@@ -201,7 +202,7 @@ function updateKitBlocks({ target, kit, fill, text }) {
     const current = mine ?? (before ? sectionAt(now, before.replace(/^<!-- kit:[\w-]+ -->\n/, '').split('\n')[0]) : null);
     if (!current || !before || current === block) continue;
     const plain = (t) => t.replace(/^<!-- kit:[\w-]+ -->\n|\n<!-- \/kit:[\w-]+ -->$/g, '');
-    if ([plain(before), movePaths(plain(before))].includes(plain(current))) now = now.replace(current, block);
+    if ([plain(before), movePaths(plain(before)), moveKitPaths(plain(before)), moveKitPaths(movePaths(plain(before)))].includes(plain(current))) now = now.replace(current, block);
     else theirs.push(heading.replace(/^## /, ''));
   }
   if (now !== text.replace(/\r\n/g, '\n')) said.push('its kit parts brought up to date (between the <!-- kit: --> markers)');
@@ -225,7 +226,7 @@ export function mergeKitBlocks({ target, kit, fill }) {
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const now = `${text.replace(/\s*$/, '')}${eol}${eol}${missing.map(([, b]) => b).join('\n\n').replace(/\n/g, eol)}${eol}`;
   writeFileSync(claude, now);
-  const cfgAt = join(target, 'workflow.config.json');
+  const cfgAt = join(target, 'workflow/config.json');
   try {
     const cfg = JSON.parse(readFileSync(cfgAt, 'utf8'));
     const size = Buffer.byteLength(now);
@@ -244,7 +245,7 @@ export function rewriteChangedRules({ target, kit, fill, rules = true }) {
   let text = readFileSync(claude, 'utf8');
   const blocks = kit && fill ? updateKitBlocks({ target, kit, fill, text }) : { text, said: [] };
   text = blocks.text;
-  const configAt = join(target, 'workflow.config.json');
+  const configAt = join(target, 'workflow/config.json');
   let notes;
   try { notes = JSON.parse(readFileSync(configAt, 'utf8')).commits?.notes; } catch { notes = undefined; }
   const changed = [];

@@ -13,8 +13,8 @@ Update it in the same commit as any change to an endpoint, file reader or outbou
 - **A new endpoint, file reader or outbound fetch**: run a security review on the branch before `--finish`, and add its
   limits (body size, count, rate) in the same commit. (`npm run gate` prints an `advice:` line when it sees one.)
 - **Whose it is**: every route and query checks on the server that the thing belongs to the person the session names; who
-  that is never comes from the request; someone else's thing answers "not found" (`docs/workflow/PERMISSIONS.md`).
-- **Queries**: values are passed as parameters, never joined into the SQL text; every list has a limit (`docs/workflow/DATA.md`).
+  that is never comes from the request; someone else's thing answers "not found" (`workflow/guides/PERMISSIONS.md`).
+- **Queries**: values are passed as parameters, never joined into the SQL text; every list has a limit (`workflow/guides/DATA.md`).
 - **Sign-in is taken, not written**: no hand-made password hashing, session tokens or signature checks.
 - **Secrets** (keys, passwords, tokens) are read from the environment, never written into a file in git: the gate fails on one in a
   change, and on a tracked `.env`.

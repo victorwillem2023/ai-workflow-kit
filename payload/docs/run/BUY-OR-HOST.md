@@ -15,7 +15,7 @@ Read by the section.
 4. **Compare by script**: write the options as JSON and run `npm run costs -- --compare <file>`: each at 1, 12 and 36 months,
    and the use at which the other option starts to win.
 5. **The rest of the decision**: what happens when it is down (theirs: you wait; yours: you fix it at night), lock-in (how hard
-   is it to switch later), data rules (does personal data leave the EU, `docs/workflow/SENSITIVE.md`), and whether running it teaches
+   is it to switch later), data rules (does personal data leave the EU, `workflow/guides/SENSITIVE.md`), and whether running it teaches
    you something you need.
 6. **Decide per part, and set a trigger**: "paid until 200,000 requests a month, then self-host" goes in the decision record
    with the date to look again. Mixed is normal: pay for what is hard to run well, host what is cheap to run and costly to rent.
@@ -30,7 +30,7 @@ Read by the section.
 | Transactional email | Postmark, Brevo, Mailgun, Amazon SES | your own mail server | **always paid**: delivery to inboxes is the hard part |
 | Sign-in | Auth0, Clerk, WorkOS | Keycloak, Authentik, Zitadel, or your framework's own sessions | the framework's own for one app; a hosted one when you need SSO for business customers |
 | Search | Algolia, Typesense Cloud, Meilisearch Cloud | Meilisearch, Typesense, Postgres full text | Postgres; then the self-hosted one in a container |
-| AI models | the provider's API (`docs/workflow/AI-SECURITY.md`) | Ollama or vLLM on a GPU server | the API: a GPU server costs hundreds a month before the first request |
+| AI models | the provider's API (`workflow/guides/AI-SECURITY.md`) | Ollama or vLLM on a GPU server | the API: a GPU server costs hundreds a month before the first request |
 | Analytics, errors, uptime | Plausible, Sentry, Better Stack | Umami, GlitchTip, Uptime Kuma | `docs/market/GROWTH.md` and `docs/run/MONITORING.md` |
 | Payments | Stripe, Paddle, Lemon Squeezy | never | always paid |
 

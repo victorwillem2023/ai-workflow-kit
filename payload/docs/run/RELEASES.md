@@ -70,5 +70,5 @@ find. Do it before a launch, and for every new screen that matters.
 7. **Again**: after the fixes, a new round with new people. Small rounds often beat one big study.
 
 Unmoderated tools (Maze, Lyssna, UserTesting) let people do the tasks alone and record it: faster, less depth, and their data
-terms must fit `docs/workflow/SENSITIVE.md`. In-app feedback (a short question after a task, the feedback form) runs all the time, beside
+terms must fit `workflow/guides/SENSITIVE.md`. In-app feedback (a short question after a task, the feedback form) runs all the time, beside
 the sessions.

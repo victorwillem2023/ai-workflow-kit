@@ -92,7 +92,7 @@
       "description": "The tool images the kit runs with Docker (the scanners in secops.mjs, k6 in load.mjs, OpenTofu, Terraform and Trivy in infracheck.mjs and infraplan.mjs), marked with a renovate: docker comment",
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|/)tools/workflow/(infracheck|infraplan|load|secops)\\.mjs$/"
+        "/(^|/)workflow/tools/(infracheck|infraplan|load|secops)\\.mjs$/"
       ],
       "matchStrings": [
         "'(?<depName>[a-z0-9][a-z0-9./_-]*):(?<currentValue>v?[0-9][\\w.-]*)'[,;]?\\s*// renovate: docker"

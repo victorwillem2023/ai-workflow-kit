@@ -4,7 +4,7 @@
 #   run:   distroless Node (no shell, no package manager, no OS tools to attack with), as the nonroot user, holding only
 #          what runs: the built app (dist/), its production libraries and package.json. Nothing else from the repository:
 #          no source, tests, docs, scripts, git history or settings (.dockerignore keeps them out of the build too).
-# The gate's *image* check holds these rules (tools/workflow/README.md, *What it checks*). Node starts directly, so the app
+# The gate's *image* check holds these rules (workflow/tools/README.md, *What it checks*). Node starts directly, so the app
 # gets the stop signal and can finish open requests (docs/PRODUCTION.md): set the last line to the app's server entry.
 # Another folder the app reads at run time (migrations, public files): one more COPY --from=build line for that folder only.
 #   docker build --build-arg APP_VERSION=$(git rev-parse --short=12 HEAD) -t {{PREFIX}} .

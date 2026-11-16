@@ -18,7 +18,7 @@ code, or a decision about what the app does, stop and say it belongs in `/work`.
 3. **Check**: every file path and npm script a doc names must exist. Run `npm run gate` (it checks doc references) and fix what
    it says about your edit.
 4. **Don't commit.** Report the files changed and the changed lines (`git diff`), and that the next `/ship` puts them in, as the
-   project chose (`commits.notes`): as their own commit after the quick gate (`node scripts/session.mjs --commit-notes`, which the
+   project chose (`commits.notes`): as their own commit after the quick gate (`node workflow/scripts/session.mjs --commit-notes`, which the
    owner can also run now), or with the feature's commit.
 
 **This project's own**: when `.claude/project/docs.md` exists, read it before you start: it holds this project's own steps and rules for /docs, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

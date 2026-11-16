@@ -9,7 +9,7 @@ model: opus
 The one entry in plain words. `/spec`, `/build` and `/ship` do the steps underneath; this skill says which, in what order,
 and where to stop. Run it from the main folder in a fresh chat. Never commit before the owner says done.
 
-0. **What waits from outside**: `node scripts/session.mjs --sync` (brings in what merged on GitHub when nothing is in the way),
+0. **What waits from outside**: `node workflow/scripts/session.mjs --sync` (brings in what merged on GitHub when nothing is in the way),
    then `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
    alert: say it first, in plain words, and ask whether to deal with it before the card. An update that needs the owner (its
    "to look at" part): name it in one line and go on; the ones that merge by themselves are not mentioned.
@@ -19,9 +19,9 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
    - **Someone else's** (assigned to another person, or in *In progress* with their session): say so and stop; in a team, take
-     a card before starting it (`docs/workflow/TEAM.md`, *Two people on one board*).
+     a card before starting it (`workflow/guides/TEAM.md`, *Two people on one board*).
    - **Old code with no tests** where the card changes it (the gate's *untested* list): the plan starts with tests that pin what
-     it does today (`docs/workflow/TAKEOVER.md`, *2. A test before the first change*).
+     it does today (`workflow/guides/TAKEOVER.md`, *2. A test before the first change*).
    - **What it needs first**: `npm run board -- --graph` (the tree from the cards' "Depends on:" lines). For each open card it
      waits for, the earliest way that does not stop the owner's flow (`.claude/skills/work/together.md` has the rules):
      **built** (in *Waiting for your check*, or its session is done): start on top of it (`--on <its topic>`: no waiting for
@@ -53,13 +53,13 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    doesn't send everything the planning read again on every feedback round. A small `bug` without a spec goes on in this chat.
 3. **Build in a session folder**, tests first; move the card to *In progress* (`npm run board -- --move <n> "In progress"`).
    - With a spec: `/build <topic>`, in the new chat (steps 3 to 5 then run there).
-   - A small bug: `node scripts/session.mjs <topic>`, then in that folder write the failing test, run it and see it
+   - A small bug: `node workflow/scripts/session.mjs <topic>`, then in that folder write the failing test, run it and see it
      fail, fix, and run `npm run gate` until it passes.
 4. **Stop while the owner tries it**: hand it over as `.claude/skills/build/try-it.md` says (the server already running and the
    link, or a try command for a change without a screen; plain words, examples, their own numbers, edge cases) and move the card
    to *Waiting for your check*. Feedback goes to the same builder (`/build` step 6). "continue" or "ok" is not "done": ask.
 5. **Finish only when the owner says done** ("commit and push", "finish it"): `/ship <topic>` (for a small bug without a
-   spec, the same steps: `gate:all`, one commit, `node scripts/session.mjs --finish <topic>`). Then move the card to *Done*.
+   spec, the same steps: `gate:all`, one commit, `node workflow/scripts/session.mjs --finish <topic>`). Then move the card to *Done*.
 
 **Waiting for another card** is a dependency, not a block: `npm run board -- --depends <n> <m>` (the card stays where it is and
 `--next` offers it once #m is done), say so in one line, and stop. **Blocked** (waiting for the owner or an outside service):

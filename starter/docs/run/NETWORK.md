@@ -2,7 +2,7 @@
 <!-- covers new files: infra/** -->
 
 What may reach the app, what the app may reach, and which addresses are allowed or blocked. The lists below are made from
-`workflow.config.json` by `npm run map`, so they always match what the gate and the firewall use; the reasons are in
+`workflow/config.json` by `npm run map`, so they always match what the gate and the firewall use; the reasons are in
 `docs/run/INFRA.md` (*Traffic in and out*, *IP allow and block lists*). Change the config, never this page's lists by hand.
 
 ## In (ingress)

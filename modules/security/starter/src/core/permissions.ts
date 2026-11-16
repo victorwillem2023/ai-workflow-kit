@@ -1,4 +1,4 @@
-// Who may do what: the one function every route and query asks (docs/workflow/PERMISSIONS.md, *Permissions: the rules*).
+// Who may do what: the one function every route and query asks (workflow/guides/PERMISSIONS.md, *Permissions: the rules*).
 // An example to make your own: replace the roles, the actions and the rules with this app's and keep the shape. Nothing is
 // allowed until a rule here allows it; every row of the table in tests/security/permissions.test.ts says who is let in and who
 // is refused. Pure, so the server and the screens ask the same question.

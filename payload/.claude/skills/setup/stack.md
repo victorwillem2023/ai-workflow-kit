@@ -69,7 +69,7 @@ installed. With Bun: `testAll` and `testFiles` in the config are `bun test`, the
 `Dockerfile` starts from `oven/bun` with a pinned version. Deno only when the owner asks for it.
 
 ## 2. Screens (web apps)
-Which framework for which app, what server rendering asks for, and content from a CMS (Storyblok, Payload): `docs/workflow/FRONTEND.md`.
+Which framework for which app, what server rendering asks for, and content from a CMS (Storyblok, Payload): `workflow/guides/FRONTEND.md`.
 - **UI framework**: React with TypeScript by default (agents know it best). Svelte when the owner wants less code per screen.
   No framework only for a single page or a tool with one or two screens. A map or canvas app still uses one for the panels
   around the map (MapLibre in React: react-map-gl).
@@ -124,9 +124,9 @@ back; the app's part is `GET /health` answering with its version (`docs/run/DEPL
 ## 6b. AI inside the app (only when question 9 says so)
 Every call goes through one file of our own (model name, prompt, limits), so the model can be swapped in a line; name it
 as `ai.wrapper` in the config (the gate's *ai* check fails a model call anywhere else). What that file must hold, and the rules
-against prompt injection and the rest of the OWASP list: `docs/workflow/AI-SECURITY.md`. The kit's ai module is that file, ready:
+against prompt injection and the rest of the OWASP list: `workflow/guides/AI-SECURITY.md`. The kit's ai module is that file, ready:
 `node ../ai-workflow-kit/install.mjs . --update --with ai` adds `src/server/ai.ts`, its tests and `cases/`. Tools, MCP servers and
-agents: `docs/workflow/AI-AGENTS.md`. Choose by the job,
+agents: `workflow/guides/AI-AGENTS.md`. Choose by the job,
 and look the prices and limits up that day: they change every few months.
 - **Small or occasional** (a few calls a day, a personal tool, a first version): a free tier is enough. In November 2026:
   Google's Gemini API (Flash models), OpenRouter's free models, Groq, Cloudflare Workers AI. Say the catch: daily limits, and

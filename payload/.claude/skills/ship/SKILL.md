@@ -11,20 +11,20 @@ Only when the owner has said the feature is done ("commit and push", "finish it"
 command was ever given): hand it over now and stop.
 Work in the session folder `../{{PREFIX}}-<topic>`.
 
-0. In the main folder run `node scripts/session.mjs --check-main`. It fast-forwards a `main` that is only behind `origin/main`;
+0. In the main folder run `node workflow/scripts/session.mjs --check-main`. It fast-forwards a `main` that is only behind `origin/main`;
    if it fails (uncommitted files there, or unpushed features while origin has new commits: it then says to run `--push`) stop and show
-   the owner its message. Finished features that are not pushed yet are fine. Waiting specs don't count (`specs/` is ignored).
+   the owner its message. Finished features that are not pushed yet are fine. Waiting specs don't count (`workflow/specs/` is ignored).
    **Only docs and settings left there** (its message says "docs and settings that are not committed yet": from `/docs`, `/lesson`,
    `/shape` or the owner's own edits) are not a reason to stop or ask. Where they go is the project's choice, `commits.notes` in
-   `workflow.config.json`:
-   - `"own"` (the default): they are the owner's, never folded into this feature. Run `node scripts/session.mjs --commit-notes
+   `workflow/config.json`:
+   - `"own"` (the default): they are the owner's, never folded into this feature. Run `node workflow/scripts/session.mjs --commit-notes
      "<Area: what changed>"` (a subject from the diff, e.g. "Product: the problem and the first users"), say in one line that they
      went in first as their own commit, run `--check-main` again and go on. If its quick gate fails, stop and show the owner the
      failure: a hand edit broke a check.
-   - `"with-feature"` (a project that allows no commit of docs alone): `node scripts/session.mjs --carry-notes <topic>` moves them
+   - `"with-feature"` (a project that allows no commit of docs alone): `node workflow/scripts/session.mjs --carry-notes <topic>` moves them
      into the session folder, so they go in with this feature's one commit; say so in one line, add them to the spec's files, and go on.
    Code left in the main folder still stops here.
-1. Read `specs/<topic>.md`.
+1. Read `workflow/specs/<topic>.md`.
 2. `npm run gate:all` must pass. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.
    For anything bigger than a small fix, have fresh eyes review it before the commit: start a subagent that has not seen this
@@ -41,16 +41,16 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    `origin/HEAD`; when that is missing (a repo whose remote was added after `git init`), run `git remote set-head origin main`
    in the main folder (a local reference only; step 0's `--check-main` sets it too) and run the skill again: never review by hand
    instead.
-5. Delete `specs/<topic>.md` (and its try command `specs/<topic>.try.*`, if any) in the session folder and in the main folder (`/build` copied it from there; it is ignored, so nothing else removes it).
+5. Delete `workflow/specs/<topic>.md` (and its try command `workflow/specs/<topic>.try.*`, if any) in the session folder and in the main folder (`/build` copied it from there; it is ignored, so nothing else removes it).
 6. Commit everything as ONE commit: subject = what changed for the user ("Area: what changed, and what else"),
    body = a few lines of what the feature now does. Add the Co-Authored-By line the session gives. The subject is also the
    line users read in the changelog (`npm run changelog` groups the subjects by area; a release writes them into `CHANGELOG.md`
    with `--release <version>`), so show it to the owner first as "Changelog: <subject>" and change it if it says how, not what.
-7. `node scripts/session.mjs --finish <topic>` (squash, rebase on the local `main`, typecheck, tests; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node scripts/session.mjs --push` sends them; run it only when the owner says so.
+7. `node workflow/scripts/session.mjs --finish <topic>` (squash, rebase on the local `main`, typecheck, tests; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node workflow/scripts/session.mjs --push` sends them; run it only when the owner says so.
    A session built on another one ("Starts on: <topic>") is refused until that one is finished: ship that one first. Finishing a
    base moves the sessions on it onto main by itself; pass on what it says about them (one that could not move names
    `--restack <topic>`). Combined cards (`Card: #12, #14`) all move with the one commit.
-   With `"flow": "pr"` in the config it opens a pull request instead: give the owner its address, and run `node scripts/session.mjs --merge <topic>` only when the owner says so.
+   With `"flow": "pr"` in the config it opens a pull request instead: give the owner its address, and run `node workflow/scripts/session.mjs --merge <topic>` only when the owner says so.
 8. When the spec has a *How we will know it worked* line, put it on the card: `gh issue comment <n> --repo <board.repo> --body-file <file>`
    ("Shipped. How we will know it worked: <sign>, look on <date>.").
 9. Report in plain language, with an example where a term is technical: what changed, what the tests check, what you were unsure of.

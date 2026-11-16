@@ -1,6 +1,6 @@
 // The pattern for test data: one builder per kind of thing, which returns a valid one and takes only what a test is about.
 // Copy this file to tests/builders.ts, replace the example kind with yours (the types usually come from src/core), and make every
-// test's data with it (docs/workflow/TESTING.md, *Test data*). Never real people's data: made-up values, addresses on example.com.
+// test's data with it (workflow/guides/TESTING.md, *Test data*). Never real people's data: made-up values, addresses on example.com.
 
 /** An example kind of thing. */
 export interface Order {

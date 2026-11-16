@@ -1,4 +1,4 @@
-// The pattern for a data test (docs/workflow/TESTING.md, *Data tests* and *The database in tests*; docs/workflow/DATA.md): the
+// The pattern for a data test (workflow/guides/TESTING.md, *Data tests* and *The database in tests*; workflow/guides/DATA.md): the
 // schema from the migrations, each test alone in a transaction that is rolled back, and a test for each rule the database holds
 // (a constraint) or a query holds (who sees what). Shown with Node's own SQLite in memory; for Postgres keep the shape with a
 // throwaway Postgres (a container), never SQLite standing in for it. Copy it to tests/data/<table>.test.ts and use your

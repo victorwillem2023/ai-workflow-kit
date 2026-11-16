@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | Where it runs | <the host, the region, the plan> |
-| Address | <https://...> (`deploy.url` in `workflow.config.json`) |
+| Address | <https://...> (`deploy.url` in `workflow/config.json`) |
 | The image | distroless Node 26, nonroot, holding only the built app, its production libraries and `package.json` (the `Dockerfile`; why: `docs/run/INFRA.md`, *Container images*) |
 | Deploy | `npm run deploy` |
 | Is it up? | `npm run smoke` |
@@ -16,7 +16,7 @@
 ## What `npm run deploy` does
 1. Refuses when there are uncommitted files or the commit is not on GitHub yet: what runs is always a commit you can find again.
 2. Asks the running app which version it is.
-3. Runs `deploy.command` from `workflow.config.json`; `{version}` in it becomes the commit, for example `3f2a9c1d04be`.
+3. Runs `deploy.command` from `workflow/config.json`; `{version}` in it becomes the commit, for example `3f2a9c1d04be`.
 4. Waits until the app answers with the new version (`deploy.waitSeconds`, 120 by default).
 5. If it never does, runs `deploy.rollback` with the version from step 2 and says so.
 
@@ -30,5 +30,5 @@ Migrations run <when, and the command>. A migration must still work with the old
 one deploy, stop using the old one in the next, remove it in a third. Otherwise putting the old version back breaks the app.
 
 ## From GitHub instead of your computer
-<Not set up. When wanted: a workflow that runs `node scripts/deploy.mjs` after the gate passes on main, with the host's token as a
+<Not set up. When wanted: a workflow that runs `node workflow/scripts/deploy.mjs` after the gate passes on main, with the host's token as a
 repository secret.>

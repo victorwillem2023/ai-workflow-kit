@@ -12,7 +12,7 @@ When **any** of these holds:
 - they change the same files in the same places, so two sessions would conflict;
 - both are small (`effort: small`), in the same area, and one review would cover both.
 
-Then: one spec naming every card (`Card: #12, #14`), one session (`node scripts/session.mjs <topic> --card 12,14`), one commit
+Then: one spec naming every card (`Card: #12, #14`), one session (`node workflow/scripts/session.mjs <topic> --card 12,14`), one commit
 whose subject says both ("Plan: a week-by-week plan from a goal, and the screen to see it"). Every card moves with it and all
 close together. Never combine to save planning time when the cards are independent: a combined commit is harder to undo
 alone. At most three cards, and not when one of them touches a sensitive file (its sign-off would cover the others).
@@ -22,7 +22,7 @@ alone. At most three cards, and not when one of them touches a sensitive file (i
 When the card it needs is **built** (in *Waiting for your check*: the owner is trying it) or finished on the local main but not
 pushed, the work does not wait:
 - finished on the local main already: start from main as usual (main has it; `--push` is not needed first);
-- built in its own session, not finished: start on top of it: `node scripts/session.mjs <topic> --card <n> --on <its topic>`
+- built in its own session, not finished: start on top of it: `node workflow/scripts/session.mjs <topic> --card <n> --on <its topic>`
   (`/build` does this from the spec's "Starts on: <topic>" line). The new session has the other one's work, as committed:
   builders do not commit while the owner tries it, so first commit the base's work in its folder as one commit with its
   feature's subject (`--finish` squashes later rounds into it; `session.mjs` refuses `--on` while the base has loose work).

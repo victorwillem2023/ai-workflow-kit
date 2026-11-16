@@ -1,5 +1,5 @@
 // Who may do what (src/core/permissions.ts): one table, every kind of person against every action, the refusals too.
-// The pattern of docs/workflow/TESTING.md: several inputs and one behaviour are one test over a list of cases, each with its own
+// The pattern of workflow/guides/TESTING.md: several inputs and one behaviour are one test over a list of cases, each with its own
 // words, and the data comes from a builder that takes only what the case is about.
 
 import assert from 'node:assert/strict';

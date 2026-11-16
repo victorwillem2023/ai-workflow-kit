@@ -1,4 +1,4 @@
-// What install.mjs is asked to do, from three places in this order: the flags, the project's record (.workflow-kit: what it chose
+// What install.mjs is asked to do, from three places in this order: the flags, the project's record (workflow/record: what it chose
 // before), and what the project itself says (its manifest, its git remote, its folder name). The installer converges: run again
 // on a project that has the record, the same command gives the same result (it updates); a flag is a change to the record, never
 // a reset of the rest. --force replaces the machinery but keeps the choices. Nothing here writes; recordText says what is kept.
@@ -45,7 +45,7 @@ export const PARTS = {
   estimate: ['.claude/skills/estimate/'],
   advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/run/BUY-OR-HOST.md', 'docs/run/SCALING.md', 'docs/company/STAGES.md', 'docs/company/ROADMAP.md'],
   launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MESH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],
-  market: ['.claude/skills/market/', 'docs/market/GROWTH.md', 'docs/market/MARKET.md', 'tools/workflow/launchcheck.mjs', 'tools/workflow/lib/launchcheck.mjs', 'tools/workflow/lib/launchcheck.d.mts', 'tests/workflow/launchcheck.test.ts'],
+  market: ['.claude/skills/market/', 'docs/market/GROWTH.md', 'docs/market/MARKET.md', 'workflow/tools/launchcheck.mjs', 'workflow/tools/lib/launchcheck.mjs', 'workflow/tools/lib/launchcheck.d.mts', 'workflow/tests/launchcheck.test.ts'],
   retro: ['.claude/skills/retro/'],
   secops: ['.claude/skills/secops/', '.github/workflows/secops.yml'], 'setup-check': ['.github/workflows/setup.yml'],
 };
@@ -65,14 +65,14 @@ export const PROFILES = {
  * What a minimal install keeps (the gate, the checks' own tools and settings, CI); every other kit file is left out, so a
  * project that wants only the safety net has no commands, no CLAUDE.md and no guides of the kit's.
  */
-export const MINIMAL = ['tools/workflow/', 'scripts/packages.mjs', 'scripts/packages.d.mts', '.github/workflows/gate.yml', 'workflow.config.json',
+export const MINIMAL = ['workflow/tools/', 'workflow/scripts/packages.mjs', 'workflow/scripts/packages.d.mts', '.github/workflows/gate.yml', 'workflow/config.json',
   '.gitignore', 'gitignore.txt', 'package-scripts.json', '.tool-versions', 'tsconfig.json', 'biome.json', 'knip.json', '.gitattributes', 'pyproject.toml', 'Cargo.toml', 'go.mod'];
 export const inMinimal = (key) => MINIMAL.some((m) => (m.endsWith('/') ? key.startsWith(m) : key === m));
 /** The npm scripts a minimal install adds: the checks and what they run. */
 export const MINIMAL_SCRIPTS = ['test', 'test:full', 'typecheck', 'gate', 'gate:all', 'map'];
 
 export const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
-// --take and --skip name files, folders (tools/workflow/** or tools/workflow/) or, for --take, all
+// --take and --skip name files, folders (workflow/tools/** or workflow/tools/) or, for --take, all
 export const pathList = (s) => String(s ?? '').split(',').map((x) => x.trim().replace(/\\/g, '/')).filter(Boolean);
 export const inList = (paths, key) => paths.includes('all') || paths.some((p) => p === key || (/(\/\*\*|\/)$/.test(p) && key.startsWith(p.replace(/\*\*$/, ''))));
 
@@ -101,7 +101,7 @@ export function detectProject(target) {
   return raw.split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 }
 
-/** A value in the record (.workflow-kit): `key=value`, or null. */
+/** A value in the record (workflow/record): `key=value`, or null. */
 export const recorded = (mark, key) => new RegExp(`^${key}=(.*)$`, 'm').exec(mark)?.[1]?.trim() || null;
 
 /**
@@ -113,7 +113,7 @@ export function readChoices(args, kit) {
   const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
   const target = args[0] && !args[0].startsWith('--') ? resolve(args[0]) : undefined;
   if (!target) return { error: 'usage' };
-  const mark = existsSync(join(target, '.workflow-kit')) ? readFileSync(join(target, '.workflow-kit'), 'utf8') : '';
+  const mark = existsSync(join(target, 'workflow/record')) ? readFileSync(join(target, 'workflow/record'), 'utf8') : '';
   // a project with the record has the kit already: running the installer again updates it (the same as --update)
   const installed = /^version=/m.test(mark);
   const force = args.includes('--force');
@@ -128,11 +128,11 @@ export function readChoices(args, kit) {
   };
   const lang = pick('lang', '--lang', () => detectLang(target));
   const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
-  if (!LANGS[lang]) return { error: `Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)` };
+  if (!LANGS[lang]) return { error: `Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow/config.json)` };
   const remote = spawnSync('git', ['-C', target, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout;
   // a project from before the record held these has them in its own settings (the board's repo, its name, the session prefix)
   let cfg = {};
-  try { cfg = JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')); } catch { /* a new project */ }
+  try { cfg = JSON.parse(readFileSync(join(target, 'workflow/config.json'), 'utf8')); } catch { /* a new project */ }
   const repo = pick('repo', '--repo', () => cfg.board?.repo ?? repoFromRemote(remote));
   const project = pick('project', '--project', () => cfg.name ?? detectProject(target));
   const prefix = pick('prefix', '--prefix', () => cfg.session?.prefix ?? (repo ? repo.split('/')[1] : basename(target)).toLowerCase().replace(/[^a-z0-9-]/g, '-'));

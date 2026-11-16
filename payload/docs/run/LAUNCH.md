@@ -2,11 +2,11 @@
 
 The decisions `/launch` walks through before the first real deploy, each with the usual start for a small product and what
 would make it change. Nothing here is tied to one provider: the platform, the infrastructure tool and the sizes are the
-project's answers, written in `workflow.config.json` (`launch`) and in a decision record (`docs/decisions/`). Prices change:
+project's answers, written in `workflow/config.json` (`launch`) and in a decision record (`docs/decisions/`). Prices change:
 `/launch` looks them up on the day. Read by the section.
 
 ## The order of the decisions
-Each one narrows the next: 1. where the data may live (law, customers, `docs/workflow/SENSITIVE.md`); 2. the platform; 3. one server,
+Each one narrows the next: 1. where the data may live (law, customers, `workflow/guides/SENSITIVE.md`); 2. the platform; 3. one server,
 a container host, serverless or a cluster; 4. the database; 5. the load balancer and the edge; 6. the server type and size;
 7. the infrastructure tool; 8. analytics and a data warehouse, if at all; 9. environments, CI/CD and monitoring.
 
@@ -99,14 +99,14 @@ How every change goes out (check, expect, plan, apply): `docs/run/IAC.md`.
 | Moving data into it | a nightly export job | Airbyte or dlt; change data capture when it must be fresh |
 
 Personal and health data stays out of analytics unless the purpose, the agreement and the EU region are written down first
-(`docs/workflow/SENSITIVE.md`).
+(`workflow/guides/SENSITIVE.md`).
 
 ## 9. Environments, CI/CD and monitoring
 Which environments and how they differ: `docs/run/ENVIRONMENTS.md`. Where the checks and deploys run: `docs/run/CICD.md`. Knowing it
 works: `docs/run/MONITORING.md`. Releases and user testing: `docs/run/RELEASES.md`.
 
 ## What gets written
-`launch` in `workflow.config.json`: `{ "platform": "hetzner", "iac": "tofu", "shape": "one server", "database": "sqlite",
+`launch` in `workflow/config.json`: `{ "platform": "hetzner", "iac": "tofu", "shape": "one server", "database": "sqlite",
 "loadBalancer": "none", "region": "hel1", "protect": null, "credentials": [] }` (the values are the project's answers), a
 decision record with the reasons and what would change them, `infra/<env>/` stacks, `deploy.environments`, and the project
 docs: `docs/run/ENVIRONMENTS.md`, `docs/run/NETWORK.md`, `docs/run/RECOVERY.md`.

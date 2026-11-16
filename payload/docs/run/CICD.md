@@ -66,5 +66,5 @@ changes only through `docs/run/IAC.md`'s plan and review.
 - **Read rights for agents, write rights for people.** An agent may read runs, logs and the deploy log (`gh run view`, an MCP
   server with a read-only token). It may open a pull request. It never holds the production deploy token or the apply rights.
 - **Agents in CI** (Claude Code's GitHub Action, Copilot's coding agent): useful for "explain this failure" or "propose a fix
-  as a pull request", paid per run or per seat (`docs/workflow/TOOLS.md`, *AI tools*). Their pull requests go through the same gate
-  and the owner, and their prompts treat issue and log text as untrusted (`docs/workflow/AI-SECURITY.md`).
+  as a pull request", paid per run or per seat (`workflow/guides/TOOLS.md`, *AI tools*). Their pull requests go through the same gate
+  and the owner, and their prompts treat issue and log text as untrusted (`workflow/guides/AI-SECURITY.md`).

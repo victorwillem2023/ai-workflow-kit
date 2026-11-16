@@ -1,5 +1,5 @@
-// The one file that calls a language model (`ai.wrapper` in workflow.config.json; the gate's *ai* check fails a model call
-// anywhere else). It holds the guards of docs/workflow/AI-SECURITY.md: a spend cap per month and per user per day, limits on input and
+// The one file that calls a language model (`ai.wrapper` in workflow/config.json; the gate's *ai* check fails a model call
+// anywhere else). It holds the guards of workflow/guides/AI-SECURITY.md: a spend cap per month and per user per day, limits on input and
 // output, untrusted text passed as marked data, a canary that shows when the instructions leak, an answer checked against a
 // schema, and a log line per call without the personal content. The rest of the app calls `ai.ask(...)` with plain data.
 //   const ai = createAi({ provider: anthropicProvider(), log, spend: fileSpend('data/ai-spend.json'), ...aiSettingsFromEnv() });

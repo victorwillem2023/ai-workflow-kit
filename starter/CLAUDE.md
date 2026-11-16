@@ -8,13 +8,13 @@ part a change touches. Where every other doc is (product, company, build, run, d
 ## How we work (the owner decides what gets built)
 The owner wants to understand and steer the project, not just receive features. So:
 - **A stage in plain words** ("ready to deploy", "let's get users", "what now?"): the command comes from `/next` (it reads where
-  the project is, `tools/workflow/stage.mjs`, and `docs/workflow/WORKFLOW.md`, *The commands, by stage*), never improvised.
+  the project is, `workflow/tools/stage.mjs`, and `workflow/guides/WORKFLOW.md`, *The commands, by stage*), never improvised.
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: what the user will see change, which files, which test proves it,
   which docs; wait for the owner. `/work <n>` is the one entry; the owner typing `/build <topic>` **in a new chat** is the yes, and
-  `/ship <topic>` finishes it only when the owner says done (`tools/workflow/README.md`, read by the section).
-- **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`docs/workflow/TOKENS.md`).
+  `/ship <topic>` finishes it only when the owner says done (`workflow/tools/README.md`, read by the section).
+- **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`workflow/guides/TOKENS.md`).
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.
 - **Docs in the same commit**: the guide part and `README.md` when a feature changes; `docs/ARCHITECTURE.md` when the layers or
   flow change; `docs/code/<folder>.md` when a part moves. A doc with a `<!-- covers: ... -->` line fails the gate when its
@@ -34,7 +34,7 @@ The owner wants to understand and steer the project, not just receive features. 
 npm test             # all tests, offline; prints only failures and a total. Run before every commit
 npm run typecheck    # must be clean
 npm run gate         # the checks and only the tests your change reaches (quiet when it passes)
-npm run gate:all     # the same with the whole suite: run before --finish (tools/workflow/README.md, *What it checks*)
+npm run gate:all     # the same with the whole suite: run before --finish (workflow/tools/README.md, *What it checks*)
 <dev command>        # <the dev server; say what restarts by itself, so the agent never tells the owner to rebuild>
 <build command>      # <what it makes>
 ```
@@ -46,12 +46,12 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 ## Layout rules
 - `src/core`: pure logic, no I/O, <must also run in the browser>.
 - `src/<io layer>`: all network and disk I/O.
-- <the other layers, one line each, and the direction they may import. The same rules go in `workflow.config.json` under `boundaries`: the gate enforces them.>
+- <the other layers, one line each, and the direction they may import. The same rules go in `workflow/config.json` under `boundaries`: the gate enforces them.>
 - Tests: `{{TESTS}}`, <runner>. Fakes for every outside service; never hit the network in tests.{{TEST_TIPS}}
 
 <!-- kit:code-structure -->
 ## Code structure (a new feature is a new file)
-1. A new feature gets its own file, named after it. Never add a feature to a file in `tools/workflow/baseline.json`: the gate fails if one grows.
+1. A new feature gets its own file, named after it. Never add a feature to a file in `workflow/tools/baseline.json`: the gate fails if one grows.
 2. Split by responsibility, not to hit a number: 300 lines is a sign to look, 400 the gate's limit for a new file.
 3. A function over about 60 lines is split into named steps. A file opens with a comment saying what it does (the file map is built from it).
 4. A file takes what it needs as arguments or a small context; it does not import the big class or the whole store.
@@ -93,7 +93,7 @@ Treat every request, uploaded file and third-party page as hostile (<say here if
 code* before you touch untrusted input, fetch a URL that came from a user or a third party, build a link or HTML from data, or add
 an endpoint, file reader or outbound fetch (those also need a security review before `--finish`). Secrets are read from the
 environment, never written into a file in git (the gate fails on one). Never print or send `.env` values.
-**Sensitive files** (`sensitive.paths`: money, health, legal texts, personal data; `docs/workflow/SENSITIVE.md`): no number, rate or
+**Sensitive files** (`sensitive.paths`: money, health, legal texts, personal data; `workflow/guides/SENSITIVE.md`): no number, rate or
 legal sentence from memory, only from the source the spec names; a missing source is a question for the owner. Only the owner
 signs off (`npm run signoff`): never run it, never write `docs/company/SIGNOFFS.md`.
 
@@ -103,7 +103,7 @@ Every token read is paid for again on every later turn of the chat, so read by t
   `npm run map -- --find <word>` or `npm run map -- --uses <path>`, then open the file.
 - **Before editing in a folder, read its `CLAUDE.md`** (its rules; Claude Code loads it, other agents must read it). Where things
   are in a folder: `docs/code/<folder>.md`, by `grep -n`.
-- Read big docs by the section (`grep -n '^## '`): `docs/ARCHITECTURE.md`, `tools/workflow/README.md`, <other big docs>.
+- Read big docs by the section (`grep -n '^## '`): `docs/ARCHITECTURE.md`, `workflow/tools/README.md`, <other big docs>.
 - `head -5` before opening a file (each opens with what it does), `grep -n` the function, read only that range. Large files: <list>.
 - `npm test` and the gate print only failures; ask for the full output (`npm run test:full`) only when a failure is unclear.
 
@@ -122,16 +122,16 @@ style rules, the feedback rounds and the done checklist.
   command name comes after it in brackets at most ("Look back on the week, 10 minutes (/retro)"), never as the message.
 - Commit messages: a subject that says what changed for the user ("Area: what changed, and what else"), then the why.
 - **One feature, one session, one commit; the owner says when it is done.** Commit and `--finish` only on "finish it" /
-  "commit and push"; push only when the owner says. A hook holds this (`scripts/stop-points.mjs`): a commit or push it refuses
+  "commit and push"; push only when the owner says. A hook holds this (`workflow/scripts/stop-points.mjs`): a commit or push it refuses
   is a reason to stop and ask, never to find another way. No tests-only or "fix after a check" commits (docs and settings left in the main folder go in first, on their own: `/ship` step 0); tests and
   typecheck pass at every commit. **Never** merge by hand in the main folder, `git push --force` or rewrite `main` (the
-  owner's squash has its own steps: `tools/workflow/README.md`, *Commits and sessions*).
+  owner's squash has its own steps: `workflow/tools/README.md`, *Commits and sessions*).
 <!-- /kit:writing-style -->
 
 ## Git and sessions
 - `main` on <remote url>. For live runs use the owner's server at `http://127.0.0.1:<main port>`.
 - No session notes in the repo (no PROGRESS.md or NEXT-SESSION.md): keep this file current.
-- **One session, one folder, one branch, one port**: `node scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>`;
+- **One session, one folder, one branch, one port**: `node workflow/scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>`;
   work only there and say the folder and URL in your first reply (the rest: *Commits and sessions*).
 - **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted files
   in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.

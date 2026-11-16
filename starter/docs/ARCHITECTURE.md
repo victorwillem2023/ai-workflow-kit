@@ -7,7 +7,7 @@ The file-by-file map is `docs/MAP.md` (generated: `npm run map`).
 <!-- covers new files: src/*/CLAUDE.md -->
 <one line per folder: what lives there and what it does.>
 
-What each may import (made from `boundaries` in workflow.config.json by `npm run map`, enforced by the gate):
+What each may import (made from `boundaries` in workflow/config.json by `npm run map`, enforced by the gate):
 <!-- generated: layers -->
 <!-- /generated -->
 

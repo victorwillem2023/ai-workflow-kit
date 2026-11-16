@@ -4,4 +4,4 @@
   through `req.log`, call other services with `req.outbound()`.
 - Each error a person or a service can cause: an `AppError` (`src/server/errors.ts`: code, words, `doing`, ids, `cause`), all
   answered by `answerError`. The page: `apiError` for a failed call, `reportPageErrors` at start-up (`logPageError` on the server).
-- Something wrong: `/debug`. A session's log: `node scripts/logs.mjs <topic> --follow` (`--ref <reference>`).
+- Something wrong: `/debug`. A session's log: `node workflow/scripts/logs.mjs <topic> --follow` (`--ref <reference>`).

@@ -16,7 +16,7 @@ panel looks at the project as it is and names the three changes it would make fi
    real); `docs/PRODUCT.md`, `docs/company/ROADMAP.md` (the stage; for the `roadmap` panel also `docs/company/STAGES.md`, what each stage needs and its sign), `project.audience` and `launch` in the config, `docs/company/COSTS.md` (via
    `npm run costs`), `docs/STACK.md`, earlier records in `docs/decisions/`, the last load test and SecOps numbers when they bear
    on it. Never secrets, `.env`, or personal or health data in the brief.
-   For the `ai` panel also `docs/workflow/AI-AGENTS.md` (*Where AI could make the app better*), `security.egress`,
+   For the `ai` panel also `workflow/guides/AI-AGENTS.md` (*Where AI could make the app better*), `security.egress`,
    `sensitive.paths` and every line in `CLAUDE.md`, the folder notes and `docs/PRODUCT.md` about data that never goes to a
    model or leaves the app: the brief starts with those rules, and an idea that needs such data is out before it is weighed.
    Each advisor names, for each use it proposes, what the person gets in plain words ("a three-line summary of the week"), the

@@ -87,7 +87,7 @@ bottleneck and the place where one typo breaks everything.
   in `CODEOWNERS`, so a review and an alert always reach someone.
 - **A tier** per service (1: users notice within minutes; 3: an internal tool) sets its promises in `docs/run/RECOVERY.md`, its
   alerts and how carefully it is released.
-- **Contracts between services** are written down: OpenAPI for calls (`docs/workflow/API.md`), AsyncAPI or a versioned schema for
+- **Contracts between services** are written down: OpenAPI for calls (`workflow/guides/API.md`), AsyncAPI or a versioned schema for
   events, contract tests (Pact) once two teams depend on each other. A breaking change is a new version, the old one kept until
   its users moved.
 
@@ -106,7 +106,7 @@ for the coach app and the coaches' portal?") is the architecture panel of `/advi
 AI reviewers, chosen from these points of view for what the question needs (more when the owner asks), with the same facts:
 - **simplicity and cost**: the smallest thing that works, what it costs a month and in hours;
 - **operations and scale**: what breaks at 10 times the load, how it is deployed, watched and recovered;
-- **security and data**: where the data goes, who can reach it, what the law and `docs/workflow/SENSITIVE.md` say;
+- **security and data**: where the data goes, who can reach it, what the law and `workflow/guides/SENSITIVE.md` say;
 - **product and time**: what it does to the next three months of the board.
 
 Each answers on its own (they do not see each other), with a recommendation, the risks, what would change its mind and the

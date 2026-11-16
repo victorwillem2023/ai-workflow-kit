@@ -10,7 +10,7 @@ Change no file, set no label, start nothing: this is the one command that is saf
 closing question.
 
 **Asked which command** for something ("how do I check what this costs?", "where do I start the deploy?"): find it in
-`docs/workflow/WORKFLOW.md`, *The commands, by stage* (`grep -n` the words, read only that table), and answer with the command and one
+`workflow/guides/WORKFLOW.md`, *The commands, by stage* (`grep -n` the words, read only that table), and answer with the command and one
 line on what it does. Not in the table: say so and offer `/find`. Then stop. A command whose skill is not in
 `.claude/skills/` was left out of a lean install: say so, and that `node <kit>/install.mjs . --update --with <part>` adds it.
 Never offer a skill that is not installed as the next step.
@@ -18,7 +18,7 @@ Never offer a skill that is not installed as the next step.
 **Otherwise**, four commands, all read-only:
 1. `npm run updates -- --short`: a security alert first; an update only when it needs the owner (its "to look at" part; the
    ones that merge by themselves are not the owner's job).
-2. `node tools/workflow/stage.mjs`: where the project is, from facts (a look back due, the roadmap empty, the first version built
+2. `node workflow/tools/stage.mjs`: where the project is, from facts (a look back due, the roadmap empty, the first version built
    and nowhere to run it, a card that must come before the first deploy). Each `stage:` line is a next step.
 3. `npm run board -- --next 3`: the cards to start, best first (the dependency graph first, then the owner's labels). A card that
    "starts on top of #m" does not wait for #m's check: say so. **A tie** ("#a, #b are equal"): never present the card number as

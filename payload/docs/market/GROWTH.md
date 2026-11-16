@@ -46,7 +46,7 @@ One page, one promise, one action:
 - **Fast and found**: `npm run launch-check -- <address or file>` checks the title, the description, the share preview (Open
   Graph), one main heading, image texts, the language, `robots.txt`, the sitemap, the privacy link, the page weight, and
   trackers that would need consent.
-- **Where it lives**: a static page beside the app (Astro, or the app's own framework, `docs/workflow/FRONTEND.md`), or a CMS when
+- **Where it lives**: a static page beside the app (Astro, or the app's own framework, `workflow/guides/FRONTEND.md`), or a CMS when
   someone else writes the text. A different domain for the page and the app is fine; the same domain helps search.
 - **A waitlist** before the product is open: a form that stores the email in the app's own database or a European email tool,
   with a clear "we will write when it opens, nothing else" and double opt-in. Emails are personal data: never in GitHub issues.
@@ -154,7 +154,7 @@ AdSense is the other side: Google shows ads on your site and pays you per view o
 ## The launch checklist
 - [ ] Positioning written; the page's headline and every ad come from it
 - [ ] `npm run launch-check` passes on the real address
-- [ ] Privacy notice and terms linked, read once by a lawyer (`docs/workflow/SENSITIVE.md`); consent banner only if something needs it
+- [ ] Privacy notice and terms linked, read once by a lawyer (`workflow/guides/SENSITIVE.md`); consent banner only if something needs it
 - [ ] Sign-up works on a phone, in two browsers; the first useful moment is reached without help (a user test, `docs/run/RELEASES.md`)
 - [ ] Analytics count the funnel's steps; Search Console and Bing verified, sitemap sent
 - [ ] Monitoring and an alert reach the owner (`docs/run/MONITORING.md`); the load test passed at launch-day traffic (`docs/run/PERFORMANCE.md`)

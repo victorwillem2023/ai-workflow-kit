@@ -1,0 +1,98 @@
+// What the waiting dependency updates mean (workflow/tools/lib/updates.mjs): the libraries a Dependabot pull request moves,
+// the verdict on each (take, look at, hold), and the lines a session or the health screen prints.
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { autoMerges, bump, checksState, holdSnippet, judge, judgePr, parseUpdates, readAlerts, runtimeNode, shortLine, toolImages, updateTools } from '../../workflow/tools/lib/updates.mjs';
+
+const green = [{ status: 'COMPLETED', conclusion: 'SUCCESS' }];
+
+describe('reading a Dependabot pull request', () => {
+  it('reads every library of a grouped pull request from its body, and a single one from its title', () => {
+    const grouped = { title: 'Bump the all group with 2 updates', body: 'Updates `vite` from 8.3.6 to 8.4.0\nUpdates `zod` from 4.6.7 to 4.6.9\nUpdates `vite` from 8.3.6 to 8.4.0' };
+    assert.deepEqual(parseUpdates(grouped).map((u) => u.name), ['vite', 'zod']);
+    assert.deepEqual(parseUpdates({ title: 'Bump @types/node from 24.19.2 to 26.6.6 in the all group' }), [{ name: '@types/node', from: '24.19.2', to: '26.6.6' }]);
+    assert.deepEqual(parseUpdates({ title: 'Something else' }), []);
+  });
+  it('a 0.x minor step counts as a new major version, because it may break as much', () => {
+    assert.equal(bump('0.45.4', '0.46.0'), 'major');
+    assert.equal(bump('4.6.7', '4.7.0'), 'minor');
+    assert.equal(bump('4.6.7', '4.6.9'), 'patch');
+    assert.equal(bump('24.19.2', '26.6.6'), 'major');
+  });
+  it('says whether the checks passed, failed or still run', () => {
+    assert.equal(checksState(green), 'green');
+    assert.equal(checksState([{ status: 'COMPLETED', conclusion: 'FAILURE' }]), 'red');
+    assert.equal(checksState([{ status: 'IN_PROGRESS', conclusion: '' }]), 'running');
+    assert.equal(checksState([]), 'none');
+  });
+});
+
+describe('the verdict', () => {
+  const node = runtimeNode({ dockerfile: 'FROM node:24-slim AS build\n' });
+  it('holds type definitions for a newer Node than the app runs on, and says why', () => {
+    const p = judgePr({ number: 3, title: 'Bump @types/node from 24.19.2 to 26.6.6', statusCheckRollup: green }, { node });
+    assert.equal(p.verdict, 'hold');
+    assert.match(p.updates[0].why, /types are for Node 26, the app runs on Node 24 \(the Dockerfile\)/);
+  });
+  it('takes a small update whose checks are green, and looks first at a red one or a new major version', () => {
+    assert.equal(judgePr({ title: 'Bump zod from 4.6.7 to 4.6.9', statusCheckRollup: green }, { node }).verdict, 'take');
+    assert.equal(judgePr({ title: 'Bump zod from 4.6.7 to 4.6.9', statusCheckRollup: [{ status: 'COMPLETED', conclusion: 'FAILURE' }] }, { node }).verdict, 'look');
+    assert.equal(judgePr({ title: 'Bump react from 19.3.1 to 20.0.0', statusCheckRollup: green }, { node }).verdict, 'look');
+  });
+  it('a grouped pull request takes the verdict of its worst library, and a held library from the config is held', () => {
+    const pr = { title: 'Bump the all group', body: 'Updates `zod` from 4.6.7 to 4.6.9\nUpdates `hono` from 4.13.18 to 4.14.0', statusCheckRollup: green };
+    assert.equal(judgePr(pr, { node }).verdict, 'take');
+    assert.equal(judgePr(pr, { node, hold: { hono: 'waiting for the new router' } }).verdict, 'hold');
+  });
+  it('reads the libraries of a Renovate pull request from its table', () => {
+    const body = '| Package | Type | Update | Change |\n|---|---|---|---|\n| [vite](https://vite.dev) | devDependencies | minor | `8.3.6` -> `8.4.0` |\n| node | final | major | `22-slim` -> `26-slim` |';
+    assert.deepEqual(parseUpdates({ title: 'Update small updates', body }), [{ name: 'vite', from: '8.3.6', to: '8.4.0' }, { name: 'node', from: '22-slim', to: '26-slim' }]);
+  });
+  it('says when Renovate is set up but not running, and when it and Dependabot both open version updates', () => {
+    assert.equal(updateTools({ renovateJson: '{}', dashboard: false }).renovateIdle, true);
+    assert.equal(updateTools({ renovateJson: '{}', dependabotYml: 'updates:\n  - package-ecosystem: npm', dashboard: true }).both, true);
+    assert.equal(updateTools({ dependabotYml: 'updates:\n  - package-ecosystem: npm' }).both, false);
+  });
+  it('takes the Node version from .tool-versions first, the pin', () => {
+    assert.deepEqual(runtimeNode({ toolVersions: 'nodejs 26.13.1\n', dockerfile: 'FROM node:22-slim' }), { major: 26, from: '.tool-versions' });
+  });
+  it('finds the Node the app runs on in package.json first, then the Dockerfile, then .nvmrc', () => {
+    assert.deepEqual(runtimeNode({ pkg: { engines: { node: '>=22.13' } }, dockerfile: 'FROM node:24' }), { major: 22, from: 'package.json engines' });
+    assert.deepEqual(runtimeNode({ nvmrc: 'v24.11.0\n' }), { major: 24, from: '.nvmrc' });
+    assert.equal(runtimeNode({}), null);
+  });
+});
+
+describe('what is printed', () => {
+  it('stops a held library at the source with an ignore entry for its new major versions', () => {
+    assert.equal(holdSnippet(['@types/node']), '    ignore:\n      - dependency-name: "@types/node"\n        update-types: ["version-update:semver-major"]');
+    assert.equal(holdSnippet([]), '');
+  });
+  it('puts the worst security alert first, and sums everything up in one line', () => {
+    const alerts = readAlerts([
+      { dependency: { package: { name: 'a' } }, security_advisory: { severity: 'low', summary: 'x' } },
+      { dependency: { package: { name: 'b' } }, security_advisory: { severity: 'high', summary: 'y' }, security_vulnerability: { first_patched_version: { identifier: '1.2.3' } } },
+    ]);
+    assert.deepEqual(alerts.map((a) => a.name), ['b', 'a']);
+    assert.equal(alerts[0].fixed, '1.2.3');
+    const take = { verdict: 'take' as const, updates: [] };
+    const held = { verdict: 'hold' as const, updates: [{ name: 'zod', from: '3.23.8', to: '4.0.0', verdict: 'hold' as const, why: 'held in workflow/config.json: v4 later' }] };
+    assert.equal(shortLine([take, take, held], alerts), 'updates: 2 security alerts (high); 1 to look at: zod 3.23.8 -> 4.0.0, held in workflow/config.json: v4 later; 2 to take (npm run updates)');
+    assert.equal(shortLine([], []), 'updates: nothing waiting');
+  });
+
+  it('with automerge on, the small updates are not the owner\'s: only what needs a look is named, a tool image the checks never run among it', () => {
+    const tools = toolImages(["const HELM = 'alpine/helm:3.16.4'; // renovate: docker", "  image: 'grafana/k6:0.57.0', // renovate: docker"]);
+    assert.deepEqual([...tools], ['alpine/helm', 'grafana/k6']);
+    assert.equal(judge({ name: 'alpine/helm', from: '3.16.4', to: '3.22.0' }, { checks: 'green', tools }).verdict, 'look', 'green checks do not prove a tool the gate never runs');
+    assert.equal(judge({ name: 'node', from: '26.13.1', to: '26.14.0' }, { checks: 'green' }).verdict, 'look', 'Node itself is the owner\'s');
+    const helm = { verdict: 'look' as const, updates: [{ name: 'alpine/helm', from: '3.16.4', to: '3.22.0', verdict: 'look' as const, why: 'a tool your checks do not run: try it once before taking it' }] };
+    const small = { verdict: 'take' as const, updates: [] };
+    assert.equal(shortLine([small, small, helm], [], { selfMerging: true }),
+      'updates: 1 to look at: alpine/helm 3.16.4 -> 3.22.0, a tool your checks do not run: try it once before taking it; 2 merge by themselves once their checks pass (npm run updates)');
+    assert.equal(shortLine([small], [], { selfMerging: true }), 'updates: 1 merge by themselves once their checks pass', 'nothing for the owner: no command to run');
+    assert.equal(autoMerges(JSON.stringify({ packageRules: [{ matchUpdateTypes: ['minor'], automerge: true }] })), true);
+    assert.equal(autoMerges(JSON.stringify({ packageRules: [{ groupName: 'x' }] })), false);
+    assert.equal(autoMerges(undefined), false);
+  });
+});

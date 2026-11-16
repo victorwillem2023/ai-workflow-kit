@@ -1,5 +1,5 @@
 // The pattern for a route test: the app started in the test, called in memory, one good call and each refusal
-// (docs/workflow/TESTING.md, *Route tests*; docs/workflow/PERMISSIONS.md, *Tests*). Copy it next to your routes' tests as
+// (workflow/guides/TESTING.md, *Route tests*; workflow/guides/PERMISSIONS.md, *Tests*). Copy it next to your routes' tests as
 // <route>.test.ts, start your own app where `start` is, and keep the shape: who asks is set by the sign-in, never by the request;
 // another person's or another customer's thing answers "not found", the same as one that does not exist.
 // Not run as it is (the .example name keeps it out of the suite): the tiny server below only stands in for your app.

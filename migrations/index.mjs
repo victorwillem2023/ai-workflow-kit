@@ -3,7 +3,7 @@
 // every step), and each still looks before it changes anything, so a project that skipped versions or was edited by hand is safe,
 // and running one twice does nothing. The record's version= moves on after the update, so a step runs once.
 // Phases: `before` (before the kit's files are copied: moving the project's own files), `claude` (the project's CLAUDE.md),
-// `config` (its workflow.config.json, after the settings merge). A step returns the lines it says in the report.
+// `config` (its workflow/config.json, after the settings merge). A step returns the lines it says in the report.
 // Adding one: a file here, `export default { version, what, phase, run(ctx) }`, and its name in STEPS, oldest first.
 import docFolders from './2.9.0-doc-folders.mjs';
 import productionBack from './2.9.3-production-back.mjs';

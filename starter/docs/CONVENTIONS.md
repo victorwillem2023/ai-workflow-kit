@@ -1,7 +1,7 @@
 # {{PROJECT}}: conventions
 
 How things are named and shaped, and why, so a reader (or an agent) finds things where the name says. Names are checked by the
-gate (`naming` in `workflow.config.json`); the rest by review. A new convention is a line here and, when it can be, a rule in
+gate (`naming` in `workflow/config.json`); the rest by review. A new convention is a line here and, when it can be, a rule in
 the config, in the same commit.
 
 ## Names
@@ -16,10 +16,10 @@ the config, in the same commit.
 | Settings (environment) | UPPER_CASE, the thing first | `DATABASE_URL`, `SESSION_SECRET` | every name is in `.env.example` (the gate checks it) |
 | API addresses | lower-case, kebab-case, nouns, plural for lists | `GET /api/orders`, `POST /api/refunds` | |
 | Database tables and columns | snake_case, plural tables | `orders.created_at` | SQL folds case; snake_case survives every tool |
-| Branches and session folders | `<prefix>-<topic>`, made by `scripts/session.mjs` | `{{PREFIX}}-export-pdf` | |
+| Branches and session folders | `<prefix>-<topic>`, made by `workflow/scripts/session.mjs` | `{{PREFIX}}-export-pdf` | |
 | Commits | "Area: what changed for the user", then why | `Orders: a refund shows on the invoice` | `git log` reads as what the app learned |
 
-The rules the gate checks now (made from `naming` in workflow.config.json by `npm run map`):
+The rules the gate checks now (made from `naming` in workflow/config.json by `npm run map`):
 <!-- generated: naming -->
 <!-- /generated -->
 
@@ -70,12 +70,12 @@ someone at 3 a.m. Pick one style per kind of thing and write it in the table abo
 ## Commits and pushes
 History is read by people looking for when and why something changed, so it stays one line per change that mattered.
 - **One feature, one commit on `main`.** In a session folder commit as often as you like; `--finish` squashes the branch into
-  one commit (`tools/workflow/README.md`, *Commits and sessions*). With pull requests, GitHub squashes on merge.
+  one commit (`workflow/tools/README.md`, *Commits and sessions*). With pull requests, GitHub squashes on merge.
 - **No commits that only repair the last one** on `main` ("fix typo", "fix test", "review comments"): they go into the
   feature's commit before it lands. A real follow-up later is its own commit that says what it changes for the user.
 - **Subject**: `Area: what changed for the user`, at most about 70 characters, in the present tense; the body says why, and
   names the card (`#42`). A revert is one commit that says what it undoes and why.
-- **Pushes**: features wait on the local `main` and go out together with `node scripts/session.mjs --push` (or a pull request);
+- **Pushes**: features wait on the local `main` and go out together with `node workflow/scripts/session.mjs --push` (or a pull request);
   never `--force` on `main`, never a rewrite of what was pushed.
 - **Releases** are tags on `main` (`v1.4.0`), made by the pipeline; the changelog is built from the commit subjects, which is
   why they say what changed for the user.

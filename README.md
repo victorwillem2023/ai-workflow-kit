@@ -28,11 +28,11 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | **Plan** | `/setup`: who it is for, the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to do next and which command, by value for the effort, at any point; `/tidy` (`npm run board -- --triage`): the board kept from piling up; `/estimate`: a change's work and cost from `docs/company/COSTS.md`; `/advise`: up to three advisors on a choice, citing the docs; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
 | **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit (distroless for TypeScript and Go, a slim image for Python and Rust); a page-weight budget once there are screens. **Not yet**: browser smoke and accessibility tests |
-| **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`docs/workflow/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/run/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/run/IAC.md`); deploys go from GitHub to staging by themselves, and to production only when you run it (or a required reviewer approves, checked before it deploys); `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
-| **Grow** | the loop back: feedback and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/market/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/market/MARKET.md`. **Not yet**: feature-flag code (how to add it: `docs/workflow/LIFECYCLE.md`), a help button in the app linking the feedback form, and errors from the tracker becoming issues by themselves |
+| **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`workflow/guides/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/run/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/run/IAC.md`); deploys go from GitHub to staging by themselves, and to production only when you run it (or a required reviewer approves, checked before it deploys); `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
+| **Grow** | the loop back: feedback and "did it work" become cards (`npm run board -- --inbox`), a changelog from the commits and a version at release, and a weekly `/retro` on the shipping streak and the code's health whose lessons become checks. `/market` brings it to market (`docs/market/GROWTH.md`): positioning, pricing, the landing page and `npm run launch-check`, cookieless analytics on one funnel, search, Google Ads and whether AdSense fits, the launch checklist and a monthly review; the answers live in `docs/market/MARKET.md`. **Not yet**: feature-flag code (how to add it: `workflow/guides/LIFECYCLE.md`), a help button in the app linking the feedback form, and errors from the tracker becoming issues by themselves |
 
 The basis for each stage is laid from the first day; the big questions are asked when a card makes them real, each with a
-recommendation fitted to how big the app is. The full map: `docs/workflow/LIFECYCLE.md` in a project. Everything past the gate is optional: `project.audience` (just me, a team,
+recommendation fitted to how big the app is. The full map: `workflow/guides/LIFECYCLE.md` in a project. Everything past the gate is optional: `project.audience` (just me, a team,
 customers) decides what the kit brings up, so a personal project is never told to launch, market or review access.
 
 ## The idea in ten rules
@@ -45,7 +45,7 @@ customers) decides what the kit brings up, so a personal project is never told t
 7. **You try it, you say done.** Claude stops with a URL; feedback comes as one numbered list per round; it commits only on "finish it". Pushing is a separate word.
 8. **Docs ride in the same commit,** and the gate fails when a doc names a file or command that no longer exists.
 9. **Read by the part, never whole.** A new chat per build; the file map searched, the guide one file per part, folder notes
-   that hold only rules, a never-read list, a test run that prints only failures. Why each one: `docs/workflow/TOKENS.md`.
+   that hold only rules, a never-read list, a test run that prints only failures. Why each one: `workflow/guides/TOKENS.md`.
 10. **One set of skills, any agent.** Skills live in `.claude/skills/`; `npm run harness` writes OpenCode's commands from them
     (the strong model for plans and reviews, the fast one for building, a small one for the cheap helpers) and, if you want, an `AGENTS.md` that only points at `CLAUDE.md`.
 
@@ -59,16 +59,16 @@ install.mjs               puts it all into a project (see below); --modules ui,s
 payload/                  CORE machinery (copied; overwritten only with --force)
   .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market /advise /estimate /tidy /debug, and the cheap helpers /next /check /find /docs
                           infracheck and infraplan (infrastructure checked, planned, reviewed, applied), drill (the restore drill)
-  tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
+  workflow/tools/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
                           (SETUP.md proven on a fresh clone), spec template, README (the reference)
-  scripts/session.mjs     one worktree + port per card; --finish, --push, --list, --check-main, --remove
-  tests/workflow/         tests for the gate, map, docrefs and board code
-  docs/workflow/WORKFLOW.md        how to use it day to day, written for you
-  docs/workflow/TOKENS.md          why the flow and the docs are shaped to keep sessions cheap
+  workflow/scripts/session.mjs     one worktree + port per card; --finish, --push, --list, --check-main, --remove
+  workflow/tests/         tests for the gate, map, docrefs and board code
+  workflow/guides/WORKFLOW.md        how to use it day to day, written for you
+  workflow/guides/TOKENS.md          why the flow and the docs are shaped to keep sessions cheap
   .github/workflows/      gate (every push), secops (Mondays: the security report), setup (SETUP.md proven)
-  docs/workflow/LIFECYCLE.md       the whole path from idea to product: what each stage needs, what is laid now, what /launch decides later
-  docs/workflow/TESTING.md, DATA.md, PERMISSIONS.md   the build stage's rules: which tests at which level, tables, migrations and
+  workflow/guides/LIFECYCLE.md       the whole path from idea to product: what each stage needs, what is laid now, what /launch decides later
+  workflow/guides/TESTING.md, DATA.md, PERMISSIONS.md   the build stage's rules: which tests at which level, tables, migrations and
                           queries, sign-in and who may see what; read by /spec and /review, with their checks in the gate
 starter/                  CORE files that are YOURS (copied only when missing, then edited)
   CLAUDE.md               the rules every agent reads first (skeleton; /setup fills the <...> from an interview):
@@ -77,12 +77,12 @@ starter/                  CORE files that are YOURS (copied only when missing, t
   docs/ARCHITECTURE.md    layers and flow, read by the section
   docs/code/core.md, src/core/CLAUDE.md   the pattern for every big folder: rules in the folder note, "where things are" in docs/code
   tsconfig.json
-  workflow.config.json    roots, test commands, layer rules, naming rules, security folders, session ports, board columns, harness models
+  workflow/config.json    roots, test commands, layer rules, naming rules, security folders, session ports, board columns, harness models
   renovate.json, .tool-versions   the update policy (one repository, or moved to a config repository for several) and the pinned tools
   docs/SETUP.md, docs/CONVENTIONS.md   the setup guide whose marked steps are run, and the conventions with their reasons
   gitignore.txt, package-scripts.json, settings.local.json    merged into the project by the installer
 modules/                  OPTIONAL parts, each with payload/ (machinery) and starter/ (yours)
-  ui/        .claude/skills/ui (the board route), scripts/shots.mjs (screenshots via Chrome/Edge),
+  ui/        .claude/skills/ui (the board route), workflow/scripts/shots.mjs (screenshots via Chrome/Edge),
              src/web/styles.css (16 colour tokens, light+dark, type/space/radius scales, buttons, chips, cards, states, toast),
              src/web/dom.ts (h() that never injects HTML or javascript: links, toast, prefs, keepFocus), src/web/CLAUDE.md (rules + done checklist),
              docs/STYLE.md, docs/design/README.md, docs/design/board-template.html (variants A/B/C, phone, states), tests/dom.test.ts
@@ -92,7 +92,7 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
   testing/   tests/clock.ts (fake clock: a 4 s wait costs milliseconds), tests/fakes.example.ts (fakeDeps + fixed NOW pattern), tests/builders.example.ts (test data)
   dev/       dev.cmd, start.cmd (Windows: install on first run, check packages and port), scripts/dev-check.mjs, .env.example
   map/       docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
-  deploy/    a Dockerfile per language, scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
+  deploy/    a Dockerfile per language, workflow/scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
              npm run smoke; npm run rollback; --env staging|production), docs/run/DEPLOY.md, .github/workflows/release.yml (after the gate: one image per commit,
              scanned with Trivy, with an SBOM, kept in ghcr.io; third-party actions pinned to a commit), .github/workflows/deploy.yml
              (after a release: staging by itself; production when you run it, or after a required reviewer's approval)
@@ -124,7 +124,7 @@ project stands, and names the next command; ask it "which command for ...?" and 
 | Build | `/work <n>` | The one entry for a card: takes the route its type says, plans, stops for yes, builds, stops for you to try it, ships on "done". |
 | Build | `/build <topic>`, `/ui <n>` | After the yes, **in a new chat**: builds in a session folder with the feedback rounds (`/build a b c`: up to 3 builders when their files do not overlap); the `ui` route with boards first. |
 | Ship | `/review`, `/ship` | Fresh eyes on the diff; one commit when you say done (`/work` and `/build` call them). |
-| Ship | `node scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
+| Ship | `node workflow/scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
 | Run | `/launch` | Before the first real deploy: platform, shape, database, load balancer, sizes and infrastructure tool, one decision at a time with prices that day; writes the record, `infra/`, the environments and the run docs. Never applies. |
 | Run | `npm run infra-plan -- infra/<env>` then `npm run infra-apply -- infra/<env>` | The plan, reviewed against the stack's `plan.expect` (names, labels, nothing holding data destroyed); then you apply exactly that plan, typing a code. |
 | Run | `npm run drill`, `npm run costs [-- --compare <file>]` | The restore drill (the date goes in `docs/run/RECOVERY.md`); the monthly bill with stale prices flagged, or paid against self-hosted at 1, 12 and 36 months. |
@@ -158,7 +158,7 @@ The choice is remembered: `--update --with retro` adds one later, `--update --fu
 is left out is removed on the update when you never changed its files.
 The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
-data comes in and the board's areas, then writes `CLAUDE.md`, `workflow.config.json`, `docs/GUIDE.md` and `docs/ARCHITECTURE.md`,
+data comes in and the board's areas, then writes `CLAUDE.md`, `workflow/config.json`, `docs/GUIDE.md` and `docs/ARCHITECTURE.md`,
 runs `npm run board -- --init` (labels, the GitHub project, its columns) and the gate, and stops for your yes before one commit.
 After that: type `/next` whenever you are not sure; it tells you which command (the first time: `/idea`, then `/work <n>`).
 
@@ -169,17 +169,17 @@ the machinery files that differ or are missing and changes nothing.
 A machinery file the project never changed is replaced by the kit's new one; one the project changed is kept and listed (compare,
 then `--take <path,path>` takes the kit's); missing files are added; a file the kit no longer ships (renamed or removed) is
 taken out when the project never changed it, and listed when it did; settings the kit has and the project lacks are added to
-`workflow.config.json`, nothing in it is changed. Then `npm run map`, `node tools/workflow/gate.mjs --update-baseline` (what the new
+`workflow/config.json`, nothing in it is changed. Then `npm run map`, `node workflow/tools/gate.mjs --update-baseline` (what the new
 checks find today becomes the baseline, so only new cases fail) and `npm run gate:all`. A project installed before 1.5 has no
 record of what the kit wrote, so the first time every differing file is listed.
 
 **Updating** a project to a newer kit, taking all of the kit's machinery: `git pull` in the kit, then `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --force`.
-It replaces the machinery (skills, tools, scripts) and never your starter files; `.workflow-kit` in the project says which version it has.
+It replaces the machinery (skills, tools, scripts) and never your starter files; `workflow/record` in the project says which version it has.
 
 ## Agents and models
 - **Claude Code**: the skills as they are. `/idea /check /find /docs` say `model: haiku`; the flow runs on your chosen model.
 - **OpenCode**: reads `CLAUDE.md` and `.claude/skills`. `npm run harness` writes one command per skill in `.opencode/commands/`
-  (agent and model from `harness.opencode` in `workflow.config.json`; read-only skills get the plan agent), and once an
+  (agent and model from `harness.opencode` in `workflow/config.json`; read-only skills get the plan agent), and once an
   `opencode.jsonc` whose permissions mirror `.claude/settings.local.json` and deny reading `.env` and the `harness.private`
   folders, in OpenCode 2's format (`permissions`, `agents`, `shell`; OpenCode 1 refuses it). The gate fails when a command is
   out of date. Defaults: DeepSeek for the flow, a free model only for the cheap helpers.
@@ -198,15 +198,15 @@ It replaces the machinery (skills, tools, scripts) and never your starter files;
   and Go. The fake clock and the screen helpers have no other-language version.
 - **Tests must run where the agent runs**: `node_modules` installed on Windows does not run in a Linux sandbox (and the other way
   round). An agent working remotely needs its own install (`npm ci`) or it can only read.
-- **The board is GitHub Projects**, reached only through `tools/workflow/lib/board.mjs` and `gh`. A board that cannot be reached is
+- **The board is GitHub Projects**, reached only through `workflow/tools/lib/board.mjs` and `gh`. A board that cannot be reached is
   one warning line, never a stop.
 
 ## Adapting it
-- **No web UI**: install with `--modules security,testing,dev` (no ui), and drop the `ui` type from `workflow.config.json` and the `/work` skill. Everything else stands alone.
+- **No web UI**: install with `--modules security,testing,dev` (no ui), and drop the `ui` type from `workflow/config.json` and the `/work` skill. Everything else stands alone.
 - **Not TypeScript / Node**: change `commands` in the config. Import-graph test selection (`lib/graph.mjs`) reads JS/TS imports; for another language, drop to `gate:all` or write a graph for it.
 - **Solo vs. team**: "the owner" in the skills is the person steering. Rename it if you like; the stop points are what matters.
-- **No GitHub**: the board is isolated in `tools/workflow/lib/board.mjs`. Swap it for another tracker, or delete the card steps from the skills; the board never blocks a start or finish anyway.
-- **Different gates**: each check is a small file in `tools/workflow/lib/`; add one next to them and a step in `gate.mjs`.
+- **No GitHub**: the board is isolated in `workflow/tools/lib/board.mjs`. Swap it for another tracker, or delete the card steps from the skills; the board never blocks a start or finish anyway.
+- **Different gates**: each check is a small file in `workflow/tools/lib/`; add one next to them and a step in `gate.mjs`.
 
 ## What changed
 Every version, newest first, with what it fixed and why: `CHANGELOG.md`.

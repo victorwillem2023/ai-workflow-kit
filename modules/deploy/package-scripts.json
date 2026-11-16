@@ -1,5 +1,5 @@
 {
-  "deploy": "node scripts/deploy.mjs",
-  "smoke": "node scripts/deploy.mjs --smoke",
-  "rollback": "node scripts/deploy.mjs --rollback"
+  "deploy": "node workflow/scripts/deploy.mjs",
+  "smoke": "node workflow/scripts/deploy.mjs --smoke",
+  "rollback": "node workflow/scripts/deploy.mjs --rollback"
 }

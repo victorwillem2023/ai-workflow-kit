@@ -1,5 +1,5 @@
 // install.mjs --uninstall: the kit taken out of a project again, and nothing of the project's with it. What goes: every kit file
-// that is still exactly as the kit wrote it (its stamp in .workflow-kit), the OpenCode commands made from the kit's skills, the
+// that is still exactly as the kit wrote it (its stamp in workflow/record), the OpenCode commands made from the kit's skills, the
 // kit's marked parts of CLAUDE.md, the kit's rules and hooks in .claude/settings.local.json, the kit's npm scripts that still
 // run the kit's command, the record and the git config line. What stays, and is named: a kit file the project changed, and the
 // files the kit wrote once that became the project's (the config, CLAUDE.md's own text, the docs it filled, specs).
@@ -21,8 +21,8 @@ function remove(target, path) {
 }
 
 export function uninstall({ target, kit }) {
-  const markFile = join(target, '.workflow-kit');
-  if (!existsSync(markFile)) return ['Nothing to take out: this project has no .workflow-kit (the kit was never installed here, or is gone already).'];
+  const markFile = join(target, 'workflow/record');
+  if (!existsSync(markFile)) return ['Nothing to take out: this project has no workflow/record (the kit was never installed here, or is gone already).'];
   const mark = readFileSync(markFile, 'utf8');
   const stamps = mark.split(/\r?\n/).map((l) => /^sha (\S+) (.+)$/.exec(l)).filter(Boolean).map((m) => [m[2], m[1]]);
   const removed = [], changed = [], cleaned = [];
@@ -75,9 +75,9 @@ export function uninstall({ target, kit }) {
   }
   // 6. the record and this clone's note of where the kit is
   remove(target, markFile);
-  removed.push('.workflow-kit');
+  removed.push('workflow/record');
   spawnSync('git', ['-C', target, 'config', '--unset', 'workflow.kit'], { stdio: 'ignore' });
-  const left = ['workflow.config.json', 'docs', 'specs', 'opencode.jsonc', 'renovate.json', '.github/dependabot.yml'].filter((f) => existsSync(join(target, f)));
+  const left = ['workflow/config.json', 'docs', 'workflow/specs', 'opencode.jsonc', 'renovate.json', '.github/dependabot.yml'].filter((f) => existsSync(join(target, f)));
   return [
     `The kit is out of ${target}: ${removed.length} of its files removed, as it wrote them.`,
     ...cleaned.map((l) => `  ${l}`),
