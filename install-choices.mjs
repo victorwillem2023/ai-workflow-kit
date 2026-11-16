@@ -82,9 +82,12 @@ export function readChoices(args, kit) {
   const LANGS = JSON.parse(readFileSync(join(kit, 'starter', 'lang.json'), 'utf8'));
   if (!LANGS[lang]) return { error: `Unknown language "${lang}". Languages: ${Object.keys(LANGS).join(', ')} (another one: install with ts and set the commands in workflow.config.json)` };
   const remote = spawnSync('git', ['-C', target, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout;
-  const repo = pick('repo', '--repo', () => repoFromRemote(remote));
-  const project = pick('project', '--project', () => detectProject(target));
-  const prefix = pick('prefix', '--prefix', () => (repo ? repo.split('/')[1] : basename(target)).toLowerCase().replace(/[^a-z0-9-]/g, '-'));
+  // a project from before the record held these has them in its own settings (the board's repo, its name, the session prefix)
+  let cfg = {};
+  try { cfg = JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')); } catch { /* a new project */ }
+  const repo = pick('repo', '--repo', () => cfg.board?.repo ?? repoFromRemote(remote));
+  const project = pick('project', '--project', () => cfg.name ?? detectProject(target));
+  const prefix = pick('prefix', '--prefix', () => cfg.session?.prefix ?? (repo ? repo.split('/')[1] : basename(target)).toLowerCase().replace(/[^a-z0-9-]/g, '-'));
   if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'repo' };
   const skip = [...new Set([...pathList(recorded(mark, 'skip')), ...pathList(opt('--skip'))])];
   const lean = args.includes('--lean') || (remembers && !args.includes('--full') && /^lean=1$/m.test(mark));

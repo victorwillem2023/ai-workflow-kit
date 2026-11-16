@@ -10,6 +10,7 @@ import { formatJson, rewriteJson } from '../install-config.mjs';
 import { detectLang, detectProject, inList, readChoices, recorded, recordLines, repoFromRemote } from '../install-choices.mjs';
 import { mergeKitBlocks, rewriteChangedRules } from '../install-docs.mjs';
 import { movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
+import { due, older, STEPS } from '../migrations/index.mjs';
 
 const kit = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const folder = (files = {}) => {
@@ -106,6 +107,19 @@ describe('the kit\'s parts of CLAUDE.md', () => {
     assert.ok(text.includes('<!-- kit:how-we-work -->'), 'an untouched part is the kit\'s now');
     assert.ok(text.includes('- Our own line.') && !text.includes('<!-- kit:writing-style -->'), 'a changed part stays the project\'s');
     rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('migrations', () => {
+  it('a step is due when the project\'s version is older than it, oldest first, and every step when there is no record', () => {
+    assert.ok(older('2.9.7', '2.9.10') && !older('2.9.10', '2.9.7') && !older('2.9.8', '2.9.8'));
+    assert.deepEqual(due('2.8.5', 'before').map((s) => s.version), ['2.9.0', '2.9.3']);
+    assert.deepEqual(due('2.9.1', 'before').map((s) => s.version), ['2.9.3'], 'a project at 2.9.1 still gets the correction');
+    assert.deepEqual(due('2.9.3', 'before'), [], 'a project at 2.9.3 has its docs where they belong');
+    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7']);
+    const versions = STEPS.map((s) => s.version);
+    assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
+    for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
   });
 });
 

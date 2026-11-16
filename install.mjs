@@ -33,7 +33,8 @@ import { movePathsBack, undoCorrections } from './doc-layout.mjs';
 import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
 import { ALL, inList, list, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
-import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, moveOldDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
+import { runMigrations } from './migrations/index.mjs';
+import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -42,6 +43,11 @@ const opt =(name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undef
 // command converges on the same result (a project with the record is updated; a flag changes the record, never resets the rest)
 const choices = readChoices(args, kit);
 if (choices.error && !['usage', 'repo'].includes(choices.error)) { console.error(choices.error); process.exit(1); }
+if (choices.error) {
+  console.error('Usage: node install.mjs <target-folder> [--project "My App"] [--repo owner/name] [--prefix myapp] [--modules ui,security,testing,dev,map,deploy] [--lang ts|rust|python|go] [--force]\n'
+    + 'The name, the repo, the prefix and the language are found when not given (package.json or the manifest, the git remote, the folder); without a GitHub remote, give --repo.');
+  process.exit(1);
+}
 const { target, mark, force, update, take, skip, lang, LANGS, lean, withs, modules, parts } = choices;
 const skippedPart = (key) => Object.entries(PARTS).some(([p, paths]) => !parts.includes(p) && paths.some((x) => key === x || key.startsWith(x)));
 // In a lean project the installed text never points at what is not there: a command of a part left out gets "(not installed)"
@@ -71,11 +77,6 @@ function markAbsent(text) {
   return t;
 }
 const { repo, project, prefix } = choices;
-if (choices.error) {
-  console.error('Usage: node install.mjs <target-folder> [--project "My App"] [--repo owner/name] [--prefix myapp] [--modules ui,security,testing,dev,map,deploy] [--lang ts|rust|python|go] [--force]\n'
-    + 'The name, the repo, the prefix and the language are found when not given (package.json or the manifest, the git remote, the folder); without a GitHub remote, give --repo.');
-  process.exit(1);
-}
 if (!existsSync(target)) { console.error(`${target} does not exist. Make the project folder (and git init) first.`); process.exit(1); }
 // --dry-run: the same run on a copy of the project, and what it changed there (install-plan.mjs); nothing here is written
 if (args.includes('--dry-run')) process.exit((await import('./install-plan.mjs')).dryRun({ kit, target, args: args.filter((a) => a !== '--dry-run') }));
@@ -147,11 +148,10 @@ const untouched = (key, text) => written.has(key) && [text, movePathsBack(text),
 // --update: an older project's docs move into their folders, and old doc paths are rewritten, before anything is copied
 // (install-docs.mjs)
 let claudeGrowth = 0; // bytes the longer doc paths added to CLAUDE.md (its budget grows by exactly that, below)
-if (update) {
-  const m = moveOldDocs({ target, written, stamp });
-  claudeGrowth = m.claudeGrowth;
-  if (m.moved.length || m.rewritten.length || m.specsNaming.length) done.movedDocs = { count: m.moved.length, rewritten: m.rewritten, specs: m.specsNaming };
-}
+// what changed in the kit since the project's version, one step per version (migrations/): run once, each looking before it acts
+const migrated = [];
+const migrate = (phase) => { if (update) migrated.push(runMigrations(phase, { from: before, target, kit, fill, written, stamp })); return migrated.at(-1) ?? {}; };
+claudeGrowth = migrate('before').claudeGrowth ?? 0;
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
 // does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
 const HELPERS = lang === 'ts' ? ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.ts', 'tests/production/debugging.test.ts'] : [];
@@ -229,7 +229,8 @@ if (update) pruneStageCopies({ target, stageSkipped, untouched, hash, stamp, don
 if (stageSkipped.size) keepNamedStageDocs({ target, stageSkipped, hash, stamp, done });
 nameHelpersInCodeDocs({ target, done });
 unmarkEnteredStages({ target, stages });
-const rulesRewritten = update ? rewriteChangedRules({ target, kit, fill }) : [];
+const rulesRewritten = update ? rewriteChangedRules({ target, kit, fill, rules: false }) : [];
+migrate('claude');
 
 // a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end. "Once" is remembered in
 // .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
@@ -314,6 +315,7 @@ if (lang === 'ts' && done.kept.includes('tsconfig.json') && !existsSync(join(tar
 // workflow.config.json: a fresh one fitted to the framework and language; on --update the settings the kit has and the project
 // lacks; each module's own settings (install-config.mjs)
 const addedSettings = settleConfig({ target, kit, fill, langConfig: LANGS[lang].config, framework, modules, update, justWritten: done.added.includes('workflow.config.json'), claudeGrowth });
+migrate('config');
 
 // a first install into a project with its own CLAUDE.md: the kit's parts it lacks go at its end, between their markers
 const kitPartsAdded = !update && done.kept.includes('CLAUDE.md') ? mergeKitBlocks({ target, kit, fill }) : [];
@@ -355,9 +357,8 @@ if (update) {
   if (done.helpers.length) console.log(`  helpers the kit's rules name, added (never replacing one): ${done.helpers.join(', ')}`);
   if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
-  if (done.movedDocs?.count) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git`);
-  if (done.movedDocs?.rewritten.length) console.log(`  old doc paths rewritten (look at the diff before committing) in:\n${done.movedDocs.rewritten.map((f) => `    ${f}`).join('\n')}`);
-  if (done.movedDocs?.specs.length) console.log(`  waiting specs that name a doc at its old place, left as you approved them (the doc is at its new place now; change the spec if it lists it):\n${done.movedDocs.specs.map((f) => `    ${f}`).join('\n')}`);
+  const ran = migrated.flatMap((m) => m.ran);
+  if (ran.length) console.log(`  the kit's changes since ${before} (migrations/): ${ran.join('; ')}\n${migrated.flatMap((m) => m.said).map((l) => `  ${l}`).join('\n')}`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');

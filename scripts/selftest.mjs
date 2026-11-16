@@ -61,7 +61,8 @@ function asOlderKitLeftIt(dir) {
   const text = () => projectText(dir).filter((x) => x !== '.workflow-kit');
   for (const f of text()) { const was = readFileSync(join(dir, f), 'utf8'); const back = movePathsBack(was); if (back !== was) writeFileSync(join(dir, f), back); }
   const mark = join(dir, '.workflow-kit');
-  writeFileSync(mark, movePathsBack(readFileSync(mark, 'utf8')));
+  // and the record says so: a kit from before 2.9 (the update's steps since then, migrations/, run by that version)
+  writeFileSync(mark, movePathsBack(readFileSync(mark, 'utf8')).replace(/^version=.*$/m, 'version=2.8.5'));
   // PRODUCTION.md where kit 2.9.0 to 2.9.2 put it (docs/run/), so the update's correction is proven too
   if (existsSync(join(dir, 'docs', 'PRODUCTION.md'))) {
     mkdirSync(join(dir, 'docs', 'run'), { recursive: true });

@@ -237,7 +237,8 @@ export function mergeKitBlocks({ target, kit, fill }) {
   return missing.map(([, b]) => b.split('\n')[1].replace(/^## /, ''));
 }
 
-export function rewriteChangedRules({ target, kit, fill }) {
+// (`rules: false`: only the kit's marked parts; the old sentences are a migration, migrations/2.9.8-notes-rule.mjs, run once)
+export function rewriteChangedRules({ target, kit, fill, rules = true }) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(claude)) return [];
   let text = readFileSync(claude, 'utf8');
@@ -247,7 +248,7 @@ export function rewriteChangedRules({ target, kit, fill }) {
   let notes;
   try { notes = JSON.parse(readFileSync(configAt, 'utf8')).commits?.notes; } catch { notes = undefined; }
   const changed = [];
-  for (const [old, now, what, choice] of RULES_THAT_CHANGED) {
+  for (const [old, now, what, choice] of rules ? RULES_THAT_CHANGED : []) {
     if (!old.test(text)) continue;
     if (choice === 'commits.notes' && notes !== 'own') {
       // never chosen: the old rule stands, written down as the choice it is (a later update leaves both alone)

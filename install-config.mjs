@@ -137,11 +137,6 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
         else if (r.except && !same.except) { same.except = r.except; added.push(`import rule "${r.name}": except ${r.except.join(', ')}`); }
       }
       if (k === 'checks') for (const c of v) if (c.name !== 'lint' && !mine.checks.some((x) => x.name === c.name)) { mine.checks.push(c); added.push(`checks: ${c.name}`); }
-      // a kit check whose command the project never changed takes the kit's new one (a changed command is the project's own)
-      if (k === 'checks') for (const c of v) {
-        const same = mine.checks.find((x) => x.name === c.name);
-        if (same && OLD_COMMANDS[c.name]?.includes(same.command) && same.command !== c.command) { same.command = c.command; added.push(`checks: ${c.name} now runs ${c.command}`); }
-      }
       // a card type the skills offer (spike, say) that the project's board does not know yet: added, never one taken away
       if (k === 'board' && Array.isArray(v.types) && Array.isArray(mine.board?.types)) for (const t of v.types) {
         if (!mine.board.types.includes(t)) { mine.board.types.push(t); added.push(`board.types: ${t} (its label goes on GitHub with npm run board -- --init)`); }
