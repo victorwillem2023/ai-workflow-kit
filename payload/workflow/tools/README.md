@@ -129,6 +129,24 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 
 Changes to a file many things import (a shared types file, say) still run most tests: that is the measure of how coupled it is.
 
+## Several apps in one repository
+A repository with a folder per app (`apps/web`, `apps/api`) and shared code beside them (`packages/rules`): each app under `apps` in
+the config, with its folder and its own commands, and the shared folders under `shared`:
+
+    "apps": [
+      { "name": "web", "root": "apps/web", "commands": { "typecheck": "npm run typecheck", "testAll": "npm test" } },
+      { "name": "api", "root": "apps/api", "commands": { "testAll": "go test ./..." } }
+    ],
+    "shared": ["packages/**"]
+
+The gate runs `typecheck <app>` and `tests <app>` in the app's own folder for each app a change reaches: a file under its root
+reaches it, a file under `shared` reaches every app, `--all` runs them all. Every other check (secrets, size, layers, docs, the map)
+runs once for the whole repository, and the root's own `typecheck` and `tests` still run for what lies outside the apps. That an
+app uses only the shared code, never another app's inside, is a layer rule in `boundaries` (`apps/web/**` may not import
+`apps/api/**`, and the other way round): write one per pair, and the gate's *layers* check holds it. `/setup` chooses this shape when the app is several things that ship together
+(`.claude/skills/setup/stack.md`, *One repository or a folder per app*). One session still has one port: the dev server it starts
+is the one `session.serve` names.
+
 ## Straight to main, or pull requests
 `"flow"` under `session` in the config. `"direct"` (the default): `--finish` puts the feature on the local `main` and `--push` sends
 it. `"pr"`: `--finish` pushes the branch and opens a pull request, GitHub runs the gate on it, the session folder stays for fixes

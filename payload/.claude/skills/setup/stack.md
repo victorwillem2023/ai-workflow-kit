@@ -43,6 +43,19 @@ for every host, database and AI model you put on the page. Never ask the owner f
 this file. Write the number, the link and the date into `docs/STACK.md` under `Prices checked: <YYYY-MM-DD>`; `npm run health`
 says when that date is more than 90 days old, and then the same lookup is done again and the page updated.
 
+**One repository or a folder per app**: a row on the page, decided from the answers like every other row, never asked as a
+technology question (most owners cannot judge it either):
+- **One thing that is deployed** (a site with its server, an app with its API in one process): one repository, one package. The
+  default, and what the kit assumes until told otherwise.
+- **Several things that ship together** (a web app, an API, a worker, a mobile app that share rules): one repository with a folder
+  per app (`apps/<name>`) and the shared code beside them (`packages/<name>`). The right choice for one owner working with an AI:
+  the agent sees every side of a change and one commit covers them. Write it in `workflow/config.json`: each app under `apps`
+  (`{ "name", "root", "commands": { "typecheck", "testAll" } }`) and the shared folders under `shared`; the gate then runs each
+  app's own typecheck and tests in its folder for the apps a change reaches (`workflow/tools/README.md`, *Several apps in one
+  repository*), the layer rules in `boundaries` name the apps' own folders, and `map.folders` lists `apps/*/src/**`.
+- **Separate repositories** only when different people own the parts, they release on different schedules, or access must differ.
+Say the reason in the row, and what would change it ("a second team takes the API").
+
 Rules that keep a stack future-proof:
 - **Boring and widely used** over new and clever: more answers, more agents that know it, less chance it disappears.
 - **Open standards at the edges** (HTTP and JSON, SQL, OpenID Connect, OpenTelemetry), so a part can be swapped.

@@ -27,7 +27,7 @@ import { hostileAdvice } from './lib/hostilecheck.mjs';
 import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
-import { importCycles, untestedFiles } from './lib/structure.mjs';
+import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
 import { specPaths, outsideSpec } from './lib/scope.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
@@ -50,8 +50,7 @@ const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 <
 // a git call that may fail (no origin yet, say): no output on stderr, null instead
 const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
-// what the change is compared with: --base, or where this branch left main
-// (a repository with no commit yet is compared with git's empty tree, so everything counts as new)
+// what the change is compared with: --base, or where this branch left main (no commit yet: git's empty tree, all new)
 const base = baseArg ?? gitOk('merge-base', 'HEAD', 'origin/main') ?? gitOk('merge-base', 'HEAD', 'main') ?? (gitOk('rev-parse', '--verify', 'HEAD') ? 'HEAD' : '4b825dc642cb6eb9a060e54bf8d69288fbee4904');
 
 function listFiles() {
@@ -232,10 +231,10 @@ if (flag('--list')) {
 
 let suiteSeconds = 0;
 const tail = (text) => text.trim().split('\n').slice(-config.failTailLines).join('\n');
-function run(cmd) {
+function run(cmd, cwd) {
   // the commands come from workflow/config.json, the project's own file, never from outside input
   // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-  const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20 });
+  const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20, ...(cwd ? { cwd } : {}) });
   return { ok: r.status === 0, out: (r.stdout ?? '') + (r.stderr ?? '') };
 }
 
@@ -362,6 +361,7 @@ const steps = [
     if (plan.whole) suiteSeconds = (Date.now() - t0) / 1000;
     return { ...r, note: plan.note };
   }],
+  ...appSteps({ config, changed, all: flag('--all'), run, matches: matchesAny }), // several apps: each one's own (lib/apps.mjs)
   ...dueChecks(config.checks, changed, flag('--all')).map(({ check, due, why }) => [check.name, () => {
     if (!due) return { ok: true, note: why };
     // `setup` (installing a browser, say) runs on GitHub only; on your own computer it is installed once by hand
