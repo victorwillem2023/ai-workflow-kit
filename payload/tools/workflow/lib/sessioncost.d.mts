@@ -1,0 +1,8 @@
+export type Use = { input: number; output: number; cacheWrite: number; cacheRead: number; answers: number };
+export type Answer = { at: string | null; model: string; skill: string | null; session: string | null; side: boolean; input: number; output: number; cacheWrite: number; cacheRead: number };
+export type Price = { input?: number; output?: number; cacheWrite?: number; cacheRead?: number };
+export function answerUse(line: unknown): Answer | null;
+export function money(use: Use | Answer, price: Price | undefined | null): number | null;
+export function sumUse(answers: Answer[], since?: Date | null): { total: Use; byModel: Map<string, Use>; bySkill: Map<string, Use>; byDay: Map<string, Use>; bySession: Map<string, Use> };
+export function tokens(n: number): string;
+export function costLines(sum: ReturnType<typeof sumUse>, o?: { prices?: Record<string, Price> | null; checked?: string | null; label?: string }): string[];

@@ -52,5 +52,9 @@ Each skill's front matter carries its `model:` line; `npm run harness` turns it 
 | **Small files** (the size rule: 400 lines for a new file, baselined giants may only shrink). | A change reads and rewrites less, and the gate runs fewer tests. |
 
 ## Checking what a session spent
-At the end of a normal `/work` chat and its `/build` chat, ask for a usage breakdown (`/explain-usage` where the agent has one, or
-the agent's own cost view). Whatever reads dominate become the next rule here.
+`npm run cost` adds up what Claude Code recorded for this project and its session folders: tokens by model, by command (the
+skill that answered) and by day, for the last 7 days (`-- --days 30` for longer). Money appears once `session.prices` in
+`workflow.config.json` has each model's prices per million tokens from the provider's price page, with `pricesChecked`
+(`"2026-11"`): the kit holds no prices, they change. `/retro` shows the week's line. A command that keeps topping the list, or
+an answer count far above the card's size, is where the next rule here comes from; for one chat, the agent's own cost view
+(`/explain-usage` where it has one) says which reads dominated. OpenCode's sessions are not in these records.
