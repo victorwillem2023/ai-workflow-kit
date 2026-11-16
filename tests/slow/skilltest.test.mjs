@@ -22,6 +22,7 @@ describe('the skill scenarios', () => {
     assert.equal(run('docs-without-commit', 'edit-readme').ok, true);
     assert.match(run('docs-without-commit', '').problems.join(), /README\.md was not changed/);
     assert.match(run('docs-without-commit', 'edit-readme,commit').problems.join(), /it committed/);
+    assert.match(run('docs-without-commit', 'readme-other').problems.join(), /the typo is still there/, 'an edit, but not the one asked for');
   });
   it('lesson-outside-kit-parts fails when a kit part of CLAUDE.md changed', () => {
     assert.equal(run('lesson-outside-kit-parts', 'own-rule').ok, true);

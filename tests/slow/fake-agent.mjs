@@ -6,7 +6,8 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 
 const does = (process.env.FAKE_AGENT ?? '').split(',');
 const git = (...a) => execFileSync('git', a, { stdio: 'ignore' });
-if (does.includes('edit-readme')) appendFileSync('README.md', '\nThe app can export a plan as a PDF.\n');
+if (does.includes('edit-readme')) writeFileSync('README.md', readFileSync('README.md', 'utf8').replace('teh', 'the'));
+if (does.includes('readme-other')) appendFileSync('README.md', '\nAnother line.\n');
 if (does.includes('own-rule')) appendFileSync('CLAUDE.md', '\n- Never rename an exported function without listing its users first.\n');
 if (does.includes('kit-part')) writeFileSync('CLAUDE.md', readFileSync('CLAUDE.md', 'utf8').replace('<!-- /kit:changing-code -->', '- Never rename an exported function.\n<!-- /kit:changing-code -->'));
 if (does.includes('board')) execFileSync('gh', ['issue', 'create', '--title', 'x'], { stdio: 'ignore', shell: process.platform === 'win32' });

@@ -58,10 +58,12 @@ export const SCENARIOS = {
   },
   'docs-without-commit': {
     what: '/docs makes the edit and leaves the commit to /ship',
-    prompt: '/docs add one line to README.md saying the app can export a plan as a PDF',
-    check: ({ before, after }) => [
+    // a true, docs-only edit (the template's README has the typo): one that needs no decision and no code
+    prompt: '/docs fix the typo in the first paragraph of README.md',
+    check: ({ before, after, dir }) => [
       ...(after.commits > before.commits ? ['it committed (a /docs edit goes in with the next /ship)'] : []),
       ...(!after.status.includes('README.md') ? ['README.md was not changed'] : []),
+      ...(readFileSync(join(dir, 'README.md'), 'utf8').includes('teh') ? ['the typo is still there'] : []),
     ],
   },
   'lesson-outside-kit-parts': {
@@ -87,6 +89,8 @@ function template(deps) {
   git(dir, 'config', 'user.email', 'skilltest@example.invalid');
   execFileSync(process.execPath, [join(kit, 'install.mjs'), dir, '--project', 'Skill Test', '--repo', 'example/skilltest', '--prefix', 'st', '--lean'], { stdio: 'ignore' });
   if (deps) spawnSync('npm', ['i', '-D', '--no-audit', '--no-fund', '--silent', 'tsx', 'typescript', '@types/node', 'knip', '@biomejs/biome'], { cwd: dir, stdio: 'ignore', shell: win });
+  // the project's own README, as a real one has: what the app is, with one typo for /docs to fix
+  if (!existsSync(join(dir, 'README.md'))) writeFileSync(join(dir, 'README.md'), '# Skill Test\n\nPlan teh rides you want to ride, and see how the week adds up.\n');
   git(dir, 'add', '-A'); git(dir, 'commit', '-q', '-m', 'Start from the kit');
   process.on('exit', () => rmSync(dirname(dir), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }));
   templates[deps] = dir;
@@ -122,7 +126,7 @@ export function runScenario(name, { agent = 'claude', deps = true, keep = false 
     const r = spawnSync(cmd, [...pre, '-p', s.prompt, '--output-format', 'json', '--max-turns', '25', '--permission-mode', 'acceptEdits'].map(quote), { cwd: dir, env, encoding: 'utf8', shell, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
     let out = {};
     try { out = JSON.parse(r.stdout); } catch { out = { result: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().slice(-2000) }; }
-    const problems = s.check({ before, after: state(dir), ghWrites: writes(log), ghCalls: calls(log) });
+    const problems = s.check({ dir, before, after: state(dir), ghWrites: writes(log), ghCalls: calls(log) });
     return { name, ok: problems.length === 0, problems, cost: out.total_cost_usd ?? null, said: String(out.result ?? '').slice(0, 600), dir: keep ? dir : null };
   } finally {
     if (!keep) rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
