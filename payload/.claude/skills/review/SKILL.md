@@ -26,6 +26,14 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
      (`docs/workflow/DATA.md`).
    - **Would each new test fail for the mistake it is named for?** One that asserts nothing, repeats the code's own sum or
      fakes the app's own code is a finding (`docs/workflow/TESTING.md`).
+   - **A screen: are its four states there, and can everyone use it?** Loading, empty, error and full as the spec names them;
+     each form message says what to do; every action works with the keyboard and has a name; nothing is said by colour alone
+     (`docs/workflow/SCREENS.md`). Compare with the board's picture when there is one (`docs/design/png/`).
+   - **Is it slow where it does not need to be?** A query or a fetch inside a loop, a whole table read to show ten rows, a list
+     with no limit, a heavy library for one small use, work on every keystroke; the page weight line of the gate when screens
+     changed (`docs/run/PERFORMANCE.md`, when the project has it).
+   - **Email, payments, uploads, jobs, time**: the rules of `docs/workflow/COMMON.md` for the part it touches, above all: a
+     webhook checked and acted on once, a file's type from its content, a job safe to run twice, a day stored as a date.
    - **Is anything outside the spec touched?** `npm run gate` prints `scope:` lines for those files.
    - **If it fails, does the log say what and where?** Each error a person or a dependency can cause is an `AppError` with
      its `doing`, the ids and the `cause`; no catch swallows one; a new path writes its request line (CLAUDE.md, *Requests,

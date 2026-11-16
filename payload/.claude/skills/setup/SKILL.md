@@ -14,6 +14,11 @@ Read, briefly: `package.json` (scripts, dependencies), `tsconfig.json` or the eq
 the source root (`ls`, not every file), `README.md` if there is one, `git log --oneline | head -20`. Find what you can answer
 yourself: the stack, the dev, build, test and typecheck commands, the folders that look like layers.
 A new, empty project: skip to the questions and say the answers will become the plan for the first folders.
+**A project that already has code**: follow `docs/workflow/TAKEOVER.md` from *1. Accept today as the starting line*: the folder
+notes describe the code as it is ("today: ...; aim: ..."), the baseline is its own commit before any change, and the first
+cards are tests around the riskiest untested code, never a big clean-up. Say that path to the owner in three lines.
+**A team** (`project.audience: team`, question 0): ask the roles of `docs/workflow/TEAM.md` (who decides, who reviews) and write
+them in `CLAUDE.md`, *This project's own rules*; propose `"flow": "pr"` with a required review.
 
 ## 2. Ask the owner (AskUserQuestion, each with your best guess as the recommended option; an existing project: at most two rounds)
 0. **Who it is for**: just you (a personal, learning or hobby project), your team or company, or customers (people outside,

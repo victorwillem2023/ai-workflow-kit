@@ -10,7 +10,9 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
 
 1. `npm run retro` (shipped per week for 8 weeks and the streak, the health moves since a week ago, the next cards) and
    `npm run health` (the code-health numbers). Say what they show in four lines at most: the trend, anything that got worse,
-   anything that got better. No praise, no blame: what happened.
+   anything that got better. No praise, no blame: what happened. A project that started with debt (an older codebase): say how
+   the baseline moved, and offer one card for the riskiest untested file when it has not shrunk for a month
+   (`docs/workflow/TAKEOVER.md`, *3. Work the baseline down*).
 2. Ask the owner, in one AskUserQuestion: what went well, what got in the way (a check that failed for no reason, a rework, a
    slow step, a card that was bigger than it looked), and whether anything from *How we will know it worked* is due a look
    (`docs/PRODUCT.md`, *What we learned*).

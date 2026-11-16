@@ -18,6 +18,10 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    label or issues waiting off the board (`npm run board -- --inbox`) are passed on in one line. Never read the whole board.
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
+   - **Someone else's** (assigned to another person, or in *In progress* with their session): say so and stop; in a team, take
+     a card before starting it (`docs/workflow/TEAM.md`, *Two people on one board*).
+   - **Old code with no tests** where the card changes it (the gate's *untested* list): the plan starts with tests that pin what
+     it does today (`docs/workflow/TAKEOVER.md`, *2. A test before the first change*).
    - **What it needs first**: `npm run board -- --graph` (the tree from the cards' "Depends on:" lines). For each open card it
      waits for, the earliest way that does not stop the owner's flow (`.claude/skills/work/together.md` has the rules):
      **built** (in *Waiting for your check*, or its session is done): start on top of it (`--on <its topic>`: no waiting for

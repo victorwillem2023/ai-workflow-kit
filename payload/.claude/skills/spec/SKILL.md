@@ -51,6 +51,13 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    - **Who may do it**: a new route, screen or stored thing says who may read and change it and what everyone else gets,
      with a test per refusal (`docs/workflow/PERMISSIONS.md`, *Permissions: the rules*). Sign-in and permission code is sensitive.
    - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
+   - **A screen** (added or changed, on any card): its four states (loading, empty, error, full: what the person sees in each),
+     where its data comes from, and for a form each field's message ("Enter a date after today"): `docs/workflow/SCREENS.md`.
+   - **Email, payments, uploads, a scheduled job or dates and times**: the rules of that part's section in
+     `docs/workflow/COMMON.md` that the change must keep, each with its test (a payment's webhook twice, a file of the wrong type,
+     the day the clocks change). Payments are sensitive.
+   - **Code no test reaches yet** (an older project: in the gate's *untested* list): the first tests pin what it does today,
+     before the change (`docs/workflow/TAKEOVER.md`, *2. A test before the first change*).
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
      order, so `/build` can run them as waves. Only when it pays for itself: a large card whose packages are each a few hundred
      lines of real work on files of their own; small, medium or tangled work stays one builder (splitting it costs more in

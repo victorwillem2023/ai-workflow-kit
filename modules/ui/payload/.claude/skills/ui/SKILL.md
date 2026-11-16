@@ -83,7 +83,8 @@ It is a brief, not the design: redraw it on the project's tokens and parts as va
    `grep -n` for the part you are building, never whole. Work only in the session folder, with absolute paths, every Bash command
    starting `cd <folder> &&`. Move the card to *In progress*.
 2. Take the **before** pictures of the live app at the session's port (only for a part that exists), then build the pick in
-   `src/web` from the tokens. `npm run gate` until it passes.
+   `src/web` from the tokens, with its four states, its data through the app's one fetch helper, its form messages and the
+   keyboard rules of `docs/workflow/SCREENS.md` (read the sections the screen needs). `npm run gate` until it passes.
    ```sh
    node scripts/shots.mjs http://127.0.0.1:<port> --width 1400 --theme dark --click "<selector>" --out <scratchpad>/before-1.png
    ```

@@ -28,6 +28,7 @@ self-hosted, this platform or that), say so and offer `/advise` with the options
    (`docs/run/BUY-OR-HOST.md`).
 5. **What else it brings**, only what applies, one line each: personal or sensitive data (`docs/workflow/SENSITIVE.md`, a sign-off), a
    new outside service to list (`security.egress`, the privacy record), a new attack surface (an upload, a public endpoint),
+   email, payments, uploads, scheduled jobs or time zones (what each needs built, `docs/workflow/COMMON.md`),
    load and performance (a load test before release), monitoring and alerts, backups of new data, a migration that cannot be
    undone, support and docs, a price change for users, lock-in to one provider, and the law (a medical claim, payments).
    For `project.audience: me`, leave out what only matters for other people.
