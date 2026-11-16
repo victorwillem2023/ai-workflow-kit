@@ -23,7 +23,14 @@ What changed in each version of the kit, newest first. Build on the latest tag (
   installer's helpers in a second (the self-test runs it first). **Build-stage guides with their checks** (testing, data,
   sign-in and permissions: `docs/workflow/TESTING.md`, `DATA.md`, `PERMISSIONS.md`): a migration edited after it was there
   fails, SQL built from a value gets an advice line, and with `security.signIn` a new route without a "who is refused" test
-  does too; `/setup` asks about accounts and stored data.
+  does too; `/setup` asks about accounts and stored data. **Guides where the kit was thin**: building screens (the four states
+  every screen designs, state, data, forms and their messages, accessibility as rules: `SCREENS.md`), taking over existing code
+  (the baseline as its own commit, tests that pin today's behaviour before the first change: `TAKEOVER.md`), more than one person
+  (the roles, who approves whose plan, two people on one board, review between people: `TEAM.md`), and email, payments, uploads,
+  scheduled jobs and time zones (`COMMON.md`), each read by the command that needs it. **The stop points are held, not only
+  written**: two Claude Code hooks (`scripts/stop-points.mjs`; an update adds them) note the owner's own "done" or "push" and
+  refuse an agent's commit or push without it. **"Not checked" is said**: changed Python, Go or Rust code the security,
+  hostile-input and error-rule checks do not read gets a line saying so, instead of a silent ok.
 - **2.9.11**: **the self-test has an old, messy project** (Trailsmith at 2.8 the model): an app with debt (an unused file and
   export, a page over its weight budget), made with the kit of the v2.8.5 tag and passing that kit's gate, then given its own
   settings, a board, an area label, an input folder, a rule in CLAUDE.md and a page of its own. It is updated with this kit,
