@@ -1,7 +1,7 @@
 // The rules that keep a problem findable (lib/errorrules.mjs): no empty catch, no console in server code.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { errorRuleFindings } from '../../tools/workflow/lib/errorrules.mjs';
+import { errorRuleFindings, notRead } from '../../tools/workflow/lib/errorrules.mjs';
 
 describe('keeping problems findable', () => {
   it('finds an empty catch, on one line or over several, and lets one with a reason in a comment be', () => {
@@ -15,5 +15,13 @@ describe('keeping problems findable', () => {
     assert.deepEqual(errorRuleFindings('src/web/main.ts', text), [], 'the page may write to its console (src/web/report.ts does)');
     assert.deepEqual(errorRuleFindings('tests/server/goal.test.ts', 'catch {}'), []);
     assert.deepEqual(errorRuleFindings('docs/x.md', 'catch {}'), []);
+  });
+
+  it('says which changed files it did not read, by language, instead of a silent ok', () => {
+    const u = notRead(['src/app.py', 'src/core/plan.ts', 'cmd/main.go', 'README.md']);
+    assert.deepEqual(u.files, ['src/app.py', 'cmd/main.go']);
+    assert.equal(u.note, 'not checked for Python and Go: 2 changed Python and Go files');
+    assert.match(u.advice[0], /^advice: 2 changed Python and Go files not read by the security, hostile-input and error-rule checks/);
+    assert.deepEqual(notRead(['src/core/plan.ts']), { files: [], langs: '', note: undefined, advice: [] });
   });
 });

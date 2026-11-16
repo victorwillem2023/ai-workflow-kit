@@ -15,7 +15,7 @@
 // Project settings live in workflow.config.json; nothing here knows about the project.
 import { checkPackages, describeMissing, packagesFix } from '../../scripts/packages.mjs';
 import { testPlan } from './lib/testplan.mjs';
-import { errorRuleFindings } from './lib/errorrules.mjs';
+import { errorRuleFindings, notRead } from './lib/errorrules.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests } from './lib/graph.mjs';
@@ -186,7 +186,7 @@ function adviceLines() {
   // new files that git does not know yet count as added: the code, and the tests that say what it refuses
   const fresh0 = git('ls-files', '--others', '--exclude-standard', '--', codeDir, 'tests').split('\n').map((x) => x.trim());
   for (const f of fresh0.filter((x) => x && existsSync(x))) fresh.set(f, readFileSync(f, 'utf8').split('\n'));
-  return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security), ...dataAdvice(diff, fresh, config)];
+  return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security), ...dataAdvice(diff, fresh, config), ...notRead(changedFiles().filter((f) => existsSync(f))).advice];
 }
 // a library a change adds that docs/STACK.md does not name (only when the project has a STACK.md)
 function depsLines() {
@@ -344,10 +344,10 @@ const steps = [
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
     return { ok: true, note: `${docTexts.size} docs, ${staleRefs.length} known stale` };
   }],
-  // the changed code keeps problems findable: no empty catch, no console in the server (lib/errorrules.mjs)
+  // the changed code keeps problems findable: no empty catch, no console in the server; another language's: "not checked" (lib/errorrules.mjs)
   ['errors', () => {
     const found = changed.filter((f) => existsSync(f)).flatMap((f) => errorRuleFindings(f, readFileSync(f, 'utf8')).map((x) => `${f}:${x.line}: ${x.rule}: ${x.say}`));
-    return found.length ? { ok: false, out: found.join('\n') } : { ok: true };
+    return found.length ? { ok: false, out: found.join('\n') } : { ok: true, note: notRead(changed.filter((f) => existsSync(f))).note };
   }],
   // a package the lock lists and node_modules lacks: said plainly here, instead of as a typecheck or test error further down
   existsSync('package-lock.json') && ['packages', () => {

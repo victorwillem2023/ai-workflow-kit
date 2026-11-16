@@ -9,6 +9,23 @@ const CODE = /^src\/.*\.(ts|tsx|js|mjs|cjs)$/;
 const TEST = /\.test\.|\/tests?\//;
 
 /** The lines that break a rule in one file: [{ line, rule, say }]. */
+/**
+ * These rules, and the gate's security and hostile-input advice, read TypeScript and JavaScript. Changed files in another language
+ * were not looked at: { files, langs } so the gate can say "not checked for Python" instead of a silent "ok".
+ */
+const OTHER_LANGS = { py: 'Python', go: 'Go', rs: 'Rust', rb: 'Ruby', java: 'Java', kt: 'Kotlin', php: 'PHP', cs: 'C#', swift: 'Swift' };
+export function notRead(files) {
+  const found = files.filter((f) => OTHER_LANGS[/\.(\w+)$/.exec(f)?.[1]]);
+  const langs = [...new Set(found.map((f) => OTHER_LANGS[/\.(\w+)$/.exec(f)[1]]))].join(' and ');
+  const n = `${found.length} changed ${langs} file${found.length === 1 ? '' : 's'}`;
+  return {
+    files: found, langs,
+    // the errors check's note, and the advice line (said once, so silence is never taken for "checked")
+    note: found.length ? `not checked for ${langs}: ${n}` : undefined,
+    advice: found.length ? [`advice: ${n} not read by the security, hostile-input and error-rule checks (they read TypeScript and JavaScript): look at untrusted input, swallowed errors and logging by hand, as /review does`] : [],
+  };
+}
+
 export function errorRuleFindings(file, text) {
   if (!CODE.test(file) || TEST.test(file)) return [];
   const out = [];

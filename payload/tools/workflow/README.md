@@ -147,6 +147,12 @@ What needs a public repository or a paid plan, and what stands in for it here:
 | no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.local.json` and `opencode.jsonc` (`npm run harness` adds a rule the first gained to the second) deny `git push --no-verify`, `--force`, `-f` and another hooks path |
 | a pull request merges only when its gate passed (`"flow": "pr"`) | `node scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
 
+**The stop points** (Claude Code hooks in `.claude/settings.local.json`, `scripts/stop-points.mjs`): an agent's `git commit`,
+`--finish`, `--merge` or `--commit-notes` is refused until the owner has typed "done" (or "commit", "finish it") in the chat in
+the last 3 hours, and a `git push` or `--push` until they typed "push". The words are read from the owner's own messages (the
+hook sees only those), so an agent cannot give them; `node scripts/stop-points.mjs --status` says what is noted. Your own
+terminal is never held. OpenCode has no such hook: there the skills' wording is the only stop.
+
 The guard lives in this clone's git hooks (the session folders share them). A clone on another computer or a cloud session has
 none until `npm run protect -- --local` runs there; the gate prints an `advice:` line when it is missing (never on GitHub's runners).
 What it cannot stop: a person who removes the hook, and a merge by hand on GitHub's website.

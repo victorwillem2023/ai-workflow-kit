@@ -91,13 +91,21 @@ const writeJson = (p, v) => writeFileSync(p, existsSync(p) ? rewriteJson(readFil
 export function addClaudeRules({ target, kit }) {
   const own = join(target, '.claude', 'settings.local.json');
   if (!existsSync(own)) return [];
-  const kitRules = readJson(join(kit, 'starter', 'settings.local.json')).permissions ?? {};
+  const kits = readJson(join(kit, 'starter', 'settings.local.json'));
+  const kitRules = kits.permissions ?? {};
   const mine = readJson(own);
   mine.permissions ??= {};
   const added = [];
   for (const kind of ['allow', 'deny']) {
     const list = (mine.permissions[kind] ??= []);
     for (const r of kitRules[kind] ?? []) if (!list.includes(r)) { list.push(r); added.push(`${kind} ${r}`); }
+  }
+  // the kit's hooks (the stop points: scripts/stop-points.mjs) the project lacks, by their command; the project's own stay
+  for (const [event, groups] of Object.entries(kits.hooks ?? {})) for (const g of groups) {
+    const have = (mine.hooks ??= {})[event] ??= [];
+    const known = have.flatMap((x) => (x.hooks ?? []).map((h) => h.command));
+    const missing = (g.hooks ?? []).filter((h) => !known.includes(h.command));
+    if (missing.length) { have.push({ ...g, hooks: missing }); added.push(`hook ${event}: ${missing.map((h) => h.command).join(', ')}`); }
   }
   if (added.length) writeJson(own, mine);
   return added;

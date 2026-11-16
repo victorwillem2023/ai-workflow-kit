@@ -62,5 +62,28 @@
       "Bash(git -c core.hooksPath*)",
       "Bash(git config core.hooksPath*)"
     ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/stop-points.mjs --prompt"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/stop-points.mjs --tool"
+          }
+        ]
+      }
+    ]
   }
 }
