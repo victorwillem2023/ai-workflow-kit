@@ -30,7 +30,13 @@ What changed in each version of the kit, newest first. Build on the latest tag (
   scheduled jobs and time zones (`COMMON.md`), each read by the command that needs it. **The stop points are held, not only
   written**: two Claude Code hooks (`scripts/stop-points.mjs`; an update adds them) note the owner's own "done" or "push" and
   refuse an agent's commit or push without it. **"Not checked" is said**: changed Python, Go or Rust code the security,
-  hostile-input and error-rule checks do not read gets a line saying so, instead of a silent ok.
+  hostile-input and error-rule checks do not read gets a line saying so, instead of a silent ok. **Measured, not guessed**:
+  `npm run cost` adds up what Claude Code recorded for the project and its session folders (tokens by model, command and day;
+  money only from prices the project writes down), and `npm run coverage` says how much of the code the tests run and which
+  files have the most lines no test runs; `/retro` shows both. The kit's prices and free tiers say when they were checked, and
+  the self-test fails when that is over six months ago. **The self-test is faster**: the kit's own tests run once per run, not
+  in every gate of every variant, and the longest variants start first (all variants, the messy one included: 3 min 21;
+  `--quick`: 2 min 14; `npm run test:quick`: a second).
 - **2.9.11**: **the self-test has an old, messy project** (Trailsmith at 2.8 the model): an app with debt (an unused file and
   export, a page over its weight budget), made with the kit of the v2.8.5 tag and passing that kit's gate, then given its own
   settings, a board, an area label, an input folder, a rule in CLAUDE.md and a page of its own. It is updated with this kit,
