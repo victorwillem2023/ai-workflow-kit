@@ -28,6 +28,8 @@
 //                                               completely empty ones, which --yes removes
 //   node scripts/session.mjs --check-main     is the main folder clean? fast-forwards it when it is only behind origin/main; fails (and says why) when it
 //                                               has uncommitted files or has unpushed features while origin moved (ignored files such as waiting specs don't count)
+//   node scripts/session.mjs --sync             bring the main folder level with origin when nothing is in the way (a fast-forward), then
+//                                               its packages: what merged on GitHub (an update Renovate merged by itself) is here
 //   node scripts/session.mjs --commit-notes "<subject>"  the docs and settings left in the main folder (any .md, workflow.config.json,
 //                                               renovate.json, .claude/, .opencode/) as one commit of their own, after the quick gate passes; refuses code
 //   node scripts/session.mjs --serve <topic>    start the session's dev server in the background and wait until its link answers (for the owner's check)
@@ -119,6 +121,19 @@ const looseFiles = () => execFileSync('git', ['status', '--porcelain', '-uall'],
   .map((l) => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, '')).filter((f) => !/^node_modules\/?$/.test(f));
 const notesMessage = (files) => `The main folder has docs and settings that are not committed yet (yours, not a feature's):\n${files.join('\n')}\n` +
   'Commit them as their own commit first: node scripts/session.mjs --commit-notes "<Area: what changed>" (it runs the quick gate on them).';
+
+/**
+ * Brings the main folder level with origin when nothing is in the way (/next and /work run it first), so what merged on GitHub
+ * (an update Renovate merged by itself, a feature from elsewhere) is here without a command; then the packages it brought. Only a
+ * fast-forward: uncommitted files or unpushed features with new commits on origin leave it as it is, said in one line.
+ */
+function sync() {
+  const s = mainState(false);
+  if (s.loose.length) console.log(`main is not brought up to date: the main folder has ${s.loose.length} uncommitted file${s.loose.length === 1 ? '' : 's'} (they stay as they are).`);
+  else if (s.behind && s.ahead.length) console.log(`main is not brought up to date: it has ${waiting(s.ahead.length)} not pushed and origin moved too (node scripts/session.mjs --push replays them on top).`);
+  else if (s.behind) catchUp(s);
+  ensurePackages('after bringing main up to date');
+}
 
 /** The check /ship runs first: a main that is only behind origin is fast-forwarded; finished features that are not pushed are fine. */
 function checkMain() {
@@ -616,6 +631,7 @@ try {
   if (a === '--list') list();
   else if (a === '--clean') clean(has('--yes'));
   else if (a === '--check-main') checkMain();
+  else if (a === '--sync') sync();
   else if (a === '--commit-notes') commitNotes(textOf('--commit-notes'));
   else if (a === '--serve' && b) await serve(b);
   else if (a === '--push') push({ noChecks: has('--no-checks') });
@@ -625,7 +641,7 @@ try {
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'));
-  else console.log('usage: node scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --commit-notes "<subject>" | --serve <topic> | --restack <topic> | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else console.log('usage: node scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --serve <topic> | --restack <topic> | --finish <topic> [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

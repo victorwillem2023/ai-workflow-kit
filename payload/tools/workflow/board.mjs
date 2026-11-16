@@ -134,7 +134,7 @@ async function main() {
     if (!ranked.length) console.log('board: no open card can be started (Backlog, Needs a board or decision, Ready), or each waits for another');
     // a tie at the top is said as one, never dressed up as an order (the card number is no reason): the owner picks, once
     const tie = topTie(ranked);
-    if (tie.length) console.log(`board: ${tie.map((c) => `#${c.number}`).join(', ')} are equal: nothing in the graph or the labels puts one first, so which comes first is yours to say (/next asks once and keeps it: npm run board -- --rate <n> value high)`);
+    if (tie.length) console.log(`board: ${tie.map((c) => `#${c.number}`).join(', ')} are equal: nothing in the graph or the labels puts one first, so which comes first is yours to say (the board tidy-up, /tidy, asks once and keeps it as value labels)`);
     const tied = new Set(tie.map((c) => c.number));
     for (const c of ranked.slice(0, Math.max(n, tie.length))) console.log(`${tied.has(c.number) ? '= ' : ''}#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
     // the graph first: cards that wait for an open card are not offered, but said, with what they wait for

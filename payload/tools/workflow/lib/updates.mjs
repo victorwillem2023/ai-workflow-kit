@@ -72,9 +72,12 @@ export function runtimeNode({ pkg, dockerfile, nvmrc, toolVersions } = {}) {
 }
 
 /** The verdict on one library's update: { verdict, why }. */
-export function judge(u, { checks = 'none', node = null, hold = {} } = {}) {
+export function judge(u, { checks = 'none', node = null, hold = {}, tools = new Set() } = {}) {
   if (hold[u.name]) return { verdict: 'hold', why: `held in workflow.config.json: ${hold[u.name]}` };
   const step = bump(u.from, u.to);
+  // green checks do not prove these: the gate never runs the tool images (helm, k6, the scanners), and Node is what everything runs on
+  if (tools.has(u.name)) return { verdict: 'look', why: 'a tool your checks do not run: try it once before taking it' };
+  if (['node', 'nodejs'].includes(u.name)) return { verdict: 'look', why: 'Node itself, what the app runs on: take it with a look' };
   if (u.name === '@types/node' && node && parts(u.to)[0] > node.major) {
     return { verdict: 'hold', why: `the types are for Node ${parts(u.to)[0]}, the app runs on Node ${node.major} (${node.from})` };
   }
@@ -111,11 +114,26 @@ export function readAlerts(list) {
 }
 
 /** The one line for a session's start or the health screen: "updates: 1 security alert (high); 2 to take, 1 to look at, 1 to hold". */
-export function shortLine(prs, alerts) {
+export function shortLine(prs, alerts, { selfMerging = false } = {}) {
   const n = (v) => prs.filter((p) => p.verdict === v).length;
   const bits = [];
   if (alerts.length) bits.push(`${alerts.length} security alert${alerts.length === 1 ? '' : 's'} (${alerts[0].severity})`);
-  const counts = [[n('take'), 'to take'], [n('look'), 'to look at'], [n('hold'), 'to hold']].filter(([c]) => c).map(([c, w]) => `${c} ${w}`);
-  if (counts.length) bits.push(counts.join(', '));
-  return bits.length ? `updates: ${bits.join('; ')} (npm run updates)` : 'updates: nothing waiting';
+  // what needs the owner, the first one by name ("helm 3.16 -> 3.22, a tool your checks do not run")
+  const first = prs.flatMap((p) => p.updates ?? []).find((u) => u.verdict === 'look' || u.verdict === 'hold');
+  const needs = n('look') + n('hold');
+  if (needs) bits.push(`${needs} to look at${first ? `: ${first.name} ${first.from} -> ${first.to}, ${first.why}` : ''}`);
+  // with automerge on (renovate.json), the small ones are not the owner's job: they merge once their checks pass
+  if (n('take')) bits.push(selfMerging ? `${n('take')} merge by themselves once their checks pass` : `${n('take')} to take`);
+  if (!bits.length) return 'updates: nothing waiting';
+  return `updates: ${bits.join('; ')}${alerts.length || needs || !selfMerging ? ' (npm run updates)' : ''}`;
+}
+
+/** Whether the project's renovate.json merges small updates by itself (a package rule with automerge on). */
+export function autoMerges(renovateJson) {
+  try { return (JSON.parse(String(renovateJson ?? '')).packageRules ?? []).some((r) => r.automerge === true); } catch { return false; }
+}
+
+/** The tool images the kit's tools run with Docker, by their `// renovate: docker` mark: updates to these are the owner's to try. */
+export function toolImages(texts) {
+  return new Set(texts.flatMap((t) => [...String(t ?? '').matchAll(/'([a-z0-9][a-z0-9./_-]*):v?[0-9][\w.-]*'[,;]?\s*\/\/ renovate: docker/g)].map((m) => m[1])));
 }

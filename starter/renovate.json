@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "How this project's versions are kept current: libraries, Docker images, GitHub actions, the tools in .tool-versions, OpenTofu providers and modules, Helm charts. One repository: this file is the whole policy. Several repositories: move it to a config repository of your own (owner/renovate-config, as default.json) and leave here only { \"extends\": [\"github>owner/renovate-config\"] }.",
+  "description": "How this project's versions are kept current: libraries, Docker images, GitHub actions, the tools in .tool-versions, OpenTofu providers and modules, Helm charts. One repository: this file is the whole policy. Several repositories: move it to a config repository of your own (owner/renovate-config, as default.json) and leave here only { \"extends\": [\"github>owner/renovate-config\"] }. Small updates merge themselves once Renovate sees every check pass (Renovate merges, not GitHub: platformAutomerge off, so nothing merges before the checks ran); new major versions, Node and the tool images the checks never run wait for the owner.",
   "extends": [
     "config:recommended",
     ":dependencyDashboard",
@@ -15,6 +15,7 @@
   "prHourlyLimit": 2,
   "minimumReleaseAge": "7 days",
   "internalChecksFilter": "strict",
+  "platformAutomerge": false,
   "labels": [
     "dependencies"
   ],
@@ -32,11 +33,12 @@
     "enabled": true,
     "schedule": [
       "before 6am on the first day of the month"
-    ]
+    ],
+    "automerge": true
   },
   "packageRules": [
     {
-      "description": "Small updates of everything in one pull request a week; each gets the gate",
+      "description": "Small updates of everything in one pull request a week, merged by Renovate once every check on it passes (libraries below 1.0 excluded: their minor versions may break)",
       "matchUpdateTypes": [
         "minor",
         "patch",
@@ -44,7 +46,8 @@
         "digest"
       ],
       "matchCurrentVersion": "!/^0/",
-      "groupName": "small updates"
+      "groupName": "small updates",
+      "automerge": true
     },
     {
       "description": "A new major version is its own pull request: read what changes before taking it",
@@ -57,7 +60,7 @@
       ]
     },
     {
-      "description": "Node only moves between long-term-support versions (the even ones), and in step everywhere it is named",
+      "description": "Node only moves between long-term-support versions (the even ones), and in step everywhere it is named; never merged by itself: it is what everything runs on",
       "matchPackageNames": [
         "node",
         "nodejs",
@@ -65,7 +68,16 @@
       ],
       "allowedVersions": "/^v?\\d*[02468]([.-]|$)/",
       "groupName": "Node",
-      "minimumReleaseAge": "7 days"
+      "minimumReleaseAge": "7 days",
+      "automerge": false
+    },
+    {
+      "description": "The tool images the kit runs with Docker (helm, k6, the scanners, OpenTofu): the gate never runs them, so green checks prove nothing; one pull request, for the owner to try",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "groupName": "tool images",
+      "automerge": false
     },
     {
       "description": "OpenTofu providers and modules together, so a stack moves as one",

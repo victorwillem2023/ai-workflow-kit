@@ -211,14 +211,14 @@ if (update) {
     // on every update, not only when a file moved: a path an earlier update left (a doc already moved, or since corrected) is fixed too
     const listed = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: target, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout ?? '';
     const specs = existsSync(join(target, 'specs')) ? readdirSync(join(target, 'specs')).map((f) => `specs/${f}`) : [];
-    let rewritten = 0;
+    const rewritten = [];
     for (const f of [...new Set([...listed.split('\n'), ...specs])].filter((x) => x && PROJECT_TEXT.test(x) && !x.startsWith('node_modules/'))) {
       const p = join(target, f);
       if (!existsSync(p) || !statSync(p).isFile()) continue;
       const was = readFileSync(p, 'utf8'), now = movePaths(was);
-      if (now !== was) { writeFileSync(p, now); rewritten++; if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was); }
+      if (now !== was) { writeFileSync(p, now); rewritten.push(f); if (f === 'CLAUDE.md') claudeGrowth = Buffer.byteLength(now) - Buffer.byteLength(was); }
     }
-    if (movedDocs.length || rewritten) done.movedDocs = { count: movedDocs.length, rewritten };
+    if (movedDocs.length || rewritten.length) done.movedDocs = { count: movedDocs.length, rewritten };
   }
 }
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
@@ -231,6 +231,8 @@ function copyTree(from, overwrite) {
     // another language: the TypeScript starter files stay out (the machinery's own tests are payload and stay in)
     if (lang !== 'ts' && !overwriteOnly(from) && (/\.tsx?$/.test(rel) || rel === 'tsconfig.json')) continue;
     if (rel === 'lang.json') continue;
+    // the server's folder note goes with the TypeScript server files (another language lays out its own folders)
+    if (lang !== 'ts' && rel.replace(/\\/g, '/') === 'src/server/CLAUDE.md') continue;
     if (framework && /^(src[\\/]web[\\/]dom\.ts|tests[\\/]dom\.test\.ts)$/.test(rel)) continue;
     // --update: the example code of the starter (src, tests) is for a new project; an existing one gets only docs and settings it lacks
     // (a helper the kit's rules name, like the request id and the error answer, is not an example: it is added when missing, never replaced)
@@ -566,7 +568,8 @@ if (update) {
   if (done.helpers.length) console.log(`  helpers the kit's rules name, added (never replacing one): ${done.helpers.join(', ')}`);
   if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
-  if (done.movedDocs) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git, and the old paths rewritten in ${done.movedDocs.rewritten} of the project's files`);
+  if (done.movedDocs?.count) console.log(`  the docs moved into their folders (docs/workflow/, run/, market/, company/; docs/README.md lists them): ${done.movedDocs.count} files, with git`);
+  if (done.movedDocs?.rewritten.length) console.log(`  old doc paths rewritten (look at the diff before committing) in:\n${done.movedDocs.rewritten.map((f) => `    ${f}`).join('\n')}`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
   if (done.yours.length) console.log(`  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${done.yours.map((f) => `    ${f}`).join('\n')}`);
   if (lang === 'ts' && !JSON.parse(readFileSync(join(target, 'workflow.config.json'), 'utf8')).checks?.some((c) => c.name === 'lint')) console.log('  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched src tests", "when": ["src/**", "tests/**", "biome.json"] } to "checks".');

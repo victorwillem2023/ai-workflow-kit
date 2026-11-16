@@ -2,7 +2,7 @@
 // the verdict on each (take, look at, hold), and the lines a session or the health screen prints.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { bump, checksState, holdSnippet, judgePr, parseUpdates, readAlerts, runtimeNode, shortLine, updateTools } from '../../tools/workflow/lib/updates.mjs';
+import { autoMerges, bump, checksState, holdSnippet, judge, judgePr, parseUpdates, readAlerts, runtimeNode, shortLine, toolImages, updateTools } from '../../tools/workflow/lib/updates.mjs';
 
 const green = [{ status: 'COMPLETED', conclusion: 'SUCCESS' }];
 
@@ -75,7 +75,24 @@ describe('what is printed', () => {
     ]);
     assert.deepEqual(alerts.map((a) => a.name), ['b', 'a']);
     assert.equal(alerts[0].fixed, '1.2.3');
-    assert.equal(shortLine([{ verdict: 'take' }, { verdict: 'take' }, { verdict: 'hold' }], alerts), 'updates: 2 security alerts (high); 2 to take, 1 to hold (npm run updates)');
+    const take = { verdict: 'take' as const, updates: [] };
+    const held = { verdict: 'hold' as const, updates: [{ name: 'zod', from: '3.23.8', to: '4.0.0', verdict: 'hold' as const, why: 'held in workflow.config.json: v4 later' }] };
+    assert.equal(shortLine([take, take, held], alerts), 'updates: 2 security alerts (high); 1 to look at: zod 3.23.8 -> 4.0.0, held in workflow.config.json: v4 later; 2 to take (npm run updates)');
     assert.equal(shortLine([], []), 'updates: nothing waiting');
+  });
+
+  it('with automerge on, the small updates are not the owner\'s: only what needs a look is named, a tool image the checks never run among it', () => {
+    const tools = toolImages(["const HELM = 'alpine/helm:3.16.4'; // renovate: docker", "  image: 'grafana/k6:0.57.0', // renovate: docker"]);
+    assert.deepEqual([...tools], ['alpine/helm', 'grafana/k6']);
+    assert.equal(judge({ name: 'alpine/helm', from: '3.16.4', to: '3.22.0' }, { checks: 'green', tools }).verdict, 'look', 'green checks do not prove a tool the gate never runs');
+    assert.equal(judge({ name: 'node', from: '26.13.1', to: '26.14.0' }, { checks: 'green' }).verdict, 'look', 'Node itself is the owner\'s');
+    const helm = { verdict: 'look' as const, updates: [{ name: 'alpine/helm', from: '3.16.4', to: '3.22.0', verdict: 'look' as const, why: 'a tool your checks do not run: try it once before taking it' }] };
+    const small = { verdict: 'take' as const, updates: [] };
+    assert.equal(shortLine([small, small, helm], [], { selfMerging: true }),
+      'updates: 1 to look at: alpine/helm 3.16.4 -> 3.22.0, a tool your checks do not run: try it once before taking it; 2 merge by themselves once their checks pass (npm run updates)');
+    assert.equal(shortLine([small], [], { selfMerging: true }), 'updates: 1 merge by themselves once their checks pass', 'nothing for the owner: no command to run');
+    assert.equal(autoMerges(JSON.stringify({ packageRules: [{ matchUpdateTypes: ['minor'], automerge: true }] })), true);
+    assert.equal(autoMerges(JSON.stringify({ packageRules: [{ groupName: 'x' }] })), false);
+    assert.equal(autoMerges(undefined), false);
   });
 });

@@ -3,7 +3,7 @@
 // Runs in throwaway repos (tests/workflow/session-repo.ts).
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { git, makeRepo, roots, run, type Repo } from './session-repo';
 
@@ -76,6 +76,25 @@ describe('docs and settings left in the main folder', () => {
     try { git(r.main, 'remote', 'set-head', 'origin', '-d'); } catch { /* it had none */ }
     assert.ok(run(r, '--check-main').ok);
     assert.equal(git(r.main, 'symbolic-ref', 'refs/remotes/origin/HEAD'), 'refs/remotes/origin/main');
+  });
+
+  it('--sync brings in what merged on GitHub when nothing is in the way, and leaves uncommitted work alone', () => {
+    const r = repo(true);
+    // an update merged on GitHub (Renovate, or a feature from elsewhere): a commit origin has and the main folder not yet
+    const other = join(r.root, 'elsewhere');
+    git(r.root, 'clone', '-q', r.origin, other);
+    writeFileSync(join(other, 'merged.txt'), 'merged on GitHub\n');
+    git(other, 'add', '-A'); git(other, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'Update: a small one'); git(other, 'push', '-q', 'origin', 'main');
+    writeFileSync(join(r.main, 'notes.md'), 'mine, not committed\n');
+    const held = run(r, '--sync');
+    assert.ok(held.ok, held.out);
+    assert.match(held.out, /not brought up to date: the main folder has 1 uncommitted file/);
+    assert.equal(existsSync(join(r.main, 'merged.txt')), false, 'nothing moved under uncommitted work');
+    rmSync(join(r.main, 'notes.md'));
+    const synced = run(r, '--sync');
+    assert.ok(synced.ok, synced.out);
+    assert.match(synced.out, /main was 1 commit behind origin\/main and is up to date now/);
+    assert.ok(existsSync(join(r.main, 'merged.txt')), 'the update is here without a command');
   });
 
   it('without a subject it says how to give one', () => {

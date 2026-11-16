@@ -9,9 +9,10 @@ model: opus
 The one entry in plain words. `/spec`, `/build` and `/ship` do the steps underneath; this skill says which, in what order,
 and where to stop. Run it from the main folder in a fresh chat. Never commit before the owner says done.
 
-0. **What waits from outside**: `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
-   alert: say it first, in plain words, and ask whether to deal with it before the card. Updates only: name the count in one line
-   and go on (`npm run updates` lists them, each with take it, look first or hold).
+0. **What waits from outside**: `node scripts/session.mjs --sync` (brings in what merged on GitHub when nothing is in the way),
+   then `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
+   alert: say it first, in plain words, and ask whether to deal with it before the card. An update that needs the owner (its
+   "to look at" part): name it in one line and go on; the ones that merge by themselves are not mentioned.
    **No card number given**: `npm run board -- --next 3` (the graph first: only cards nothing open holds back, those that
    unlock the most first; then the owner's labels: first version, value for the effort) and offer those three in one line each, with its reason; the owner picks. Its notes about cards with no value
    label or issues waiting off the board (`npm run board -- --inbox`) are passed on in one line. Never read the whole board.

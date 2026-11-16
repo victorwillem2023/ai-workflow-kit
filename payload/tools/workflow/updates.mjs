@@ -5,7 +5,7 @@
 // Reads GitHub through gh and changes nothing. GitHub that cannot be reached is one line, never a failure (exit 0).
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { holdSnippet, judgePr, readAlerts, runtimeNode, shortLine, updateTools } from './lib/updates.mjs';
+import { autoMerges, holdSnippet, judgePr, readAlerts, runtimeNode, shortLine, toolImages, updateTools } from './lib/updates.mjs';
 
 const short = process.argv.includes('--short');
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
@@ -32,8 +32,11 @@ if (prsRes.error || prsRes.status !== 0) {
 const renovateRes = list('app/renovate');
 let pkg;
 try { pkg = JSON.parse(read('package.json') ?? 'null'); } catch { pkg = null; }
+// the tool images the kit runs with Docker: green checks do not prove an update of one (the gate never runs them)
+const images = toolImages(['infracheck', 'infraplan', 'load', 'secops'].map((t) => read(`tools/workflow/${t}.mjs`)));
+const selfMerging = autoMerges(read('renovate.json'));
 const node = runtimeNode({ pkg, toolVersions: read('.tool-versions'), dockerfile: read('Dockerfile'), nvmrc: read('.nvmrc') });
-const prs = [...(json(prsRes) ?? []), ...(renovateRes.status === 0 ? json(renovateRes) ?? [] : [])].map((pr) => judgePr(pr, { node, hold: config.updates?.hold ?? {} }));
+const prs = [...(json(prsRes) ?? []), ...(renovateRes.status === 0 ? json(renovateRes) ?? [] : [])].map((pr) => judgePr(pr, { node, hold: config.updates?.hold ?? {}, tools: images }));
 
 // Renovate runs once its app is installed: it keeps a "Dependency Dashboard" issue
 const dash = gh(['issue', 'list', '--repo', repo, '--state', 'open', '--search', 'Dependency Dashboard in:title', '--json', 'number', '--limit', '1']);
@@ -47,9 +50,10 @@ const alertsOff = alertsRes.status !== 0 ? (/disabled|not enabled|403/i.test(ale
   ? 'security alerts: off for this repository (npm run secops -- --enable turns them on)'
   : 'security alerts: could not be read') : null;
 
-if (short) { console.log([shortLine(prs, alerts), alertsOff, toolLine].filter(Boolean).join('; ')); process.exit(0); }
+if (short) { console.log([shortLine(prs, alerts, { selfMerging }), alertsOff, toolLine].filter(Boolean).join('; ')); process.exit(0); }
 
-const say = { take: 'take it', look: 'look first', hold: 'hold' };
+// with automerge on (renovate.json), a small update is not the owner's: it merges by itself once its checks are green
+const say = { take: selfMerging ? 'merges by itself once green' : 'take it', look: 'look first', hold: 'hold' };
 for (const line of [alertsOff, toolLine]) if (line) console.log(line);
 for (const a of alerts) console.log(`ALERT ${a.severity.padEnd(8)} ${a.name}: ${a.summary}${a.fixed ? ` (fixed in ${a.fixed})` : ' (no fixed version yet)'}  ${a.url ?? ''}`);
 if (!prs.length) console.log('updates: no pull request from Dependabot or Renovate waiting');
@@ -68,4 +72,4 @@ To stop these coming back every week, close the pull request and add under the n
 ${holdSnippet(held)}`);
 }
 console.log(`
-${shortLine(prs, alerts)}`);
+${shortLine(prs, alerts, { selfMerging })}`);

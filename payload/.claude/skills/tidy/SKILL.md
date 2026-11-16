@@ -21,6 +21,10 @@ explain and propose; the owner decides; the board commands do it.
    - the map's gaps: an end a card already covers gets that card on it (`card: [<n>]` on the end in `docs/flow/map.js`,
      `grep -n` the end's words); a real gap gets a card (`/idea` with the end's words), or stays a gap on purpose (its note says why);
    - unranked: a value guess per card for the owner to confirm (`npm run board -- --rate <n> value medium`), or `/shape`;
+   - a tie at the top of `npm run board -- --next` ("#a, #b are equal"): first estimate a missing effort from the code
+     (`npm run map -- --find <word>`, `--rate <n> effort <small|medium|large>`), which may settle it; still tied, ask which comes
+     first (`docs/PRODUCT.md` recommends: a card for the first users before one outside them) and keep the answer as value
+     labels (the first `--rate <n> value high`, then `medium`, `low`, only cards with no value yet);
    - duplicates: merge into the older card (copy what the newer adds as a comment, `--close <newer> "duplicate of #<older>"`);
    - prune: close the listed old low-value cards with "closed in a backlog tidy-up; reopen if it matters again".
    Ask with AskUserQuestion (multiSelect), every proposal pre-ticked except closing; the owner unticks what they disagree with.
