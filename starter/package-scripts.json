@@ -23,5 +23,6 @@
   "drill": "node tools/workflow/drill.mjs",
   "launch-check": "node tools/workflow/launchcheck.mjs",
   "costs": "node tools/workflow/costs.mjs",
-  "cost": "node tools/workflow/sessioncost.mjs"
+  "cost": "node tools/workflow/sessioncost.mjs",
+  "coverage": "node tools/workflow/coverage.mjs"
 }

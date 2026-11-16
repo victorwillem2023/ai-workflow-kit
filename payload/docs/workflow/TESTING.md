@@ -95,4 +95,7 @@ is run less, so it protects less. Keep rule tests free of I/O, start the databas
   two copies of one test fail; a changed input reader with no refusal test gets an advice line.
 - **Not checked**: that a test asserts anything, or that it would fail for the mistake it is named for. That is `/review`'s
   job: it lists every test whose expectation changed, and reads the new tests against the spec's list.
+- **Measured, not checked**: how much of the code the tests run (`npm run coverage`: the share of lines, and the files with the
+  most lines no test runs; `/retro` shows it monthly). A file a test imports but hardly runs shows up there, where the
+  *untested* check calls it tested. It is a pointer to where a test pays, never a number to chase.
 - A changed expectation is only right when the behaviour was meant to change, and the spec says so.

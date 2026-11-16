@@ -41,7 +41,9 @@
       "Bash(npm run costs:*)",
       "Bash(node tools/workflow/costs.mjs:*)",
       "Bash(npm run cost:*)",
-      "Bash(node tools/workflow/sessioncost.mjs:*)"
+      "Bash(node tools/workflow/sessioncost.mjs:*)",
+      "Bash(npm run coverage:*)",
+      "Bash(node tools/workflow/coverage.mjs:*)"
     ],
     "deny": [
       "Bash(npm run signoff:*)",

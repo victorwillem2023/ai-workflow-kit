@@ -10,7 +10,8 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
 
 1. `npm run retro` (shipped per week for 8 weeks and the streak, the health moves since a week ago, the next cards),
    `npm run health` (the code-health numbers) and `npm run cost` (the week's AI use, by command; one line of it: the total and
-   the command that used most). Say what they show in four lines at most: the trend, anything that got worse,
+   the command that used most). Once a month also `npm run coverage` (a minute: how much of the code the tests run, and the
+   files with the most lines no test runs): the figure, and the top file as a card offer when it holds a rule. Say what they show in four lines at most: the trend, anything that got worse,
    anything that got better. No praise, no blame: what happened. A project that started with debt (an older codebase): say how
    the baseline moved, and offer one card for the riskiest untested file when it has not shrunk for a month
    (`docs/workflow/TAKEOVER.md`, *3. Work the baseline down*).
