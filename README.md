@@ -57,7 +57,7 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market /advise /estimate /tidy, and the cheap helpers /next /check /find /docs
+  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market /advise /estimate /tidy /debug, and the cheap helpers /next /check /find /docs
                           infracheck and infraplan (infrastructure checked, planned, reviewed, applied), drill (the restore drill)
   tools/workflow/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
@@ -131,10 +131,11 @@ project stands, and names the next command; ask it "which command for ...?" and 
 | Grow | `npm run launch-check -- <address>` | Is the landing page ready: title, description, share preview, one heading, image texts, privacy link, trackers without consent, robots.txt, sitemap, weight. |
 | Every week | `/retro`, `/lesson` | The week's shipping streak and code health, lessons turned into checks; a correction made to last. |
 | Any time | `/check`, `/find`, `/docs` | Cheap helpers on a small model: explain a failing gate, answer "where is X" from the map, a small docs edit. Read-only or no commit. |
+| Any time | `/debug <what you saw>` | Why something goes wrong: the reference or request, its log lines, the cause in the code, a failing test that shows it, then the fix. |
 | Any time | `npm run updates`, `npm run setup-check` | Security alerts and dependency updates with a verdict each; `docs/SETUP.md`'s steps proven on a fresh clone. |
 
 ## Install into a new project
-Needs: Node 22+, git, the GitHub CLI (`gh auth login`, then `gh auth refresh -s project`), Claude Code.
+Needs: Node 26+, git, the GitHub CLI (`gh auth login`, then `gh auth refresh -s project`), Claude Code.
 
 A web app: make it with its framework's own starter first (`npm create vite@latest my-app -- --template react-ts`), then install
 the kit into that folder. `/setup` recommends the framework when you haven't picked one.
@@ -147,7 +148,7 @@ node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
 npm i -D tsx typescript @types/node@^26 knip @biomejs/biome # + @happy-dom/global-registrator with the ui module; the installer prints the exact line
 ```
 **Lean**: `--lean` installs only the build loop: the gate, the board, the map, sessions, and the skills `/setup`, `/next`,
-`/idea`, `/work`, `/spec`, `/build`, `/ship`, `/review`, `/check`, `/find`, `/docs` and `/lesson`, with no modules (`--modules`
+`/idea`, `/work`, `/spec`, `/build`, `/ship`, `/review`, `/check`, `/find`, `/docs`, `/debug` and `/lesson`, with no modules (`--modules`
 names any you want). Every other part is one word with `--with`: `shape`, `spike`, `tidy`, `estimate`, `advise` (with `/arch`),
 `launch`, `market`, `retro`, `secops` (the skill and the Monday report), `setup-check` (the workflow that proves `docs/SETUP.md`),
 and the modules (`ai`, `ui`, `cluster`, ...). Each skill is something every agent reads about in every chat, so fewer is cheaper.
