@@ -3,12 +3,39 @@
 // on a project that has the record, the same command gives the same result (it updates); a flag is a change to the record, never
 // a reset of the rest. --force replaces the machinery but keeps the choices. Nothing here writes; recordText says what is kept.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { basename, dirname, join, resolve } from 'node:path';
 
-export const ALL = ['ui', 'security', 'testing', 'dev', 'map', 'deploy', 'production'];
-// modules only some apps need: added with --with <name> (an app that calls a language model: --with ai)
-export const OPTIONAL = ['ai', 'cluster'];
+/**
+ * Each module says what the installer needs to know about it in modules/<name>/module.json (in a full install by default or only
+ * with --with, the helpers the kit's rules name, the packages its install line adds, extra Dependabot ecosystems, a CLAUDE.md
+ * tip), so the installer itself names no module. { name: manifest }, in the modules' own order.
+ */
+export function moduleManifests(kit = KIT) {
+  const dir = join(kit, 'modules');
+  const found = readdirSync(dir).filter((m) => existsSync(join(dir, m, 'module.json')))
+    .map((m) => ({ name: m, ...JSON.parse(readFileSync(join(dir, m, 'module.json'), 'utf8')) }))
+    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.name.localeCompare(b.name));
+  return Object.fromEntries(found.map((m) => [m.name, m]));
+}
+const KIT = dirname(fileURLToPath(import.meta.url));
+const MANIFESTS = moduleManifests(KIT);
+// the modules of a full install, and those only some apps need (added with --with <name>: an app that calls a model, --with ai)
+export const ALL = Object.values(MANIFESTS).filter((m) => m.default).map((m) => m.name);
+export const OPTIONAL = Object.values(MANIFESTS).filter((m) => !m.default).map((m) => m.name);
+
+/** What the chosen modules add: the helpers (TypeScript), the packages of the install line, Dependabot's ecosystems, CLAUDE.md tips. */
+export function moduleNeeds(modules, { framework = false } = {}) {
+  const of = modules.map((m) => MANIFESTS[m]).filter(Boolean);
+  return {
+    helpers: of.flatMap((m) => m.helpers ?? []),
+    npm: of.flatMap((m) => m.npm ?? []),
+    npmDev: of.flatMap((m) => [...(m.npmDev?.always ?? []), ...(framework ? [] : m.npmDev?.withoutFramework ?? [])]),
+    dependabot: of.flatMap((m) => m.dependabot ?? []),
+    claudeTips: of.map((m) => m.claudeTip).filter(Boolean).join(''),
+  };
+}
 // the parts of the core past the build loop (skills an agent sees in every chat, and workflows that run by themselves): all in a
 // full install; with --lean none, unless named with --with (--lean --with shape,tidy). The build loop itself (setup, next, idea,
 // work, spec, build, ship, review, check, find, docs, debug, lesson, the gate, the board, the map, sessions) is always there.

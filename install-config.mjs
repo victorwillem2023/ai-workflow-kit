@@ -4,6 +4,7 @@
 // function gets what it works on as arguments; install.mjs runs them in order.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { moduleNeeds } from './install-choices.mjs';
 
 // the commands the kit's own checks had before, by name: a project still on one of them gets the new one on --update
 export const OLD_COMMANDS = { unused: ['npx --no-install knip --no-progress'] };
@@ -222,7 +223,7 @@ function writeProjectFilesRest({ target, kit, lang, langs, modules, update, done
   }
   const botPath = join(target, '.github', 'dependabot.yml');
   if (!existsSync(botPath) && !existsSync(join(target, 'renovate.json'))) {
-    const kinds = [langs[lang].dependabot ?? 'npm', 'github-actions', ...(modules.includes('deploy') ? ['docker'] : [])];
+    const kinds = [langs[lang].dependabot ?? 'npm', 'github-actions', ...moduleNeeds(modules).dependabot];
     mkdirSync(dirname(botPath), { recursive: true });
     writeFileSync(botPath, '# Dependency updates: one small pull request a week per kind; the gate runs on each. Merge it on GitHub when it is green.\nversion: 2\nupdates:\n'
       + kinds.map((k) => `  - package-ecosystem: ${k}\n    directory: /\n    schedule:\n      interval: weekly\n    cooldown:\n      default-days: 7\n    groups:\n      all:\n        patterns: ["*"]\n`).join(''));

@@ -1,0 +1,9 @@
+{
+  "$comment": "What install.mjs needs to know about this module (install-choices.mjs, moduleManifests): default = in a full install without --with; helpers = starter files the kit's rules name, added to a project that lacks them; npm / npmDev = packages the install line adds (withoutFramework: only when the project has no UI framework); dependabot = extra ecosystems; claudeTip = a line for CLAUDE.md's tests rule.",
+  "order": 6,
+  "default": true,
+  "what": "the Dockerfile, the deploy settings and guides",
+  "dependabot": [
+    "docker"
+  ]
+}

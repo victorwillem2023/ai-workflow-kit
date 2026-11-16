@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { movePathsBack, undoCorrections } from './doc-layout.mjs';
 import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
-import { ALL, inList, list, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
+import { ALL, inList, list, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
 import { runMigrations } from './migrations/index.mjs';
 import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages, unmarkInstalled } from './install-docs.mjs';
 
@@ -83,7 +83,7 @@ if (args.includes('--dry-run')) process.exit((await import('./install-plan.mjs')
 const vars = {
   PROJECT: project, REPO: repo, OWNER: repo.split('/')[0], PREFIX: prefix,
   TESTS: LANGS[lang].config?.tests ?? LANGS[lang].tests ?? 'tests/*.test.ts',
-  TEST_TIPS: lang === 'ts' && modules.includes('testing') ? ' A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds.' : '',
+  TEST_TIPS: lang === 'ts' ? moduleNeeds(modules).claudeTips : '',
 };
 // gate.yml's "another language" line is where the language's own CI steps go (starter/lang.json, ci): filled in the same pass as
 // the rest, so the file the project has is exactly the one the kit wrote, and an update and --check compare it like any other
@@ -127,9 +127,10 @@ const shipped = new Set(); // every machinery file this run of the kit ships, to
 // a project that already has a UI framework builds its screens with components: the ui module's own DOM helper and its test stay out
 const pkgBefore = existsSync(join(target, 'package.json')) ? JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')) : {};
 const framework = ['react', 'preact', 'vue', 'svelte', 'solid-js', 'next', '@angular/core'].some((d) => d in { ...(pkgBefore.dependencies ?? {}), ...(pkgBefore.devDependencies ?? {}) });
-const happyDom = modules.includes('ui') && !framework ? ' @happy-dom/global-registrator' : '';
-// the ai module's wrapper uses the official Anthropic SDK and checks answers with zod (step 1 adds them; they run in production)
-const aiLibs = modules.includes('ai') ? ' && npm i @anthropic-ai/sdk zod' : '';
+// what the chosen modules add (each module's module.json): the install line's packages, the helpers its rules name
+const needs = moduleNeeds(modules, { framework });
+const happyDom = needs.npmDev.map((p) => ` ${p}`).join('');
+const aiLibs = needs.npm.length ? ` && npm i ${needs.npm.join(' ')}` : '';
 // the Node types of the Node the project runs (.tool-versions), never newer: the gate's *versions* check holds that
 const readIn = (f) => (existsSync(join(target, f)) ? readFileSync(join(target, f), 'utf8') : undefined);
 // (the project's own say first: .tool-versions, package.json engines, the Dockerfile, .nvmrc; only then the kit's own pin)
@@ -154,7 +155,7 @@ const migrate = (phase) => { if (update) migrated.push(runMigrations(phase, { fr
 claudeGrowth = migrate('before').claudeGrowth ?? 0;
 // starter files that are helpers the kit's rules (CLAUDE.md sections) name, not example code: an update adds them when a project
 // does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
-const HELPERS = lang === 'ts' ? ['src/server/trace.ts', 'src/server/errors.ts', 'src/web/report.ts', 'tests/production/debugging.test.ts'] : [];
+const HELPERS = lang === 'ts' ? needs.helpers : [];
 const overwriteOnly = (from) => from.endsWith('payload');
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {

@@ -1,0 +1,7 @@
+{
+  "$comment": "What install.mjs needs to know about this module (install-choices.mjs, moduleManifests): default = in a full install without --with; helpers = starter files the kit's rules name, added to a project that lacks them; npm / npmDev = packages the install line adds (withoutFramework: only when the project has no UI framework); dependabot = extra ecosystems; claudeTip = a line for CLAUDE.md's tests rule.",
+  "order": 3,
+  "default": true,
+  "what": "the fake clock and the fakes pattern",
+  "claudeTip": " A test that waits on a\n  timeout wraps its body in `clocked()` (`tests/clock.ts`), so a 4 s wait costs milliseconds."
+}
