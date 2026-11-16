@@ -2,6 +2,12 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **2.9.11**: **the self-test has an old, messy project** (Trailsmith at 2.8 the model): an app with debt (an unused file and
+  export, a page over its weight budget), made with the kit of the v2.8.5 tag and passing that kit's gate, then given its own
+  settings, a board, an area label, an input folder, a rule in CLAUDE.md and a page of its own. It is updated with this kit,
+  does only what the update says, and must then pass the full gate and still have everything it had (`scripts/selftest-messy.mjs`;
+  CI runs it). Found by it: the versions check read `engines.node: ">=24"` as "24" and failed it against Node 26; a `>=` is a
+  floor now, kept by any newer Node, and the `.tool-versions` an install writes follows the same rule.
 - **2.9.10**, from porting Trailsmith (its builder's second list; what only Trailsmith's history causes is left to its own move).
   **An update no longer changes what it should not**: waiting specs, `CHANGELOG.md` and `docs/decisions/` keep the old doc paths
   (the specs are named in the report instead), and a line that already names the new place, a sentence about the move itself,
