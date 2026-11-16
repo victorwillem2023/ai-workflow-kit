@@ -3,9 +3,9 @@
 // (a constraint) or a query holds (who sees what). Shown with Node's own SQLite in memory; for Postgres keep the shape with a
 // throwaway Postgres (a container), never SQLite standing in for it. Copy it to tests/data/<table>.test.ts and use your
 // migrations folder and your queries. Not run as it is (the .example name keeps it out of the suite).
-import { after, before, beforeEach, afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
+import { after, afterEach, before, beforeEach, describe, it } from 'node:test';
 
 // --- stands in for your migrations folder (run in order, as production runs them) and your query file ---
 const MIGRATIONS = [
@@ -37,7 +37,10 @@ describe('rides', () => {
     add('a', 'u1', 20, '2026-05-01');
     add('b', 'u1', 35, '2026-05-02');
     add('c', 'u2', 50, '2026-05-03');
-    assert.deepEqual(ridesOf(db, 'u1').map((r) => r.id), ['b', 'a']);
+    assert.deepEqual(
+      ridesOf(db, 'u1').map((r) => r.id),
+      ['b', 'a'],
+    );
   });
   it('never returns more than the limit, however many there are', () => {
     for (let i = 0; i < 60; i++) add(`r${i}`, 'u1', 10);

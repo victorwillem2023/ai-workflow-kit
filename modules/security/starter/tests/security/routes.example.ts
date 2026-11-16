@@ -3,21 +3,28 @@
 // <route>.test.ts, start your own app where `start` is, and keep the shape: who asks is set by the sign-in, never by the request;
 // another person's or another customer's thing answers "not found", the same as one that does not exist.
 // Not run as it is (the .example name keeps it out of the suite): the tiny server below only stands in for your app.
-import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { after, describe, it } from 'node:test';
 import { can, type Who } from '../../src/core/permissions';
 
 // --- stands in for your app: replace with your server, started on port 0 (any free port) ---
 const things = new Map([['t1', { ownerId: 'u1', customerId: 'c1', name: 'Morning ride' }]]);
-const people: Record<string, Who> = { 'token-u1': { id: 'u1', customerId: 'c1', role: 'member' }, 'token-u2': { id: 'u2', customerId: 'c1', role: 'member' }, 'token-x': { id: 'x', customerId: 'c2', role: 'owner' } };
+const people: Record<string, Who> = {
+  'token-u1': { id: 'u1', customerId: 'c1', role: 'member' },
+  'token-u2': { id: 'u2', customerId: 'c1', role: 'member' },
+  'token-x': { id: 'x', customerId: 'c2', role: 'owner' },
+};
 function start(): Promise<Server> {
   const server = createServer((req, res) => {
     const who = people[(req.headers.authorization ?? '').replace(/^Bearer /, '')] ?? null;
     const id = /^\/things\/([\w-]+)$/.exec(req.url ?? '')?.[1];
     const thing = id ? things.get(id) : undefined;
-    const answer = (status: number, body: unknown) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };
+    const answer = (status: number, body: unknown) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(body));
+    };
     if (!who) return answer(401, { title: 'Sign in first' });
     // not theirs answers exactly like not there: nobody learns what exists
     if (!thing || !can(who, 'read', thing)) return answer(404, { title: 'Not found' });
@@ -28,7 +35,7 @@ function start(): Promise<Server> {
 // --- end of the stand-in ---
 
 describe('GET /things/:id', () => {
-  let server: Server;
+  let server: Server | undefined;
   const call = async (path: string, token?: string) => {
     server ??= await start();
     const { port } = server.address() as AddressInfo;
