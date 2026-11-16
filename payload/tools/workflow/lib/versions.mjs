@@ -31,17 +31,23 @@ export function nodeVersions({ toolVersions, dockerfile, pkg }) {
   // distroless and hardened images carry the major in the name: gcr.io/distroless/nodejs26-debian13, dhi.io/node:26
   for (const m of String(dockerfile ?? '').matchAll(/^\s*FROM\s+\S*\/nodejs(\d+)-/gim)) out.push({ where: 'the Dockerfile', major: Number(m[1]) });
   const engines = pkg?.engines?.node;
-  if (engines && major(engines) != null) out.push({ where: 'package.json engines.node', major: major(engines) });
+  // ">=24" is a floor, not a version: Node 26 keeps it (any other form names its major: "^24", "24.x", "24")
+  if (engines && major(engines) != null) out.push({ where: 'package.json engines.node', major: major(engines), atLeast: /^\s*>=?\s*\d/.test(engines) && !/</.test(engines) });
   return out;
 }
 
 /** The disagreements about Node: lines saying which places name which major version, and @types/node newer than Node. */
 export function nodeOutOfStep({ toolVersions, dockerfile, pkg }) {
-  const found = nodeVersions({ toolVersions, dockerfile, pkg });
+  const all = nodeVersions({ toolVersions, dockerfile, pkg });
   const out = [];
+  // a floor that every named version keeps agrees with them all; it only counts when nothing else names a version
+  const pinned = all.filter((f) => !f.atLeast);
+  const floor = all.find((f) => f.atLeast);
+  const found = pinned.length ? pinned : all;
   const majors = [...new Set(found.map((f) => f.major))];
   const said = [...new Set(found.map((f) => `${f.where} says ${f.major}`))];
   if (majors.length > 1) out.push(`Node is not one version: ${said.join(', ')}. Pick one and write it in all of them`);
+  else if (floor && pinned.length && majors[0] < floor.major) out.push(`Node is ${majors[0]} (${said.join(', ')}), but package.json engines.node asks for ${floor.major} or newer. Pick one and write it in all of them`);
   const types = pkg?.devDependencies?.['@types/node'] ?? pkg?.dependencies?.['@types/node'];
   const runtime = found[0]?.major;
   if (types && runtime != null && major(types) > runtime) out.push(`@types/node is ${major(types)}, Node is ${runtime}: the types describe functions this Node does not have. Use @types/node ${runtime}`);

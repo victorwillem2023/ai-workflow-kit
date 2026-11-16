@@ -11,6 +11,7 @@
 //   cluster   TypeScript with the cluster module (needs Docker)   vite     a Vite React starter, then the kit (needs the network)
 //   python    uv's project, --lang python (needs uv)              go       go mod init, --lang go (needs go)
 //   rust      cargo init, --lang rust (needs cargo, cargo-machete, cargo-audit)
+//   messy     an old project made with an older kit tag, with debt, its own settings and a board, then updated (needs the tags)
 // A variant whose tools are missing on this computer says so and is skipped; CI installs them and runs them all.
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -42,6 +43,8 @@ const VARIANTS = {
   python: { args: ['--lang', 'python'], needs: ['uv'], after: [['uv', ['sync', '--quiet']]], files: { 'src/selftest/__init__.py': 'def add(a: int, b: int) -> int:\n    return a + b\n', 'tests/test_add.py': 'from selftest import add\n\n\ndef test_add() -> None:\n    assert add(1, 2) == 3\n' } },
   go: { args: ['--lang', 'go'], needs: ['go'], prepare: [['go', ['mod', 'init', 'example.com/selftest']]], files: { 'internal/add/add.go': 'package add\n\n// Add adds two numbers.\nfunc Add(a, b int) int { return a + b }\n', 'internal/add/add_test.go': 'package add\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fatal("1 + 2")\n\t}\n}\n' } },
   rust: { args: ['--lang', 'rust'], needs: ['cargo', 'cargo-machete', 'cargo-audit'], prepare: [['cargo', ['init', '--lib', '--name', 'selftest', '--vcs', 'none', '--quiet']]] },
+  // messy: an old project with debt, its own settings and a board, made with an older kit and updated (scripts/selftest-messy.mjs)
+  messy: { args: [], messy: true, needs: ['tar'] },
 };
 
 /** Every mention of a skill the project does not have (in its skills, docs and CLAUDE.md) that does not say "(not installed)". */
@@ -132,6 +135,41 @@ function walkMd(d) {
   return readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walkMd(join(d, e.name)) : e.name.endsWith('.md') ? [join(d, e.name)] : []));
 }
 
+/** A failed check, said as the others are, that stops the variant. */
+const verdict = (name, what, found) => {
+  console.log(`${found.length ? 'FAIL' : 'ok  '} ${name}: ${what}${found.length ? `:\n${found.slice(0, 20).join('\n')}` : ''}`);
+  if (found.length) throw new Error(what);
+};
+/** The kit's files the update took for the project's own work ("kept, because the project changed them (n); the kit's version differs"). */
+const claimedKitFiles = (said) => /kept, because the project changed them \(\d+\); the kit's version differs[\s\S]*?(?=\n {2}\S|\n\S|$)/.exec(said)?.[0];
+
+/**
+ * The messy variant (scripts/selftest-messy.mjs): an old project at an older tag, updated with this kit, and then only what the
+ * update itself says to do (its step 1, the map, the baseline), after which the full gate must pass and nothing may be lost.
+ */
+async function runMessy({ name, dir, step, git, install }) {
+  const { messyAtOldKit, ownWorkLost, OLD_TAG } = await import(pathToFileURL(join(kit, 'scripts', 'selftest-messy.mjs')).href);
+  const before = await messyAtOldKit({ dir, kit, step, git, installArgs: install.slice(2) });
+  const updated = await step(`update from ${OLD_TAG}`, process.execPath, [...install, '--update']);
+  const claimed = claimedKitFiles(updated);
+  verdict(name, 'the update takes no kit file for the project\'s own', claimed ? [claimed] : []);
+  const line = /^\s*step 1:\s*(npm i [^\n]+)$/m.exec(updated)?.[1];
+  for (const part of line ? line.split('&&').map((p) => p.trim().split(/\s+/).slice(2)) : []) await step(`npm i ${part.join(' ')}`, 'npm', ['install', '--no-audit', '--no-fund', '--silent', ...part]);
+  // (what the update means to change is not lost: the moved doc paths, a kit check's old command that the kit replaced)
+  const { OLD_COMMANDS } = await import(pathToFileURL(join(kit, 'install-config.mjs')).href);
+  const after = JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8'));
+  const meant = JSON.parse(movePaths(JSON.stringify(before)));
+  for (const c of meant.checks ?? []) if (OLD_COMMANDS[c.name]?.includes(c.command)) c.command = after.checks.find((x) => x.name === c.name)?.command;
+  verdict(name, 'the update keeps every setting and page the project had', [
+    ...configLost(meant, after),
+    ...ownWorkLost(dir)]);
+  verdict(name, 'after the update every doc pointed at is there', missingDocPointers(dir));
+  await step('file map', process.execPath, ['tools/workflow/map.mjs']);
+  await step('baseline, as the update says', process.execPath, ['tools/workflow/gate.mjs', '--update-baseline']);
+  await step('full gate after the update', process.execPath, ['tools/workflow/gate.mjs', '--all']);
+  return 'passed';
+}
+
 async function runVariant(name) {
   const v = VARIANTS[name];
   const missing = (v.needs ?? []).filter((t) => !has(t));
@@ -176,6 +214,7 @@ async function runVariant(name) {
     git('config', 'user.name', 'Kit selftest');
     git('config', 'user.email', 'selftest@example.invalid');
     const install = [join(kit, 'install.mjs'), dir, '--project', 'Selftest App', '--repo', 'example/selftest-app', '--prefix', 'selftest', ...v.args];
+    if (v.messy) return await runMessy({ name, dir, step, git, install });
     const said = await step('install', process.execPath, install);
     if (v.check) {
       const found = v.check(dir);

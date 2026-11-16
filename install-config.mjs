@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 
 // the commands the kit's own checks had before, by name: a project still on one of them gets the new one on --update
-const OLD_COMMANDS = { unused: ['npx --no-install knip --no-progress'] };
+export const OLD_COMMANDS = { unused: ['npx --no-install knip --no-progress'] };
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 
 /**
@@ -220,7 +220,10 @@ function writeProjectFilesRest({ target, kit, lang, langs, modules, update, done
   const tv = join(target, '.tool-versions');
   if (projectNode && done.added.includes('.tool-versions') && existsSync(tv)) {
     const kitMajor = Number(/nodejs\s+(\d+)/.exec(readFileSync(tv, 'utf8'))?.[1]);
-    if (kitMajor && kitMajor !== projectNode.major) writeFileSync(tv, readFileSync(tv, 'utf8').replace(/^nodejs\s+\S+/m, `nodejs ${projectNode.major}`));
+    // engines ">=24" is a floor the kit's Node keeps: only a version the project names, or a floor above the kit's, changes it
+    let floor = false;
+    try { floor = projectNode.from === 'package.json engines' && /^\s*>=?\s*\d/.test(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).engines.node); } catch { /* none */ }
+    if (kitMajor && kitMajor !== projectNode.major && !(floor && kitMajor > projectNode.major)) writeFileSync(tv, readFileSync(tv, 'utf8').replace(/^nodejs\s+\S+/m, `nodejs ${projectNode.major}`));
   }
   const botPath = join(target, '.github', 'dependabot.yml');
   if (!existsSync(botPath) && !existsSync(join(target, 'renovate.json'))) {
