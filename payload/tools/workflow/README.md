@@ -86,6 +86,12 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   `npm run signoff` in their own terminal after checking the change against its sources: it refuses input from a pipe, an agent
   or CI, asks the checklist (`sensitive.checklist` replaces the kit's four questions) and a typed-back code, and agents are
   denied the command and the file. Any later edit needs a new sign-off. Why: `docs/workflow/SENSITIVE.md`.
+- **migrations** (when `data.migrations` lists where they are): a migration file that was there before the change and is edited,
+  renamed or deleted fails; it has run somewhere, so a mistake is a new migration (`docs/workflow/DATA.md`). A new one passes.
+- **data and permissions** (advice): a changed file that builds SQL text from a value (a filled-in or joined string in
+  TypeScript, JavaScript, Python, Go or Rust; a tagged template like sql`...` and a parameter pass; a name from a fixed list says
+  "fixed list" in a comment on that line) gets an `advice:` line. With `security.signIn` true, so does a new route in the
+  server folder when the change adds no test named for who is refused (signed out, another user's).
 - **together** (when `together` is in the config): files that change together.
   `{ "name": "migration", "when": ["src/db/schema.ts"], "needs": ["migrations/**"] }` fails a change to the tables that adds no migration.
 - **your own checks** (`checks` in the config), after the tests, each a command that must pass:
@@ -359,5 +365,5 @@ and leaves you the files to edit. By hand: copy `tools/workflow/`, `scripts/sess
 `--update-baseline` once, add the npm scripts (`gate`, `gate:all`, `map`, `board`).
 
 The `security` block: `code` (the source folder the advice looks at), `server` (where a new route counts as a trigger) and
-`inputFolders` (where reading input without a "refuses/rejects/caps/too large/hostile" test earns an advice line).
+`inputFolders` (where reading input without a "refuses/rejects/caps/too large/hostile" test earns an advice line); `signIn` (true once the app has accounts: a new route then wants a test that says who is refused).
 The `session` block: `prefix` (session folders are `../<prefix>-<topic>`), `firstPort`, `mainPort`, `env` (extra `.env` lines).

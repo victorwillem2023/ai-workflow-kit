@@ -18,6 +18,14 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    - **Was a rule copied?** A rule written a second time when it already has a home (`docs/ARCHITECTURE.md`, *Rules and where each lives*).
    - **Does it add a rule with no row?** Something the code now enforces for every caller (writes only from this site, only this
      computer may ask, a new limit or permission) that has no row in that table, whatever the spec's "New rules" line says.
+   - **Can someone reach what is not theirs?** Every new route or query checks, on the server, that this thing belongs to the
+     person the session names; nothing takes a user, customer or role from the request; another's id answers "not found"; a
+     test says so (`docs/workflow/PERMISSIONS.md`, *Permissions: the rules*).
+   - **Is the data change safe?** A schema change is a migration that works while the old version still runs and destroys
+     nothing the spec did not name; values are passed as parameters; a list has a limit; no query per row
+     (`docs/workflow/DATA.md`).
+   - **Would each new test fail for the mistake it is named for?** One that asserts nothing, repeats the code's own sum or
+     fakes the app's own code is a finding (`docs/workflow/TESTING.md`).
    - **Is anything outside the spec touched?** `npm run gate` prints `scope:` lines for those files.
    - **If it fails, does the log say what and where?** Each error a person or a dependency can cause is an `AppError` with
      its `doing`, the ids and the `cause`; no catch swallows one; a new path writes its request line (CLAUDE.md, *Requests,

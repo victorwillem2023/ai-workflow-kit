@@ -10,7 +10,7 @@
 //   (project steps from the config: `checks`, `together`, `copies`; a secret in the change fails too. See README.md, *What it checks*)
 //   (the gate also fails when docs/MAP.md is out of date: run npm run map; when an OpenCode command is missing or stale: npm run harness;
 //   or when a doc names a missing file or npm script)
-//   --advice      only print the advice lines (security-review, hostile-input test, a missing push guard) (a full run prints them at the end; they never fail the gate)
+//   --advice      only print the advice lines (security-review, hostile-input test, SQL built from a value, a route with no refusal test, a missing push guard) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
 // Project settings live in workflow.config.json; nothing here knows about the project.
 import { checkPackages, describeMissing, packagesFix } from '../../scripts/packages.mjs';
@@ -35,7 +35,7 @@ import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
 import { unlisted } from './lib/envcheck.mjs';
 import { nodeOutOfStep, tofuUnpinned, unpinnedTools } from './lib/versions.mjs';
 import { namingProblems } from './lib/naming.mjs';
-import { policySteps } from './lib/policy.mjs';
+import { policySteps, dataAdvice } from './lib/policy.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs';
 
@@ -186,7 +186,7 @@ function adviceLines() {
   // new files that git does not know yet count as added: the code, and the tests that say what it refuses
   const fresh0 = git('ls-files', '--others', '--exclude-standard', '--', codeDir, 'tests').split('\n').map((x) => x.trim());
   for (const f of fresh0.filter((x) => x && existsSync(x))) fresh.set(f, readFileSync(f, 'utf8').split('\n'));
-  return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security)];
+  return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security), ...dataAdvice(diff, fresh, config)];
 }
 // a library a change adds that docs/STACK.md does not name (only when the project has a STACK.md)
 function depsLines() {

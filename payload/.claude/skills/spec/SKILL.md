@@ -43,7 +43,13 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
      call, where writes may come from, a limit, a format every caller must use)? A new endpoint, a new check on input or a new
      permission usually does. Yes: the rule in one line and its new row, and `docs/ARCHITECTURE.md` goes under "Docs that change"
      so `/ship` holds the commit to it. No: "none".
-   - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one.
+   - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one. Which level each
+     belongs to, and the tests a route, a bug or a query always brings: `docs/workflow/TESTING.md`, *What every change needs*.
+   - **Stored data** (a table, a column, a query, a migration): the spec names them as `docs/workflow/DATA.md`, *In a spec*,
+     says: the migration and whether it destroys anything (then it is an open question for the owner), the constraint that
+     holds each new rule, the index.
+   - **Who may do it**: a new route, screen or stored thing says who may read and change it and what everyone else gets,
+     with a test per refusal (`docs/workflow/PERMISSIONS.md`, *Permissions: the rules*). Sign-in and permission code is sensitive.
    - A `ui` card: name the mockup board it follows (or say one must be drawn first) and keep the files to `src/web`.
    - Work packages: for a big job that splits cleanly (see the template), list the packages, the files each owns and any `after:`
      order, so `/build` can run them as waves. Only when it pays for itself: a large card whose packages are each a few hundred

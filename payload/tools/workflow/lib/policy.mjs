@@ -1,5 +1,5 @@
 // The gate's policy checks, kept apart so gate.mjs stays small: no spike code on main, an image that holds only what runs, model calls only through one wrapper,
-// outbound hosts and IP rules as code, a person's sign-off on sensitive files, and docs that change with what they cover.
+// outbound hosts and IP rules as code, a person's sign-off on sensitive files, migrations that never change once they ran, and docs that change with what they cover.
 // Each entry is [name, () => { ok, out?, note? }] or false when it does not apply, the same shape as the gate's own steps.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { staleDocs, parseNameStatus } from './doccovers.mjs';
@@ -7,6 +7,9 @@ import { imageProblems } from './dockercheck.mjs';
 import { ipRuleProblems, unlistedEgress } from './network.mjs';
 import { signoffVerdict } from './signoff.mjs';
 import { aiProblems } from './aicheck.mjs';
+import { editedMigrations } from './datacheck.mjs';
+
+export { dataAdvice } from './datacheck.mjs';
 
 /** The steps, from what the gate already knows: the config, git, the base commit, the code files, the docs. */
 export function policySteps({ config, git, gitOk, base, files, isTest, matchesAny, readText, docTexts }) {
@@ -34,6 +37,11 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
     const all = [...git('diff', '--name-only', base).split('\n'), ...git('ls-files', '--others', '--exclude-standard').split('\n')].filter(Boolean);
     const v = signoffVerdict({ changed: all, paths: config.sensitive.paths, matches: matchesAny, read: (f) => readText(f) ?? undefined, signoffs: readText('docs/company/SIGNOFFS.md') });
     return v.ok ? { ok: true, note: v.files.length ? `${v.files.length} signed` : '' } : { ok: false, out: v.line };
+  }],
+  config.data?.migrations?.length && ['migrations', () => {
+    // a migration that was there before this change has run somewhere: it is never edited, renamed or deleted (docs/workflow/DATA.md)
+    const hit = editedMigrations(gitOk('diff', '--name-status', '-M', base) ?? '', config.data.migrations, matchesAny);
+    return hit.length ? { ok: false, out: `${hit.map((m) => `${m.file} is a migration that was ${m.how}`).join('\n')}\nA migration that has run is never changed: put it back and write a new one (docs/workflow/DATA.md, *Migrations*).` } : { ok: true };
   }],
   ['covers', () => {
     // a doc that names what it covers (<!-- covers: infra/** -->) changes with it, or the spec or a commit says why not

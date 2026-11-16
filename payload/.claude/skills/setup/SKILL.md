@@ -43,6 +43,8 @@ A new, empty project: skip to the questions and say the answers will become the 
    - **Sensitive work**: which parts handle money, health or safety advice, legal texts, personal data or access (propose the
      folders from the code or the plan; `docs/workflow/SENSITIVE.md`, *What counts*)? Those become `sensitive.paths`: every change there
      needs the owner's own sign-off. Who checks the sources (the owner, an accountant, a lawyer, an expert)?
+   - **Accounts and stored data**: do people sign in, and who may see whose things (the roles, in the owner's words;
+     `docs/workflow/PERMISSIONS.md`)? What does the app store, and where (`docs/workflow/DATA.md`)? Neither yet: skip.
 4. **The dev loop**: the command the owner runs while working, its port, and whether it restarts by itself.
 5. **The board**: the area labels (offer 3 to 6 from the folders and the app's parts), and whether the GitHub project exists already.
 6. **Files every feature touches** (the shared files for parallel work), if any beyond `README.md` and the guide.
@@ -99,6 +101,11 @@ Only real decisions; never ask what the code already says.
   and `naming` in the config to match (the kit's defaults follow the language): the app's short code and the environment and
   place codes in *Names of things in the system* and `naming.resources`, the files whose lists stay alphabetical in `naming.sorted`.
 - **Sensitive and access**: `sensitive.paths` from answer 3 (the gate's *signoff* check; an empty list until there is such code);
+  with accounts, `security.signIn: true`, the sign-in and permission code under `sensitive.paths`, and the roles table of
+  `docs/workflow/PERMISSIONS.md` (who may what, and what never) in *Rules for code* of the security page, each rule with its
+  row in *Rules and where each lives*. With stored data: the folder that owns the queries, a `boundaries` rule so only it uses
+  the database library (`{ "name": "only the data folder talks to the database", "from": "src/**", "except": ["src/<data folder>/**"],
+  "forbidUse": ["<the database library>"] }`), and `data.migrations` set to where this stack's migrations are;
   in `docs/company/ACCESS.md` a row for the owner and every account the app already depends on (GitHub, the cloud, the domain, the sign-in
   provider), then `npm run access` must list nothing unexpected. **`docs/run/ENVIRONMENTS.md`**: the *This project* row for `dev`;
   the rest waits for `/launch`. `security.domains`: the app's public addresses once it has any (their certificates are watched).

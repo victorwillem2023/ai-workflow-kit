@@ -45,6 +45,9 @@ The guide part (`docs/guide/<part>.md`), `README.md`, `docs/ARCHITECTURE.md`, or
 ## Security triggers
 New endpoint, file reader or outbound fetch? yes/no. If yes: limits (body size, count, rate) and run a security review before finish.
 Untrusted input read? yes/no.
+Who may do it: <who may read and change it, and what everyone else gets (`docs/workflow/PERMISSIONS.md`); "no change">
+Stored data changed (a table, column, query or migration)? yes/no. If yes: the migration, whether it destroys anything (the
+owner's yes), the constraint and the index (`docs/workflow/DATA.md`).
 A hot path (a list, a search, a page many people open, a job that runs often)? yes/no. If yes: the query plan and the load test to
 run (`docs/run/PERFORMANCE.md`).
 Calls a language model, or gives one tools? yes/no. If yes: what goes in (personal? untrusted?), how the answer is checked, which

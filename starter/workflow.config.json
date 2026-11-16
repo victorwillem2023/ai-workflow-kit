@@ -45,6 +45,7 @@
   "sensitive": {
     "paths": []
   },
+  "data": { "migrations": ["**/migrations/**/*.sql", "**/migrations/*.{ts,js,py,go}", "drizzle/**/*.sql", "alembic/versions/*.py"] },
   "checks": [
     { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched src tests", "when": ["src/**", "tests/**", "biome.json"] },
     { "name": "unused", "command": "node tools/workflow/unused.mjs", "all": true },
@@ -70,6 +71,7 @@
     "code": "src/",
     "server": "src/server/",
     "inputFolders": ["src/core/", "src/server/"],
+    "signIn": false,
     "domains": [],
     "egress": [],
     "ipRules": []

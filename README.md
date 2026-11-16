@@ -68,6 +68,8 @@ payload/                  CORE machinery (copied; overwritten only with --force)
   docs/workflow/TOKENS.md          why the flow and the docs are shaped to keep sessions cheap
   .github/workflows/      gate (every push), secops (Mondays: the security report), setup (SETUP.md proven)
   docs/workflow/LIFECYCLE.md       the whole path from idea to product: what each stage needs, what is laid now, what /launch decides later
+  docs/workflow/TESTING.md, DATA.md, PERMISSIONS.md   the build stage's rules: which tests at which level, tables, migrations and
+                          queries, sign-in and who may see what; read by /spec and /review, with their checks in the gate
 starter/                  CORE files that are YOURS (copied only when missing, then edited)
   CLAUDE.md               the rules every agent reads first (skeleton; /setup fills the <...> from an interview):
                           code structure, reading the code cheaply, never read, security, parallel work
@@ -86,8 +88,8 @@ modules/                  OPTIONAL parts, each with payload/ (machinery) and sta
              docs/STYLE.md, docs/design/README.md, docs/design/board-template.html (variants A/B/C, phone, states), tests/dom.test.ts
   security/  src/core/netguard.ts (private-address check), src/server/safefetch.ts (DNS guard, hand-followed redirects, size cap, timeout),
              src/core/guards.ts (safeHref, parseJsonCapped, atMost, cleanText), src/web/debug.ts (debug handle only on localhost),
-             tests/security/security.test.ts (hostile-input tests), docs/SECURITY.md
-  testing/   tests/clock.ts (fake clock: a 4 s wait costs milliseconds), tests/fakes.example.ts (fakeDeps + fixed NOW pattern)
+             tests/security/security.test.ts (hostile-input tests), src/core/permissions.ts (who may do what: one function, a table test), docs/SECURITY.md
+  testing/   tests/clock.ts (fake clock: a 4 s wait costs milliseconds), tests/fakes.example.ts (fakeDeps + fixed NOW pattern), tests/builders.example.ts (test data)
   dev/       dev.cmd, start.cmd (Windows: install on first run, check packages and port), scripts/dev-check.mjs, .env.example
   map/       docs/flow (the app map: a page of yes/no trees of what the app decides), docs/REQUESTS.md and the request pages
   deploy/    a Dockerfile per language, scripts/deploy.mjs (npm run deploy: proves the new version runs or puts the old one back;
