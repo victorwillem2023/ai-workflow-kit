@@ -11,6 +11,7 @@ import { detectLang, detectProject, inList, readChoices, recorded, recordLines, 
 import { mergeKitBlocks, rewriteChangedRules, unmarkInstalled } from '../install-docs.mjs';
 import { movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
 import { due, older, STEPS } from '../migrations/index.mjs';
+import { changesSince } from '../install-report.mjs';
 
 const kit = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const folder = (files = {}) => {
@@ -120,6 +121,17 @@ describe('"(not installed)" marks', () => {
     assert.deepEqual(unmarkInstalled({ target: d }), ['docs/PRODUCT.md']);
     assert.equal(readFileSync(join(d, 'docs/PRODUCT.md'), 'utf8'), 'Run `/shape 3` or /market (not installed); see `docs/run/LAUNCH.md` and npm run launch-check (not installed).\n');
     rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('what changed for you', () => {
+  it('the headlines of the versions after the project\'s, newest first, with code that holds ** left alone', () => {
+    const log = '# Changelog\n\n- **2.9.9**: **the kit asks about AI**. More.\n- **2.9.8**, from x. **A test moves a card**: and `tools/**`\n  wraps. **An update\n  keeps every setting**: yes.\n- **2.9.7**: **old**.\n';
+    assert.deepEqual(changesSince(log, '2.9.7', '2.9.9'), [
+      { version: '2.9.9', headlines: ['the kit asks about AI'] },
+      { version: '2.9.8', headlines: ['A test moves a card', 'An update keeps every setting'] },
+    ]);
+    assert.deepEqual(changesSince(log, '2.9.9', '2.9.9'), []);
   });
 });
 

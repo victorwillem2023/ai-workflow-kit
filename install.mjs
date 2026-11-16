@@ -34,6 +34,7 @@ import { runtimeNode } from './payload/tools/workflow/lib/updates.mjs';
 import { addClaudeRules, machineryDiffs, rewriteJson, settleConfig, writeProjectFiles } from './install-config.mjs';
 import { ALL, inList, list, moduleNeeds, OPTIONAL, PARTS, readChoices, recordLines } from './install-choices.mjs';
 import { runMigrations } from './migrations/index.mjs';
+import { whatChanged } from './install-report.mjs';
 import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages, unmarkInstalled } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
@@ -120,6 +121,8 @@ const kitPath = resolve(opt('--kit-path') ?? kit).replace(/\\/g, '/');
 const kitRepo = spawnSync('git', ['-C', kit, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout?.trim() || '';
 const markFile = join(target, '.workflow-kit');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
+// the app map's request group as it was, to say after the update when it came out different (install-report.mjs)
+const requestsBefore = existsSync(join(target, 'docs', 'flow', 'requests.js')) ? readFileSync(join(target, 'docs', 'flow', 'requests.js'), 'utf8') : null;
 const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], stageNamed: [], helpers: [], skipped: [] };
 // what a stage not reached yet would have written: an update takes away the untouched copies an older kit wrote there
 const stageSkipped = new Map();
@@ -361,6 +364,7 @@ if (update) {
   if (done.staged.length) console.log(`  stages not reached yet (${Object.keys(STAGE_FOLDERS).filter((x) => !stages.includes(x)).join(', ')}): ${done.staged.length} untouched docs taken away; they come back when the stage starts (node tools/workflow/stage.mjs --enter <stage>)`);
   if (done.stageKept.length) console.log(`  kept, because the project changed them (the stage is not reached yet, but the work is yours):\n${done.stageKept.map((f) => `    ${f}`).join('\n')}`);
   if (unmarked.length) console.log(`  "(not installed)" taken out where it is installed now, in: ${unmarked.join(', ')}`);
+  for (const l of whatChanged({ kit, target, before, now: kitVersion, replaced: done.replaced, requestsBefore })) console.log(`  ${l}`);
   const ran = migrated.flatMap((m) => m.ran);
   if (ran.length) console.log(`  the kit's changes since ${before} (migrations/): ${ran.join('; ')}\n${migrated.flatMap((m) => m.said).map((l) => `  ${l}`).join('\n')}`);
   if (done.orphans.length) console.log(`  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${done.orphans.map((f) => `    ${f}`).join('\n')}`);
