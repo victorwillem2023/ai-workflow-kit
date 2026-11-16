@@ -17,3 +17,5 @@ Cheap and read-only: a small/free model is enough. Change no file. Follow CLAUDE
    of. When the question needs a design judgment or more than three files, say so and suggest asking the stronger model.
 
 Never read the paths under *Never read* in CLAUDE.md.
+
+**This project's own**: when `.claude/project/find.md` exists, read it before you start: it holds this project's own steps and rules for /find, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

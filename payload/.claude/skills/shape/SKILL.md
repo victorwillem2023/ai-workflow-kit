@@ -42,3 +42,5 @@ answered on the card or in `docs/PRODUCT.md`.
      and sign-in before anything is saved), then `npm run board -- --graph` shown to the owner: the order of work is that tree.
    - Shaping a card: say what it needs first and write it (`npm run board -- --depends <n> <m>`).
 5. **Report** in two lines: the verdict and the labels set. Next step: `/spike <n>` for the riskiest assumption, or `/work <n>`.
+
+**This project's own**: when `.claude/project/shape.md` exists, read it before you start: it holds this project's own steps and rules for /shape, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

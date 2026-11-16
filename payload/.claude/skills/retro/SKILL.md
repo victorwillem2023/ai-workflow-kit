@@ -21,3 +21,5 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
    change, with its source and cost), offered, never pushed. And whether `docs/company/ROADMAP.md`'s sign for the next stage shows.
 5. Write three lines at the top of `docs/PRODUCT.md`, *What we learned*, when the week taught something about the product
    (not about the workflow: that goes through `/lesson`). Commit only when the owner says so ("Docs: the retro of week <n>").
+
+**This project's own**: when `.claude/project/retro.md` exists, read it before you start: it holds this project's own steps and rules for /retro, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

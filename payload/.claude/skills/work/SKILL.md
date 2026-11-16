@@ -70,3 +70,5 @@ For the others, write the specs
 **one after another in this chat** (shared context is cheaper than parallel spec agents; do not fan out `/spec`). Show each spec, then
 stop: the owner opens a new chat and types `/build a b c` (typing it is the yes for each; a spec with an open question is left out),
 which checks for overlap, starts at most 3 builders at once and gives one summary. Feedback and `/ship` go one topic at a time. One card behaves exactly as above.
+
+**This project's own**: when `.claude/project/work.md` exists, read it before you start: it holds this project's own steps and rules for /work, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

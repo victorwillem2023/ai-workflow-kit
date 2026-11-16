@@ -16,3 +16,5 @@ Run from the folder whose changes you want checked (the main folder or a session
    (`grep -n`, `sed -n`), never whole files. Never read the paths under *Never read* in CLAUDE.md.
 3. **End with one line**: what to fix first. Don't fix it: that is for the session working on the change (`/work`).
    At most about 15 lines in all.
+
+**This project's own**: when `.claude/project/check.md` exists, read it before you start: it holds this project's own steps and rules for /check, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

@@ -70,3 +70,5 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
 Finished features wait on the local `main` until the owner runs `node scripts/session.mjs --push`; a new session starts from them.
 
 One spec, one feature, one commit. The spec file is deleted in the feature's commit (see /ship).
+
+**This project's own**: when `.claude/project/spec.md` exists, read it before you start: it holds this project's own steps and rules for /spec, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

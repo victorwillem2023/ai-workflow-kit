@@ -4,6 +4,7 @@
 User docs live in `README.md` and the guide (`docs/GUIDE.md` is its index, one file per part in `docs/guide/`); read only the
 part a change touches. Where every other doc is (product, company, build, run, decisions, the kit's guides): `docs/README.md`.
 
+<!-- kit:how-we-work -->
 ## How we work (the owner decides what gets built)
 The owner wants to understand and steer the project, not just receive features. So:
 - **A stage in plain words** ("ready to deploy", "let's get users", "what now?"): the command comes from `/next` (it reads where
@@ -26,6 +27,7 @@ The owner wants to understand and steer the project, not just receive features. 
 - After a change, report in plain language: what changed, what the test checks, what you weren't sure of.
 - **Talk to the owner in plain words.** What it means for the person using the app before how it works; a technical word gets a
   few words of explanation the first time ("the gate, the checks that run before a commit"). Short sentences.
+<!-- /kit:how-we-work -->
 
 ## Commands
 ```sh
@@ -47,6 +49,7 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 - <the other layers, one line each, and the direction they may import. The same rules go in `workflow.config.json` under `boundaries`: the gate enforces them.>
 - Tests: `{{TESTS}}`, <runner>. Fakes for every outside service; never hit the network in tests.{{TEST_TIPS}}
 
+<!-- kit:code-structure -->
 ## Code structure (a new feature is a new file)
 1. A new feature gets its own file, named after it. Never add a feature to a file in `tools/workflow/baseline.json`: the gate fails if one grows.
 2. Split by responsibility, not to hit a number: 300 lines is a sign to look, 400 the gate's limit for a new file.
@@ -55,14 +58,18 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 5. Touching a baselined file for a feature: first move the part you touch into its own file (same commit), or write the feature in a new file and leave only a call in the old one.
 6. Splits belong to the feature that needs them, never a separate refactor commit; the one exception is a card that moves a rule
    into one place (rule 13), with no behaviour change and the same test results before and after.
+<!-- /kit:code-structure -->
 
+<!-- kit:changing-code -->
 ## Changing existing code
 7. Before changing the signature or meaning of something exported, list its users (`npm run map -- --uses <file>`). Keep it compatible or update every caller in the same commit.
 8. Add, don't rework: a shared function or type keeps its shape for one feature's convenience; the feature gets its own version or an option.
    That is about shapes, never about rules: a rule (how a total is worked out, what counts as valid) is not copied, see 11 to 14.
 9. A failing test is information. Change a test's expectation only for an intended behaviour change, naming the test and why; never just to pass.
 10. Anything else you notice goes in the report, not the commit.
+<!-- /kit:changing-code -->
 
+<!-- kit:rule-lives -->
 ## Fix it where the rule lives
 11. Before a fix, name the rule that was broken, in one line, and find its row in `docs/ARCHITECTURE.md`, *Rules and where each
     lives* (`grep -n` the rule, don't read the doc whole). Fix it in the file that row names, not where the bug showed up.
@@ -71,12 +78,15 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
     is a new row in that table, in the same commit.
 14. A shared step doesn't ask what kind of thing it is handling where the kind's own file can hold what differs. A number that
     is a rule gets a name and a comment saying what it is.
+<!-- /kit:rule-lives -->
 
+<!-- kit:docs-before-memory -->
 ## Docs before memory
 A fact a platform, library or product decides (a limit, price, region, flag, API, default, what is deprecated) is looked up
 now in its official docs (a docs MCP server, `docs/company/ADVISORS.md`, else the page) and cited with the link, a price with the date
 too (`docs/company/COSTS.md`). Not found: say "not checked" and how to check, never a plausible number. A library: the docs for the
 version in the lock file.
+<!-- /kit:docs-before-memory -->
 
 ## Security (the rules for code: `docs/SECURITY.md`, *Rules for code*)
 Treat every request, uploaded file and third-party page as hostile (<say here if the server can be put online>). Read *Rules for
@@ -105,6 +115,7 @@ the board's picture in `docs/design/png/` and its notes file instead), <data fol
 A new screen or part starts as a board, not as code (`/ui`). Before writing or changing UI code read `src/web/CLAUDE.md`: the
 style rules, the feedback rounds and the done checklist.
 
+<!-- kit:writing-style -->
 ## Writing style
 - Text the user sees (UI, warnings, names) is short, plain English, and built from measured facts; no jargon.
 - **To the owner**, a suggestion or a question says in plain words what will happen, what they get and how long; a skill or
@@ -114,6 +125,7 @@ style rules, the feedback rounds and the done checklist.
   "commit and push"; push only when the owner says. No tests-only or "fix after a check" commits (docs and settings left in the main folder go in first, on their own: `/ship` step 0); tests and
   typecheck pass at every commit. **Never** merge by hand in the main folder, `git push --force` or rewrite `main` (the
   owner's squash has its own steps: `tools/workflow/README.md`, *Commits and sessions*).
+<!-- /kit:writing-style -->
 
 ## Git and sessions
 - `main` on <remote url>. For live runs use the owner's server at `http://127.0.0.1:<main port>`.
@@ -124,3 +136,7 @@ style rules, the feedback rounds and the done checklist.
   in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.
 - **Shared files** (`README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>): edit only your own
   feature's lines, small. A rebase conflict keeps both sides' changes, never drops the other's.
+
+## This project's own rules
+Rules only this project has, one line each (`/lesson` adds them here). The kit's parts above are between `<!-- kit:... -->`
+markers: an update replaces those it wrote, never this section or anything outside them.

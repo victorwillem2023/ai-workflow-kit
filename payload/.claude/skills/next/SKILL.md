@@ -59,3 +59,5 @@ long; the command after it in brackets, never as the choice itself:
 - a security alert: "A package the app uses has a known security hole: update it first (minutes). (npm run updates)"
 - an update to look at: "An update needs you: helm 3.16 to 3.22, a tool the checks never run. Try it once, then take it
   (minutes). (npm run updates)"
+
+**This project's own**: when `.claude/project/next.md` exists, read it before you start: it holds this project's own steps and rules for /next, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

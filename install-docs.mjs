@@ -162,10 +162,59 @@ const RULES_THAT_CHANGED = [
   [/No docs-only,(\s+)tests-only or(\s+)"fix after a check" commits/, 'No tests-only or$2"fix after a check" commits (notes left in the main folder go in first, on their own: /ship)',
     'the "no docs-only commits" rule: /ship commits the notes left in the main folder on their own', 'commits.notes'],
 ];
-export function rewriteChangedRules({ target }) {
+const BLOCK = /<!-- kit:([\w-]+) -->\n[\s\S]*?\n<!-- \/kit:\1 -->/g;
+/** The kit's marked parts of a CLAUDE.md text: Map name -> the whole block, markers included. */
+const kitBlocks = (text) => new Map([...text.matchAll(BLOCK)].map((m) => [m[1], m[0]]));
+/** The section under `heading` (its "## " line up to the next one), without the blank lines after it; null when not there. */
+const sectionAt = (text, heading) => {
+  const at = text.search(new RegExp(`^${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
+  if (at < 0) return null;
+  const rest = text.slice(at);
+  const end = rest.slice(1).search(/\n## |\n<!-- kit:/);
+  return (end < 0 ? rest : rest.slice(0, end + 1)).replace(/\n+$/, '');
+};
+
+/**
+ * The kit's parts of CLAUDE.md (between `<!-- kit:name -->` markers in starter/CLAUDE.md) brought up to date, and nothing else.
+ * A part is replaced only when it is exactly what the kit of the project's version wrote (that version's starter/CLAUDE.md from
+ * the kit's git tag, filled in the same way, with the doc paths before and after the 2.9 move): so a part the owner changed stays
+ * theirs and is named. A project from before the markers gets them the same way, section by section; when the kit has no tag for
+ * the project's version (a copy without git), nothing is touched and that is said. Returns the lines for the report.
+ */
+function updateKitBlocks({ target, kit, fill, text }) {
+  const said = [];
+  const mark = existsSync(join(target, '.workflow-kit')) ? readFileSync(join(target, '.workflow-kit'), 'utf8') : '';
+  const version = /^version=(.+)$/m.exec(mark)?.[1]?.trim();
+  const fresh = kitBlocks(fill(readFileSync(join(kit, 'starter', 'CLAUDE.md'), 'utf8')));
+  if (!version || !fresh.size) return { text, said };
+  const old = spawnSync('git', ['show', `v${version}:starter/CLAUDE.md`], { cwd: kit, encoding: 'utf8' });
+  if (old.status !== 0) return { text, said: [`its kit parts were left as they are (the kit here has no tag v${version} to compare them with)`] };
+  const was = fill(old.stdout.replace(/\r\n/g, '\n'));
+  const crlf = text.includes('\r\n');
+  let now = text.replace(/\r\n/g, '\n');
+  const theirs = [];
+  for (const [name, block] of fresh) {
+    const heading = block.split('\n')[1];
+    const mine = kitBlocks(now).get(name);
+    // what the kit of the project's version wrote for this part: its marked block, or (before the markers) its section
+    const before = kitBlocks(was).get(name) ?? sectionAt(was, heading);
+    const current = mine ?? (before ? sectionAt(now, before.replace(/^<!-- kit:[\w-]+ -->\n/, '').split('\n')[0]) : null);
+    if (!current || !before || current === block) continue;
+    const plain = (t) => t.replace(/^<!-- kit:[\w-]+ -->\n|\n<!-- \/kit:[\w-]+ -->$/g, '');
+    if ([plain(before), movePaths(plain(before))].includes(plain(current))) now = now.replace(current, block);
+    else theirs.push(heading.replace(/^## /, ''));
+  }
+  if (now !== text.replace(/\r\n/g, '\n')) said.push('its kit parts brought up to date (between the <!-- kit: --> markers)');
+  if (theirs.length) said.push(`kept as you changed them: ${theirs.join('; ')} (the kit's text for them is in starter/CLAUDE.md)`);
+  return { text: crlf ? now.replace(/\n/g, '\r\n') : now, said };
+}
+
+export function rewriteChangedRules({ target, kit, fill }) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(claude)) return [];
   let text = readFileSync(claude, 'utf8');
+  const blocks = kit && fill ? updateKitBlocks({ target, kit, fill, text }) : { text, said: [] };
+  text = blocks.text;
   const configAt = join(target, 'workflow.config.json');
   let notes;
   try { notes = JSON.parse(readFileSync(configAt, 'utf8')).commits?.notes; } catch { notes = undefined; }
@@ -186,7 +235,7 @@ export function rewriteChangedRules({ target }) {
     text = text.replace(old, now); changed.push(what);
   }
   if (text !== readFileSync(claude, 'utf8')) writeFileSync(claude, text);
-  return changed;
+  return [...blocks.said, ...changed];
 }
 
 /** A stage now entered: CLAUDE.md (the project's own, never replaced) gets its "comes with the ... stage" mentions back as links. */

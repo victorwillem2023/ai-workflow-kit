@@ -39,3 +39,5 @@ panel looks at the project as it is and names the three changes it would make fi
    with why on the owner's word: the question, the options, the board's table, the sources, the cost, the consequences, and
    *Reopen when*. An `ai` decision is `docs/decisions/<date>-ai.md` even when the answer is "none for now" (then `/next` stops asking), and each use taken becomes a card through `/idea`. A roadmap decision also updates `docs/company/ROADMAP.md`; a buy-or-host one adds its line to `docs/company/COSTS.md`.
    The cards it needs come from `/idea`. No commit from this skill: the record goes in with the first card that builds it.
+
+**This project's own**: when `.claude/project/advise.md` exists, read it before you start: it holds this project's own steps and rules for /advise, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

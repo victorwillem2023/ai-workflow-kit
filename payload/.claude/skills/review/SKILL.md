@@ -25,3 +25,5 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    - **Would the owner understand it?** Names and comments say what a thing does; nothing is cleverer than it needs to be.
 3. Report as a short list, worst first, in plain words with one example each. Say "nothing found" when that is true.
    Do not suggest extra features or clean-ups.
+
+**This project's own**: when `.claude/project/review.md` exists, read it before you start: it holds this project's own steps and rules for /review, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

@@ -45,3 +45,5 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
    subagent for the same topic. Ask it to keep the diff small and to change only presentation code for UI feedback. A round
    that changes what it does is handed over again (`try-it.md`, step 3).
 7. Never commit or finish. When the owner says it is done, run `/ship <topic>` (it works in the session folder).
+
+**This project's own**: when `.claude/project/build.md` exists, read it before you start: it holds this project's own steps and rules for /build, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

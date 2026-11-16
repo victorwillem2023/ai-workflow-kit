@@ -43,6 +43,9 @@ function makeItTheirs(dir) {
   cfg.house = { note: 'a setting the kit has never heard of' };
   writeFileSync(at, `${JSON.stringify(cfg, null, 2)}\n`);
   appendFileSync(join(dir, 'CLAUDE.md'), '\n## Our own rules\n- Routes are checked by hand on the map before a release.\n');
+  // and changed one of the kit's own sections: that one must stay theirs, the rest may be brought up to date
+  const claudeAt = join(dir, 'CLAUDE.md');
+  writeFileSync(claudeAt, readFileSync(claudeAt, 'utf8').replace(/^## Writing style.*$/m, (h) => `${h}\n- Say "ride", never "trip".`));
   mkdirSync(join(dir, 'notes'), { recursive: true });
   writeFileSync(join(dir, 'notes', 'ROUTES.md'), '# Routes\n\nHow we pick a route, in our own words.\n');
 }
@@ -88,7 +91,12 @@ export async function messyAtOldKit({ dir, kit, step, git, installArgs }) {
 /** What the update must leave of the project's own: the CLAUDE.md rule, the notes page, the setting the kit does not know. */
 export function ownWorkLost(dir) {
   const lost = [];
-  if (!readFileSync(join(dir, 'CLAUDE.md'), 'utf8').includes('Routes are checked by hand on the map')) lost.push('CLAUDE.md: the project\'s own rule');
+  const claude = readFileSync(join(dir, 'CLAUDE.md'), 'utf8');
+  if (!claude.includes('Routes are checked by hand on the map')) lost.push('CLAUDE.md: the project\'s own rule');
+  if (!claude.includes('Say "ride", never "trip".')) lost.push('CLAUDE.md: the project\'s line in the kit\'s Writing style');
+  if (claude.includes('<!-- kit:writing-style -->')) lost.push('CLAUDE.md: Writing style, which the project changed, was taken as the kit\'s');
+  // the kit's sections the project never touched are the kit's now, with their markers
+  for (const part of ['how-we-work', 'docs-before-memory']) if (!claude.includes(`<!-- kit:${part} -->`)) lost.push(`CLAUDE.md: the kit's ${part} was not brought up to date`);
   if (!existsSync(join(dir, 'notes', 'ROUTES.md'))) lost.push('notes/ROUTES.md');
   if (!JSON.parse(readFileSync(join(dir, 'workflow.config.json'), 'utf8')).house) lost.push('workflow.config.json: house');
   return lost;

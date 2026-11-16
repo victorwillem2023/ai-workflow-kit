@@ -45,3 +45,5 @@ start where `docs/market/MARKET.md` is still empty, in `docs/market/GROWTH.md`'s
 Every claim in a text that goes out is checked by the owner: what the product really does, prices, and anything about health
 (EU health-claims rules; an app that diagnoses or treats can be a medical device). No personal data of real users in drafts,
 prompts or reports: counts only. No commit from this skill: `docs/market/MARKET.md` goes in with the next card's commit.
+
+**This project's own**: when `.claude/project/market.md` exists, read it before you start: it holds this project's own steps and rules for /market, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

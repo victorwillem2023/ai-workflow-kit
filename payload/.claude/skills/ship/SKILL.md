@@ -54,3 +54,5 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
 8. When the spec has a *How we will know it worked* line, put it on the card: `gh issue comment <n> --repo <board.repo> --body-file <file>`
    ("Shipped. How we will know it worked: <sign>, look on <date>.").
 9. Report in plain language, with an example where a term is technical: what changed, what the tests check, what you were unsure of.
+
+**This project's own**: when `.claude/project/ship.md` exists, read it before you start: it holds this project's own steps and rules for /ship, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

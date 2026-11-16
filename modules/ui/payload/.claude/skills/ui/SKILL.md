@@ -105,3 +105,5 @@ row current.
 
 **Blocked** (waiting for the pick, an outside service, another card): `npm run board -- --block <n> "waiting for <what>"`. If the
 board cannot be reached, say so in one line and carry on.
+
+**This project's own**: when `.claude/project/ui.md` exists, read it before you start: it holds this project's own steps and rules for /ui, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

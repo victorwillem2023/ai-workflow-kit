@@ -35,3 +35,5 @@ self-hosted, this platform or that), say so and offer `/advise` with the options
    it at this stage (`docs/company/ROADMAP.md`). Offer the next step: `/shape` it, a `/spike` for the unknown part, `/advise` for a
    choice with real trade-offs (the panel gets this estimate's numbers), or `/spec` when it is clear. On the owner's yes, put the estimate as a comment on the card
    (`gh issue comment <n> --body-file <file>`), headed **Estimate** with the date.
+
+**This project's own**: when `.claude/project/estimate.md` exists, read it before you start: it holds this project's own steps and rules for /estimate, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

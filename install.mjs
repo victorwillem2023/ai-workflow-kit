@@ -258,7 +258,7 @@ if (update) pruneStageCopies({ target, stageSkipped, untouched, hash, stamp, don
 if (stageSkipped.size) keepNamedStageDocs({ target, stageSkipped, hash, stamp, done });
 nameHelpersInCodeDocs({ target, done });
 unmarkEnteredStages({ target, stages });
-const rulesRewritten = update ? rewriteChangedRules({ target }) : [];
+const rulesRewritten = update ? rewriteChangedRules({ target, kit, fill }) : [];
 
 // a module's own section of CLAUDE.md (modules/<name>/claude-section.md): added once, at the end. "Once" is remembered in
 // .workflow-kit (sections=), so a section the owner renamed, rewrote or took out is never added again; a project from before that
@@ -372,7 +372,7 @@ if (update) {
   if (addedSettings.length) console.log(`  settings added to workflow.config.json: ${addedSettings.join(', ')}`);
   if (claudeAdded.length) console.log(`  rules added to .claude/settings.local.json: ${claudeAdded.join(', ')}`);
   if (lfHint) console.log(lfHint);
-  if (rulesRewritten.length) console.log(`  CLAUDE.md: the kit's own old wording brought up to date (${rulesRewritten.join('; ')})`);
+  if (rulesRewritten.length) console.log(`  CLAUDE.md: the kit's own text brought up to date, yours left as it is (${rulesRewritten.join('; ')})`);
   if (done.yours.length && !written.size) console.log('  this project has no record yet of what the kit wrote (it was installed before 1.5), so every file that differs is listed below; from now on only the ones you changed are.');
   if (done.removed.length) console.log(`  removed ${done.removed.length} the kit no longer ships (unchanged since it wrote them):\n${done.removed.map((f) => `    ${f}`).join('\n')}`);
   if (done.stageNamed.length) console.log(`  kept from a stage not reached yet, because the project's own pages point at them: ${done.stageNamed.join(', ')}`);

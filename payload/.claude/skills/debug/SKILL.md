@@ -29,3 +29,5 @@ only asked why.
    `doing` or `cause`, a path that logged nothing, a catch that swallowed the error (CLAUDE.md, *Requests, errors and logs*).
 6. **Report**: the cause, the evidence, the test, and the fix or the card. If the same kind of problem could hide elsewhere,
    name where, and offer `/lesson` when it is a rule worth keeping.
+
+**This project's own**: when `.claude/project/debug.md` exists, read it before you start: it holds this project's own steps and rules for /debug, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

@@ -29,3 +29,5 @@ The weekly run (`.github/workflows/secops.yml`) writes the report; this skill tu
    the test first, the gate, the owner tries it, one commit on "done"); anything larger becomes a card (`/idea` with the finding,
    the label `bug` and `area` from the file). Then a comment on the report issue: what was decided for each finding.
 5. **Write it down**: a fixed or accepted finding gets its line in `docs/SECURITY.md` (*Fixed*, or *Known gaps* with the card).
+
+**This project's own**: when `.claude/project/secops.md` exists, read it before you start: it holds this project's own steps and rules for /secops, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).
