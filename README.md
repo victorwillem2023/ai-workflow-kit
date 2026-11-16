@@ -10,9 +10,10 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v2.10.x` tag** (now `v2.10.0`). 2.8 was frozen until a real project shipped its first cards on it; 2.9 is
-> what that project taught (the docs in folders, and in 2.9.1 a folder only once its stage is reached). The same rule holds: a new
-> part, guide or skill comes from a real project running into its lack, never ahead of one.
+> **Build on the latest `v3.x` tag** (now `v3.0.0`). 3.0 puts the kit's own files under one folder, `workflow/`, so the root is
+> the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
+> apps. An older project moves over by itself on its next update. The rule from 2.8 holds: a new part, guide or skill comes from a
+> real project running into its lack, never ahead of one.
 
 ```sh
 git clone https://github.com/victorwillem2023/ai-workflow-kit
@@ -143,38 +144,51 @@ A web app: make it with its framework's own starter first (`npm create vite@late
 the kit into that folder. `/setup` recommends the framework when you haven't picked one.
 
 ```sh
-cd my-new-project            # a git repo with package.json
-node ../ai-workflow-kit/install.mjs . --project "My App" --repo myname/my-app
-# only some parts:  ... --modules security,testing      an app that calls a language model:  ... --with ai
-# as lean as you like:  ... --lean   (only the build loop)    ... --lean --with tidy,shape,ai   (and just these)
-npm i -D tsx typescript @types/node@^26 knip @biomejs/biome # + @happy-dom/global-registrator with the ui module; the installer prints the exact line
+cd my-new-project            # a git repo (an existing codebase is fine: see below)
+node ../ai-workflow-kit/install.mjs . --dry-run     # what it would add, change and keep; nothing is written
+node ../ai-workflow-kit/install.mjs .               # the name, the repo and the language come from the project; give
+                                                    # --project "My App" --repo owner/name when it has no GitHub remote
+npm i -D tsx typescript @types/node@^26 knip @biomejs/biome # the installer prints the exact line for the parts you took
 ```
-**Lean**: `--lean` installs only the build loop: the gate, the board, the map, sessions, and the skills `/setup`, `/next`,
-`/idea`, `/work`, `/spec`, `/build`, `/ship`, `/review`, `/check`, `/find`, `/docs`, `/debug` and `/lesson`, with no modules (`--modules`
-names any you want). Every other part is one word with `--with`: `shape`, `spike`, `tidy`, `estimate`, `advise` (with `/arch`),
-`launch`, `market`, `retro`, `secops` (the skill and the Monday report), `setup-check` (the workflow that proves `docs/SETUP.md`),
-and the modules (`ai`, `ui`, `cluster`, ...). Each skill is something every agent reads about in every chat, so fewer is cheaper.
-The choice is remembered: `--update --with retro` adds one later, `--update --full` takes every part, and a part or module that
-is left out is removed on the update when you never changed its files.
+**Profiles**: how much of the kit a project takes, with `--profile <name>` (the default is product):
+
+| Profile | What it is |
+|---|---|
+| `minimal` | the gate and its checks only: no commands, no board, no sessions, no CLAUDE.md. The safety net and nothing else. |
+| `solo` | the build loop: `/setup` `/next` `/idea` `/work` `/spec` `/build` `/ship` `/review` `/check` `/find` `/docs` `/debug` `/lesson`, the board, sessions, the stop points (was `--lean`) |
+| `product` | solo and the stages: `/shape` `/spike` `/tidy` `/estimate` `/advise` `/launch` `/market` `/retro` `/secops`, and every module |
+| `team` | product, with pull requests, a required review and the team roles (`workflow/guides/TEAM.md`) |
+
+`--with <part>` adds one (`--with ai`, `--with retro`), `--without <part>` leaves one out (`--without market,ui`). Each skill is
+something every agent reads about in every chat, so fewer is cheaper. The record (`workflow/record`) keeps the choice; running with
+another profile moves the project there, and what a profile leaves out is taken away when you never changed it.
+
+**Running it again** is how you update: the same command, no flags needed, keeps every choice and changes only what the kit
+changed. **`--uninstall`** takes the kit out (`--uninstall --dry-run` first): its files as it wrote them, its parts of CLAUDE.md,
+its hooks and scripts; a kit file you changed stays and is named, and what became yours (the config, your docs) stays.
+
+**Where it all is**: the kit's own files are under `workflow/` (`config.json`, `record`, `tools/`, `scripts/`, `tests/`, `guides/`,
+`specs/`); `.claude/` (the skills and settings) stays at the root because Claude Code reads it there. A project from before 3.0 is
+moved over by its next update, with git, and the old paths in its own text follow.
 The installer also writes `.opencode/commands/` and `opencode.jsonc`. Then open Claude Code (or OpenCode) in the
 project and type **`/setup`**. It reads the code, asks you about the app, the layers, where outside
 data comes in and the board's areas, then writes `CLAUDE.md`, `workflow/config.json`, `docs/GUIDE.md` and `docs/ARCHITECTURE.md`,
 runs `npm run board -- --init` (labels, the GitHub project, its columns) and the gate, and stops for your yes before one commit.
 After that: type `/next` whenever you are not sure; it tells you which command (the first time: `/idea`, then `/work <n>`).
 
-**Is a project behind the kit, or ahead of it?** `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --check` lists
-the machinery files that differ or are missing and changes nothing.
+**Is a project behind the kit, or ahead of it?** `node ../ai-workflow-kit/install.mjs . --check` lists the machinery files that
+differ or are missing and changes nothing.
 
-**Bringing an existing project up to the kit, keeping its own changes**: `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --update`.
-A machinery file the project never changed is replaced by the kit's new one; one the project changed is kept and listed (compare,
-then `--take <path,path>` takes the kit's); missing files are added; a file the kit no longer ships (renamed or removed) is
-taken out when the project never changed it, and listed when it did; settings the kit has and the project lacks are added to
-`workflow/config.json`, nothing in it is changed. Then `npm run map`, `node workflow/tools/gate.mjs --update-baseline` (what the new
-checks find today becomes the baseline, so only new cases fail) and `npm run gate:all`. A project installed before 1.5 has no
-record of what the kit wrote, so the first time every differing file is listed.
+**An existing project** (its own code, its own CLAUDE.md): the same command. Files of yours at a place the kit also writes are kept
+and named, the kit's rule sections are added at the end of your CLAUDE.md between markers (your text stays), and
+`workflow/guides/TAKEOVER.md` is the path from there: today's state as the baseline, tests around old code before changing it.
 
-**Updating** a project to a newer kit, taking all of the kit's machinery: `git pull` in the kit, then `node ../ai-workflow-kit/install.mjs . --project ... --repo ... --force`.
-It replaces the machinery (skills, tools, scripts) and never your starter files; `workflow/record` in the project says which version it has.
+**Updating to a newer kit**: `git pull` in the kit, then run the installer in the project again. A kit file the project never
+changed is replaced; one it changed is kept and listed (compare, then `--take <path,path>` takes the kit's, `--take all` takes
+everything); missing files are added; settings the kit has and the project lacks are added to `workflow/config.json`, nothing in
+it is changed; the steps since the project's version run once (`migrations/`), and the update says what changed for you. Then
+`npm run map`, `node workflow/tools/gate.mjs --update-baseline` and `npm run gate:all`. `--force` replaces all the machinery
+(never your starter files) and still keeps your choices.
 
 ## Agents and models
 - **Claude Code**: the skills as they are. `/idea /check /find /docs` say `model: haiku`; the flow runs on your chosen model.

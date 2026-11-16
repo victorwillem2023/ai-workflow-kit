@@ -2,6 +2,22 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.0.0**: **the kit's own files are under `workflow/`**, so the project's root is the project's: `workflow/config.json` (was
+  `workflow.config.json`), `workflow/record` (`.workflow-kit`), `workflow/tools/` (`tools/workflow/`), `workflow/tests/`
+  (`tests/workflow/`), `workflow/scripts/` (the kit's scripts that were in `scripts/` among the project's own), `workflow/guides/`
+  (`docs/workflow/`) and `workflow/specs/` (`specs/`); `.claude/` stays at the root. An older project moves over on its next update
+  (`migrations/3.0.0`: with git, its own text, config, tsconfig, test scripts, lint command and Renovate pattern following; a
+  project from before 2.9 gets the docs move in the same pass). **Profiles**: `--profile minimal` (the gate and its checks only),
+  `solo` (the build loop, was `--lean`), `product` (everything, the default), `team` (product with pull requests and a review);
+  `--with` and `--without` adjust one, and running with another profile moves the project there. **`--uninstall`** takes the kit
+  out again, its own files as it wrote them and its parts of CLAUDE.md, settings and scripts, keeping everything the project
+  changed or wrote. **Several apps in one repository**: `apps` and `shared` in the config, and the gate runs each reached app's
+  typecheck and tests in its own folder; `/setup` decides the shape from the answers. **Extras**: a main branch with another name
+  (`git.main`), and gitleaks over what a change adds when it is installed (the `leaks` check). **Skill scenarios**:
+  `scripts/skilltest.mjs` runs Claude Code headless on a throwaway project for `/ship` before "done", `/next`, `/docs` and
+  `/lesson` and checks what it did (all four pass for real, about $0.13 a run; by hand or the `skilltest` workflow), and a stand-in
+  agent proves each check catches a misbehaving one. Found by the self-test on the way: a path rewrite that took hours on a long
+  line with no spaces, and a written file looked for with "/" where Windows lists "\" (a new Python project never got its checks).
 - **2.10.0**: **the installer converges**: the same command gives the same result on a new project, an existing one or one that
   has the kit. `.workflow-kit` now holds every choice (also the language, the name, the repo and the prefix), so running the
   installer again updates (a flag changes only its own choice; `--force` replaces the machinery and keeps the choices), and what
