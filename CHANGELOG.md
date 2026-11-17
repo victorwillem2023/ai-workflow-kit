@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.0.3**: **the gate's audit checks what ships** (`npm audit --audit-level=high --omit=dev`). A dev tool's advisory with
+  no fix yet (picomatch, through knip and Vite) failed every TypeScript project's gate for code no user runs; the weekly security
+  scan (OSV-Scanner on the lock files) and Dependabot's alerts still report the dev tools, and /next shows a security alert first.
+  An update changes the audit check only where it is still the kit's own command. **A test file that fails as a whole says why**:
+  the quiet reporter shows its exit code and the last lines it wrote to stderr, not only "test failed". **Fixes from the full
+  self-test**: a session test still expected the `gate:all` wording; the serve test checks a port is free on every address, not
+  only 127.0.0.1; the production module's shutdown test waits until the shutdown is done instead of a fixed 60 ms.
 - **4.0.2**: **the portal's front page says it in a few words.** Each item is a short title with its command as a chip, not a
   sentence with brackets: "Errors you can see" with where it is done under it, "Look back on the 3 changes shipped" with `/retro`
   and "10 minutes", "4 in progress, the limit is 2" with "Finish one first", "#106 and #105 look the same", "#382 and #392 score

@@ -2,6 +2,8 @@
 // run costs a few tokens instead of a line per test (the default prints one line per test).
 //   node --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs
 // `npm run test:full` keeps the default, line-per-test output.
+import { resolve } from 'node:path';
+
 const MAX_FAILURES = 40; // a broken import can fail hundreds of tests the same way: show the first, count the rest
 const MAX_LINES = 12;    // lines of one failure's message
 
@@ -14,16 +16,32 @@ export function failureText(data) {
   return `FAIL ${data.name}${where}\n    ${message}\n`;
 }
 
+/**
+ * A whole file that failed with no test of its own failing ("test failed": a hook, an error after the tests, a process that
+ * exited non-zero) says nothing by itself: its exit code and the last lines it wrote to stderr say why.
+ */
+export function fileFailureText(data, stderr = '') {
+  const err = data.details?.error;
+  const code = err?.exitCode ?? err?.cause?.exitCode;
+  const tail = String(stderr).split(/\r?\n/).filter((l) => l.trim()).slice(-MAX_LINES).join('\n    ');
+  return `${failureText(data).trimEnd()}${code != null ? ` (exit code ${code})` : ''}${tail ? `\n    its stderr:\n    ${tail}` : ''}\n`;
+}
+
 export default async function* quietReporter(source) {
   const totals = {};
+  const stderr = new Map(); // file -> what it wrote to stderr, for a file that fails as a whole
+  // (its stderr names the file as it was given, its failure by the full path: one key for both)
+  const key = (f) => resolve(f).replace(/\\/g, '/').toLowerCase();
   let failures = 0;
   for await (const event of source) {
     const data = event.data ?? {};
+    if (event.type === 'test:stderr' && data.file) stderr.set(key(data.file), `${stderr.get(key(data.file)) ?? ''}${data.message ?? ''}`.slice(-8000));
     if (event.type === 'test:fail') {
       // a file or suite that failed only because a test inside it did is not a failure of its own
       if (data.details?.error?.failureType === 'subtestsFailed') continue;
       failures++;
-      if (failures <= MAX_FAILURES) yield failureText(data);
+      const wholeFile = data.file && data.name && data.name.replace(/\\/g, '/').endsWith(data.file.replace(/\\/g, '/').split('/').pop());
+      if (failures <= MAX_FAILURES) yield wholeFile ? fileFailureText(data, stderr.get(key(data.file))) : failureText(data);
     } else if (event.type === 'test:diagnostic' && !data.nesting) {
       const m = /^(tests|pass|fail|cancelled|skipped|todo|duration_ms) (\S+)/.exec(String(data.message));
       if (m) totals[m[1]] = m[2];

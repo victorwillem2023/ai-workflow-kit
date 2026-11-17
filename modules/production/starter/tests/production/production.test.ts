@@ -126,7 +126,8 @@ describe('health, readiness and stopping', () => {
     });
     handlers.SIGTERM();
     assert.equal((await readyAnswer({}, state)).status, 503, 'not ready from the first moment');
-    await new Promise((r) => setTimeout(r, 60));
+    // until it has exited (the steps run on timers, which a busy machine runs late), at most two seconds
+    for (let i = 0; i < 200 && exited === undefined; i++) await new Promise((r) => setTimeout(r, 10));
     assert.deepEqual(order, ['server closed', 'database closed']);
     assert.equal(exited, 0);
   });

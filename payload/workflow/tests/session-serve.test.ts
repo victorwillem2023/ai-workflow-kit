@@ -12,10 +12,13 @@ const SERVER = `const fs=require('fs');const port=Number(/^PORT=(\\d+)\\s*$/m.ex
 fs.writeFileSync(process.argv[2],String(process.pid));require('http').createServer((q,s)=>s.end('ok')).listen(port,'127.0.0.1');`;
 const pids: string[] = [];
 
-const isFree = (port: number) => new Promise<boolean>((ok) => {
+// free on 127.0.0.1 and on every address: on Windows a port can be free on the first while another test's server holds it on
+// the second (the cleanup tests' servers listen on every address), and a request to 127.0.0.1 then reaches that server
+const freeOn = (port: number, host?: string) => new Promise<boolean>((ok) => {
   const s = createServer().once('error', () => ok(false)).once('listening', () => s.close(() => ok(true)));
-  s.listen(port, '127.0.0.1');
+  if (host) s.listen(port, host); else s.listen(port);
 });
+const isFree = async (port: number) => (await freeOn(port, '127.0.0.1')) && freeOn(port);
 let nextPort = 8970 + PORTS;
 /** A session `a` with a dev script that serves "ok" on a free port of its own. */
 async function withDev(dev: boolean): Promise<Repo> {

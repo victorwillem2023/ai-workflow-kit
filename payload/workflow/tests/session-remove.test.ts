@@ -95,7 +95,7 @@ describe('cleaning up after a session', () => {
     assert.ok(existsSync(r.wt('a')), 'the folder is kept');
     assert.match(done.out, /checks were skipped/i);
     assert.match(done.out, /Stopped the dev server on port \d+ \(\d+ process(?:es)?\)/, 'its server is stopped all the same');
-    assert.match(done.out, /npm run gate:all[\s\S]*--clean --yes/);
+    assert.match(done.out, /npm run gate:ship[\s\S]*--clean --yes/);
     await waitFor(() => !alive(server.child), 'its server to stop');
     const cleaned = run(r, '--clean', '--yes');
     assert.ok(cleaned.ok, cleaned.out);

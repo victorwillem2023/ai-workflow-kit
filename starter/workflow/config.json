@@ -51,7 +51,7 @@
     { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched .", "when": ["src/**", "tests/**", "biome.json"] },
     { "name": "leaks", "command": "node workflow/tools/leaks.mjs", "all": true },
     { "name": "unused", "command": "node workflow/tools/unused.mjs", "all": true },
-    { "name": "audit", "command": "npm audit --audit-level=high", "all": true },
+    { "name": "audit", "command": "npm audit --audit-level=high --omit=dev", "all": true },
     { "name": "infra", "command": "node workflow/tools/infracheck.mjs", "when": ["deploy/helm/**", "infra/**"] },
     { "name": "page weight", "command": "node workflow/tools/perfbudget.mjs", "when": ["src/web/**", "package.json", "vite.config.*", "next.config.*"] }
   ],

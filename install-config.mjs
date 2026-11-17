@@ -7,7 +7,7 @@ import { dirname, join, relative } from 'node:path';
 import { moduleNeeds } from './install-choices.mjs';
 
 // the commands the kit's own checks had before, by name: a project still on one of them gets the new one on --update
-export const OLD_COMMANDS = { unused: ['npx --no-install knip --no-progress'] };
+export const OLD_COMMANDS = { unused: ['npx --no-install knip --no-progress'], audit: ['npm audit --audit-level=high'] };
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 
 /**

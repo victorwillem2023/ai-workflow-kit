@@ -206,8 +206,8 @@ describe('migrations', () => {
     assert.deepEqual(due('2.8.5', 'before').map((s) => s.version), ['2.9.0', '2.9.3']);
     assert.deepEqual(due('2.9.1', 'before').map((s) => s.version), ['2.9.3'], 'a project at 2.9.1 still gets the correction');
     assert.deepEqual(due('2.9.3', 'before'), [], 'a project at 2.9.3 has its docs where they belong');
-    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0', '3.4.3']);
-    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0', '3.4.3'], 'a project at 3.2.1 gets the knip.json and notes fix');
+    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0', '3.4.3', '4.0.3']);
+    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0', '3.4.3', '4.0.3'], 'a project at 3.2.1 gets the knip.json and notes fix');
     const versions = STEPS.map((s) => s.version);
     assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
     for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
@@ -254,6 +254,19 @@ describe("the gate's settings are not code (3.4.3)", () => {
     assert.deepEqual(step.run({ target: d }).said, [], 'once');
     writeFileSync(join(d, 'workflow/config.json'), '{ "baseline": "b.json" }\n');
     assert.deepEqual(step.run({ target: d }).said, []);
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('the audit checks what ships (4.0.3)', () => {
+  it('the kit\'s audit check gets --omit=dev once; a project\'s own audit command stays', async () => {
+    const { default: step } = await import('../migrations/4.0.3-audit-what-ships.mjs');
+    const d = folder({ 'workflow/config.json': '{\n  "checks": [{ "name": "audit", "command": "npm audit --audit-level=high", "all": true }]\n}\n' });
+    assert.equal(step.run({ target: d }).said.length, 1);
+    assert.equal(JSON.parse(readFileSync(join(d, 'workflow/config.json'), 'utf8')).checks[0].command, 'npm audit --audit-level=high --omit=dev');
+    assert.deepEqual(step.run({ target: d }).said, [], 'once');
+    writeFileSync(join(d, 'workflow/config.json'), '{ "checks": [{ "name": "audit", "command": "npm audit --audit-level=critical" }] }\n');
+    assert.deepEqual(step.run({ target: d }).said, [], "the project's own stays");
     rmSync(d, { recursive: true, force: true });
   });
 });

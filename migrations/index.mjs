@@ -13,8 +13,9 @@ import knipAndNotes from './3.3.0-knip-and-notes.mjs';
 import typecheckIncremental from './3.4.0-typecheck-incremental.mjs';
 import commandsByPhase from './3.4.3-commands-by-phase.mjs';
 import settingsNotCode from './3.4.3-settings-not-code.mjs';
+import auditWhatShips from './4.0.3-audit-what-ships.mjs';
 
-export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode];
+export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips];
 
 const parts = (v) => String(v).split('.').map(Number);
 /** a is older than b (2.9.7 < 2.9.10). */

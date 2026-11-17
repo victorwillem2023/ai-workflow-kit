@@ -56,3 +56,13 @@ test('a very long failure message is cut to its first lines', () => {
   const text = failureText({ name: 'n', details: { error: { message: Array.from({ length: 50 }, (_, i) => `line ${i}`).join('\n') } } });
   assert.equal(text.split('\n').length, 14);
 });
+
+test('a file that fails with no test of its own failing shows its exit code and the last lines it wrote to stderr', async () => {
+  const out = await run([
+    { type: 'test:stderr', data: { file: 'tests/notes.test.ts', message: 'EBUSY: resource busy or locked, rmdir session ~x\n' } },
+    { type: 'test:pass', data: { file: process.cwd() + '/tests/notes.test.ts', name: 'a test inside it' } },
+    { type: 'test:fail', data: { file: process.cwd() + '/tests/notes.test.ts', name: 'tests/notes.test.ts', details: { error: { message: 'test failed', exitCode: 1 } } } },
+    ...totals(1, 1),
+  ]);
+  assert.match(out, /FAIL tests\/notes\.test\.ts[^\n]*\n {4}test failed \(exit code 1\)\n {4}its stderr:\n {4}EBUSY: resource busy or locked/);
+});
