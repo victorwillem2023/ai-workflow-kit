@@ -2,6 +2,15 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.3.1**: **`map --check` passes on a Windows checkout.** With `core.autocrlf=true`, `workflow/record` has CRLF line endings,
+  so no line matched and the docs index lost its "(the kit's)" marks: the gate went red on map, on Windows only. A shared
+  `lines()` (`workflow/tools/lib/text.mjs`) splits on LF or CRLF, and the reads of checked-out files go through it (the gate's
+  advice on new files, the Renovate pin test, the kit's self-test). **`--finish` commits every page the map writes**: it
+  committed only `docs/MAP.md` after the rebase, so a docs index (or infra map, or generated block) it rewrote stayed in the
+  folder and the folder could not be removed; a rebase conflict in the file map stopped the same way when the map rewrote the
+  index too. Now all of it goes into the feature's commit. A folder that still cannot go no longer stops the finish: the
+  feature is on main, so the card is told and the folder is named with its `--remove`. The "commit first" stop says any
+  message will do (`--subject` puts the approved one on the commit).
 - **3.3.0**: **how strict the kit is, written down and yours: `workflow/levels.json`.** Three kinds of rule, each treated its
   own way. The safety stops (commit and push wait for your word, the sign-off, secrets, leaks, migrations, the AI wrapper, the
   image, the network, the packages, typecheck, tests) have no level: on, or the part is not installed. Each quality check
