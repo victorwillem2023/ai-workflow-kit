@@ -59,4 +59,14 @@ describe('serving a session for the owner to try', () => {
     assert.equal(out.ok, false);
     assert.match(out.out, /no "dev" script[\s\S]*try-it\.md/);
   });
+
+  it('a server that answers once and is gone a moment later is not said to run', async () => {
+    const r = await withDev(true);
+    // the same server, stopping itself 300 ms after its first answer (as one another session's --finish stopped)
+    writeFileSync(join(r.wt('a'), 'server.cjs'), SERVER.replace("s.end('ok')", "(s.end('ok'),setTimeout(()=>process.exit(0),300))"));
+    const out = run(r, '--serve', 'a');
+    assert.equal(out.ok, false, out.out);
+    assert.match(out.out, /The dev server answered at http:\/\/127\.0\.0\.1:\d+ and then stopped/);
+    assert.doesNotMatch(out.out, /The dev server runs/);
+  });
 });

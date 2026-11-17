@@ -33,6 +33,7 @@
 //   node workflow/scripts/session.mjs --commit-notes "<subject>"  the docs and settings left in the main folder (any .md, workflow/config.json,
 //                                               renovate.json, .claude/, .opencode/) as one commit of their own, after the quick gate passes; refuses code
 //   node workflow/scripts/session.mjs --serve <topic>    start the session's dev server in the background and wait until its link answers (for the owner's check)
+//   node workflow/scripts/session.mjs --catch-up <topic> bring a session onto main mid-build (main's fixes come in; nothing of the session's own work is committed)
 //   node workflow/scripts/session.mjs --list             the sessions, their ports and cards, and how many finished features are not pushed
 // node_modules is linked to the main folder's; .env is copied and given its own PORT plus the lines of "session.env" in
 // workflow/config.json ({main} in a value is the main folder: use it to share a big data folder instead of copying it).
@@ -42,7 +43,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkS
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder } from './session-stop.mjs';
 import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, stopServer, ensurePackages, rebaseOn, remakeMap, runChecks, gh } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, serve, onOf, branchExists, stackedOn, restack } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { sync, checkMain, commitNotes, carryNotes, serve, catchUpSession, onOf, branchExists, stackedOn, restack } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 async function make(topic, card, on) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
@@ -354,6 +355,7 @@ try {
   else if (a === '--commit-notes') commitNotes(textOf('--commit-notes'));
   else if (a === '--carry-notes' && b) carryNotes(b);
   else if (a === '--serve' && b) await serve(b);
+  else if (a === '--catch-up' && b) catchUpSession(b);
   else if (a === '--push') push({ noChecks: has('--no-checks') });
   else if (a === '--merge' && b) await merge(b);
   else if (a === '--remove' && b) remove(b);
@@ -361,7 +363,7 @@ try {
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> | --catch-up <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

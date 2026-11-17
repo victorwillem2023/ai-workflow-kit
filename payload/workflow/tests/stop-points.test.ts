@@ -11,6 +11,12 @@ describe('the stop points', () => {
     assert.deepEqual(allows('done, looks good'), { commit: true, push: false });
     assert.deepEqual(allows('Commit and push'), { commit: true, push: true });
     assert.deepEqual(allows('finish it'), { commit: true, push: false });
+    // "and" with other work after it: still the word, the other work is for after (it cost a round when it was refused)
+    assert.deepEqual(allows('finish it and make a card'), { commit: true, push: false });
+    assert.deepEqual(allows('done, and put the map idea on the board'), { commit: true, push: false });
+    // ...unless that work must come first
+    assert.deepEqual(allows('finish it and fix the header first'), { commit: false, push: false });
+    assert.deepEqual(allows('done and fix the footer before you commit'), { commit: false, push: false });
     assert.deepEqual(allows('not done yet, the button is wrong'), { commit: false, push: false });
     assert.deepEqual(allows("don't commit, I want to look first"), { commit: false, push: false });
     assert.deepEqual(allows('push it'), { commit: false, push: true });
@@ -93,6 +99,8 @@ describe('commands that get around the plain spelling', () => {
     for (const c of ['git cherry-pick abc', 'git revert HEAD', 'git am x.patch', 'git rebase main']) assert.equal(needsWord(c), 'commit', c);
     assert.equal(needsWord('git rebase --abort'), null);
     assert.equal(needsWord('gh pr merge 12 --squash'), 'push');
+    // bringing main into a session mid-build commits nothing of the session's own: no word needed (session.mjs --catch-up)
+    assert.equal(needsWord('cd ../app-a && node workflow/scripts/session.mjs --catch-up a'), null);
   });
 });
 

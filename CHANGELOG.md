@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.4.2**: **main comes into a session mid-build: `session.mjs --catch-up <topic>`.** A fast-forward when the session has no
+  commit of its own, a merge when it has (`--finish` squashes it away); the loose work stays as it was, `git add -N` files too (no
+  stash); a conflict stops it with nothing changed, one only in the map's pages is settled by making the map again. It commits
+  nothing of the session's own work, so it needs no "done"; the /build builder uses it instead of `git stash`, `git merge` or
+  `git rebase`, so a review no longer sees failures main has fixed. **"finish it and make a card" counts**: the stop points take
+  the word with other work after it, not when that work must come first ("and fix the header first"). **`--serve` asks again
+  3 s later** before it says the server runs; one that answered and stopped is said, with its last lines.
 - **3.4.1**: **a session's finish no longer stops another session's server.** The stop now checks whose server it is: the
   listener and the node/npm/tsx processes above it, by their command lines (and, on Linux and macOS, their working folders). One
   that names this session's folder is stopped; one that names another folder of the project (the main folder, another session:

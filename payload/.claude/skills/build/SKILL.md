@@ -34,7 +34,9 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
    > `<folder>/workflow/tools/README.md`, *What it checks*, only if a gate failure is unclear.
    > Work ONLY in `<folder>`: use absolute paths and start every Bash command with `cd <folder> &&`. Never edit the
    > main folder or another session's folder. Write the tests first, then the code. Run `npm run gate` until it passes. Update the spec's
-   > `## Status`. Do NOT commit, push or run `--finish`: the owner says when it is done. Start no dev server. If the change has no
+   > `## Status`. Do NOT commit, push or run `--finish`: the owner says when it is done. A failure main has fixed since (or a fix the
+   > spec needs from main): `cd <folder> && node workflow/scripts/session.mjs --catch-up <topic>` brings main in and leaves your
+   > work as it is; never `git stash`, `git merge` or `git rebase` yourself. Start no dev server. If the change has no
    > screen, write the try command `workflow/specs/<topic>.try.<ext>` (`.claude/skills/build/try-it.md`, step 1) and run it once.
    > Report in plain language: what changed, what each test checks, two or three examples with their real inputs and what they
    > give, the edge cases with what they give, what you were unsure of, anything noticed but left out of scope.

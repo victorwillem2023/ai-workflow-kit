@@ -28,8 +28,9 @@ const NOT = /\b(?:not|don'?t|do not|never|no|isn'?t|aren'?t|wait|hold on|stop)\b
 const YES = /^(?:y|yes|yep|yeah|ok|okay|sure|go|go ahead|do it|please do|sounds good|lgtm|approved|yes please|ok go)(?:\s*,?\s*(?:please|thanks|thank you|go ahead|do it|commit(?: it)?))?$/;
 const DONE = /\b(?:done|finish(?:ed)? it|commit(?: it| this| that| them| the change| the work)?|ship it|land it|merge it)\b/;
 const PUSH = /\bpush(?:ed)?\b/;
-// what may follow the word: nothing, a comma or a stop, small words, or the next stop point itself
-const ENDS = /^\s*(?:(?:now|then|please|thanks|thank you|already|too|here|for real|it|this|that|them)\b[\s,]*)*(?:$|[,!:)–-]|and (?:then )?(?:commit|ship|push|merge|finish|land)\b|so (?:commit|ship|push)\b)/;
+// what may follow the word: nothing, a comma or a stop, small words, or "and" with the next stop point or other work ("finish it
+// and make a card"); work that must come first ("and fix the header first", "and ... before you commit") takes it back (saidAt)
+const ENDS = /^\s*(?:(?:now|then|please|thanks|thank you|already|too|here|for real|it|this|that|them)\b[\s,]*)*(?:$|[,!:)–-]|and\b|so (?:commit|ship|push)\b)/;
 const PUSH_ENDS = /^\s*(?:(?:it|this|that|them|now|please|too|as well)\b[\s,]*)*(?:$|[,!:)–-]|and\b|the (?:branch|change|changes|commit|commits|work|code|session|pr)\b|to (?:origin|the remote|remote|main|github|the branch)\b)/;
 const NOUN_BEFORE = /\b(?:a|an|the|this|that|my|your|each|every|last|first|one)\s*$/;
 const unquoted = (text) => text.replace(/["“”][^"“”]*["“”]/g, ' ').replace(/(^|\s)'[^'\n]*'(?=[\s.,!?;]|$)/g, '$1 ');
@@ -56,6 +57,8 @@ function saidAt(plain, m, ends) {
     && !/\b(?:not|isn'?t|aren'?t) (?:yet )?done\b|\bnot finished\b/.test(plain)
     // "done, but the footer is still wrong": the rest takes it back
     && !/^[\s,;:–-]*(?:but|except|though|although|however|only|still|yet)\b|\b(?:but|except|still)\b.*\b(?:wrong|broken|off|missing|fix|change|left)\b/.test(after)
+    // "finish it and fix the header first": the other work comes before the finish, so it is not the word yet
+    && !/\band\b.*\b(?:first|before|beforehand)\b/.test(after)
     // "well done", "you said it was done", "I thought it was done": praise or someone else's word, not the owner's
     && !/\b(?:well|nicely|said|says|told me|thought|think|claimed|was|were)\s+(?:(?:it|that|this)\s+)?(?:(?:was|is)\s+)?$/.test(before);
 }
