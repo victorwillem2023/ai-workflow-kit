@@ -6,6 +6,9 @@
 export const KIT_TESTS = ['workflow/tests/**'];
 export const KIT_MACHINERY = ['workflow/**',
   'package.json', 'package-lock.json', '.claude/**', '.opencode/**', 'docs/flow/**'];
+// the owner's settings under workflow/: how strict the gate is, its baseline, the waiting specs. No kit test depends on them,
+// so changing one is not a machinery change (it ran the kit's tests, and with no test naming them, the whole suite)
+export const KIT_SETTINGS = ['workflow/levels.json', 'workflow/tools/baseline.json', 'workflow/specs/**'];
 const SKIPPED = 'the kit\'s own tests skipped: no machinery changed (GitHub runs them)';
 
 /**
@@ -16,7 +19,7 @@ const SKIPPED = 'the kit\'s own tests skipped: no machinery changed (GitHub runs
  */
 // (`skipKit`: the kit's self-test runs them once itself, WORKFLOW_KIT_TESTS=0 on its other gates: never due then)
 export function testPlan({ whole, unknown, reached, allTests, changed, forced, matches, kitTests = KIT_TESTS, kitMachinery = KIT_MACHINERY, maxFiles = 300, skipKit = false }) {
-  const kitDue = !skipKit && (forced || changed.some((f) => matches(f, kitMachinery)));
+  const kitDue = !skipKit && (forced || changed.some((f) => matches(f, kitMachinery) && !matches(f, KIT_SETTINGS)));
   const why = unknown && !whole ? ' (an unknown file changed)' : '';
   if (whole || unknown) {
     const own = allTests.filter((f) => !matches(f, kitTests)).sort();

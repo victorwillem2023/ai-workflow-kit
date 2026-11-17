@@ -206,8 +206,8 @@ describe('migrations', () => {
     assert.deepEqual(due('2.8.5', 'before').map((s) => s.version), ['2.9.0', '2.9.3']);
     assert.deepEqual(due('2.9.1', 'before').map((s) => s.version), ['2.9.3'], 'a project at 2.9.1 still gets the correction');
     assert.deepEqual(due('2.9.3', 'before'), [], 'a project at 2.9.3 has its docs where they belong');
-    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0']);
-    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0'], 'a project at 3.2.1 gets the knip.json and notes fix');
+    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0', '3.4.3']);
+    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0', '3.4.3'], 'a project at 3.2.1 gets the knip.json and notes fix');
     const versions = STEPS.map((s) => s.version);
     assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
     for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
@@ -224,6 +224,36 @@ describe('the typecheck keeps its notes (3.4.0)', () => {
     assert.deepEqual(step.run({ target: d }).said, [], 'once');
     writeFileSync(join(d, 'package.json'), '{ "scripts": { "typecheck": "tsc --noEmit && eslint ." } }\n');
     assert.deepEqual(step.run({ target: d }).said, [], "the project's own stays");
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe("CLAUDE.md's commands follow the phase (3.4.3)", () => {
+  it('drops "run before every commit" and turns the gate:all line into gate:ship, in the project\'s own words, once, never longer', async () => {
+    const { commandsByPhase } = await import('../migrations/3.4.3-commands-by-phase.mjs');
+    const old = ['## Commands', '```sh', 'npm test             # all tests, offline (fakes); prints only failures and a total. Run before every commit',
+      'npm run gate         # the checks', 'npm run gate:all     # the same with the whole suite: run before --finish. See workflow/tools/README.md', '```', ''].join('\n');
+    const r = commandsByPhase(old);
+    assert.equal(r.changed, true);
+    assert.match(r.text, /^npm test {13}# all tests, offline \(fakes\); prints only failures and a total$/m);
+    assert.match(r.text, /^npm run gate:ship {4}# what \/ship runs before --finish: the phase says how much/m);
+    assert.doesNotMatch(r.text, /gate:all|before every commit/);
+    assert.ok(r.text.length <= old.length, 'CLAUDE.md never grows: a project over its budget would fail for the kit\'s words');
+    assert.equal(commandsByPhase(r.text).changed, false, 'once');
+    assert.equal(commandsByPhase(readFileSync(join(kit, 'starter', 'CLAUDE.md'), 'utf8')).changed, false, 'the new starter is left alone');
+  });
+});
+
+describe("the gate's settings are not code (3.4.3)", () => {
+  it('levels.json and the baseline go on ignoreChanged once; a project without the list is left alone', async () => {
+    const { default: step } = await import('../migrations/3.4.3-settings-not-code.mjs');
+    const d = folder({ 'workflow/config.json': '{\n  "ignoreChanged": ["docs/**", "workflow/config.json"],\n  "baseline": "workflow/tools/baseline.json"\n}\n' });
+    assert.equal(step.run({ target: d }).said.length, 1);
+    const cfg = JSON.parse(readFileSync(join(d, 'workflow/config.json'), 'utf8'));
+    assert.deepEqual(cfg.ignoreChanged, ['docs/**', 'workflow/config.json', 'workflow/levels.json', 'workflow/tools/baseline.json']);
+    assert.deepEqual(step.run({ target: d }).said, [], 'once');
+    writeFileSync(join(d, 'workflow/config.json'), '{ "baseline": "b.json" }\n');
+    assert.deepEqual(step.run({ target: d }).said, []);
     rmSync(d, { recursive: true, force: true });
   });
 });

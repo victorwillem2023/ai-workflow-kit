@@ -193,8 +193,10 @@ default is `"chain"`.
 
 **What passed before** (`lib/testcache.mjs`): a picked test that passed on this computer with exactly the same code under it
 (the test, everything it imports, the lockfile, the tsconfigs, the config and any changed file the import graph cannot follow) is
-skipped, and the tests line says how many. Never for the whole suite (`--all`, `--ship` in pilot and production) or on GitHub;
-`--fresh` runs them anyway. The record is `.git/workflow-tests-passed.json`, this checkout's own. The
+skipped, and the tests line says how many. Not for the whole suite (`--all`, `--ship` in pilot and production) unless
+`"cache": "all"` in `workflow/levels.json` says so (the files still to run then go in batches of 300); never on GitHub;
+`--fresh` runs them anyway. Changing `workflow/levels.json`, the baseline or a spec runs neither the whole suite nor the kit's
+tests (`ignoreChanged`, and `KIT_SETTINGS` in `lib/testplan.mjs`). The record is `.git/workflow-tests-passed.json`, this checkout's own. The
 gate prints what is loosened on every run, `--advice` too, so a quiet project never looks cleaner than it is; `npm run levels`
 shows everything in force.
 

@@ -187,7 +187,7 @@ async function finish(topic, o) {
   if (!o.noChecks) { try { remove(topic); } catch (e) { console.log(`${e.message} The feature is on main; remove the folder later with: node workflow/scripts/session.mjs --remove ${topic}`); } }
   else {
     stopServer(dir);
-    console.log(`The checks were skipped (--no-checks), so ../${basename(dir)} is kept. After npm run gate:all passes on main, remove it with: node workflow/scripts/session.mjs --clean --yes`);
+    console.log(`The checks were skipped (--no-checks), so ../${basename(dir)} is kept. After npm run gate:ship passes on main, remove it with: node workflow/scripts/session.mjs --clean --yes`);
   }
   if (card && o.partial !== undefined) await sayPartial(card, `Finished on the local main: ${subject}. Still open: ${o.partial.trim()}`);
   else if (card) await moveAndSay(card, 'Waiting for your check', `Finished on the local main: ${subject}`);

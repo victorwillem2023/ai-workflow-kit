@@ -4,7 +4,7 @@
   "roots": ["src", "tests", "scripts", "tools", "workflow"],
   "skipFiles": [],
   "tests": "{tests,workflow/tests}/**/*.test.ts",
-  "ignoreChanged": ["docs/**", "**/*.md", ".claude/**", "workflow/specs/**", ".gitignore", "workflow/config.json"],
+  "ignoreChanged": ["docs/**", "**/*.md", ".claude/**", "workflow/specs/**", ".gitignore", "workflow/config.json", "workflow/levels.json", "workflow/tools/baseline.json"],
   "commands": {
     "typecheck": "npm run typecheck",
     "testAll": "npm test",

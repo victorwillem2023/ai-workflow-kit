@@ -256,15 +256,19 @@ let suiteSeconds = 0;
  * on this computer. Not for the whole suite (--all, --ship in pilot and production), --fresh or GitHub. null: run them all.
  */
 function passCache() {
-  if (plan.mode !== 'files' || wholeSuite || flag('--fresh') || process.env.CI || config.testPicking === false) return null;
+  if (flag('--fresh') || process.env.CI || config.testPicking === false || plan.mode === 'none') return null;
+  // the whole suite (--all, --ship in pilot and production) only with "cache": "all" in workflow/levels.json, the owner's choice
+  const whole = plan.whole || plan.mode === 'suite';
+  if (whole && levels.cache !== 'all') return null;
+  const candidates = plan.mode === 'suite' ? [...graph.files.keys()].filter(isTest).sort() : plan.files;
   const at = `${gitOk('rev-parse', '--git-dir') ?? '.git'}/workflow-tests-passed.json`;
   let passed = {};
   try { passed = JSON.parse(readFileSync(at, 'utf8')); } catch { passed = {}; }
   // what the graph does not show: the packages, the settings, and every changed file it cannot follow (a fixture, a stylesheet)
   const leaning = ['package-lock.json', 'tsconfig.json', 'tsconfig.gate.json', 'workflow/config.json', ...changed.filter((f) => !graph.files.has(f))];
   const salt = cacheSalt(leaning.map((f) => [f, readIf(f)]));
-  const keys = Object.fromEntries(plan.files.map((f) => [f, testKey(f, graph, salt)]));
-  const { run: toRun, skipped } = splitByCache(plan.files, keys, passed);
+  const keys = Object.fromEntries(candidates.map((f) => [f, testKey(f, graph, salt)]));
+  const { run: toRun, skipped } = splitByCache(candidates, keys, passed);
   return { run: toRun, skipped, save: () => { try { writeFileSync(at, JSON.stringify(recordPasses(passed, toRun, keys))); } catch { /* not kept: they run again */ } } };
 }
 const tail = (text) => text.trim().split('\n').slice(-config.failTailLines).join('\n');
@@ -405,9 +409,13 @@ const steps = [
     const cache = passCache();
     const files = cache ? cache.run : plan.files;
     if (cache && !files.length) return { ok: true, note: `${plan.note}; all ${cache.skipped.length} passed before with the same code (--fresh runs them)` };
-    // a language whose runner takes no file list (Go: `go test ./...`, testPicking false) runs its whole suite
-    const r = run(plan.mode === 'suite' || config.testPicking === false ? config.commands.testAll : `${config.commands.testFiles} ${files.join(' ')}`);
-    if (plan.whole) suiteSeconds = (Date.now() - t0) / 1000;
+    // a language whose runner takes no file list (Go: `go test ./...`, testPicking false) runs its whole suite; with the cache, the
+    // files still to run go in batches of 300 (a command line holds no more), each batch's files side by side
+    const batches = [];
+    for (let i = 0; i < files.length; i += 300) batches.push(files.slice(i, i + 300));
+    const r = !cache && (plan.mode === 'suite' || config.testPicking === false) ? run(config.commands.testAll)
+      : batches.reduce((acc, b) => (acc.ok ? run(`${config.commands.testFiles} ${b.join(' ')}`) : acc), { ok: true, out: '' });
+    if (plan.whole && !cache?.skipped.length) suiteSeconds = (Date.now() - t0) / 1000;
     if (cache && r.ok) cache.save();
     return { ...r, note: cache?.skipped.length ? `${plan.note}; ${cache.skipped.length} passed before with the same code` : plan.note };
   }],

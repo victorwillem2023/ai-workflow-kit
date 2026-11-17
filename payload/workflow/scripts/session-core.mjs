@@ -203,7 +203,7 @@ export function remakeMap(dir) {
 
 /** typecheck and test of the project in `dir`, if it has them. */
 export function runChecks(dir, again, since) {
-  // after a rebase: /ship's gate:all ran the whole suite already, so only what the rebase can have broken runs again, the quick gate
+  // after a rebase: /ship's gate:ship ran what the phase asks already, so only what the rebase can have broken runs again, the quick gate
   // on the feature's files and what came in under it (since = where it sat before); GitHub's gate runs the whole suite after the push
   const gate = join(dir, 'workflow', 'tools', 'gate.mjs');
   if (since && existsSync(gate)) {

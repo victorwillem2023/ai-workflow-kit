@@ -25,6 +25,13 @@ describe('the levels', () => {
     assert.equal(readLevels(null).ship, 'all', 'no file: production, the whole suite at /ship');
     assert.match(readLevels('{ "phase": "beta" }').problems[0], /"phase" is "beta"; it is one of prototype, pilot, production/);
   });
+  it('"reach" and "cache" are the owner\'s speed settings: off by default, said when on, and a wrong value is named', () => {
+    assert.deepEqual([readLevels(null).reach, readLevels(null).cache], ['chain', 'picked']);
+    const fast = readLevels('{ "phase": "production", "reach": "direct", "cache": "all" }');
+    assert.deepEqual([fast.reach, fast.cache], ['direct', 'all']);
+    assert.match(loosenedLine(fast), /tests reach direct .*tests cache all/);
+    assert.match(readLevels('{ "cache": "always" }').problems[0], /"cache" is "always"; it is one of picked, all/);
+  });
   it("the project's own lines win over the preset, a project check counts, and each is named", () => {
     const l = readLevels('{ "preset": "production", "checks": { "naming": "off", "e2e": "advise" } }', ['e2e']);
     assert.deepEqual([levelOf(l, 'naming'), levelOf(l, 'e2e')], ['off', 'advise']);

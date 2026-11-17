@@ -31,10 +31,11 @@ The owner wants to understand and steer the project, not just receive features. 
 
 ## Commands
 ```sh
-npm test             # all tests, offline; prints only failures and a total. Run before every commit
+npm test             # all tests, offline; prints only failures and a total (GitHub runs them all after every push)
 npm run typecheck    # must be clean
-npm run gate         # the checks and only the tests your change reaches (quiet when it passes)
-npm run gate:all     # the same with the whole suite: run before --finish (workflow/tools/README.md, *What it checks*)
+npm run gate         # the checks and only the tests your change reaches; run it while building (a test that passed with the same code is skipped)
+npm run gate:ship    # what /ship runs before --finish: the phase in workflow/levels.json says how much (workflow/tools/README.md, *What it checks*)
+npm run gate:all     # the whole suite, only when asked for
 <dev command>        # <the dev server; say what restarts by itself, so the agent never tells the owner to rebuild>
 <build command>      # <what it makes>
 ```

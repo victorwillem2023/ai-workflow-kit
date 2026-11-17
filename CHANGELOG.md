@@ -2,6 +2,14 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.4.3**: **the whole suite runs only when it is needed.** CLAUDE.md's Commands said "npm test ... Run before every commit"
+  and "gate:all ... run before --finish", so an agent ran everything whatever the phase: new projects get `npm run gate` while
+  building and `npm run gate:ship` for /ship, and an update rewrites those two lines in an existing CLAUDE.md by what they say (its
+  own wording kept, never longer). `workflow/levels.json` and the gate's baseline go on `ignoreChanged`, and with the specs they no
+  longer count as kit machinery: changing one runs neither the whole suite nor the kit's tests. **`"cache": "all"`** in
+  `levels.json` (off by default) lets `--all` and a pilot or production /ship skip what passed on this computer with the same code
+  (a second full run on a real project: 289 s to 25 s); GitHub runs everything. **The kit's slowest test files are split** in two,
+  so their halves run side by side (the slowest group 61 s to about 30 s).
 - **3.4.2**: **main comes into a session mid-build: `session.mjs --catch-up <topic>`.** A fast-forward when the session has no
   commit of its own, a merge when it has (`--finish` squashes it away); the loose work stays as it was, `git add -N` files too (no
   stash); a conflict stops it with nothing changed, one only in the map's pages is settled by making the map again. It commits

@@ -17,6 +17,8 @@ export const LEVELS = ['fail', 'advise', 'off'];
 export const SIZES = ['always', 'small', 'medium', 'large', 'never'];
 /** How far the gate looks for the tests a change reaches: every file that leans on it (chain), or only the tests importing it (direct). */
 export const REACH = ['chain', 'direct'];
+/** Which runs skip a test that passed on this computer with the same code: the picked tests only, or the whole suite too. */
+export const CACHE = ['picked', 'all'];
 
 /** The safety stops: no level, ever (the gate refuses a file that gives one). */
 export const SAFETY = ['secrets', 'leaks', 'signoff', 'migrations', 'ai', 'image', 'network', 'packages', 'typecheck', 'tests'];
@@ -42,7 +44,7 @@ export const PRESETS = {
 
 /**
  * The levels in force: { phase, preset (the same, its old name), checks: { name: level }, process: { spec, pitch, uiBoard },
- * ship: 'reached' | 'all', reach: 'chain' | 'direct', loosened: [line], problems: [line] }.
+ * ship: 'reached' | 'all', reach: 'chain' | 'direct', cache: 'picked' | 'all', loosened: [line], problems: [line] }.
  * `text` is workflow/levels.json (null when there is none: production); `projectChecks` the names of the config's own checks.
  */
 export function readLevels(text, projectChecks = []) {
@@ -72,10 +74,14 @@ export function readLevels(text, projectChecks = []) {
   // "reach": "direct" only the tests that import a changed file themselves (faster; GitHub still runs them all), the owner's choice
   const reach = file.reach ?? 'chain';
   if (!REACH.includes(reach)) problems.push(`${FILE}: "reach" is "${reach}"; it is one of ${REACH.join(', ')}`);
+  // "cache": "all": --all and a pilot or production /ship skip what passed with the same code here too (GitHub runs them all)
+  const cache = file.cache ?? 'picked';
+  if (!CACHE.includes(cache)) problems.push(`${FILE}: "cache" is "${cache}"; it is one of ${CACHE.join(', ')}`);
   const loosened = Object.entries(checks).filter(([, l]) => l !== 'fail').sort(([a], [b]) => a.localeCompare(b))
     .map(([n, l]) => `${n} ${l}${n in own ? '' : ` (phase ${preset})`}`)
-    .concat(reach === 'direct' ? ['tests reach direct (only the tests importing a changed file)'] : []);
-  return { phase: preset, preset, checks, process, ship: base.ship, reach: REACH.includes(reach) ? reach : 'chain', loosened, problems };
+    .concat(reach === 'direct' ? ['tests reach direct (only the tests importing a changed file)'] : [])
+    .concat(cache === 'all' ? ['tests cache all (the whole suite skips what passed with the same code on this computer)'] : []);
+  return { phase: preset, preset, checks, process, ship: base.ship, reach: REACH.includes(reach) ? reach : 'chain', cache: CACHE.includes(cache) ? cache : 'picked', loosened, problems };
 }
 
 /** The level of one gate step: a safety stop is always `fail`; a quality check its level, `fail` when none is given. */

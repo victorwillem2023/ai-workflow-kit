@@ -21,6 +21,11 @@ describe('which tests the gate runs', () => {
     }
     assert.equal(testPlan({ ...base, whole: true, forced: true }).mode, 'suite', 'GitHub, --kit, the kit\'s self-test');
   });
+  it('the owner\'s settings under workflow/ are not machinery: the kit\'s tests stay skipped', () => {
+    for (const changed of [['workflow/levels.json'], ['workflow/tools/baseline.json'], ['workflow/specs/x.md']]) {
+      assert.notEqual(testPlan({ ...base, whole: true, changed }).mode, 'suite', changed[0]);
+    }
+  });
   it('an unknown file runs the app\'s tests, not the whole suite with the kit\'s', () => {
     const p = testPlan({ ...base, unknown: true, changed: ['public/logo.png'] });
     assert.equal(p.mode, 'files');
