@@ -9,7 +9,8 @@ model: haiku
 Cheap and read-only: a small/free model is enough. Change no file, commit nothing, start no server.
 Run from the folder whose changes you want checked (the main folder or a session folder).
 
-1. **Run the checks**: `npm run gate`, or `npm run gate:all` when the argument is `all` or a feature is about to be finished.
+1. **Run the checks**: `npm run gate`, `npm run gate:all` when the argument is `all`, or `npm run gate:ship` when a feature is
+   about to be finished (what /ship runs: the phase in workflow/levels.json decides how much).
    The gate is quiet when it passes: then say "Gate passed." (or "Full gate passed.") and stop.
 2. **Explain each failure**, grouped when several are the same: which check (layers, file size, docs, typecheck, tests), the
    file and line, what it says in one plain sentence, and the likely cause in one more. Read only the lines around a failure

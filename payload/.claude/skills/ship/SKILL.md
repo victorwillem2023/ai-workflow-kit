@@ -25,7 +25,8 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
      into the session folder, so they go in with this feature's one commit; say so in one line, add them to the spec's files, and go on.
    Code left in the main folder still stops here.
 1. Read `workflow/specs/<topic>.md`.
-2. `npm run gate:all` must pass. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
+2. `npm run gate:ship` must pass (the phase decides how much it runs: the whole suite in pilot and production, the tests the
+   change reaches in a prototype; its last line says which). Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.
    For anything bigger than a small fix, have fresh eyes review it before the commit: start a subagent that has not seen this
    chat (the Task tool, on Opus: judging needs the strong model), with only this as its task: "Follow `.claude/skills/review/SKILL.md` for <topic>, in <the session

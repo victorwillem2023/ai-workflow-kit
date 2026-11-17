@@ -2,6 +2,23 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.4.0**: **phases: fast while you prototype, strict once people rely on it.** `workflow/levels.json` has a `phase`
+  (`preset` before, still read): `prototype`, `pilot` or `production`. Each sets the quality checks, the process weight and how
+  much `/ship` runs (`npm run gate:ship`: the tests the change reaches in a prototype, the whole suite in pilot and production;
+  GitHub runs everything after the push either way). The phase follows facts read from the project, never a reminder on a
+  timer: other people can open it or it keeps their personal data (pilot), it takes money or has a production address people
+  rely on (production). `npm run phase` shows the phase, the facts and what the next one still needs (`--ready`); /next shows it
+  in one quiet line and says a new fact once, and once when the phase is stricter than anything depends on. A deploy to a
+  production environment is refused until the phase is production (smoke and rollback always go); /launch says what that means
+  and what is missing. Only the owner switches. New projects start in prototype; a project without the file stays production.
+  **A faster gate while you build.** A picked test that passed on this computer with the same code under it is skipped (`--fresh`
+  runs it; never for the whole suite or on GitHub). `"reach": "direct"` picks only the tests that import a changed file. The
+  typecheck keeps its notes between runs (`--incremental`, `.tsbuildinfo`; an update changes a typecheck script still as the kit
+  wrote it). `--finish`, and `--push` when someone pushed meanwhile, run the quick gate on what the rebase can have broken, not the
+  whole suite again. **How many cards at once**: `/build a b c` starts `board.wip` topics when it is set (3 otherwise). **Fixes**:
+  an update no longer calls kit files the project's own when the project has a doc of a module it left out (its own
+  `docs/SECURITY.md` without the security module: five files listed on every update); the gate's advice test passes in a project
+  that loosens a check.
 - **3.3.1**: **`map --check` passes on a Windows checkout.** With `core.autocrlf=true`, `workflow/record` has CRLF line endings,
   so no line matched and the docs index lost its "(the kit's)" marks: the gate went red on map, on Windows only. A shared
   `lines()` (`workflow/tools/lib/text.mjs`) splits on LF or CRLF, and the reads of checked-out files go through it (the gate's

@@ -1,9 +1,10 @@
 {
   "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs \"{tests,workflow/tests}/**/*.test.ts\"",
   "test:full": "node --disable-warning=ExperimentalWarning --import tsx --test \"{tests,workflow/tests}/**/*.test.ts\"",
-  "typecheck": "tsc --noEmit",
+  "typecheck": "tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo",
   "gate": "node workflow/tools/gate.mjs",
   "gate:all": "node workflow/tools/gate.mjs --all",
+  "gate:ship": "node workflow/tools/gate.mjs --ship",
   "map": "node workflow/tools/map.mjs",
   "board": "node workflow/tools/board.mjs",
   "harness": "node workflow/tools/harness.mjs",
@@ -27,5 +28,6 @@
   "coverage": "node workflow/tools/coverage.mjs",
   "library": "node workflow/tools/library.mjs",
   "levels": "node workflow/tools/levels.mjs",
+  "phase": "node workflow/tools/phase.mjs",
   "surfaces": "node workflow/tools/surfaces.mjs"
 }

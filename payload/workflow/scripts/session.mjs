@@ -125,7 +125,7 @@ function drop(topic) {
  * The branch is squashed into one commit (a feature is one commit, whatever the number of rounds it took; the first commit's
  * message is kept, `--keep-commits` leaves a big rework's stages as they are), rebased on main (a conflict only in the file map
  * is solved by making the map again; any other stops it with nothing changed), the map is re-made into the same commit, checked
- * (typecheck and tests, unless --no-checks) and main moves forward. The main folder is never switched to another branch and
+ * (the quick gate on what the rebase can have broken, unless --no-checks: /ship ran the whole suite) and main moves forward. The main folder is never switched to another branch and
  * another session's branch or files in it are never touched: when it is on another branch, only the main ref moves.
  */
 /** The first word of a checkpoint commit's subject: work saved by --on, waiting for the owner's check, never a feature's subject. */
@@ -172,7 +172,7 @@ async function finish(topic, o) {
     if (git(dir, 'rev-parse', 'HEAD') !== original) git(dir, 'reset', '--hard', original);
     throw e;
   }
-  if (!o.noChecks) runChecks(dir, '--finish');
+  if (!o.noChecks) runChecks(dir, '--finish', base);
   const card = cardOf(topic);
   const subject = git(dir, 'log', '-1', '--format=%s');
   if (FLOW === 'pr') return openPullRequest(topic, dir, card, subject, o);
@@ -247,13 +247,14 @@ function push(o) {
   const tmp = join(dirname(main), `${PREFIX}-pushing`);
   if (existsSync(tmp)) throw new Error(`${tmp} is left from a push that was interrupted. Remove it (git worktree remove --force "${tmp}") and run --push again.`);
   const old = git(main, 'rev-parse', MAIN);
+  const met = git(main, 'merge-base', MAIN, ORIGIN_MAIN); // where the local features left origin: the quick gate looks from there
   git(main, 'worktree', 'add', '--detach', tmp, MAIN);
   try {
     symlinkSync(join(main, 'node_modules'), join(tmp, 'node_modules'), 'junction');
     console.log(`${ORIGIN_MAIN} has ${s.behind} new commit${s.behind === 1 ? '' : 's'}: replaying ${waiting(s.ahead.length)} on top.`);
     rebaseOn(tmp, ORIGIN_MAIN, 'Replaying the finished features on origin/main', { mapConflicts: true });
     remakeMap(tmp);
-    if (!o.noChecks) runChecks(tmp, '--push');
+    if (!o.noChecks) runChecks(tmp, '--push', met);
     const now = git(tmp, 'rev-parse', 'HEAD');
     try { git(tmp, 'push', 'origin', 'HEAD:main'); } catch (e) { throw refused(e); }
     if (git(main, 'branch', '--show-current') === MAIN) git(main, 'reset', '--keep', now);

@@ -74,7 +74,7 @@ export function writeScripts({ kit, target, prefix, lang, langs, modules, absent
   if (deps.react) gateCfg.compilerOptions.jsx = 'react-jsx';
   if (deps.vite) gateCfg.compilerOptions.types.push('vite/client');
   writeFileSync(join(target, 'tsconfig.gate.json'), JSON.stringify(gateCfg, null, 2) + '\n');
-  if (!own.typecheck) { pkg.scripts.typecheck = 'tsc --noEmit -p tsconfig.gate.json'; writePkg(); }
+  if (!own.typecheck) { pkg.scripts.typecheck = 'tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo -p tsconfig.gate.json'; writePkg(); }
   done.added.push('tsconfig.gate.json');
 }
 

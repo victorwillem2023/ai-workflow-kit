@@ -13,3 +13,5 @@ dist/
 *.tfstate
 *.tfstate.*
 .pulumi/
+# TypeScript's notes between typecheck runs (--incremental): this checkout's own, rebuilt when missing
+*.tsbuildinfo

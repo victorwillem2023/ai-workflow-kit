@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// What is in force from workflow/levels.json (lib/levels.mjs): the preset, each quality check's level, and from which card size
+// What is in force from workflow/levels.json (lib/levels.mjs): the phase, each quality check's level, and from which card size
 // a spec, a pitch and a UI board are needed. The skills ask here (/work, /spec, /ui); the owner changes the file, never an agent.
 //   npm run levels                 the levels, and what is loosened
 //   npm run levels -- --needs spec medium   yes or no: does a medium card need a spec? (spec, pitch, uiBoard; small, medium, large)

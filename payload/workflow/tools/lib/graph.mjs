@@ -257,7 +257,9 @@ export function buildGraph(files, others = [], { aliases = [] } = {}) {
 
 // Tests reached from the changed files through any chain of imports.
 // `all` is true when a change is not understood (so the safe answer is the whole suite).
-export function affectedTests(graph, changed, { isTest, ignore = [], isCode = (f) => CODE.test(f), naming = {} }) {
+// depth: how far up the imports to look (Infinity: every file that leans on the change, the default; 1: the tests that import a
+// changed file themselves, workflow/levels.json's "reach": "direct", faster and blind to a test that reaches it through a helper)
+export function affectedTests(graph, changed, { isTest, ignore = [], isCode = (f) => CODE.test(f), naming = {}, depth = Infinity }) {
   const tests = new Set();
   let all = false;
   const queue = [];
@@ -272,11 +274,12 @@ export function affectedTests(graph, changed, { isTest, ignore = [], isCode = (f
     if (named.length) named.forEach((f) => tests.add(f));
     else all = true;
   }
-  const seen = new Set(queue);
+  const seen = new Map(queue.map((f) => [f, 0]));
   while (queue.length) {
-    const f = queue.pop();
+    const f = queue.shift(); // breadth first, so each file gets its shortest distance
     if (isTest(f)) tests.add(f);
-    for (const up of graph.importedBy.get(f) ?? []) if (!seen.has(up)) { seen.add(up); queue.push(up); }
+    if (seen.get(f) >= depth) continue;
+    for (const up of graph.importedBy.get(f) ?? []) if (!seen.has(up)) { seen.set(up, seen.get(f) + 1); queue.push(up); }
   }
   return { tests: [...tests].sort(), all };
 }

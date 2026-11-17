@@ -10,8 +10,9 @@ import productionBack from './2.9.3-production-back.mjs';
 import unusedCommand from './2.9.7-unused-command.mjs';
 import notesRule from './2.9.8-notes-rule.mjs';
 import knipAndNotes from './3.3.0-knip-and-notes.mjs';
+import typecheckIncremental from './3.4.0-typecheck-incremental.mjs';
 
-export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes];
+export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental];
 
 const parts = (v) => String(v).split('.').map(Number);
 /** a is older than b (2.9.7 < 2.9.10). */

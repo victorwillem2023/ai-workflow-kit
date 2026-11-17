@@ -217,7 +217,8 @@ describe('security-review advice', () => {
   it('advice does not make the gate fail', () => {
     const r = spawnSync(process.execPath, ['workflow/tools/gate.mjs', '--advice', '--base', 'HEAD'], { encoding: 'utf8' });
     assert.equal(r.status, 0);
-    for (const l of r.stdout.split('\n').filter(Boolean)) assert.match(l, /^advice: /);
+    // the advice, and what is loosened when the phase loosens anything (a prototype does)
+    for (const l of r.stdout.split('\n').filter(Boolean)) assert.match(l, /^(advice: |levels \(workflow\/levels\.json, phase )/);
   });
 });
 
@@ -245,6 +246,7 @@ describe('hostile-input advice', () => {
   it('advice does not make the gate fail', () => {
     const r = spawnSync(process.execPath, ['workflow/tools/gate.mjs', '--advice', '--base', 'HEAD'], { encoding: 'utf8' });
     assert.equal(r.status, 0);
-    for (const l of r.stdout.split('\n').filter(Boolean)) assert.match(l, /^advice: /);
+    // the advice, and what is loosened when the phase loosens anything (a prototype does)
+    for (const l of r.stdout.split('\n').filter(Boolean)) assert.match(l, /^(advice: |levels \(workflow\/levels\.json, phase )/);
   });
 });

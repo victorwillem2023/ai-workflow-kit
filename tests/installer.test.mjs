@@ -175,6 +175,18 @@ describe('"(not installed)" marks', () => {
     assert.equal(readFileSync(join(d, 'docs/PRODUCT.md'), 'utf8'), 'Run `/shape 3` or /market (not installed); see `docs/run/LAUNCH.md` and npm run launch-check (not installed).\n');
     rmSync(d, { recursive: true, force: true });
   });
+  it('are not written for a doc the project has as its own, so an update does not take the kit\'s files for changed ones', () => {
+    // a project with its own docs/SECURITY.md and no security module (Trailsmith on 3.3.1: five kit files "changed" on every update)
+    const d = folder({ 'docs/SECURITY.md': '# Security: ours\n' });
+    spawnSync('git', ['init', '-q'], { cwd: d });
+    const installed = spawnSync(process.execPath, [join(kit, 'install.mjs'), d, '--repo', 'o/x', '--modules', 'none'], { encoding: 'utf8' });
+    assert.equal(installed.status, 0, installed.stderr);
+    assert.match(readFileSync(join(d, '.claude/skills/secops/SKILL.md'), 'utf8'), /`docs\/SECURITY\.md`/);
+    const updated = spawnSync(process.execPath, [join(kit, 'install.mjs'), d, '--update'], { encoding: 'utf8' });
+    assert.equal(updated.status, 0, updated.stderr);
+    assert.doesNotMatch(updated.stdout, /kept, because the project changed them/);
+    rmSync(d, { recursive: true, force: true });
+  });
 });
 
 describe('what changed for you', () => {
@@ -194,11 +206,25 @@ describe('migrations', () => {
     assert.deepEqual(due('2.8.5', 'before').map((s) => s.version), ['2.9.0', '2.9.3']);
     assert.deepEqual(due('2.9.1', 'before').map((s) => s.version), ['2.9.3'], 'a project at 2.9.1 still gets the correction');
     assert.deepEqual(due('2.9.3', 'before'), [], 'a project at 2.9.3 has its docs where they belong');
-    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0']);
-    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0'], 'a project at 3.2.1 gets the knip.json and notes fix');
+    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0']);
+    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0'], 'a project at 3.2.1 gets the knip.json and notes fix');
     const versions = STEPS.map((s) => s.version);
     assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
     for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
+  });
+});
+
+describe('the typecheck keeps its notes (3.4.0)', () => {
+  it('a typecheck script as an older kit wrote it gets --incremental; one the project changed stays', async () => {
+    const { default: step } = await import('../migrations/3.4.0-typecheck-incremental.mjs');
+    const d = folder({ 'package.json': '{\n  "scripts": {\n    "typecheck": "tsc --noEmit -p tsconfig.gate.json",\n    "dev": "vite"\n  }\n}\n' });
+    assert.equal(step.run({ target: d }).said.length, 1);
+    const pkg = JSON.parse(readFileSync(join(d, 'package.json'), 'utf8'));
+    assert.deepEqual(pkg.scripts, { typecheck: 'tsc --noEmit --incremental --tsBuildInfoFile .tsbuildinfo -p tsconfig.gate.json', dev: 'vite' });
+    assert.deepEqual(step.run({ target: d }).said, [], 'once');
+    writeFileSync(join(d, 'package.json'), '{ "scripts": { "typecheck": "tsc --noEmit && eslint ." } }\n');
+    assert.deepEqual(step.run({ target: d }).said, [], "the project's own stays");
+    rmSync(d, { recursive: true, force: true });
   });
 });
 

@@ -1,4 +1,4 @@
-// How strict the gate is (workflow/tools/lib/levels.mjs): presets the owner can read, a level per quality check, none for the
+// How strict the gate is (workflow/tools/lib/levels.mjs): phases the owner can read, a level per quality check, none for the
 // safety stops, and what is loosened said on every run.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +14,16 @@ describe('the levels', () => {
     const p = readLevels('{ "preset": "prototype" }');
     assert.equal(levelOf(p, 'untested'), 'advise');
     assert.equal(levelOf(p, 'layers'), 'fail', 'the layers keep failing');
-    assert.match(loosenedLine(p), /loosened .*untested advise \(preset prototype\)/);
+    assert.match(loosenedLine(p), /phase prototype\): loosened .*untested advise \(phase prototype\)/);
+    assert.equal(p.ship, 'reached', '/ship runs the tests the change reaches');
+  });
+  it('the three phases: "phase" is the name, "preset" still read; a pilot holds untested code and docs again', () => {
+    assert.deepEqual(['prototype', 'pilot', 'production'].map((ph) => readLevels(`{ "phase": "${ph}" }`).ship), ['reached', 'all', 'all']);
+    const pilot = readLevels('{ "phase": "pilot" }');
+    assert.deepEqual([levelOf(pilot, 'untested'), levelOf(pilot, 'docs'), levelOf(pilot, 'size')], ['fail', 'fail', 'advise']);
+    assert.equal(readLevels('{ "preset": "prototype" }').phase, 'prototype');
+    assert.equal(readLevels(null).ship, 'all', 'no file: production, the whole suite at /ship');
+    assert.match(readLevels('{ "phase": "beta" }').problems[0], /"phase" is "beta"; it is one of prototype, pilot, production/);
   });
   it("the project's own lines win over the preset, a project check counts, and each is named", () => {
     const l = readLevels('{ "preset": "production", "checks": { "naming": "off", "e2e": "advise" } }', ['e2e']);

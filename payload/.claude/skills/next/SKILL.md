@@ -19,7 +19,12 @@ Never offer a skill that is not installed as the next step.
 1. `npm run updates -- --short`: a security alert first; an update only when it needs the owner (its "to look at" part; the
    ones that merge by themselves are not the owner's job).
 2. `node workflow/tools/stage.mjs`: where the project is, from facts (a look back due, the roadmap empty, the first version built
-   and nowhere to run it, a card that must come before the first deploy). Each `stage:` line is a next step.
+   and nowhere to run it, a card that must come before the first deploy). Each `stage:` line is a next step. Then
+   `npm run phase -- --next`: its `phase:` line goes in your answer as it is, one quiet line, never a question. A line under it
+   is said once and is a next step in plain words: `New:` (a fact appeared) "people now <fact>: the checks could get stricter
+   (the pilot/production phase); I can show what is still missing"; `The facts fit ...` (the phase is stricter than anything
+   depends on) "a lighter phase would make shipping faster; the safety checks stay". The switch is the owner's, in
+   `workflow/levels.json`; never offer to make it, and never bring the phase up again when no such line is printed.
 3. `npm run board -- --next 3`: the cards to start, best first (the dependency graph first, then the owner's labels). A card that
    "starts on top of #m" does not wait for #m's check: say so. **A tie** ("#a, #b are equal"): never present the card number as
    an order; deciding it is a next step of its own (the board tidy-up asks it once and keeps the answer).

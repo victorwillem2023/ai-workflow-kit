@@ -46,6 +46,11 @@ in `docs/run/IAC.md`, releases and user testing in `docs/run/RELEASES.md`. Nothi
    it). Then the first deploy (`/ship` already released the image; the deploy workflow or the deploy script with `--env
    staging`), the smoke check, the first `npm run drill`, the uptime check and alert from `docs/run/MONITORING.md`. Production the
    same way after the owner tried staging. Ship the session with `/ship launch` when the owner says done.
+7. **The production phase.** A deploy to production is refused until `workflow/levels.json` says `"phase": "production"`. Say
+   once, in plain words, what that means: from this deploy on people rely on it, so the gate gets stricter and `/ship` runs the
+   whole suite. Show what is still missing (`npm run phase -- --ready production`) as cards to make, and that the switch is
+   theirs: they set the phase, then `node workflow/tools/gate.mjs --update-baseline` takes what the stricter checks find today as
+   the starting point (only new findings fail). Never edit the file yourself.
 
 Never apply, never run a deploy to production, never write a credential into a file. A destroy or replace of anything holding
 data stops the plan: it is the owner's decision, with a backup first.

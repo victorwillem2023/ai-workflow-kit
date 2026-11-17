@@ -202,7 +202,16 @@ export function remakeMap(dir) {
 }
 
 /** typecheck and test of the project in `dir`, if it has them. */
-export function runChecks(dir, again) {
+export function runChecks(dir, again, since) {
+  // after a rebase: /ship's gate:all ran the whole suite already, so only what the rebase can have broken runs again, the quick gate
+  // on the feature's files and what came in under it (since = where it sat before); GitHub's gate runs the whole suite after the push
+  const gate = join(dir, 'workflow', 'tools', 'gate.mjs');
+  if (since && existsSync(gate)) {
+    console.log(`the quick gate on what changed since ${since.slice(0, 7)} (the whole suite ran at /ship) …`);
+    const r = spawnSync(process.execPath, [gate, '--base', since], { cwd: dir, stdio: 'inherit' });
+    if (r.status !== 0) throw new Error(`The quick gate fails after the rebase. Fix it in ${dir} and run ${again} again. Nothing was pushed.`);
+    return;
+  }
   const scripts = existsSync(join(dir, 'package.json')) ? JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts ?? {} : {};
   for (const step of ['typecheck', 'test']) {
     if (!scripts[step]) continue;

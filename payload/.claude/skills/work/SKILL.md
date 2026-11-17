@@ -60,7 +60,7 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    link, or a try command for a change without a screen; plain words, examples, their own numbers, edge cases) and move the card
    to *Waiting for your check*. Feedback goes to the same builder (`/build` step 6). "continue" or "ok" is not "done": ask.
 5. **Finish only when the owner says done** ("commit and push", "finish it"): `/ship <topic>` (for a small bug without a
-   spec, the same steps: `gate:all`, one commit, `node workflow/scripts/session.mjs --finish <topic>`). Then move the card to *Done*.
+   spec, the same steps: `gate:ship`, one commit, `node workflow/scripts/session.mjs --finish <topic>`). Then move the card to *Done*.
 
 **Waiting for another card** is a dependency, not a block: `npm run board -- --depends <n> <m>` (the card stays where it is and
 `--next` offers it once #m is done), say so in one line, and stop. **Blocked** (waiting for the owner or an outside service):
@@ -74,6 +74,6 @@ them all), which are **stacked** (one starts on top of the other, its spec's "St
 For the others, write the specs
 **one after another in this chat** (shared context is cheaper than parallel spec agents; do not fan out `/spec`). Show each spec, then
 stop: the owner opens a new chat and types `/build a b c` (typing it is the yes for each; a spec with an open question is left out),
-which checks for overlap, starts at most 3 builders at once and gives one summary. Feedback and `/ship` go one topic at a time. One card behaves exactly as above.
+which checks for overlap, starts at most `board.wip` builders at once (3 when it is not set) and gives one summary. Feedback and `/ship` go one topic at a time. One card behaves exactly as above.
 
 **This project's own**: when `.claude/project/work.md` exists, read it before you start: it holds this project's own steps and rules for /work, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

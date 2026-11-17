@@ -7,11 +7,15 @@
 //   node workflow/scripts/deploy.mjs --smoke              only ask the running app: is it up, and which version
 //   node workflow/scripts/deploy.mjs --rollback [<commit>]  put an older version back (default: the one deployed before, from this computer's list)
 //   --env <name>                                 any of the above for that environment (deploy.environments.<name>: staging, production)
+// A production environment (--env production) is refused until the phase is production (workflow/levels.json, npm run phase).
 // Only when the owner says so. Refuses uncommitted files and a commit that is not on origin/main: what runs is a commit you can find again.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fill, healthUrl, ask, waitFor, previous, watchDeploy } from '../tools/lib/deploy.mjs';
+import { FILE as LEVELS_FILE, readLevels } from '../tools/lib/levels.mjs';
+import { deployRefusal } from '../tools/lib/phase.mjs';
+import { isProductionEnv } from '../tools/lib/production.mjs';
 
 const args = process.argv.slice(2);
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -25,6 +29,11 @@ if (envName && !all.environments?.[envName]) stop(`No "${envName}" under deploy.
 const { environments: _envs, ...shared } = all;
 const cfg = envName ? { ...shared, ...all.environments[envName] } : shared;
 if (!cfg.url) stop('Not set up yet: put "deploy": { "url": ..., "command": ..., "rollback": ... } in workflow/config.json (docs/run/DEPLOY.md says how).');
+// a production deploy goes only in the production phase (lib/phase.mjs); --smoke and --rollback always may: they only look or go back
+if (envName && isProductionEnv(envName) && !args.includes('--smoke') && !args.includes('--rollback')) {
+  const refused = deployRefusal(readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null).phase);
+  if (refused) stop(refused);
+}
 
 const url = healthUrl(cfg.url, cfg.health);
 const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(10_000) }); return { status: r.status, body: await r.text() }; };

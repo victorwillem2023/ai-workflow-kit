@@ -65,20 +65,24 @@ const absentDocs = absent.flatMap(([p, paths]) => paths.filter((x) => /^(?:docs|
 // npm scripts that run a tool of a part left out (launch-check without market): not added to package.json, and not pointed at
 const scriptTool = (cmd) => /node (workflow\/tools\/[\w./-]+\.mjs)/.exec(cmd)?.[1];
 const absentScripts = Object.entries(JSON.parse(readFileSync(join(kit, 'starter', 'package-scripts.json'), 'utf8'))).filter(([, cmd]) => scriptTool(cmd) && skippedPart(scriptTool(cmd))).map(([name]) => name);
+// a doc already in the project, before this run copies anything (the kit's parts and modules left out do not write theirs)
+const theirs = (doc) => existsSync(join(target, doc));
 function markAbsent(text) {
   if (!absent.length && !stageDocs.length && !moduleDocs.length) return text;
   let t = text;
   // a doc of a stage not reached yet: no backticks (the docs check would take it for a missing file), and the command that brings it
   for (const [doc, stage, by] of stageDocs) t = t.replaceAll(`\`${doc}\``, `${doc} (comes with the ${stage} stage: ${by})`);
-  // a doc of a module left out (a lean project has no security, ui or production module): the same, with the module that brings it
-  for (const [doc, m] of moduleDocs) t = t.replaceAll(`\`${doc}\``, `${doc} (with the ${m} module, not installed)`);
+  // a doc of a module left out (a lean project has no security, ui or production module): the same, with the module that brings it.
+  // Not when the project has that doc as its own (its docs/SECURITY.md without the security module): the link is real, and the
+  // update's unmarking (unmarkInstalled) would put it back after the stamp, so every update would call the file the project's own
+  for (const [doc, m] of moduleDocs) if (!theirs(doc)) t = t.replaceAll(`\`${doc}\``, `${doc} (with the ${m} module, not installed)`);
   if (absentSkills.length) {
     const names = absentSkills.join('|');
     t = t.replace(new RegExp(`\`/(${names})\\b([^\`\\n]*)\``, 'g'), (m) => `${m} (not installed)`);
     t = t.replace(new RegExp(`(^|[\\s("'])/(${names})\\b(?![\\w-]| \\(not)`, 'gm'), '$1/$2 (not installed)');
   }
   // a guide of the kit's library says where to read it and how to bring it in (lib/library.mjs)
-  for (const [doc, part] of absentDocs) t = t.replaceAll(`\`${doc}\``, part in LIBRARY ? `${doc} (in the kit's library: npm run library -- --show ${part}; --add ${part} brings it in)` : `${doc} (with the ${part} part, not installed)`);
+  for (const [doc, part] of absentDocs) if (!theirs(doc)) t = t.replaceAll(`\`${doc}\``, part in LIBRARY ? `${doc} (in the kit's library: npm run library -- --show ${part}; --add ${part} brings it in)` : `${doc} (with the ${part} part, not installed)`);
   if (absentScripts.length) t = t.replace(new RegExp(`\`(npm run (?:${absentScripts.join('|')})\\b[^\`\\n]*)\``, 'g'), '$1 (not installed)');
   return t;
 }

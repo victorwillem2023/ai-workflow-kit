@@ -2,9 +2,12 @@
 // The gate: one command that checks a change with scripts, no AI. Quiet when it passes (one line per
 // check), and on a failure it prints only the short tail that explains it, so reading it costs few tokens.
 //   node workflow/tools/gate.mjs            layer rules, file size, typecheck, tests the change can reach
-//   node workflow/tools/gate.mjs --all      the same, with the whole test suite (before --finish)
+//   node workflow/tools/gate.mjs --all      the same, with the whole test suite
+//   node workflow/tools/gate.mjs --ship     what /ship runs: the whole suite in the pilot and production phases, the tests the
+//                                           change reaches in a prototype (workflow/levels.json; npm run phase)
 //   --kit                     also the kit's own tests (workflow/tests/**), which otherwise run only when the machinery changed or on GitHub
 //   node workflow/tools/gate.mjs --list     only print which tests the change reaches
+//   --fresh       run the picked tests even when they passed before with the same code (lib/testcache.mjs: skipped otherwise)
 //   node workflow/tools/gate.mjs --update-baseline   accept today's exceptions (rules and sizes) as the baseline
 //   --allow-growth "<reason>"   with --update-baseline: accept a bigger number (a pure refactor); the reason is printed
 //   (project steps from the config: `checks`, `together`, `copies`; a secret in the change fails too. See README.md, *What it checks*)
@@ -19,6 +22,7 @@ import { errorRuleFindings, notRead } from './lib/errorrules.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests, projectAliases } from './lib/graph.mjs';
+import { cacheSalt, recordPasses, splitByCache, testKey } from './lib/testcache.mjs';
 import { findViolations, newViolations } from './lib/boundaries.mjs';
 import { oversize, sizeVerdict, updateSizes, sizeNote } from './lib/size.mjs';
 import { globToRegExp, matchesAny } from './lib/glob.mjs';
@@ -47,6 +51,10 @@ const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
 const baseArg = args.includes('--base') ? args[args.indexOf('--base') + 1] : null;
+// the levels in force (workflow/levels.json); --ship is /ship's run: the whole suite in pilot and production, the tests the change
+// reaches in a prototype (lib/levels.mjs, the phase's `ship`)
+const levels = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
+const wholeSuite = flag('--all') || (flag('--ship') && levels.ship === 'all');
 
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim();
 // a git call that may fail (no origin yet, say): no output on stderr, null instead
@@ -210,18 +218,18 @@ function guardLines() {
 }
 /** --advice: only the advice lines, and what is loosened (workflow/levels.json), so the short run never looks cleaner. */
 function adviceOnly() {
-  const lv = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
-  console.log([...adviceLines(), ...depsLines(), ...guardLines(), ...(lv.loosened.length ? [loosenedLine(lv)] : [])].join('\n'));
+  console.log([...adviceLines(), ...depsLines(), ...guardLines(), ...(levels.loosened.length ? [loosenedLine(levels)] : [])].join('\n'));
   process.exit(0);
 }
 if (flag('--advice')) adviceOnly();
 
 const changed = changedFiles();
-const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming });
+// "reach": "direct" in workflow/levels.json: only the tests that import a changed file themselves (never for the whole suite)
+const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming, depth: levels.reach === 'direct' && !wholeSuite ? 1 : Infinity });
 // a language whose tests the gate cannot pick by file (`testPicking: false`): the whole suite, unless only docs changed
 if (config.testPicking === false) { reach.all = changed.some((f) => !matchesAny(f, config.ignoreChanged)); reach.tests = []; }
 // which tests run (lib/testplan.mjs): the kit's own only when the machinery changed, on GitHub, with --kit or WORKFLOW_KIT_TESTS
-const plan = testPlan({ whole: flag('--all'), unknown: reach.all, reached: reach.tests, allTests: [...graph.files.keys()].filter(isTest), changed,
+const plan = testPlan({ whole: wholeSuite, unknown: reach.all, reached: reach.tests, allTests: [...graph.files.keys()].filter(isTest), changed,
   forced: Boolean(process.env.CI || (process.env.WORKFLOW_KIT_TESTS && process.env.WORKFLOW_KIT_TESTS !== '0')) || flag('--kit') || config.testPicking === false, matches: matchesAny,
   kitTests: config.kitTests, kitMachinery: config.kitMachinery, skipKit: process.env.WORKFLOW_KIT_TESTS === '0' });
 
@@ -243,6 +251,22 @@ if (flag('--list')) {
 }
 
 let suiteSeconds = 0;
+/**
+ * The tests that passed before with the same code under them (lib/testcache.mjs), skipped while you build: only for picked files,
+ * on this computer. Not for the whole suite (--all, --ship in pilot and production), --fresh or GitHub. null: run them all.
+ */
+function passCache() {
+  if (plan.mode !== 'files' || wholeSuite || flag('--fresh') || process.env.CI || config.testPicking === false) return null;
+  const at = `${gitOk('rev-parse', '--git-dir') ?? '.git'}/workflow-tests-passed.json`;
+  let passed = {};
+  try { passed = JSON.parse(readFileSync(at, 'utf8')); } catch { passed = {}; }
+  // what the graph does not show: the packages, the settings, and every changed file it cannot follow (a fixture, a stylesheet)
+  const leaning = ['package-lock.json', 'tsconfig.json', 'tsconfig.gate.json', 'workflow/config.json', ...changed.filter((f) => !graph.files.has(f))];
+  const salt = cacheSalt(leaning.map((f) => [f, readIf(f)]));
+  const keys = Object.fromEntries(plan.files.map((f) => [f, testKey(f, graph, salt)]));
+  const { run: toRun, skipped } = splitByCache(plan.files, keys, passed);
+  return { run: toRun, skipped, save: () => { try { writeFileSync(at, JSON.stringify(recordPasses(passed, toRun, keys))); } catch { /* not kept: they run again */ } } };
+}
 const tail = (text) => text.trim().split('\n').slice(-config.failTailLines).join('\n');
 function run(cmd, cwd) {
   // the commands come from workflow/config.json, the project's own file, never from outside input
@@ -291,7 +315,7 @@ const steps = [
   }],
   config.ui?.boards === 'components' && config.ui.variants && ['variants', () => {
     // /ui's variants A, B, C are real components while the owner picks; once the pick is built they go (their pictures are the record)
-    if (!flag('--all')) return { ok: true, note: 'only with --all' };
+    if (!wholeSuite) return { ok: true, note: 'only with --all' };
     const left = git('ls-files', '--cached', '--others', '--exclude-standard', '--', config.ui.variants).split('\n').filter(Boolean);
     if (left.length) return { ok: false, out: `${config.ui.variants} still holds ${left.length} file${left.length === 1 ? '' : 's'} (${left.slice(0, 5).join(', ')}): the pick is built, so delete the variants. Their pictures in docs/design/png are the record` };
     return { ok: true };
@@ -378,13 +402,17 @@ const steps = [
   ['tests', () => {
     if (plan.mode === 'none') return { ok: true, note: plan.note };
     const t0 = Date.now();
+    const cache = passCache();
+    const files = cache ? cache.run : plan.files;
+    if (cache && !files.length) return { ok: true, note: `${plan.note}; all ${cache.skipped.length} passed before with the same code (--fresh runs them)` };
     // a language whose runner takes no file list (Go: `go test ./...`, testPicking false) runs its whole suite
-    const r = run(plan.mode === 'suite' || config.testPicking === false ? config.commands.testAll : `${config.commands.testFiles} ${plan.files.join(' ')}`);
+    const r = run(plan.mode === 'suite' || config.testPicking === false ? config.commands.testAll : `${config.commands.testFiles} ${files.join(' ')}`);
     if (plan.whole) suiteSeconds = (Date.now() - t0) / 1000;
-    return { ...r, note: plan.note };
+    if (cache && r.ok) cache.save();
+    return { ...r, note: cache?.skipped.length ? `${plan.note}; ${cache.skipped.length} passed before with the same code` : plan.note };
   }],
-  ...appSteps({ config, changed, all: flag('--all'), run, matches: matchesAny }), // several apps: each one's own (lib/apps.mjs)
-  ...dueChecks(config.checks, changed, flag('--all')).map(({ check, due, why }) => [check.name, () => {
+  ...appSteps({ config, changed, all: wholeSuite, run, matches: matchesAny }), // several apps: each one's own (lib/apps.mjs)
+  ...dueChecks(config.checks, changed, wholeSuite).map(({ check, due, why }) => [check.name, () => {
     if (!due) return { ok: true, note: why };
     // `setup` (installing a browser, say) runs on GitHub only; on your own computer it is installed once by hand
     if (check.setup && process.env.CI) { const s = run(check.setup); if (!s.ok) return s; }
@@ -392,7 +420,7 @@ const steps = [
   }]),
   config.quality?.command && ['quality', () => {
     const q = config.quality;
-    if (!flag('--all') && !changed.some((f) => matchesAny(f, q.when ?? ['src/**']))) return { ok: true, note: 'not reached by this change' };
+    if (!wholeSuite && !changed.some((f) => matchesAny(f, q.when ?? ['src/**']))) return { ok: true, note: 'not reached by this change' };
     const r = run(q.command);
     // a command that cannot run here says why ("quality skipped: no ANTHROPIC_API_KEY"): shown as skipped, never as a pass
     const skipped = /^quality skipped: (.+)$/m.exec(r.out)?.[1];
@@ -408,7 +436,6 @@ const slowLines = () => (config.testSeconds && suiteSeconds > config.testSeconds
  * it found and goes on, `fail` stops the gate. A levels file with a problem fails before anything runs. Ends with what is loosened.
  */
 function runSteps(steps) {
-  const levels = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
   if (levels.problems.length) { console.log(`FAIL levels\n${levels.problems.join('\n')}`); process.exit(1); }
   const advised = [];
   for (const [name, fn] of steps) {
@@ -427,6 +454,7 @@ function runSteps(steps) {
   }
   for (const line of advised) console.log(line);
   console.log(loosenedLine(levels));
+  if (flag('--ship')) console.log(`ship: phase ${levels.phase}, so ${wholeSuite ? 'the whole suite ran' : 'the tests this change reaches ran (the whole suite runs on GitHub after the push)'}`);
 }
 const started = Date.now();
 runSteps(steps);

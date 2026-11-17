@@ -4,6 +4,9 @@
 
 const PROD = /^(?:prod(?:uction)?\b|live$|main$)/i;
 
+/** True when an environment's name says it is production (production, prod-eu, live, main). */
+export const isProductionEnv = (name) => PROD.test(String(name ?? ''));
+
 /** The production addresses in the config: [url], as written. */
 export function productionUrls(config) {
   const d = config?.deploy ?? {};

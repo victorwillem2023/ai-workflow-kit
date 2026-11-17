@@ -89,7 +89,7 @@ Why the flow is split this way, and what keeps a session cheap: `workflow/guides
 
 ## Several cards at once
 `/work 12 14 15` reads the three cards and writes their plans one after another in the same chat; then one `/build <their topics>` in a new chat approves and builds them all.
-Then, in a new chat, `/build a b c` starts one builder per plan, at most 3 at the same time, each in its own folder and port. If two plans change the
+Then, in a new chat, `/build a b c` starts one builder per plan, at most 3 at the same time (more with `board.wip` in `workflow/config.json`, how many cards may be in progress at once), each in its own folder and port. If two plans change the
 same file, the later one waits until the first is finished with `/ship`. You get one summary with each folder, URL and
 "unsure" list. Give feedback naming the topic ("on fan-out: ..."), and ship one at a time: `/ship a`, then `/ship b`.
 `ui` cards join only after you have picked a variant.
@@ -122,7 +122,8 @@ A small tweak to something that exists (spacing, a label, a colour) skips the bo
 | see the running sessions and unpushed work | `node workflow/scripts/session.mjs --list` |
 | park a card ("waiting for X") | `npm run board -- --block <n> "<reason>"` |
 | move a card by hand | `npm run board -- --move <n> "<column>"` |
-| run the checks yourself | `npm run gate` (quick), `npm run gate:all` (full, before finishing) |
+| run the checks yourself | `npm run gate` (quick), `npm run gate:ship` (what /ship runs: everything in pilot and production, the reached tests in a prototype), `npm run gate:all` (everything) |
+| see which phase the project is in, and what the next one needs | `npm run phase` |
 
 Columns, left to right: Backlog, Needs a board or decision, Ready, In progress, Waiting for your check, Blocked, Done.
 
