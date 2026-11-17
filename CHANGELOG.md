@@ -2,6 +2,14 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.4.1**: **a session's finish no longer stops another session's server.** The stop now checks whose server it is: the
+  listener and the node/npm/tsx processes above it, by their command lines (and, on Linux and macOS, their working folders). One
+  that names this session's folder is stopped; one that names another folder of the project (the main folder, another session:
+  a live session's vite or tsx names its own folder through node_modules/.bin) is left running and named; one that names no
+  folder is stopped as before. So a leftover folder whose .env has a live session's port no longer takes that server down on
+  --finish or --clean. **The session tests stay off the real session ports**: `WORKFLOW_TEST_PORTS` is 10000 by default (the
+  throwaway sessions use 18788 up, not 8788 to 8999, where a project's real sessions run while its tests do); 0 is the real
+  range again. The kit's self-test starts its projects from 10000 too.
 - **3.4.0**: **phases: fast while you prototype, strict once people rely on it.** `workflow/levels.json` has a `phase`
   (`preset` before, still read): `prototype`, `pilot` or `production`. Each sets the quality checks, the process weight and how
   much `/ship` runs (`npm run gate:ship`: the tests the change reaches in a prototype, the whole suite in pilot and production;

@@ -122,6 +122,37 @@ describe('cleaning up after a session', () => {
     assert.equal(stopSessionServer(dir, deps).stopped, 2);
     assert.deepEqual(stopped, [100], 'the watcher above the listener is stopped, so it cannot start the server again');
   });
+  it('a server on the session\'s port that runs from another folder of the project is left running, and named', async () => {
+    const { stopMessage, stopSessionServer } = await import(pathToFileURL(resolve('workflow/scripts/session-stop.mjs')).href);
+    const r = makeRepo();
+    // a leftover folder whose .env names the port a live session's server has
+    const dir = join(r.root, 'app-leftover');
+    const live = join(r.root, 'app-live');
+    for (const d of [dir, live]) { mkdirSync(d); writeFileSync(join(d, '.git'), 'gitdir: x\n'); }
+    writeFileSync(join(dir, '.env'), 'PORT=8960\n');
+    const stopped: number[] = [];
+    const table = (cmd: string) => () => [
+      { pid: 300, ppid: 200, name: 'node', cmd: 'node --import tsx src/server/index.ts' },
+      { pid: 200, ppid: 1, name: 'node', cmd },
+    ];
+    const vite = (d: string) => `node "${join(d, 'node_modules', '.bin', '..', 'tsx', 'dist', 'cli.mjs')}" watch src/server/index.ts`;
+    const deps = (cmd: string) => ({ listeners: () => [300], table: table(cmd), stop: (top: number) => stopped.push(top), cwd: () => '' });
+    const other = stopSessionServer(dir, deps(vite(live)));
+    assert.deepEqual([other.stopped, other.others, stopped], [0, [300], []], 'the live session\'s server runs on');
+    assert.match(stopMessage(other), /^Port 8960 is used by a server that runs from another folder \(process 300\), so it was left running\.$/);
+    // its own server, named through its own node_modules/.bin: stopped; a server that names no folder: stopped, as before
+    assert.equal(stopSessionServer(dir, deps(vite(dir))).stopped, 2);
+    assert.equal(stopSessionServer(dir, deps('node server.cjs')).stopped, 2);
+    // on Linux and macOS the working folder says it too
+    assert.equal(stopSessionServer(dir, { ...deps('node server.cjs'), cwd: (pid: number) => (pid === 300 ? live : '') }).stopped, 0);
+    assert.deepEqual(stopped, [200, 200]);
+  });
+  it('the throwaway sessions stay off the real session ports (8788 to 8999) unless WORKFLOW_TEST_PORTS asks for them', () => {
+    const r = makeRepo();
+    const { session } = JSON.parse(readFileSync(join(r.main, 'workflow/config.json'), 'utf8'));
+    if (process.env.WORKFLOW_TEST_PORTS === undefined) assert.equal(PORTS, 10000);
+    if (PORTS > 0) for (const p of [session.mainPort, session.firstPort, session.firstPort + 211, 8950 + PORTS, 8970 + PORTS]) assert.ok(p < 8787 || p > 8999, `${p} is clear of the real sessions`);
+  });
 
   it('a folder still held open is named, with what to close, while the feature still goes on main and the branch is deleted', () => {
     const r = makeRepo();

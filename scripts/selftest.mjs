@@ -211,7 +211,7 @@ async function runVariant(name) {
   mkdirSync(dir);
   const steps = [];
   // its own port range, so projects checked side by side never stop each other's test servers
-  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_KIT_TESTS: '0', WORKFLOW_TEST_PORTS: String(Object.keys(VARIANTS).indexOf(name) * 400) };
+  const env = { ...process.env, CI: process.env.CI ?? '', WORKFLOW_KIT_TESTS: '0', WORKFLOW_TEST_PORTS: String(10000 + Object.keys(VARIANTS).indexOf(name) * 400) };
   const step = (label, cmd, args, more = {}) => new Promise((done, fail) => {
     const t0 = Date.now();
     // npm, uv and cargo can be .cmd files on Windows; the arguments are fixed here, never outside input

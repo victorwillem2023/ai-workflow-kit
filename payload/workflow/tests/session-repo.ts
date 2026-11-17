@@ -10,8 +10,9 @@ export const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@
 export const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 export const roots: string[] = [];
 /** Added to every port these tests use (WORKFLOW_TEST_PORTS): the kit's self-test runs projects side by side, each in its own range,
- *  because a session's --finish stops whatever listens on its port. */
-export const PORTS = Number(process.env.WORKFLOW_TEST_PORTS ?? 0);
+ *  because a session's --finish stops the server on its port. 10000 by default, so the throwaway sessions (18788 up) never meet
+ *  the real ones (8788 to 8999) a project has running while its tests run; WORKFLOW_TEST_PORTS=0 is the real range again. */
+export const PORTS = Number(process.env.WORKFLOW_TEST_PORTS ?? 10000);
 
 export interface Repo { root: string; main: string; origin: string; wt: (t: string) => string; env: Record<string, string>; ghLog: string; checkLog: string }
 

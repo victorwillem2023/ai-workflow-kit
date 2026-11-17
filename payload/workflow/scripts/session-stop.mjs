@@ -1,13 +1,14 @@
 // Taking a session's folder away cleanly: stop the session's own dev server first (the process listening on the port in its
-// .env, and the node/npm/tsx processes above it, never a shell or editor, never the main folder's port), then unlink node_modules on its
+// .env, and the node/npm/tsx processes above it, never a shell or editor, never the main folder's port, never a server that runs
+// from another folder of the project: a leftover folder's .env can name a live session's port), then unlink node_modules on its
 // own and let git remove the folder; a folder another program still holds open is reported as `held` instead of an error.
 // Also removes leftover session folders that hold no files at all. Used by workflow/scripts/session.mjs.
 // Every command goes through execFileSync with an argument list (no shell); PIDs are digits checked before use.
 // WORKFLOW_HOLD_TEST (tests only): the removal acts as Windows does when a terminal is open in the folder (the files go,
 // git forgets the worktree, the empty folder stays and git says "Permission denied").
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, unlinkSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmdirSync, unlinkSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 
 // how many ports a project's sessions may use, counted from its first session port (`session.firstPort` in the config)
 const PORT_SPAN = 212;
@@ -55,14 +56,50 @@ if(!/^TCP/i.test(proto||'')||!(local||'').endsWith(':'+port))continue;
 if(/:0$/.test(remote||'')||(remote||'').endsWith(me)){const pid=rest[rest.length-1];if(/^[1-9][0-9]*$/.test(pid||''))pids.add(pid)}}}
 s.destroy();console.log([...pids].join(' '))})();`;
 
-/** Every process as { pid, ppid, name }. */
+/** Every process as { pid, ppid, name, cmd } (cmd: its command line, '' when the system does not say). */
 function processTable() {
   if (isWindows) {
-    const csv = sh('powershell', ['-NoProfile', '-NonInteractive', '-Command', 'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name | ConvertTo-Csv -NoTypeInformation']);
-    return csv.split(/\r?\n/).slice(1).map((l) => l.replace(/"/g, '').split(',')).map(([pid, ppid, name]) => ({ pid: pidOf(pid), ppid: pidOf(ppid), name: name ?? '' })).filter((p) => p.pid);
+    const json = sh('powershell', ['-NoProfile', '-NonInteractive', '-Command', 'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CommandLine | ConvertTo-Json -Compress']);
+    const rows = [].concat(JSON.parse(json.trim() || '[]'));
+    return rows.map((r) => ({ pid: pidOf(r.ProcessId), ppid: pidOf(r.ParentProcessId), name: r.Name ?? '', cmd: r.CommandLine ?? '' })).filter((p) => p.pid);
   }
+  const args = new Map(sh('ps', ['-A', '-o', 'pid=,args=']).split('\n').map((l) => /^\s*(\d+)\s+(.*)$/.exec(l)).filter(Boolean).map((m) => [Number(m[1]), m[2]]));
   return sh('ps', ['-A', '-o', 'pid=,ppid=,comm=']).split('\n').map((l) => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(l)).filter(Boolean)
-    .map((m) => ({ pid: Number(m[1]), ppid: Number(m[2]), name: basename(m[3].trim()) }));
+    .map((m) => ({ pid: Number(m[1]), ppid: Number(m[2]), name: basename(m[3].trim()), cmd: args.get(Number(m[1])) ?? '' }));
+}
+
+/** A process's working folder where the system tells it (Linux: /proc; macOS: lsof), else ''. Windows does not: '' there. */
+function cwdOf(pid) {
+  if (isWindows) return '';
+  try { return readlinkSync(`/proc/${pid}/cwd`); } catch { /* not Linux */ }
+  try { return (sh('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn']).split('\n').find((l) => l.startsWith('n')) ?? '').slice(1); } catch { return ''; }
+}
+
+const norm = (s) => { const t = String(s ?? '').replace(/\\/g, '/'); return isWindows ? t.toLowerCase() : t; };
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The project's other folders beside `dir`: the main folder and the session folders (each holds a .git entry). */
+export function projectFolders(dir) {
+  const parent = dirname(dir);
+  try { return readdirSync(parent).map((n) => join(parent, n)).filter((d) => d !== dir && existsSync(join(d, '.git'))); } catch { return []; }
+}
+
+/**
+ * Whose server it is, from the listener and the node/npm/tsx processes above it (up to `top`): 'this' when a command line or a
+ * working folder names the session's folder; 'other' when none does but one names another folder of the project (`folders`: the
+ * main folder, another session's; a live session's vite or tsx names its own folder through node_modules/.bin); 'unknown' when
+ * nothing names either (`node src/server.js` started in the folder, on Windows: stopped, as before).
+ */
+export function ownerOf(pid, top, table, dir, { cwd = cwdOf, folders = [] } = {}) {
+  const byPid = new Map(table.map((p) => [p.pid, p]));
+  const texts = [];
+  for (let at = pid, i = 0; at && i < 20; at = byPid.get(at)?.ppid, i++) {
+    texts.push(norm(byPid.get(at)?.cmd), norm(cwd(at)));
+    if (at === top) break;
+  }
+  const names = (d) => { const re = new RegExp(`${escapeRe(norm(d))}(?=[/"' ]|$)`); return texts.some((x) => x && re.test(x)); };
+  if (names(dir)) return 'this';
+  return folders.some(names) ? 'other' : 'unknown';
 }
 
 /** This script and the processes above it: never stopped, and the walk up stops before them. */
@@ -117,24 +154,33 @@ export function stopSessionServer(dir, deps = {}) {
   const port = sessionPort(dir);
   if (port === undefined) return { port, stopped: 0 };
   if (!stoppablePort(port, deps)) return { port, refused: true, stopped: 0 };
-  const { listeners = listenersOn, table = processTable, stop = stopTree } = deps;
+  const { listeners = listenersOn, table = processTable, stop = stopTree, cwd = cwdOf, folders = projectFolders(dir) } = deps;
   const pids = listeners(port);
   if (!pids.length) return { port, stopped: 0 };
   const all = table();
   const mine = ownLine(all);
-  const tops = [...new Set(pids.filter((p) => !mine.has(p)).map((p) => topOfServer(p, all, mine)))];
+  // a server that runs from another folder of the project is left alone and named (its own session stops it)
+  const others = [];
+  const tops = [...new Set(pids.filter((p) => !mine.has(p)).flatMap((p) => {
+    const top = topOfServer(p, all, mine);
+    if (ownerOf(p, top, all, dir, { cwd, folders }) !== 'other') return [top];
+    others.push(p);
+    return [];
+  }))];
+  if (!tops.length) return { port, stopped: 0, others };
   const gone = [];
   for (const top of tops) { const tree = treeOf(top, all); stop(top, tree); gone.push(...tree); }
   const free = waitUntilStopped(port, listeners, deps.stop ? [] : gone);
-  return { port, stopped: gone.length, free };
+  return { port, stopped: gone.length, free, others };
 }
 
 /** The line the session script prints for what stopSessionServer did ('' when there was nothing to say). */
 export function stopMessage(r) {
   if (r.refused) return `Port ${r.port} in the session's .env is not a session port, so nothing was stopped.`;
-  if (!r.stopped) return '';
+  const left = r.others?.length ? `Port ${r.port} is used by a server that runs from another folder (process ${r.others.join(', ')}), so it was left running.` : '';
+  if (!r.stopped) return left;
   const what = `Stopped the dev server on port ${r.port} (${r.stopped} process${r.stopped === 1 ? '' : 'es'}).`;
-  return r.free === false ? `${what} The port is still in use after ${WAIT_MS / 1000} s.` : what;
+  return [r.free === false ? `${what} The port is still in use after ${WAIT_MS / 1000} s.` : what, left].filter(Boolean).join(' ');
 }
 
 /** The node_modules link (a junction on Windows) is unlinked by itself, never followed: the main folder's modules stay. */
