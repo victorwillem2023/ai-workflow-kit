@@ -135,8 +135,11 @@ export const stopServer = (dir) => { const said = stopMessage(stopSessionServer(
 /** The file map is written by a script (`map` in package.json); its path comes from the config. */
 export const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts?.map);
 
-export function mapFile(dir) {
-  try { return JSON.parse(readFileSync(join(dir, 'workflow/config.json'), 'utf8')).map?.out ?? 'docs/MAP.md'; } catch { return 'docs/MAP.md'; }
+/** Every whole page `npm run map` writes: the file map, the docs index and the infra map (the generated blocks inside hand-written docs are not whole pages). */
+export function mapPages(dir) {
+  let map = {};
+  try { map = JSON.parse(readFileSync(join(dir, 'workflow/config.json'), 'utf8')).map ?? {}; } catch { /* the defaults */ }
+  return [map.out ?? 'docs/MAP.md', 'docs/README.md', map.infraOut ?? 'docs/run/INFRA-MAP.md'];
 }
 
 /**
@@ -157,35 +160,45 @@ export function ensurePackages(when) {
 // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
 export const npmRun = (dir, step, quiet) => spawnSync('npm', ['run', step], { cwd: dir, stdio: quiet ? 'ignore' : 'inherit', shell: process.platform === 'win32' }).status === 0;
 
-/** Rebases the checked-out branch of `dir` on `upstream`. A conflict only in the file map is solved by writing the map again; any other stops it, with the rebase put back. */
+/** Rebases the checked-out branch of `dir` on `upstream`. A conflict only in the pages the map writes (file map, docs index, infra map) is solved by writing them again; any other stops it, with the rebase put back. */
 export function rebaseOn(dir, upstream, what, { mapConflicts, from }) {
   const env = { ...process.env, GIT_EDITOR: 'true' };
   const step = (...args) => execFileSync('git', args, { cwd: dir, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   // with `from`: only the commits after it move (a stacked session leaves its base's old commits behind)
   const how = from ? ['--onto', upstream, from] : [upstream];
   try { step('rebase', ...how); return; } catch { /* a conflict, or something else: look at it */ }
-  const map = mapFile(dir);
+  const pages = mapPages(dir);
   for (let i = 0; i < 100; i++) { // bounded: one round per commit that conflicts
     const files = gitQuiet(dir, 'diff', '--name-only', '--diff-filter=U').split('\n').filter(Boolean);
-    if (!(mapConflicts && mapScript(dir) && files.length && files.every((f) => f === map))) {
+    if (!(mapConflicts && mapScript(dir) && files.length && files.every((f) => pages.includes(f)))) {
       const commit = gitQuiet(dir, 'log', '-1', '--format=%s', 'REBASE_HEAD');
       try { step('rebase', '--abort'); } catch { /* nothing to abort */ }
       throw new Error(`${what} hit a conflict${commit ? ` in "${commit}"` : ''}${files.length ? ` (${files.join(', ')})` : ''}. Nothing was changed. Resolve it in ${dir} (git rebase ${how.join(' ')}), then run it again.`);
     }
-    npmRun(dir, 'map', true);
-    step('add', map);
+    stageMap(dir);
     try { step('rebase', '--continue'); return; } catch { /* the next commit conflicts too */ }
   }
   try { step('rebase', '--abort'); } catch { /* nothing to abort */ }
   throw new Error(`${what} did not come to an end. Nothing was changed.`);
 }
 
-/** After a rebase the map is made again and, when it changed, goes into the last commit (so the feature stays one commit). */
-export function remakeMap(dir) {
-  if (!mapScript(dir)) return;
+/**
+ * Writes the map and stages whatever it changed: the file map, and also the docs index, the infra map and the generated blocks
+ * in the docs. Only run where everything else is committed or staged (finish refuses loose work), so every change is the map's;
+ * one left out would stop a rebase from going on, or the folder from being removed. Returns how many files it staged.
+ */
+function stageMap(dir) {
   npmRun(dir, 'map', true);
-  const map = mapFile(dir);
-  if (git(dir, 'status', '--porcelain', '--', map)) { git(dir, 'add', map); git(dir, 'commit', '-q', '--amend', '--no-edit'); }
+  // (the session's node_modules is a link to the main folder's, which git may list as new: never committed)
+  const changed = [...gitQuiet(dir, 'diff', '--name-only').split('\n'), ...gitQuiet(dir, 'ls-files', '--others', '--exclude-standard').split('\n')]
+    .filter((f) => f && !/^node_modules\/?$/.test(f));
+  if (changed.length) git(dir, 'add', '-A', '--', ...new Set(changed));
+  return changed.length;
+}
+
+/** After a rebase the map is made again and what it changed goes into the last commit (so the feature stays one commit). */
+export function remakeMap(dir) {
+  if (mapScript(dir) && stageMap(dir)) git(dir, 'commit', '-q', '--amend', '--no-edit');
 }
 
 /** typecheck and test of the project in `dir`, if it has them. */

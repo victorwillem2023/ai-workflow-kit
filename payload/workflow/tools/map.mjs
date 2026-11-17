@@ -16,6 +16,7 @@ import { parseK8s, parseTf, renderInfraMap } from './lib/infra.mjs';
 import { networkPolicy } from './lib/netpolicy.mjs';
 import { blockMakers, fillBlocks, hasBlocks } from './lib/docblocks.mjs';
 import { renderDocsIndex } from './lib/docsindex.mjs';
+import { lines } from './lib/text.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -57,7 +58,7 @@ const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : '');
 const writing = new Map(pages.filter(([f]) => f.startsWith('docs/') && f.endsWith('.md')));
 const docsListed = [...new Set([...listed.filter((f) => f.startsWith('docs/') && f.endsWith('.md')), ...writing.keys()])].filter((f) => f !== 'docs/README.md').sort();
 if (docsListed.length) {
-  const kitFiles = new Set(read('workflow/record').split('\n').map((l) => /^sha \S+ (.+)$/.exec(l)?.[1]).filter(Boolean));
+  const kitFiles = new Set(lines(read('workflow/record')).map((l) => /^sha \S+ (.+)$/.exec(l)?.[1]).filter(Boolean));
   pages.push(['docs/README.md', renderDocsIndex(docsListed.map((path) => ({ path, text: writing.get(path) ?? read(path) })), kitFiles)]);
 }
 const makers = blockMakers({ config, toolVersions: read('.tool-versions'), envExample: read('.env.example') });

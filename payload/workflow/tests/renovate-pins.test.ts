@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { lines } from '../../workflow/tools/lib/text.mjs';
 
 const tools = 'workflow/tools';
 const renovate = existsSync('renovate.json') ? JSON.parse(readFileSync('renovate.json', 'utf8')) : null;
@@ -15,8 +16,8 @@ describe('the pinned tool images', () => {
     let pins = 0;
     for (const f of readdirSync(tools).filter((n) => n.endsWith('.mjs'))) {
       const path = `${tools}/${f}`;
-      const lines = readFileSync(join(tools, f), 'utf8').split('\n').filter((l) => /\/\/ renovate: docker/.test(l));
-      for (const line of lines) {
+      const pinned = lines(readFileSync(join(tools, f), 'utf8')).filter((l) => /\/\/ renovate: docker/.test(l));
+      for (const line of pinned) {
         pins++;
         const found = managers.some((m: { managerFilePatterns?: string[]; matchStrings: string[] }) =>
           (m.managerFilePatterns ?? []).some((p) => new RegExp(p.slice(1, -1)).test(path)) &&

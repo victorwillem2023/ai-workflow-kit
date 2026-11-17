@@ -146,7 +146,7 @@ async function finish(topic, o) {
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   if (git(dir, 'branch', '--show-current') !== topic) throw new Error(`${dir} is not on branch "${topic}".`);
-  if (looseWork(dir)) throw new Error(`${dir} has uncommitted work. Commit it first (or ask the owner).`);
+  if (looseWork(dir)) throw new Error(`${dir} has uncommitted work. Commit it first, with any message (--subject puts the approved one on the feature's single commit), or ask the owner.`);
   const on = onOf(topic);
   // built on another session: that one is finished first (its check comes first), which moves this one onto main
   if (on && branchExists(on) && !isAncestor(main, on, MAIN)) throw new Error(`"${topic}" is built on top of "${on}", which is not finished yet. Finish "${on}" first (that moves "${topic}" onto main by itself), then this one.`);
@@ -182,7 +182,8 @@ async function finish(topic, o) {
   for (const s of stackedOn(topic)) restack(s, original);
   // the change may have added a package: the main folder (and every session through its link) gets it now
   ensurePackages('now that it is on main');
-  if (!o.noChecks) remove(topic);
+  // the feature is on main now: a folder that cannot go is said, and the card is still told
+  if (!o.noChecks) { try { remove(topic); } catch (e) { console.log(`${e.message} The feature is on main; remove the folder later with: node workflow/scripts/session.mjs --remove ${topic}`); } }
   else {
     stopServer(dir);
     console.log(`The checks were skipped (--no-checks), so ../${basename(dir)} is kept. After npm run gate:all passes on main, remove it with: node workflow/scripts/session.mjs --clean --yes`);

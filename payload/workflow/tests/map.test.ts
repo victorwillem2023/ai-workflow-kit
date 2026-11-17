@@ -2,6 +2,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { summaryOf, renderMap, sameMap, findInMap, usesInMap, withoutImports } from '../../workflow/tools/lib/map.mjs';
 import { buildGraph } from '../../workflow/tools/lib/graph.mjs';
 
@@ -91,5 +94,30 @@ describe('file map find', () => {
     const r = findInMap(big, ['thing'], 25);
     assert.equal(r.lines.length, 24, 'heading plus 23 files; the last line is kept for the note');
     assert.equal(r.more, 22);
+  });
+});
+
+describe('map --check on a Windows checkout', () => {
+  it('passes when workflow/record has CRLF line endings (the kit\'s guides keep their mark in the docs index)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'map-crlf-'));
+    try {
+      cpSync('workflow/tools', join(dir, 'workflow/tools'), { recursive: true });
+      mkdirSync(join(dir, 'docs'));
+      writeFileSync(join(dir, 'workflow/config.json'), JSON.stringify({ map: { out: 'docs/MAP.md', folders: [] }, skipFiles: [] }));
+      writeFileSync(join(dir, 'docs/GUIDE.md'), '# Guide\n\nThe kit\'s guide.\n');
+      writeFileSync(join(dir, 'docs/OWN.md'), '# Own\n\nThe project\'s own page.\n');
+      const record = ['kit 3.3.0', 'sha 0123abcd docs/GUIDE.md', ''];
+      writeFileSync(join(dir, 'workflow/record'), record.join('\n'));
+      const git = (...a: string[]) => spawnSync('git', a, { cwd: dir, encoding: 'utf8' });
+      git('init', '-q');
+      const map = (...a: string[]) => spawnSync(process.execPath, ['workflow/tools/map.mjs', ...a], { cwd: dir, encoding: 'utf8' });
+      assert.equal(map().status, 0);
+      assert.match(readFileSync(join(dir, 'docs/README.md'), 'utf8'), /GUIDE\.md.*the kit's/i);
+      writeFileSync(join(dir, 'workflow/record'), record.join('\r\n'));
+      const r = map('--check');
+      assert.equal(r.status, 0, r.stdout + r.stderr);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

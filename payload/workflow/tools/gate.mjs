@@ -39,7 +39,7 @@ import { policySteps, dataAdvice } from './lib/policy.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 import { FILE as LEVELS_FILE, levelOf, loosenedLine, readLevels } from './lib/levels.mjs';
-import { appsOf, surfacesOf } from './lib/surfaces.mjs';
+import { appsOf, surfacesOf } from './lib/surfaces.mjs'; import { lines } from './lib/text.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -188,7 +188,7 @@ function adviceLines() {
   const fresh = new Map();
   // new files that git does not know yet count as added: the code, and the tests that say what it refuses
   const fresh0 = git('ls-files', '--others', '--exclude-standard', '--', codeDir, 'tests').split('\n').map((x) => x.trim());
-  for (const f of fresh0.filter((x) => x && existsSync(x))) fresh.set(f, readFileSync(f, 'utf8').split('\n'));
+  for (const f of fresh0.filter((x) => x && existsSync(x))) fresh.set(f, lines(readFileSync(f, 'utf8')));
   return [...securityAdvice(diff, fresh, config.security), ...hostileAdvice(diff, fresh, config.security), ...dataAdvice(diff, fresh, config), ...notRead(changedFiles().filter((f) => existsSync(f))).advice];
 }
 // a library a change adds that docs/STACK.md does not name (only when the project has a STACK.md)

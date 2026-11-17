@@ -24,6 +24,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CORRECTIONS, MOVES, movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
 import { FILE_MOVES, FOLDER_MOVES, moveKitPaths, moveKitPathsBack, oldKitPaths } from '../kit-layout.mjs';
 import { newConfigText } from '../migrations/3.0.0-workflow-folder.mjs';
+import { lines } from '../payload/workflow/tools/lib/text.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const win = process.platform === 'win32';
@@ -107,7 +108,7 @@ function missingDocPointers(dir) {
   const onDemand = new Set(['docs/run/INFRA-MAP.md', 'docs/MAP.md', 'docs/README.md']);
   const files = [...walkMd(join(dir, '.claude')), ...walkMd(join(dir, 'docs')), join(dir, 'CLAUDE.md')].filter((f) => existsSync(f));
   const out = [];
-  for (const f of files) readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+  for (const f of files) lines(readFileSync(f, 'utf8')).forEach((line, i) => {
     for (const m of line.matchAll(/`(docs\/[\w/-]+\.md)`/g)) if (!onDemand.has(m[1]) && !existsSync(join(dir, m[1]))) out.push(`${f.slice(dir.length + 1)}:${i + 1}: ${m[1]}`);
   });
   return out;
@@ -141,7 +142,7 @@ function unmarkedMentions(dir) {
   const files = [...walkMd(join(dir, '.claude')), ...walkMd(join(dir, 'docs')), join(dir, 'CLAUDE.md')];
   const out = [];
   const re = new RegExp(`(\`/(?:${missing.join('|')})\\b[^\`\\n]*\`|(?<![\\w\`/.-])/(?:${missing.join('|')})\\b(?![\\w-]))(?! \\(not installed\\))`, 'g');
-  for (const f of files) readFileSync(f, 'utf8').split('\n').forEach((line, i) => { for (const m of line.matchAll(re)) out.push(`${f.slice(dir.length + 1)}:${i + 1}: ${m[0]}`); });
+  for (const f of files) lines(readFileSync(f, 'utf8')).forEach((line, i) => { for (const m of line.matchAll(re)) out.push(`${f.slice(dir.length + 1)}:${i + 1}: ${m[0]}`); });
   return out;
 }
 function walkMd(d) {
@@ -328,7 +329,7 @@ const jobs = Math.max(1, Number(jobsAt >= 0 ? process.argv[jobsAt + 1] : 0) || M
 // the kit keeps its own rule: no script of its own over 400 lines (the riskiest ones grow fastest: install, sessions)
 const kitScripts = [...readdirSync(kit).filter((f) => f.endsWith('.mjs')), ...readdirSync(join(kit, 'scripts')).map((f) => `scripts/${f}`),
   ...readdirSync(join(kit, 'payload', 'workflow', 'scripts')).map((f) => `payload/workflow/scripts/${f}`)].filter((f) => f.endsWith('.mjs'));
-const tooBig = kitScripts.map((f) => [f, readFileSync(join(kit, f), 'utf8').split('\n').length]).filter(([, n]) => n > 400);
+const tooBig = kitScripts.map((f) => [f, lines(readFileSync(join(kit, f), 'utf8')).length]).filter(([, n]) => n > 400);
 console.log(`${tooBig.length ? 'FAIL' : 'ok  '} the kit's own scripts are at most 400 lines${tooBig.length ? `: ${tooBig.map(([f, n]) => `${f} ${n}`).join(', ')}` : ''}`);
 if (tooBig.length) process.exit(1);
 // the kit's own top-level code keeps to the 60-line rule at a stretch (scripts/selftest-kit.mjs)
