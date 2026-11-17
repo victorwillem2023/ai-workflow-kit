@@ -29,5 +29,6 @@
   "library": "node workflow/tools/library.mjs",
   "levels": "node workflow/tools/levels.mjs",
   "phase": "node workflow/tools/phase.mjs",
+  "portal": "node workflow/tools/portal.mjs",
   "surfaces": "node workflow/tools/surfaces.mjs"
 }

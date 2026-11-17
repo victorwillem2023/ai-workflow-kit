@@ -2,6 +2,14 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.5.0**: **the docs portal: `/portal` (`npm run portal`).** Every doc of the project in one page in the browser, with what
+  matters now at the top: the phase and what the next one still needs, the stage, the next cards on the board, the latest
+  decisions and the docs that changed lately. A menu grouped as the docs index groups them (the kit's guides marked), links
+  between docs that work, search over all of them, and the file map and the app map one click away. Read-only and live: each
+  page is made from the files when it is opened, an open tab reloads itself when a doc changes, and the board and the stage
+  are asked in the background every five minutes, so a page never waits on GitHub. It starts in the background when it is not
+  running and opens a new tab; it listens only on 127.0.0.1, on its own port (`portal.port`, else the main port - 1, outside the
+  session range, so a session's finish never stops it), and serves only files git knows (never `.env`). No new packages.
 - **3.4.3**: **the whole suite runs only when it is needed.** CLAUDE.md's Commands said "npm test ... Run before every commit"
   and "gate:all ... run before --finish", so an agent ran everything whatever the phase: new projects get `npm run gate` while
   building and `npm run gate:ship` for /ship, and an update rewrites those two lines in an existing CLAUDE.md by what they say (its

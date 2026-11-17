@@ -124,6 +124,7 @@ A small tweak to something that exists (spacing, a label, a colour) skips the bo
 | move a card by hand | `npm run board -- --move <n> "<column>"` |
 | run the checks yourself | `npm run gate` (quick), `npm run gate:ship` (what /ship runs: everything in pilot and production, the reached tests in a prototype), `npm run gate:all` (everything) |
 | see which phase the project is in, and what the next one needs | `npm run phase` |
+| see every doc in one place, with where the project is at the top | `/portal` (opens it in a new browser tab) |
 
 Columns, left to right: Backlog, Needs a board or decision, Ready, In progress, Waiting for your check, Blocked, Done.
 

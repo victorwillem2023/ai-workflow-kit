@@ -1,0 +1,14 @@
+type Item = { path: string; label: string; what: string; kit: boolean };
+type Section = { title: string; items: Item[]; folder?: boolean };
+type DocDate = { path: string; title: string; date: string };
+export function slug(s: string): string;
+export function linkTo(href: string, from: string, known?: Set<string>): string | null;
+export function inline(text: string, from?: string, known?: Set<string>): string;
+export function markdown(md: string, o?: { from?: string; known?: Set<string> }): string;
+export function about(text: string): string;
+export function titleOf(path: string, text: string | null | undefined): string;
+export function menu(docs: { path: string; text: string }[], kit?: Set<string>): Section[];
+export function menuHtml(sections: Section[], current?: string, maps?: { file?: boolean; app?: boolean }): string;
+export function glanceHtml(g: { phase?: string[]; missing?: string[]; stage?: string[]; board?: string[] | null; boardNote?: string;
+  decisions?: DocDate[]; recent?: DocDate[] }): string;
+export function pageHtml(o: { project: string; title: string; nav: string; body: string; crumb?: string }): string;

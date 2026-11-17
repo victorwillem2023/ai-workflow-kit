@@ -4,7 +4,7 @@
 // project's own or the kit's (replaced on update); the other folders (decisions/, design/, guide/ ...) one line each.
 
 /** The subject folders, in the order a project meets them, with what each holds. A folder that is not there is not listed. */
-const SUBJECTS = [
+export const SUBJECTS = [
   ['workflow', 'How we work with the AI', 'the workflow, what keeps it cheap, the tools and agents, the AI\'s own security'],
   ['run', 'Running it', 'deploying, the environments, the network, production and recovery, and the launch guides'],
   ['market', 'Bringing it to market', 'who it is for, how they find it, pricing and growth'],
