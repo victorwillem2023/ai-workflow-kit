@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { about, inline, linkTo, markdown, menu, titleOf } from '../../workflow/tools/lib/portal.mjs';
+import { about, docBody, inline, linkTo, markdown, menu, titleOf } from '../../workflow/tools/lib/portal.mjs';
 import { glanceHtml, rich } from '../../workflow/tools/lib/portalglance.mjs';
 import { themeCss, themeFrom } from '../../workflow/tools/lib/portaltheme.mjs';
 import { boardView } from '../../workflow/tools/lib/boardview.mjs';
@@ -20,9 +20,28 @@ describe('the portal\'s pages', () => {
     assert.doesNotMatch(html, /kit:x/);
     assert.match(html, /<p>One <em>line<\/em> and <strong>bold<\/strong>\.<\/p>/);
     assert.match(html, /<ul><li>a<ul><li>inner<\/li><\/ul><\/li><li>b<\/li><\/ul>/);
-    assert.match(html, /<th>A<\/th><th>B<\/th>[\s\S]*<td><code>x<\/code><\/td>/);
-    assert.match(html, /<pre><code class="lang-sh">npm run gate {2}# &lt;not html&gt;<\/code><\/pre>/);
+    assert.match(html, /<th class="short">A<\/th><th class="short">B<\/th>[\s\S]*<td class="short"><code>x<\/code><\/td>/);
+    assert.match(html, /<pre><code class="lang-sh">npm run gate {2}<span class="cm"># &lt;not html&gt;<\/span><\/code><\/pre>/);
     assert.match(html, /<blockquote><p>a quote<\/p><\/blockquote>/);
+  });
+  it('reads a doc as it is: CRLF line endings, and a code fence it never closes ends at the next blank line, not the end of the file', () => {
+    const crlf = ['## Commands', '```sh', 'npm test   # all tests', 'npm run gate', 'Prose right after the block.', '', '## Next part', 'Text.'].join('\r\n');
+    const html = markdown(crlf);
+    assert.equal((html.match(/<h2/g) ?? []).length, 2, 'the heading after the block is a heading');
+    assert.match(html, /<pre><code class="lang-sh">npm test {3}<span class="cm"># all tests<\/span>\nnpm run gate\nProse right after the block\.<\/code><\/pre>/);
+    assert.doesNotMatch(html, /\r/);
+    assert.match(markdown('```\r\na\r\n```\r\n\r\nafter'), /<pre><code>a<\/code><\/pre>\n<p>after<\/p>/, 'a closed fence in a CRLF file closes');
+  });
+  it('a centred picture keeps to the text column, a list of only links is marked, and a long doc gets "On this page"', () => {
+    assert.equal(markdown('<p align="center"><img src="logo.svg"></p>', { from: 'docs/GUIDE.md' }), '<p><img src="/file/docs/logo.svg"></p>');
+    assert.match(markdown('- [Setting up](setup.md)\n- [Bike](bike.md)\n- a [link](x.md) in a sentence'), /<li class="link">[\s\S]*<li class="link">[\s\S]*<li>a /);
+    assert.match(docBody(markdown('## One\n\n## Two\n\n## Three')), /<aside class="toc" aria-label="On this page">[\s\S]*<a href="#one">One<\/a><a href="#two">Two<\/a><a href="#three">Three<\/a>/);
+    assert.doesNotMatch(docBody(markdown('## One\n\n## Two')), /toc/, 'a short doc has none');
+  });
+  it('a table keeps its short columns from wrapping, so the text columns get the width', () => {
+    const html = markdown(['| Ask | Status | Proof |', '|---|---|---|', '| a long question someone asks | built | a test name that runs long |'].join('\n'));
+    assert.match(html, /<th>Ask<\/th><th class="short">Status<\/th><th>Proof<\/th>/);
+    assert.match(html, /<td class="short">built<\/td>/);
   });
   it('a link to another doc opens it in the portal, a project file is served, the web opens in a new tab, outside the project is text', () => {
     assert.equal(linkTo('run/LAUNCH.md#steps', 'docs/PRODUCT.md', known), '/doc/docs/run/LAUNCH.md#steps');
@@ -41,7 +60,10 @@ describe('the portal\'s pages', () => {
     const docs = ['README.md', 'docs/PRODUCT.md', 'docs/MAP.md', 'docs/run/LAUNCH.md', 'docs/decisions/a.md', 'workflow/guides/WORKFLOW.md'].map((path) => ({ path, text: `# ${path}\n\nIt is ${path}.` }));
     const m = menu(docs, new Set(['docs/run/LAUNCH.md']));
     assert.deepEqual(m.map((s) => s.title), ['Start here', 'The product and how it is built', 'Running it', 'Decisions', 'How we work with the AI (the kit\'s guides)']);
-    assert.deepEqual(m[1].items.map((i) => i.label), ['PRODUCT'], 'the file map is under its own link, not in the list');
+    assert.deepEqual(m[1].items.map((i) => i.path), ['docs/PRODUCT.md'], 'the file map is under its own link, not in the list');
+    // each doc by its title, the project's name taken off its front; the file is the tooltip
+    const named = menu([{ path: 'docs/PRODUCT.md', text: '# Trailsmith: the product\n' }, { path: 'docs/STACK.md', text: '# How Trailsmith is built\n' }], new Set(), 'trailsmith');
+    assert.deepEqual(named[0].items.map((i) => [i.label, i.what]), [['How Trailsmith is built', 'docs/STACK.md'], ['The product', 'docs/PRODUCT.md']]);
     assert.equal(m[2].items[0].kit, true);
   });
 });
@@ -99,7 +121,9 @@ describe('the look: the project\'s own style sheet', () => {
     assert.deepEqual([th.light.bg, th.light.surface, th.light.text, th.light.primary, th.light.onPrimary, th.dark.link], ['#eef2ee', '#ffffff', '#10261f', '#f2c230', '#10261f', '#6e9cff']);
     assert.deepEqual([th.family, th.stretch, th.sizes, th.radii], ['Archivo', '74%', [44, 20, 16, 12], [8, 14]]);
     assert.ok(th.missing.includes('warn'), 'a role the sheet has no token for takes the plain one, and is named');
-    assert.match(themeCss(th), /--p-bg:#eef2ee[\s\S]*prefers-color-scheme:dark[\s\S]*--p-bg:#0e1613/);
+    // light by default whatever the computer's setting; dark only on the switch
+    assert.match(themeCss(th), /^:root\{--p-bg:#eef2ee[\s\S]*:root\[data-theme=dark\]\{--p-bg:#0e1613/);
+    assert.doesNotMatch(themeCss(th), /prefers-color-scheme/);
   });
   it('no style sheet, or the kit\'s empty skeleton: the plain look, never a brand', () => {
     assert.equal(themeFrom('').found, false);

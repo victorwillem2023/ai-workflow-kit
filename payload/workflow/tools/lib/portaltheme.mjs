@@ -87,7 +87,10 @@ export function themeFrom(md) {
   };
 }
 
-/** The theme as CSS: the roles as --p-* variables, light by default, dark with the system or the tab's switch. */
+/**
+ * The theme as CSS: the roles as --p-* variables, light by default whatever the computer's setting (dark text on the light
+ * surface reads lighter and glares less over long docs), dark one click away on the tab's switch, which the browser remembers.
+ */
 export function themeCss(th, fontFace = '') {
   const vars = (side) => Object.entries(th[side]).map(([r, v]) => `--p-${r}:${v}`).join(';');
   const [s1, s2, s3, s4, s5, s6] = [...th.sizes, ...[14, 12, 12, 12, 12, 12]].slice(0, 6);
@@ -95,5 +98,5 @@ export function themeCss(th, fontFace = '') {
   const stretch = th.stretch === 'condensed' ? 'condensed' : th.stretch ?? 'normal';
   return `${fontFace}:root{${vars('light')};--p-font:${font};--p-stretch:${stretch};--p-r1:${th.radii[0]}px;--p-r2:${th.radii[1]}px;`
     + `--p-s-display:${s1}px;--p-s-stat:${s2}px;--p-s-title:${s3}px;--p-s-body:${s4}px;--p-s-ui:${s5}px;--p-s-caption:${s6}px;color-scheme:light}`
-    + `@media (prefers-color-scheme:dark){:root:not([data-theme=light]){${vars('dark')};color-scheme:dark}}:root[data-theme=dark]{${vars('dark')};color-scheme:dark}`;
+    + `:root[data-theme=dark]{${vars('dark')};color-scheme:dark}`;
 }

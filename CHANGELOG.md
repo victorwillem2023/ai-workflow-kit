@@ -2,6 +2,16 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.0.1**: **the portal's doc pages read comfortably.** Light by default, whatever the computer's setting (dark text on the
+  white surface reads lighter over long docs; dark is one click away and remembered), the doc on the style sheet's surface colour
+  and the sidebar on its page colour. Prose ends at one measure (about 68 characters), headings and their lines included; the
+  style sheet's next sizes up for h2 and h3, space between list items, inline code in a quiet monospace that wraps, tables at the
+  ui size with short columns kept from wrapping, code blocks with their `# comments` dimmed, line height 1.6. The sidebar shows
+  each doc's title (the project's name taken off its front), in 32 px rows (44 on touch); the line above a title is its path; a
+  centred picture keeps to the text column; links in tables and link lists underline on hover; a long doc gets "On this page"
+  beside it on a wide window. The font is the file the project's app loads (width and weight). **A doc read as it is**: a code
+  fence it never closes ends at the next blank line or heading instead of turning the rest of the file into code, and every
+  line ending (CRLF, CR) is read.
 - **4.0.0**: **the kit works in phases and has a portal** (3.4 to 3.5 brought them in; 4.0 finishes them). **The portal wears the
   project's own style sheet**: `docs/STYLE.md`'s colours, found by what each token's use says ("App background", "Panels, cards",
   "Text on yellow"), so no project renames anything; its font, from the project's own `@fontsource` package, so it shows offline;

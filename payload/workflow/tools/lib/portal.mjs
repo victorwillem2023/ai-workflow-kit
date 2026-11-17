@@ -51,35 +51,55 @@ function list(lines, i, ctx) {
     i++;
     while (i < lines.length && lines[i].trim() && !/^\s*(?:[-*+]|\d+[.)])\s/.test(lines[i]) && /^\s+/.test(lines[i])) body += ` ${lines[i++].trim()}`;
     if (i < lines.length && /^(\s*)(?:[-*+]|\d+[.)])\s/.exec(lines[i])?.[1].length > indent) [sub, i] = list(lines, i, ctx);
-    items.push(`<li>${inline(body, ctx.from, ctx.known)}${sub}</li>`);
+    // an item that is only a link: its underline shows on hover and focus (a column of underlines is busy)
+    const onlyLink = /^\[[^\]]+\]\([^)]+\)[.;,]?$/.test(body.trim());
+    items.push(`<li${onlyLink ? ' class="link"' : ''}>${inline(body, ctx.from, ctx.known)}${sub}</li>`);
   }
   return [`<${ordered ? 'ol' : 'ul'}>${items.join('')}</${ordered ? 'ol' : 'ul'}>`, i];
 }
 
-/** A table starting at line i (a header row and its |---| line): [html, next i]. */
+/**
+ * A table starting at line i (a header row and its |---| line): [html, next i]. A column whose cells are all short (a status, a
+ * number) keeps from wrapping, so the widest text column gets the spare width.
+ */
 function table(lines, i, ctx) {
-  const head = cells(lines[i]).map((c) => `<th>${inline(c, ctx.from, ctx.known)}</th>`).join('');
-  const rows = [];
-  for (i += 2; i < lines.length && /^\s*\|/.test(lines[i]); i++) rows.push(`<tr>${cells(lines[i]).map((c) => `<td>${inline(c, ctx.from, ctx.known)}</td>`).join('')}</tr>`);
-  return [`<div class="table"><table><thead><tr>${head}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`, i];
+  const head = cells(lines[i]);
+  const body = [];
+  for (i += 2; i < lines.length && /^\s*\|/.test(lines[i]); i++) body.push(cells(lines[i]));
+  const short = head.map((h, c) => [h, ...body.map((r) => r[c] ?? '')].every((x) => x.replace(/`|\*\*/g, '').length <= 14));
+  const cell = (tag, c, x) => `<${tag}${short[c] ? ' class="short"' : ''}>${inline(x, ctx.from, ctx.known)}</${tag}>`;
+  const rows = body.map((r) => `<tr>${r.map((x, c) => cell('td', c, x)).join('')}</tr>`);
+  return [`<div class="table"><table><thead><tr>${head.map((x, c) => cell('th', c, x)).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`, i];
 }
 
-/** Raw HTML a doc carries (a centred logo): its relative src and href pointed into the portal. */
-const rawHtml = (line, ctx) => line.replace(/\b(src|href)="([^"]+)"/g, (m, attr, v) => `${attr}="${esc(linkTo(v, ctx.from, ctx.known) ?? v)}"`);
+/** A code block's lines; in a shell block (or one with no language) a `# comment` is marked, so the command reads first. */
+function codeBlock(lines, lang) {
+  if (lang && !/^(?:sh|bash|shell|console|zsh|powershell|ps1|cmd|text)$/i.test(lang)) return esc(lines.join('\n'));
+  return lines.map((l) => {
+    const at = /(^|\s)#\s/.exec(l);
+    return at ? `${esc(l.slice(0, at.index + at[1].length))}<span class="cm">${esc(l.slice(at.index + at[1].length))}</span>` : esc(l);
+  }).join('\n');
+}
+
+/** Raw HTML a doc carries (a centred logo): kept to the text column (its align left out), relative src and href into the portal. */
+const rawHtml = (line, ctx) => line.replace(/\s+align="(?:center|middle)"/gi, '')
+  .replace(/\b(src|href)="([^"]+)"/g, (m, attr, v) => `${attr}="${esc(linkTo(v, ctx.from, ctx.known) ?? v)}"`);
 
 /** Markdown in the kit's doc style as HTML. `from`: the doc's repo path (for its links); `known`: the listed docs. */
 export function markdown(md, { from = '', known = new Set() } = {}) {
   const ctx = { from, known };
-  const lines = String(md).replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n');
+  const lines = String(md).replace(/\r\n?/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n');
   const out = [];
   for (let i = 0; i < lines.length;) {
     const line = lines[i];
     const fence = /^\s*(```+|~~~+)\s*([\w-]*)/.exec(line);
     if (fence) {
+      // a fence a doc never closes ends at the first blank line or heading, not at the end of the file (the doc is read as it is)
+      const closes = lines.slice(i + 1).some((l) => l.trim().startsWith(fence[1]));
       const body = [];
-      for (i++; i < lines.length && !lines[i].trim().startsWith(fence[1]); i++) body.push(lines[i]);
-      out.push(`<pre><code${fence[2] ? ` class="lang-${esc(fence[2])}"` : ''}>${esc(body.join('\n'))}</code></pre>`);
-      i++;
+      for (i++; i < lines.length && !lines[i].trim().startsWith(fence[1]) && (closes || (lines[i].trim() && !/^#{1,6}\s/.test(lines[i]))); i++) body.push(lines[i]);
+      out.push(`<pre><code${fence[2] ? ` class="lang-${esc(fence[2])}"` : ''}>${codeBlock(body, fence[2])}</code></pre>`);
+      if (closes) i++;
       continue;
     }
     const h = /^(#{1,6})\s+(.*?)\s*#*$/.exec(line);
@@ -113,8 +133,14 @@ export const titleOf = (path, text) => /^#\s+(.+)$/m.exec(String(text ?? '').rep
  * The menu: sections of { title, items: [{ path, label, what, kit }] }, in the order a project meets them: start here, the
  * product and how it is built, the subject folders, the other folders under docs/, then the kit's own guides.
  */
-export function menu(docs, kit = new Set()) {
-  const item = (d) => ({ path: d.path, label: posix.basename(d.path, '.md'), what: about(d.text), kit: kit.has(d.path) });
+export function menu(docs, kit = new Set(), project = '') {
+  // each doc by its title, the project's name taken off its front ("Trailsmith: the product" is "The product"); the file is the tooltip
+  const lead = project ? new RegExp(`^${project.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[:–-]\\s*`, 'i') : null;
+  const name = (d) => {
+    const t = lead ? titleOf(d.path, d.text).replace(lead, '') : titleOf(d.path, d.text);
+    return t ? t[0].toUpperCase() + t.slice(1) : posix.basename(d.path, '.md');
+  };
+  const item = (d) => ({ path: d.path, label: name(d), what: d.path, kit: kit.has(d.path) });
   const sorted = (xs) => xs.map(item).sort((a, b) => a.label.localeCompare(b.label));
   const where = (re) => docs.filter((d) => re.test(d.path));
   const sections = [
@@ -129,6 +155,13 @@ export function menu(docs, kit = new Set()) {
   return sections.filter((s) => s.items.length);
 }
 
+
+/** A doc page: the doc, and beside it on a wide window "On this page", its h2 headings (only when it has three or more). */
+export function docBody(html) {
+  const heads = [...html.matchAll(/<h2 id="([^"]*)">([\s\S]*?)<\/h2>/g)].map(([, id, text]) => [id, text.replace(/<[^>]+>/g, '')]);
+  const toc = heads.length >= 3 ? `<aside class="toc" aria-label="On this page"><div class="cap">On this page</div>${heads.map(([id, text]) => `<a href="#${id}">${text}</a>`).join('')}</aside>` : '';
+  return `<div class="doc-grid"><article>${html}</article>${toc}</div>`;
+}
 
 const chevron = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg>';
 
@@ -147,16 +180,16 @@ export function menuHtml(sections, current = '', maps = {}) {
 const STYLE = `*{box-sizing:border-box}[hidden]{display:none!important}html{background:var(--p-bg)}body{margin:0;background:var(--p-bg);color:var(--p-text);font-family:var(--p-font);font-size:var(--p-s-body);line-height:1.5}
 a{color:var(--p-link)}a:hover{color:var(--p-text)}:focus-visible{outline:2px solid var(--p-link);outline-offset:2px}
 .layout{display:flex;flex-wrap:wrap;min-height:100vh}
-nav{flex:1 1 248px;max-width:300px;background:var(--p-surface);border-right:1px solid var(--p-line);padding:16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow:auto}
+nav{flex:1 1 248px;max-width:300px;background:var(--p-bg);border-right:1px solid var(--p-line);padding:16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow:auto}
 nav .project{font-size:var(--p-s-title);font-weight:700;font-stretch:var(--p-stretch);padding:4px 8px}
 nav label{font-size:var(--p-s-caption);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--p-caption);padding:0 8px}
 nav input{width:100%;height:44px;padding:0 12px;border:1px solid var(--p-control);border-radius:var(--p-r1);background:var(--p-raised);color:var(--p-text);font:inherit;font-size:var(--p-s-ui);margin-top:4px}
 nav input::placeholder{color:var(--p-caption)}
-nav a{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border-radius:var(--p-r1);color:var(--p-text);font-size:var(--p-s-ui);font-weight:500;text-decoration:none}
+nav a{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border-radius:var(--p-r1);color:var(--p-text);font-size:var(--p-s-ui);font-weight:500;text-decoration:none}
 nav a:hover{background:var(--p-raised);color:var(--p-text)}nav a[aria-current=page]{background:var(--p-raised);font-weight:600}nav a small{margin-left:auto;font-size:var(--p-s-caption);color:var(--p-caption)}
 nav .links a{color:var(--p-muted)}nav .links a[aria-current=page]{color:var(--p-text)}
 nav .group{border-top:1px solid var(--p-line);padding-top:8px;display:flex;flex-direction:column}
-nav summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-radius:var(--p-r1);cursor:pointer;font-size:var(--p-s-ui);font-weight:500;list-style:none}
+nav summary{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border-radius:var(--p-r1);cursor:pointer;font-size:var(--p-s-ui);font-weight:500;list-style:none}
 nav summary::-webkit-details-marker{display:none}nav summary:hover{background:var(--p-raised)}nav summary span{flex:1 1 auto}nav summary small{font-size:var(--p-s-caption);color:var(--p-caption)}
 nav summary svg{color:var(--p-caption);transition:transform .15s}nav details[open] summary svg{transform:rotate(90deg)}nav details a{padding-left:24px}
 #recent .cap{padding:0 12px 4px}nav .foot{margin-top:auto;border-top:1px solid var(--p-line);padding-top:12px}
@@ -188,22 +221,32 @@ h2{margin:8px 0 0;font-size:var(--p-s-title);line-height:1.2;font-weight:700;fon
 .docs a span{flex:1 1 auto;min-width:0}.docs small{font-size:var(--p-s-caption);color:var(--p-caption);white-space:nowrap}.docs b{font-size:var(--p-s-caption);color:var(--p-onPrimary);background:var(--p-primary);border-radius:999px;padding:0 8px;font-weight:600}
 .chip{display:inline-flex;align-items:center;height:28px;padding:0 10px;margin:2px 0;border:1px solid var(--p-control);border-radius:999px;background:var(--p-raised);color:var(--p-text);font:inherit;font-size:var(--p-s-caption);font-weight:600;cursor:pointer;vertical-align:baseline}
 .chip:hover{border-color:var(--p-link)}.chip.copied{border-color:var(--p-ok);color:var(--p-ok)}
-.inner.doc{display:block;max-width:820px}.doc h1{margin:4px 0 8px}.doc p{margin:0 0 12px}.doc h2{margin-top:32px;padding-bottom:4px;border-bottom:1px solid var(--p-line)}.doc h3{font-size:var(--p-s-body);margin:24px 0 4px}
-.doc p,.doc li{max-width:72ch}.doc code{background:var(--p-raised);border:1px solid var(--p-line);padding:1px 5px;border-radius:6px;font-size:.88em}
-.doc pre{background:var(--p-surface);border:1px solid var(--p-line);padding:12px 16px;border-radius:var(--p-r1);overflow:auto}.doc pre code{padding:0;border:0;background:none}
-.doc .table{overflow-x:auto}.doc table{border-collapse:collapse;margin:12px 0;font-size:var(--p-s-ui)}.doc th,.doc td{border:1px solid var(--p-line);padding:8px 10px;text-align:left;vertical-align:top}
-.doc th{background:var(--p-surface);font-size:var(--p-s-caption);letter-spacing:.04em;text-transform:uppercase;color:var(--p-muted)}.doc blockquote{margin:12px 0;padding:4px 16px;border-left:3px solid var(--p-primary);color:var(--p-muted)}
+body[data-doc] main{background:var(--p-surface)}
+.inner.doc{display:block;max-width:none;line-height:1.6;--measure:40rem}.doc-grid{display:grid;grid-template-columns:minmax(0,1040px);gap:48px}
+.toc{display:none}@media (min-width:1360px){.doc-grid{grid-template-columns:minmax(0,1040px) 220px}.toc{display:block;position:sticky;top:32px;align-self:start;max-height:calc(100vh - 64px);overflow:auto}}
+.toc .cap{margin-bottom:8px}.toc a{display:block;padding:4px 0 4px 12px;border-left:2px solid var(--p-line);color:var(--p-muted);font-size:var(--p-s-ui);line-height:1.35;text-decoration:none}.toc a:hover{color:var(--p-text);border-left-color:var(--p-primary)}
+.doc h1{margin:4px 0 12px;line-height:1.1;max-width:var(--measure)}.doc h2{font-size:var(--p-s-stat);line-height:1.15;margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--p-line);max-width:var(--measure)}
+.doc h3{font-size:var(--p-s-title);line-height:1.2;margin:28px 0 8px}.doc h4,.doc h5,.doc h6{font-size:var(--p-s-body);margin:20px 0 6px}
+.doc p{margin:0 0 14px}.doc p,.doc li,.doc blockquote,.doc h3{max-width:var(--measure)}
+.doc td a,.doc li.link a{text-decoration:none}.doc td a:hover,.doc td a:focus-visible,.doc li.link a:hover,.doc li.link a:focus-visible{text-decoration:underline}.doc ul,.doc ol{margin:0 0 16px;padding-left:24px}.doc li+li{margin-top:8px}.doc li>ul,.doc li>ol{margin:8px 0 0}
+.doc code{font-family:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;font-size:var(--p-s-ui);color:var(--p-muted);overflow-wrap:anywhere}
+.doc pre{background:var(--p-raised);border:1px solid var(--p-line);padding:12px 16px;border-radius:var(--p-r1);overflow-x:auto;line-height:1.5;margin:0 0 16px}
+.doc pre code{color:var(--p-text);overflow-wrap:normal;white-space:pre}.doc pre .cm{color:var(--p-caption)}
+.doc .table{overflow-x:auto;margin:0 0 16px}.doc table{border-collapse:collapse;width:100%;font-size:var(--p-s-ui);line-height:1.45}
+.doc th,.doc td{border:1px solid var(--p-line);padding:8px 10px;text-align:left;vertical-align:top}.doc .short{white-space:nowrap;width:1%}
+.doc th{background:var(--p-raised);font-size:var(--p-s-caption);letter-spacing:.04em;text-transform:uppercase;color:var(--p-muted);font-weight:600}
+.doc blockquote{margin:0 0 16px;padding:4px 16px;border-left:3px solid var(--p-primary);color:var(--p-muted)}
 .doc img{max-width:100%}.doc hr{border:0;border-top:1px solid var(--p-line);margin:24px 0}.crumb{font-size:var(--p-s-caption);color:var(--p-caption)}
 .results a{display:flex;flex-direction:column;padding:10px 0;border-bottom:1px solid var(--p-line);text-decoration:none;font-weight:600}.results small{color:var(--p-caption);font-weight:400}
-@media (max-width:1100px){.side-col{max-width:none}}@media (max-width:760px){nav{position:static;height:auto;max-width:none}main{padding:20px 16px}.row{grid-template-columns:48px minmax(0,1fr) 48px}.row .col,.row.head .col{display:none}}`;
+@media (pointer:coarse){nav a,nav summary{min-height:44px}}@media (max-width:1100px){.side-col{max-width:none}}@media (max-width:760px){nav{position:static;height:auto;max-width:none}main{padding:20px 16px}.row{grid-template-columns:48px minmax(0,1fr) 48px}.row .col,.row.head .col{display:none}}`;
 
 // search over every doc (/search.json, fetched once), a reload when a doc changes (/events), the light/dark switch, copying a
 // command chip, and what only this browser keeps: the docs opened lately and what is new since the last visit
 const SCRIPT = `const root=document.documentElement,q=document.getElementById('q'),main=document.querySelector('main .inner'),page=main.innerHTML;let all=null;
 const store=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem('portal:'+k)??'null');localStorage.setItem('portal:'+k,JSON.stringify(v))}catch{return null}};
-const theme=store('theme');if(theme)root.dataset.theme=theme;
-const tb=document.getElementById('theme'),label=()=>{tb.textContent='Theme: '+(root.dataset.theme??'system')};label();
-tb.onclick=()=>{const n={undefined:'light',light:'dark',dark:undefined}[root.dataset.theme];if(n)root.dataset.theme=n;else delete root.dataset.theme;store('theme',n??null);label()};
+if(store('theme')==='dark')root.dataset.theme='dark';
+const tb=document.getElementById('theme'),label=()=>{tb.textContent=root.dataset.theme==='dark'?'Light':'Dark'};label();
+tb.onclick=()=>{if(root.dataset.theme==='dark'){delete root.dataset.theme;store('theme','light')}else{root.dataset.theme='dark';store('theme','dark')}label()};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;navigator.clipboard?.writeText(b.dataset.copy).then(()=>{b.classList.add('copied');setTimeout(()=>b.classList.remove('copied'),1200)})});
 q.addEventListener('input',async()=>{const w=q.value.trim().toLowerCase().split(/\\s+/).filter(Boolean);if(!w.length){main.innerHTML=page;return}
 all??=await (await fetch('/search.json')).json();const hit=all.filter(d=>w.every(x=>d.text.includes(x))).slice(0,40);const t=s=>s.replace(/[<>&]/g,'');

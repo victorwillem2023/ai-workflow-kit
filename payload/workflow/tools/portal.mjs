@@ -12,7 +12,7 @@ import { existsSync, readdirSync, readFileSync, statSync, watch } from 'node:fs'
 import { createServer } from 'node:http';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { about, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
+import { docBody, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
 import { glanceHtml } from './lib/portalglance.mjs';
 import { themeCss, themeFrom } from './lib/portaltheme.mjs';
 import { shipping } from './lib/retro.mjs';
@@ -43,7 +43,8 @@ function fontFile(family) {
     if (!existsSync(dir)) continue;
     // the basic Latin file (latin-ext holds only the accented letters)
     const files = readdirSync(dir).filter((f) => /-latin-(?!ext)/.test(f) && f.endsWith('.woff2') && !/italic/.test(f));
-    const pick = files.find((f) => /wdth-normal|standard-normal|wght-normal/.test(f)) ?? files.find((f) => /-latin-400-normal/.test(f));
+    // in this order, never the alphabet's: width and weight (the file a web app with a condensed voice loads), then the others
+    const pick = ['wdth-normal', 'standard-normal', 'wght-normal', '-latin-400-normal'].map((k) => files.find((f) => f.includes(k))).find(Boolean);
     if (pick) return { dir, file: pick, variable: !/-\d00-/.test(pick) };
   }
   return null;
@@ -156,13 +157,14 @@ async function answer(req, res) {
     return res.end(readFileSync(join(th.font.dir, name)));
   }
   const maps = { file: known.has('docs/MAP.md'), app: existsSync('docs/flow/index.html') };
-  const page = (o) => pageHtml({ project, theme: th.css, nav: menuHtml(menu(docs, kit), o.doc ?? '', maps), ...o });
+  const page = (o) => pageHtml({ project, theme: th.css, nav: menuHtml(menu(docs, kit, project), o.doc ?? '', maps), ...o });
   if (path === '/') return send(200, TYPES['.html'], page({ title: 'At a glance', body: await glance(th.found) }));
   if (path.startsWith('/doc/')) {
     const doc = docs.find((d) => d.path === path.slice(5));
     if (!doc) return send(404, TYPES['.html'], page({ title: 'Not found', body: '<h1>Not found</h1><p class="quiet">That doc is not in the project (any more).</p>' }));
-    const crumb = `${doc.path}${kit.has(doc.path) ? ' · the kit\'s guide (an update replaces it)' : ''} · ${about(doc.text)}`;
-    return send(200, TYPES['.html'], page({ title: titleOf(doc.path, doc.text), doc: doc.path, crumb, body: markdown(doc.text, { from: doc.path, known }) }));
+    // the path alone: the doc's first sentence follows right under its title
+    const crumb = `${doc.path}${kit.has(doc.path) ? ' · the kit’s guide (an update replaces it)' : ''}`;
+    return send(200, TYPES['.html'], page({ title: titleOf(doc.path, doc.text), doc: doc.path, crumb, body: docBody(markdown(doc.text, { from: doc.path, known })) }));
   }
   if (path.startsWith('/file/')) {
     const file = path.slice(6);
