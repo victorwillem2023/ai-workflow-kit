@@ -74,8 +74,24 @@ export function needsFor(phase, has) {
     ['run', ['production'], !has.runDocs, 'where and how it runs (docs/run/, /launch)'],
   ];
   // the privacy page is a need only for a project that keeps personal data: without any, it is not "done", it does not apply
-  return need.filter(([id, phases]) => phases.includes(phase) && (id !== 'privacy' || has.personal)).map(([id, , missing, what]) => ({ id, what, done: !missing }));
+  return need.filter(([id, phases]) => phases.includes(phase) && (id !== 'privacy' || has.personal))
+    .map(([id, , missing, what]) => ({ id, what, ...SHORT[id], done: !missing }));
 }
+
+/** Each need in a few words, and where it is done (the docs portal's list; `what` says it in full for npm run phase). */
+const SHORT = {
+  privacy: { short: 'Personal data written down', how: 'docs/company/PRIVACY.md' },
+  errors: { short: 'Errors you can see', how: 'the production module, or docs/run/MONITORING.md' },
+  security: { short: 'What is protected, and what is open', how: 'docs/SECURITY.md' },
+  backups: { short: 'A restore that worked once', how: 'npm run drill' },
+  rollback: { short: 'A way back', how: 'deploy.rollback in workflow/config.json' },
+  monitoring: { short: 'Someone hears when it breaks', how: 'docs/run/MONITORING.md' },
+  scan: { short: 'The weekly security scan', how: '/secops' },
+  run: { short: 'Where and how it runs', how: '/launch' },
+};
+
+/** Who depends on it, in a few words per fact (the portal's phase tile). */
+export const FACT_SHORT = { reachable: 'Others can open it', personal: 'Keeps personal data', money: 'Takes money', relied: 'People rely on it' };
 
 /** A production deploy goes only in the production phase: null when it may, else the line that says why not. */
 export function deployRefusal(phase) {

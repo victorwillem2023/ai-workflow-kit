@@ -5,4 +5,4 @@ export function cardFacts(c: Card, repo?: string | null): CardFacts;
 export function boardView(o: { ranked: Card[]; tie: Card[]; waiting: { number: number; title: string; waitsFor: number[] }[]; loops?: number[][];
   inboxCount?: number; triage?: { findings: { kind: string; what: string; suggest: string; cards: { number: number }[] }[]; counts: Record<string, number> };
   n?: number; repo?: string | null }): { tie: CardFacts[]; next: CardFacts[]; waiting: { number: number; title: string; waitsFor: number[]; url: string | null }[];
-  loops: number[][]; unranked: number; inbox: number; decisions: { kind: string; what: string; suggest: string; cards: number[] }[]; counts: Record<string, number> | null };
+  loops: number[][]; unranked: number; inbox: number; decisions: { kind: string; title: string; hint: string; what: string; suggest: string; cards: number[] }[]; counts: Record<string, number> | null };

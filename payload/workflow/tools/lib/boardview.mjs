@@ -12,6 +12,18 @@ export const cardFacts = (c, repo) => ({
   url: repo ? `https://github.com/${repo}/issues/${c.number}` : null,
 });
 
+/** Each kind of triage finding in a few words: [title, what to do]; `what` and `suggest` say it in full for /tidy. */
+const SHORT = {
+  'too-much-started': (f) => [`${/^(\d+)/.exec(f.what)?.[1] ?? f.cards.length} in progress, the limit is ${/limit is (\d+)/.exec(f.what)?.[1] ?? '?'}`, 'Finish one first'],
+  'waiting-for-you': (f) => [`${f.cards.length} waiting for your check`, 'Try them, say done'],
+  stalled: (f) => [`${f.cards.length} in progress, untouched for weeks`, 'Move back or split'],
+  'blocked-long': (f) => [`${f.cards.length} blocked for weeks`, 'Unblock or close'],
+  inbox: (f) => [`${/^(\d+)/.exec(f.what)?.[1] ?? f.cards.length} issues not on the board`, 'Adopt or close'],
+  unranked: (f, view) => [`${view.unranked} cards without a value`, 'Set value and effort'],
+  duplicate: (f) => [`${f.cards.map((c) => `#${c.number}`).join(' and ')} look the same`, 'Merge into the older one'],
+  prune: (f) => [`${/^(\d+)/.exec(f.what)?.[1] ?? 'Many'} cards in the backlog`, 'Close old, low-value ones'],
+};
+
 /**
  * The view: { tie: [card], next: [card], waiting: [{ number, title, waitsFor, url }], loops, unranked, inbox, decisions:
  * [{ kind, what, suggest, cards: [n] }], counts: { open, doing, backlog, inbox } }. `ranked`, `tie`, `waiting` and `loops` come
@@ -20,14 +32,19 @@ export const cardFacts = (c, repo) => ({
 export function boardView({ ranked, tie, waiting, loops = [], inboxCount = 0, triage, n = 3, repo = null }) {
   const tied = new Set(tie.map((c) => c.number));
   const url = (num) => (repo ? `https://github.com/${repo}/issues/${num}` : null);
+  const view = { unranked: ranked.filter((c) => !word(c.labels, 'value') && !tied.has(c.number)).length };
+  const decision = (f) => {
+    const [title, hint] = (SHORT[f.kind] ?? (() => [f.what, f.suggest]))(f, view);
+    return { kind: f.kind, title, hint, what: f.what, suggest: f.suggest, cards: f.cards.map((c) => c.number) };
+  };
   return {
     tie: tie.map((c) => cardFacts(c, repo)),
     next: ranked.filter((c) => !tied.has(c.number)).slice(0, n).map((c) => cardFacts(c, repo)),
     waiting: waiting.map((c) => ({ number: c.number, title: c.title, waitsFor: c.waitsFor, url: url(c.number) })),
     loops,
-    unranked: ranked.filter((c) => !word(c.labels, 'value') && !tied.has(c.number)).length,
+    unranked: view.unranked,
     inbox: inboxCount,
-    decisions: (triage?.findings ?? []).map((f) => ({ kind: f.kind, what: f.what, suggest: f.suggest, cards: f.cards.map((c) => c.number) })),
+    decisions: (triage?.findings ?? []).map(decision),
     counts: triage?.counts ?? null,
   };
 }

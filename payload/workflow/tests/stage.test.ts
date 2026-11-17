@@ -2,10 +2,21 @@
 // nothing to say.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { BEFORE_DEPLOY, readRoadmap, stageNudges, type StageFacts } from '../../workflow/tools/lib/stage.mjs';
+import { BEFORE_DEPLOY, readRoadmap, stageItems, stageNudges, type StageFacts } from '../../workflow/tools/lib/stage.mjs';
 
 const quiet: StageFacts = { firstVersion: { total: 4, open: 2 }, beforeDeploy: [], launched: false, marketPage: false,
   installed: { launch: true, market: true, retro: true }, shippedThisWeek: 0, daysSinceRetro: 3 };
+
+describe('the stage in a few words (the docs portal)', () => {
+  it('each rule as a short title, its command and how long it takes', () => {
+    const items = stageItems({ firstVersion: null, beforeDeploy: [], launched: false, marketPage: false, installed: {}, shippedThisWeek: 3, daysSinceRetro: null, roadmap: { stage: null, sign: null, daysSinceChange: 0 } } as StageFacts);
+    assert.deepEqual(items, [
+      { title: 'Set the roadmap\'s stage and the sign to watch', command: '/advise roadmap', time: 'a few minutes' },
+      { title: 'Look back on the 3 changes shipped', command: '/retro', time: '10 minutes' },
+    ]);
+    assert.ok(items.every((i) => i.title.length <= 60), 'a few words, not a sentence with brackets');
+  });
+});
 
 describe('the stage nudge', () => {
   it('says nothing while the first version is being built and the week is quiet', () => {

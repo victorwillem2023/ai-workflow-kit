@@ -6,5 +6,6 @@ export function phaseLines(o: { phase: string; facts: Fact[]; said?: string[] })
 export type Has = { personal?: boolean; privacyDoc?: boolean; errorsSeen?: boolean; securityDoc?: boolean;
   secops?: boolean; drill?: boolean; rollback?: boolean; monitoring?: boolean; runDocs?: boolean };
 export function missingFor(phase: string, has: Has): { id: string; what: string }[];
-export function needsFor(phase: string, has: Has): { id: string; what: string; done: boolean }[];
+export function needsFor(phase: string, has: Has): { id: string; what: string; short: string; how: string; done: boolean }[];
+export const FACT_SHORT: Record<string, string>;
 export function deployRefusal(phase: string): string | null;

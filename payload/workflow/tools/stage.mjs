@@ -4,6 +4,7 @@
 // shipped without a retro (/retro), a working first version nobody asked yet whether AI could make better (/advise ai), and the roadmap's own stage and sign (docs/company/ROADMAP.md). Facts only (the board, docs/decisions/*-launch.md, docs/market/MARKET.md, git); the rules are in
 // lib/stage.mjs. A board that cannot be reached leaves its rules out. Prints nothing when there is nothing to say.
 //   node workflow/tools/stage.mjs
+//   node workflow/tools/stage.mjs --json             the same in a few words each (title, command, time), for the docs portal
 //   node workflow/tools/stage.mjs --enter run|market   start a stage: the kit's update brings that stage's folder (docs/run/ with
 //                                                      its guides, docs/market/), from the kit on this computer (git config workflow.kit)
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -11,7 +12,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { listCards } from './lib/board.mjs';
 import { shipping } from './lib/retro.mjs';
-import { BEFORE_DEPLOY, readRoadmap, stageNudges } from './lib/stage.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { BEFORE_DEPLOY, readRoadmap, stageItems, stageNudges } from './lib/stage.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 import { ghRun } from './lib/gh.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim(); } catch { return null; } };
@@ -61,7 +62,7 @@ const roadmapChanged = existsSync(roadmapAt) ? git('log', '-1', '--format=%ct', 
 const roadmap = existsSync(roadmapAt) ? { ...readRoadmap(readFileSync(roadmapAt, 'utf8')), daysSinceChange: roadmapChanged ? Math.floor((Date.now() / 1000 - Number(roadmapChanged)) / 86400) : 0 } : null;
 const lastRetro = git('log', MAIN, '-1', '--format=%ct', '--grep=retro of week', '-i');
 
-const lines = stageNudges({
+const facts = {
   firstVersion: v1 ? { total: v1.length, open: v1.filter((c) => !done(c)).length } : null,
   beforeDeploy: (cards ?? []).filter((c) => !done(c) && BEFORE_DEPLOY.test(`${c.title}\n${c.body ?? ''}`)).map((c) => ({ number: c.number, title: c.title })),
   launched: decisions.some((f) => /-launch\.md$/.test(f)),
@@ -71,5 +72,10 @@ const lines = stageNudges({
   shippedThisWeek: weeks.at(-1)?.features ?? 0,
   roadmap,
   daysSinceRetro: lastRetro ? Math.floor((Date.now() / 1000 - Number(lastRetro)) / 86400) : null,
-});
-if (lines.length) console.log(lines.map((l) => `stage: ${l}`).join('\n'));
+};
+// --json: the same in a few words each, for the docs portal (lib/stage.mjs, stageItems)
+if (process.argv.includes('--json')) console.log(JSON.stringify(stageItems(facts)));
+else {
+  const lines = stageNudges(facts);
+  if (lines.length) console.log(lines.map((l) => `stage: ${l}`).join('\n'));
+}

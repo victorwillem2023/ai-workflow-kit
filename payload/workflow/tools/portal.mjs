@@ -12,7 +12,7 @@ import { existsSync, readdirSync, readFileSync, statSync, watch } from 'node:fs'
 import { createServer } from 'node:http';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { docBody, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
+import { docBody, docTitle, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
 import { glanceHtml } from './lib/portalglance.mjs';
 import { themeCss, themeFrom } from './lib/portaltheme.mjs';
 import { shipping } from './lib/retro.mjs';
@@ -77,7 +77,7 @@ function cached(file, toolArgs) {
     slow.set(key, { ...was, at: Date.now() });
     tool(file, toolArgs).then((lines) => {
       // a failed ask keeps the last good answer, with its time, so the page can say how old it is
-      slow.set(key, lines ? { at: Date.now(), lines, asked: new Date().toLocaleTimeString(), askedAt: Date.now() } : { ...was, at: Date.now(), failed: true });
+      slow.set(key, lines ? { at: Date.now(), lines, asked: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), askedAt: Date.now() } : { ...was, at: Date.now(), failed: true });
       if (JSON.stringify(lines) !== JSON.stringify(was.lines)) reloadTabs();
     });
   }
@@ -94,7 +94,7 @@ function byDate(paths, n) {
     if (line.endsWith('.md') && !seen.has(line) && existsSync(line)) seen.set(line, ts);
   }
   const day = (t) => new Date(t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  return [...seen].slice(0, n).map(([path, t]) => ({ path, title: titleOf(path, read(path)), date: day(t), ts: t }));
+  return [...seen].slice(0, n).map(([path, t]) => ({ path, title: docTitle(path, read(path), project), date: day(t), ts: t }));
 }
 
 /** Features that went onto main this week (lib/retro.mjs, as /retro and the stage count them). */
@@ -114,14 +114,14 @@ async function glance(styled) {
     const recent = byDate(['docs', 'README.md'], 10).filter((d) => !/^docs\/(?:MAP|README)\.md$/.test(d.path)).slice(0, 8);
     phaseCache = { at: Date.now(), phase: json(await tool('workflow/tools/phase.mjs', ['--json'])), decisions: byDate(['docs/decisions'], 5), recent, shipped: shippedThisWeek() };
   }
-  const stage = cached('workflow/tools/stage.mjs', []);
+  const stage = cached('workflow/tools/stage.mjs', ['--json']);
   const board = config.board?.project ? cached('workflow/tools/board.mjs', ['--next', '3', '--json']) : null;
   const old = board?.askedAt && Date.now() - board.askedAt > 15 * 60 * 1000;
   const boardAge = !board ? '' : !board.asked ? (board.failed ? 'failed' : 'asking') : board.failed || old ? 'old' : 'fresh';
   return glanceHtml({
-    project, repo, styled, phase: phaseCache.phase, stage: stage.lines ?? [], shipped: phaseCache.shipped,
+    project, repo, styled, phase: phaseCache.phase, stage: json(stage.lines) ?? [], shipped: phaseCache.shipped,
     board: json(board?.lines), boardAge, asked: board?.asked,
-    boardNote: !board ? 'The board is not set up (/setup makes it).' : board.failed && !board.lines ? 'The board could not be reached (GitHub and the gh command).' : 'Asking the board…',
+    boardNote: !board ? 'No board yet: /setup makes it.' : board.failed && !board.lines ? 'The board could not be reached (GitHub and gh).' : 'Asking the board…',
     decisions: phaseCache.decisions, recent: phaseCache.recent,
   });
 }

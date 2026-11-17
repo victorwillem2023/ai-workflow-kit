@@ -38,6 +38,30 @@ export function stageNudges(f) {
   return out;
 }
 
+/**
+ * The same rules in a few words, for the docs portal: [{ title, command, time }] (command null when there is none to run).
+ * stageNudges says each one in full for /next; a page lays these out as a title and a chip.
+ */
+export function stageItems(f) {
+  const out = [];
+  const cmd = (part, command) => (f.installed[part] === false ? null : command);
+  const built = f.firstVersion && f.firstVersion.total > 0 && f.firstVersion.open === 0;
+  if (built && !f.launched) {
+    out.push(f.beforeDeploy.length
+      ? { title: `Finish ${f.beforeDeploy.map((c) => `#${c.number}`).join(', ')}, then decide where it runs`, command: cmd('launch', '/launch'), time: null }
+      : { title: 'First version built: decide where it runs', command: cmd('launch', '/launch'), time: null });
+  }
+  if (f.launched && f.beforeDeploy.length) out.push({ title: `Do ${f.beforeDeploy.map((c) => `#${c.number}`).join(', ')} before the first deploy`, command: null, time: null });
+  if (built && f.aiConsidered === false) out.push({ title: 'Could AI help the people using it?', command: cmd('advise', '/advise ai'), time: 'a few minutes' });
+  if (f.launched && !f.marketPage) out.push({ title: 'Who is it for, and how do they find it?', command: cmd('market', '/market'), time: null });
+  if (f.roadmap && (!f.roadmap.stage || !f.roadmap.sign)) out.push({ title: 'Set the roadmap\'s stage and the sign to watch', command: cmd('advise', '/advise roadmap'), time: 'a few minutes' });
+  else if (f.roadmap && f.roadmap.daysSinceChange >= 30) out.push({ title: `Is "${f.roadmap.sign}" there yet?`, command: cmd('advise', '/advise roadmap'), time: null });
+  if (f.installed.retro !== false && f.shippedThisWeek > 0 && (f.daysSinceRetro === null || f.daysSinceRetro >= 7)) {
+    out.push({ title: `Look back on the ${f.shippedThisWeek} change${f.shippedThisWeek === 1 ? '' : 's'} shipped`, command: '/retro', time: '10 minutes' });
+  }
+  return out;
+}
+
 /** The stage and the sign from the roadmap's *Now* lines; a value still in <angle brackets> is the template's, so not set. */
 export function readRoadmap(text) {
   const value = (re) => { const v = re.exec(text)?.[1]?.trim(); return v && !/^</.test(v) ? v.replace(/[.,]$/, '') : null; };

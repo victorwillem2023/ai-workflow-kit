@@ -2,6 +2,12 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.0.2**: **the portal's front page says it in a few words.** Each item is a short title with its command as a chip, not a
+  sentence with brackets: "Errors you can see" with where it is done under it, "Look back on the 3 changes shipped" with `/retro`
+  and "10 minutes", "4 in progress, the limit is 2" with "Finish one first", "#106 and #105 look the same", "#382 and #392 score
+  the same. Which first?". The tools give the short forms as fields (`stage.mjs --json`, the phase needs' `short` and `how`, the
+  board decisions' `title` and `hint`); on the command line they keep their full sentences. "Changed lately" lists titles without
+  the project's name, as the sidebar does; the board's time is to the minute.
 - **4.0.1**: **the portal's doc pages read comfortably.** Light by default, whatever the computer's setting (dark text on the
   white surface reads lighter over long docs; dark is one click away and remembered), the doc on the style sheet's surface colour
   and the sidebar on its page colour. Prose ends at one measure (about 68 characters), headings and their lines included; the

@@ -133,14 +133,16 @@ export const titleOf = (path, text) => /^#\s+(.+)$/m.exec(String(text ?? '').rep
  * The menu: sections of { title, items: [{ path, label, what, kit }] }, in the order a project meets them: start here, the
  * product and how it is built, the subject folders, the other folders under docs/, then the kit's own guides.
  */
-export function menu(docs, kit = new Set(), project = '') {
-  // each doc by its title, the project's name taken off its front ("Trailsmith: the product" is "The product"); the file is the tooltip
+/** A doc's title as the portal lists it: the project's name taken off its front ("Trailsmith: the product" is "The product"). */
+export function docTitle(path, text, project = '') {
   const lead = project ? new RegExp(`^${project.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[:–-]\\s*`, 'i') : null;
-  const name = (d) => {
-    const t = lead ? titleOf(d.path, d.text).replace(lead, '') : titleOf(d.path, d.text);
-    return t ? t[0].toUpperCase() + t.slice(1) : posix.basename(d.path, '.md');
-  };
-  const item = (d) => ({ path: d.path, label: name(d), what: d.path, kit: kit.has(d.path) });
+  const t = lead ? titleOf(path, text).replace(lead, '') : titleOf(path, text);
+  return t ? t[0].toUpperCase() + t.slice(1) : posix.basename(path, '.md');
+}
+
+export function menu(docs, kit = new Set(), project = '') {
+  // each doc by its title (docTitle); the file is the tooltip
+  const item = (d) => ({ path: d.path, label: docTitle(d.path, d.text, project), what: d.path, kit: kit.has(d.path) });
   const sorted = (xs) => xs.map(item).sort((a, b) => a.label.localeCompare(b.label));
   const where = (re) => docs.filter((d) => re.test(d.path));
   const sections = [
@@ -216,6 +218,8 @@ h2{margin:8px 0 0;font-size:var(--p-s-title);line-height:1.2;font-weight:700;fon
 .warn,.notice{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border:1px solid var(--p-line);border-radius:var(--p-r1);background:var(--p-surface);font-size:var(--p-s-ui);font-weight:500}
 .notice{display:block;line-height:2}.warn svg{color:var(--p-warn);flex:none;margin-top:2px}.warn strong,.warn-text{color:var(--p-warn);font-weight:600}.warn .num{font-size:inherit}
 .progress{display:flex;align-items:center;gap:12px;font-size:var(--p-s-caption);font-weight:500;color:var(--p-muted)}.bar{flex:1 1 auto;height:6px;border-radius:999px;background:var(--p-raised);overflow:hidden}.bar i{display:block;height:100%;background:var(--p-ok)}
+.needs li .item{display:block}.needs li .how{display:block;margin-top:2px;font-size:var(--p-s-caption);color:var(--p-muted);font-weight:500}.needs li .how small{color:var(--p-caption)}
+.warn .hint{color:var(--p-muted);font-weight:500}.warn strong{font-weight:600}
 .needs{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px;font-size:var(--p-s-ui);font-weight:500}.needs li.done{color:var(--p-caption)}.tick{color:var(--p-ok);font-weight:700}
 .docs{padding:4px 16px;gap:0}.docs a{display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 0;font-size:var(--p-s-ui);font-weight:500;text-decoration:none;border-bottom:1px solid var(--p-line)}.docs a:last-child{border-bottom:0}
 .docs a span{flex:1 1 auto;min-width:0}.docs small{font-size:var(--p-s-caption);color:var(--p-caption);white-space:nowrap}.docs b{font-size:var(--p-s-caption);color:var(--p-onPrimary);background:var(--p-primary);border-radius:999px;padding:0 8px;font-weight:600}

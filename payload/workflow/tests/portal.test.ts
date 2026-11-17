@@ -84,16 +84,26 @@ describe('at a glance', () => {
     assert.equal(board.next[0].url, 'https://github.com/o/app/issues/3');
     assert.deepEqual([board.unranked, board.decisions[0].kind, board.waiting[0].waitsFor], [1, 'too-much-started', [3]]);
   });
-  const g = { project: 'App', repo: 'o/app', styled: true, shipped: 2, stage: ['3 changes shipped this week and no retro yet: /retro (about 10 minutes).'],
-    phase: { phase: 'prototype', status: 'phase: prototype (nothing outside depends on it yet)', next: 'pilot', needs: [{ what: 'errors you get to see', done: false }, { what: 'the security page', done: true }] },
+  const g = { project: 'App', repo: 'o/app', styled: true, shipped: 2, stage: [{ title: 'Look back on the 2 changes shipped', command: '/retro', time: '10 minutes' }],
+    phase: { phase: 'prototype', facts: [], status: 'phase: prototype', next: 'pilot', needs: [
+      { what: 'errors you get to see: the logger and docs/PRODUCTION.md', short: 'Errors you can see', how: 'docs/run/MONITORING.md', done: false },
+      { what: 'what is protected', short: 'What is protected, and what is open', how: 'docs/SECURITY.md', done: true }] },
     board, boardAge: 'fresh', asked: '19:01', decisions: [], recent: [] };
   it('a tie is a question, the next cards have their columns, the next phase is a numbered list with how far along', () => {
     const html = glanceHtml(g);
-    assert.match(html, /#1 and #2 score the same\. Which comes first\?/);
+    assert.match(html, /#1 and #2 score the same\. Which first\?/);
     assert.match(html, /<div class="col">Medium<\/div><div class="col">Small<\/div>/);
     assert.match(html, /Before the pilot phase<\/h2>[\s\S]*1 of 2 done/);
     assert.match(html, /Tidy the board · \/tidy/, 'the one primary button, when the board needs decisions');
     assert.match(html, /No retro yet/);
+  });
+  it('a few words each: the needs by their short name and where they are done, a decision by a title and a hint, a step with its chip', () => {
+    const html = glanceHtml(g);
+    assert.match(html, /<span class="item">Errors you can see<\/span><span class="how">docs\/run\/MONITORING\.md<\/span>/);
+    assert.doesNotMatch(html, /the logger and docs\/PRODUCTION\.md/, 'the full sentence stays with npm run phase');
+    assert.match(html, /<strong>3 in progress, the limit is 2: [\s\S]*#9[\s\S]*<span class="hint">Finish one first\.<\/span>/);
+    assert.match(html, /Look back on the 2 changes shipped<\/span><span class="how"><button class="chip" data-copy="\/retro"[^>]*>\/retro<\/button> <small>10 minutes<\/small>/);
+    assert.match(html, /Nothing depends on it yet/);
   });
   it('quiet parts are left out: no tie, no decisions, no warnings, no lists without entries', () => {
     const calm = boardView({ ranked: [card(3, ['feature', 'value: high'], 3)], tie: [], waiting: [], triage: { findings: [], counts: {} } });
@@ -103,8 +113,8 @@ describe('at a glance', () => {
   it('commands are chips that copy, card numbers link to the card; an old or failed board says so; no style sheet says how to make one', () => {
     assert.match(rich('then /advise roadmap and npm run board -- --graph', 'o/app'), /data-copy="\/advise roadmap"[\s\S]*data-copy="npm run board -- --graph"/);
     assert.match(rich('#12 waits', 'o/app'), /<a class="num" href="https:\/\/github\.com\/o\/app\/issues\/12"/);
-    assert.match(glanceHtml({ ...g, boardAge: 'old' }), /older than a quarter of an hour/);
-    assert.match(glanceHtml({ ...g, styled: false }), /no style sheet yet[\s\S]*\/ui/);
+    assert.match(glanceHtml({ ...g, boardAge: 'old' }), /over 15 minutes old/);
+    assert.match(glanceHtml({ ...g, styled: false }), /No style sheet yet[\s\S]*\/ui/);
   });
 });
 

@@ -60,7 +60,7 @@ const list = (target) => missingFor(target, has).map((m) => `  - ${m.what}`).joi
 if (args.includes('--json')) {
   // for the docs portal: the phase, the facts, what fits, and every need of the next phase, done or not
   const status = phaseLines({ phase, facts: trueFacts }).status;
-  console.log(JSON.stringify({ phase, fit, status, facts: trueFacts.map((f) => f.says.replace(/ \(.*\)$/, '')), next: phase === 'production' ? null : up, needs: phase === 'production' ? [] : needsFor(up, has) }));
+  console.log(JSON.stringify({ phase, fit, status, facts: trueFacts.map((f) => f.id), next: phase === 'production' ? null : up, needs: phase === 'production' ? [] : needsFor(up, has) }));
 } else if (args.includes('--next')) {
   // remembered per computer in git's own folder, shared by the session folders; never committed
   const at = join(git('rev-parse', '--git-common-dir') ?? '.git', 'workflow-phase-said');

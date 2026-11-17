@@ -13,3 +13,4 @@ export interface StageFacts {
 export function stageNudges(f: StageFacts): string[];
 export const BEFORE_DEPLOY: RegExp;
 export function readRoadmap(text: string): { stage: string | null; sign: string | null };
+export function stageItems(f: StageFacts): { title: string; command: string | null; time: string | null }[];

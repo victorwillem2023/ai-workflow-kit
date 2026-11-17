@@ -11,3 +11,4 @@ export function menu(docs: { path: string; text: string }[], kit?: Set<string>, 
 export function menuHtml(sections: Section[], current?: string, maps?: { file?: boolean; app?: boolean }): string;
 export function pageHtml(o: { project: string; title: string; nav: string; body: string; crumb?: string; theme?: string; doc?: string }): string;
 export function docBody(html: string): string;
+export function docTitle(path: string, text: string, project?: string): string;
