@@ -74,7 +74,8 @@ describe('cleaning up after a session', () => {
     const port = portOf(r.wt('a'));
     const done = run(r, '--finish', 'a');
     assert.ok(done.ok, done.out);
-    assert.match(done.out, new RegExp(`Stopped the dev server on port ${port} \\(2 processes\\)\\.`));
+    // how many processes it finds is the system's (on Linux the watcher above the server is not one of them): that it stops is ours
+    assert.match(done.out, new RegExp(`Stopped the dev server on port ${port} \\(\\d+ process(?:es)?\\)\\.`));
     await waitFor(() => !alive(server.child) && !alive(server.parent), 'both processes to stop');
     assert.equal(existsSync(r.wt('a')), false, 'the folder is gone');
     assert.equal(git(r.main, 'branch', '--list', 'a'), '');
@@ -148,7 +149,7 @@ describe('cleaning up after a session', () => {
     assert.ok(existsSync(join(r.main, 'a.txt')), 'the feature is on main');
     assert.ok(existsSync(r.wt('a')), 'the folder is kept');
     assert.match(done.out, /checks were skipped/i);
-    assert.match(done.out, /Stopped the dev server on port \d+ \(2 processes\)/, 'its server is stopped all the same');
+    assert.match(done.out, /Stopped the dev server on port \d+ \(\d+ process(?:es)?\)/, 'its server is stopped all the same');
     assert.match(done.out, /npm run gate:all[\s\S]*--clean --yes/);
     await waitFor(() => !alive(server.child), 'its server to stop');
     const cleaned = run(r, '--clean', '--yes');

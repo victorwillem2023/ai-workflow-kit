@@ -10,11 +10,14 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { gzipSync } from 'node:zlib';
 import { matchesAny } from './lib/glob.mjs';
 import { weighPages, weightLine } from './lib/perfbudget.mjs';
+import { hasWeb, surfacesOf } from './lib/surfaces.mjs';
 
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const perf = config.performance;
 if (!perf?.maxKb) { console.log('page weight: no budget ("performance.maxKb" in the config)'); process.exit(0); }
+// a product with no web pages (a phone app only, a command line, an API: project.surfaces) has no page to weigh
+if (!hasWeb(surfacesOf(config).names)) { console.log(`page weight: no web pages (project.surfaces: ${surfacesOf(config).names.join(', ')})`); process.exit(0); }
 const pkg = existsSync('package.json') ? JSON.parse(readFileSync('package.json', 'utf8')) : {};
 if (!process.argv.includes('--no-build')) {
   if (!pkg.scripts?.build) { console.log('page weight: no build script, nothing to weigh'); process.exit(0); }

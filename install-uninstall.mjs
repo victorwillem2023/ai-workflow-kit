@@ -49,7 +49,9 @@ export function uninstall({ target, kit }) {
     if (now !== was) { writeFileSync(join(target, f), now); cleaned.push(`${f}: the kit's marked parts taken out, your own text kept`); }
   }
   // 4. the kit's rules and hooks in Claude Code's settings; the project's own stay (the file goes when nothing is left)
-  const settingsAt = join(target, '.claude', 'settings.local.json');
+  // (the tracked settings.json since 3.3, and settings.local.json where an older kit put them)
+  for (const name of ['settings.json', 'settings.local.json']) {
+  const settingsAt = join(target, '.claude', name);
   const mine = readJson(settingsAt), kits = readJson(join(kit, 'starter', 'settings.local.json'));
   if (mine && kits) {
     for (const kind of ['allow', 'deny']) if (mine.permissions?.[kind]) mine.permissions[kind] = mine.permissions[kind].filter((r) => !(kits.permissions?.[kind] ?? []).includes(r));
@@ -60,7 +62,8 @@ export function uninstall({ target, kit }) {
     }
     if (mine.hooks && !Object.keys(mine.hooks).length) delete mine.hooks;
     const empty = !mine.hooks && Object.keys(mine).every((k) => k === 'permissions' || k === 'hooks') && !(mine.permissions?.allow?.length || mine.permissions?.deny?.length);
-    if (empty) { remove(target, settingsAt); removed.push('.claude/settings.local.json'); } else { writeFileSync(settingsAt, `${JSON.stringify(mine, null, 2)}\n`); cleaned.push('.claude/settings.local.json: the kit\'s rules and hooks taken out'); }
+    if (empty) { remove(target, settingsAt); removed.push(`.claude/${name}`); } else { writeFileSync(settingsAt, `${JSON.stringify(mine, null, 2)}\n`); cleaned.push(`.claude/${name}: the kit's rules and hooks taken out`); }
+  }
   }
   // 5. the kit's npm scripts, where they still run the kit's own command
   const pkgAt = join(target, 'package.json');

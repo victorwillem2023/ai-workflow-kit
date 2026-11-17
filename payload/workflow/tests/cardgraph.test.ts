@@ -27,11 +27,27 @@ describe('the card graph', () => {
     assert.deepEqual([g.unlocks.get(1), g.unlocks.get(5), g.unlocks.get(4)], [3, 3, 0]);
     assert.deepEqual(g.unknown.get(6), [42]);
   });
-  it('offers only the cards nothing open holds back, the ones that unlock the most first, whatever their value', () => {
+  it('offers only the cards nothing open holds back, by what they and the cards they unlock are worth', () => {
     const ranked = rankCards(board);
-    assert.deepEqual(ranked.map((c) => c.number), [1, 5], '#2 has the highest value but waits; #1 and #5 each unlock three (a tie: the older first)');
+    assert.deepEqual(ranked.map((c) => c.number), [1, 5], '#2 has the highest value but waits; #1 and #5 each unlock the same three (a tie: the older first)');
     assert.match(ranked[0].why, /^unlocks 3 cards/);
     assert.deepEqual(waitingCards(board).waiting.map((c) => [c.number, c.waitsFor]), [[2, [1, 3]], [3, [1, 5]], [4, [2]]]);
+  });
+  it('unlocking a card of little value does not put a card above one worth more (#22 and #26 above #382)', () => {
+    const b = [
+      card(22, 'Rename a label', '', ['value: low', 'effort: medium']),
+      card(23, 'Show the renamed label', 'Depends on: #22', ['value: low', 'effort: medium']),
+      card(382, 'Weekly plan from a goal', '', ['value: high', 'effort: small']),
+    ];
+    assert.deepEqual(rankCards(b).map((c) => c.number), [382, 22]);
+  });
+  it('unlocking a valuable card is worth as much as doing it', () => {
+    const b = [
+      card(10, 'Store the goal', '', ['value: low', 'effort: small']),
+      card(11, 'Screen: see the plan', 'Depends on: #10', ['value: high', 'effort: small']),
+      card(12, 'A nicer footer', '', ['value: medium', 'effort: small']),
+    ];
+    assert.deepEqual(rankCards(b).map((c) => c.number), [10, 12]);
   });
   it('lets a card start once what it depends on is done or closed', () => {
     const later = board.map((c) => (c.number === 1 ? { ...c, column: 'Done' } : c.number === 5 ? { ...c, state: 'closed' } : c));

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The kit's stop points, held by Claude Code hooks instead of by the skills' wording alone (.claude/settings.local.json, hooks):
+// The kit's stop points, held by Claude Code hooks instead of by the skills' wording alone (.claude/settings.json, hooks):
 // a commit waits for the owner's own "done" and a push for the owner's own "push".
 //   node workflow/scripts/stop-points.mjs --prompt   (UserPromptSubmit) the owner said done / commit / push: noted, with the time
 //   node workflow/scripts/stop-points.mjs --tool     (PreToolUse, Bash) a commit or push without that word in the last hours: refused
@@ -29,18 +29,27 @@ const YES = /^(?:y|yes|yep|yeah|ok|okay|sure|go|go ahead|do it|please do|sounds 
 const DONE = /\b(?:done|finish(?:ed)? it|commit(?: it| this| that| them| the change| the work)?|ship it|land it|merge it)\b/;
 const PUSH = /\bpush(?:ed)?\b/;
 // what may follow the word: nothing, a comma or a stop, small words, or the next stop point itself
-const ENDS = /^\s*(?:(?:now|then|please|thanks|thank you|already|too|here|for real|it|this|that|them)\b[\s,]*)*(?:$|[,!:)–-]|and (?:commit|ship|push|merge|finish|land)\b|so (?:commit|ship|push)\b)/;
+const ENDS = /^\s*(?:(?:now|then|please|thanks|thank you|already|too|here|for real|it|this|that|them)\b[\s,]*)*(?:$|[,!:)–-]|and (?:then )?(?:commit|ship|push|merge|finish|land)\b|so (?:commit|ship|push)\b)/;
 const PUSH_ENDS = /^\s*(?:(?:it|this|that|them|now|please|too|as well)\b[\s,]*)*(?:$|[,!:)–-]|and\b|the (?:branch|change|changes|commit|commits|work|code|session|pr)\b|to (?:origin|the remote|remote|main|github|the branch)\b)/;
 const NOUN_BEFORE = /\b(?:a|an|the|this|that|my|your|each|every|last|first|one)\s*$/;
 const unquoted = (text) => text.replace(/["“”][^"“”]*["“”]/g, ' ').replace(/(^|\s)'[^'\n]*'(?=[\s.,!?;]|$)/g, '$1 ');
 const sentences = (text) => text.split(/(?<=[.!?;\n])/).map((s) => s.trim()).filter(Boolean);
 
+// what may stand before the word in its part of the sentence: nothing, or a short approving lead-in ("ok,", "yes", "it's",
+// "that's all", "we're", "looks", "go ahead and", "please"). A description has more in front ("mark a ride as done", "rides
+// that are done", "rename the button to commit"), and that is a feature, not the owner's word.
+const LEAD = /^\s*(?:(?:ok|okay|yes|yeah|yep|great|good|perfect|nice|cool|thanks|thank you|lgtm|it works|works|looks good)\b[\s,!.]*)*(?:(?:it|that|this|we|i|everything|all|the change|the feature)(?:'s|'re|'m| is| are| am)?\s+)?(?:(?:all|looks|seems|really|now|finally|totally|so)\s+)?(?:(?:please|now|then|go ahead and|you can|you may|feel free to)\s+)?(?:(?:commit|done|finish it|ship it|merge it)\s+(?:and|then|and then)\s+)?$/;
+
 function saidIn(sentence, word, ends) {
   const plain = sentence.replace(/[.!;\s]+$/, '');
   if (sentence.endsWith('?') || QUESTION.test(plain)) return false;
-  const m = word.exec(plain);
-  if (!m) return false;
+  // every place the word stands, until one is the owner's word ("once it is done, commit and push" has two)
+  return [...plain.matchAll(new RegExp(word.source, 'g'))].some((m) => saidAt(plain, m, ends));
+}
+
+function saidAt(plain, m, ends) {
   const before = plain.slice(0, m.index);
+  if (!LEAD.test(before.split(/[,;:–-]/).pop() ?? '')) return false;
   if (/^commit/.test(m[0]) && NOUN_BEFORE.test(before)) return false; // "the commit", "a commit button": a thing, not the act
   const after = plain.slice(m.index + m[0].length);
   return ends.test(after) && !CONDITION.test(before) && !NOT.test(before.split(',').pop() ?? '')
@@ -54,6 +63,9 @@ function saidIn(sentence, word, ends) {
 /** What the owner's message allows: { commit, push, clear } (clear: they said wait or not yet, which takes an earlier word back). */
 export function saidInPrompt(prompt) {
   const text = String(prompt ?? '').toLowerCase().replace(/[‘’]/g, "'").trim();
+  // a slash command's arguments are a topic or a description (/spec let riders mark a ride as done, /ship done-button), never
+  // the owner's approval: the skill asks for that, and the answer is its own message
+  if (text.startsWith('/')) return { commit: false, push: false, clear: false };
   const parts = sentences(unquoted(text));
   const commit = YES.test(text.replace(/[.!\s]+$/, '')) || parts.some((s) => saidIn(s, DONE, ENDS));
   const push = parts.some((s) => saidIn(s, PUSH, PUSH_ENDS));
@@ -76,7 +88,7 @@ export function needsWord(command) {
 }
 
 // the owner's own files: the sign-off record, its signers, and this script's note
-const OWN = ['SIGNOFFS.md', 'SIGNERS.md', 'workflow-said.json'];
+const OWN = ['SIGNOFFS.md', 'SIGNERS.md', 'workflow-said.json', 'levels.json'];
 // a command that writes files it names (a redirect is judged by where it points: reading the record into /tmp is fine)
 const WRITES = /(?:\btee\b|\bsed\s+(?:-\w*i|--in-place)|\bperl\s+-\w*i|\b(?:cp|mv|rm|truncate|dd|install|ln)\b|\b(?:write|append)File(?:Sync)?\b|\bcreateWriteStream\b|\bopen\s*\([^)]*['"][wa]|\bSet-Content\b|\bAdd-Content\b|\bOut-File\b|\bgit\s+(?:checkout|restore|apply|am)\b)/;
 const globRe = (g) => new RegExp(`^${g.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
@@ -98,6 +110,7 @@ export function ownersOnly(command) {
   const intoOwn = ownNamed(redirected.join(' '));
   const named = intoOwn.length ? intoOwn : WRITES.test(c) ? ownNamed(c) : [];
   if (!named.length) return null;
+  if (named.includes('levels.json')) return 'workflow/levels.json is the owner\'s (how strict the gate is): propose the change and let them make it';
   return named.includes('workflow-said.json') ? 'the stop points\' note is written only by the hook, from what the owner types'
     : `${named.join(' and ')} ${named.length === 1 ? 'is' : 'are'} written only by \`npm run signoff\`, in the owner's own terminal`;
 }
@@ -105,7 +118,7 @@ export function ownersOnly(command) {
 /** The verdict on a command, given what the owner said and when: { ok, why }. */
 export function verdict(command, noted, now = Date.now()) {
   const mine = ownersOnly(command);
-  if (mine) return { ok: false, why: `Refused: ${mine}. A sign-off is the owner reading the change; tell them it waits for them (workflow/guides/SENSITIVE.md). (workflow/scripts/stop-points.mjs)` };
+  if (mine) return { ok: false, why: `Refused: ${mine}. It is the owner's to write: tell them what it waits for, or what you would change and why (a sign-off: workflow/guides/SENSITIVE.md). (workflow/scripts/stop-points.mjs)` };
   const word = needsWord(command);
   if (!word) return { ok: true };
   const at = noted?.[word];
@@ -136,8 +149,9 @@ export const typedPrint = (text) => createHash('sha256').update(String(text ?? '
 
 /**
  * What the owner said in a transcript (JSONL text), as the note would hold it: { commit, push } times, a "wait" clearing them.
- * Only an entry the prompt hook saw counts (`typed`: the fingerprints it noted): the hook runs on what the person types and on
- * nothing else, so a summary, a task notice or a hook's message in the transcript can never say "done" for them.
+ * Only the person's own turns count: the ones Claude Code marks `origin: human`, or, in a transcript without that mark, the ones
+ * the prompt hook saw (`typed`: the fingerprints it noted; it runs on what the person types and on nothing else). A summary, a
+ * task notice or a hook's message in the transcript can never say "done" for them.
  */
 export function notedFromTranscript(jsonl, typed = new Set()) {
   let noted = {};
@@ -146,9 +160,11 @@ export function notedFromTranscript(jsonl, typed = new Set()) {
     let entry;
     try { entry = JSON.parse(line); } catch { continue; }
     const text = typedText(entry);
-    if (text == null || !typed.has(typedPrint(text))) continue;
+    // Claude Code's own mark that the person typed it is enough (the recorded text can differ from what the prompt hook saw: an
+    // image, an @file); a turn without that mark needs its fingerprint among the ones the prompt hook noted
+    if (text == null || !(entry.origin?.kind === 'human' || typed.has(typedPrint(text)))) continue;
     const at = Date.parse(entry.timestamp ?? '') || 0;
-    const said = saidInPrompt(text.replace(/^\/[\w:-]+\s*/, ''));
+    const said = saidInPrompt(text); // a slash command ("/ship done-button") is never the word: saidInPrompt says so
     if (said.clear) noted = {};
     if (said.commit) noted.commit = at;
     if (said.push) noted.push = at;

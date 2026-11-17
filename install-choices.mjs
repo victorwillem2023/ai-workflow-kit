@@ -71,10 +71,10 @@ export const PROFILES = {
  * project that wants only the safety net has no commands, no CLAUDE.md and no guides of the kit's.
  */
 export const MINIMAL = ['workflow/tools/', 'workflow/scripts/packages.mjs', 'workflow/scripts/packages.d.mts', '.github/workflows/gate.yml', 'workflow/config.json',
-  '.gitignore', 'gitignore.txt', 'package-scripts.json', '.tool-versions', 'tsconfig.json', 'biome.json', 'knip.json', '.gitattributes', 'pyproject.toml', 'Cargo.toml', 'go.mod'];
+  'workflow/levels.json', '.gitignore', 'gitignore.txt', 'package-scripts.json', '.tool-versions', 'tsconfig.json', 'biome.json', 'knip.json', '.gitattributes', 'pyproject.toml', 'Cargo.toml', 'go.mod'];
 export const inMinimal = (key) => MINIMAL.some((m) => (m.endsWith('/') ? key.startsWith(m) : key === m));
 /** The npm scripts a minimal install adds: the checks and what they run. */
-export const MINIMAL_SCRIPTS = ['test', 'test:full', 'typecheck', 'gate', 'gate:all', 'map'];
+export const MINIMAL_SCRIPTS = ['test', 'test:full', 'typecheck', 'gate', 'gate:all', 'map', 'levels'];
 
 export const list = (s) => String(s ?? '').split(',').map((m) => m.trim()).filter(Boolean);
 // --take and --skip name files, folders (workflow/tools/** or workflow/tools/) or, for --take, all

@@ -40,11 +40,16 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
     // the branch left it, and the local main itself, so the first signer counts once committed there, before any push (a key the
     // change adds counts only when one of those endorsed it); the same on every computer and on CI
     const onMain = [gitOk('show', `${base}:${SIGNERS}`), gitOk('show', `${MAIN}:${SIGNERS}`)].filter(Boolean).join('\n');
-    const v = signoffVerdict({
+    const verdictWith = (baseSigners) => signoffVerdict({
       changed: all, paths: config.sensitive.paths, matches: matchesAny, read: (f) => readText(f) ?? undefined,
-      signoffs: readText(SIGNOFFS), baseSigners: onMain, signers: readText(SIGNERS),
+      signoffs: readText(SIGNOFFS), baseSigners, signers: readText(SIGNERS),
     });
-    return v.ok ? { ok: true, note: v.files.length ? `${v.files.length} signed` : '' } : { ok: false, out: v.line };
+    const v = verdictWith(onMain);
+    if (!v.ok) return { ok: false, out: v.line };
+    // the local main is trusted for convenience; GitHub checks against what is pushed, so say when only the local one signs it
+    const pushed = gitOk('show', `${base}:${SIGNERS}`);
+    const localOnly = v.files.length && !verdictWith(pushed).ok;
+    return { ok: true, note: v.files.length ? `${v.files.length} signed${localOnly ? ` (by a signer only on the local main: push ${SIGNERS} first, or GitHub's check refuses it)` : ''}` : '' };
   }],
   config.data?.migrations?.length && ['migrations', () => {
     // a migration that was there before this change has run somewhere: it is never edited, renamed or deleted (workflow/guides/DATA.md)

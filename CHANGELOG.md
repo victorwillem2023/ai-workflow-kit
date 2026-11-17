@@ -2,6 +2,34 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **3.3.0**: **how strict the kit is, written down and yours: `workflow/levels.json`.** Three kinds of rule, each treated its
+  own way. The safety stops (commit and push wait for your word, the sign-off, secrets, leaks, migrations, the AI wrapper, the
+  image, the network, the packages, typecheck, tests) have no level: on, or the part is not installed. Each quality check
+  (layers, size, untested, docs... and the project's own `checks`) is `fail`, `advise` (said, and the gate passes) or `off`.
+  The process weight follows the card's size: from which effort a spec, a pitch (/shape) and a UI board are needed (/work's light
+  route, /spec's pitch step and /ui's board ask `npm run levels -- --needs`). A preset fills it in (`production`, `prototype`),
+  the file's own lines win. Only you change it: the agent's settings deny the file and the stop-point hook refuses a shell write
+  to it; the gate prints what is loosened on every run (`--advice` too), so a quiet project never looks cleaner than it is.
+  **What the product is used on is decided at the start**: `project.surfaces` (web, web-phone, phone-companion, phone, desktop,
+  cli, api), asked first in /setup. It sets the widths /ui draws and checks (`npm run surfaces -- --widths`: no phone width for a
+  web app on a computer, only the phone for a phone app), whether pages are weighed and tested in a browser (only with web pages),
+  and a phone or desktop app as an app of its own (`apps/mobile`); the gate checks the list makes sense. **For projects already
+  on 3.2.1**: the budget counts CLAUDE.md as committed (a Windows checkout's 
+ made every one fail); the kit's hooks and rules
+  are in the tracked .claude/settings.json (moved there from settings.local.json, which is often not in git); a path setting
+  (`ui.tokens`) is not a password; knip.json gets the build's start files and `workflow/**` in place of the kit's pre-3.0 places
+  (the files package.json's scripts run count as start files too); --kit-path with a copy keeps kitRepo= and finds the version's
+  tags in the clone; a kit update's spec says "the kit's files" once; the kit's own tools (knip, tsx...) are never asked for in
+  docs/STACK.md; docs/design/notes/ holds only notes; the two dev-server tests no longer count processes (Linux has one).
+  **The board's --next ranks by worth**: a card's value for the effort plus that of the cards it unlocks, so unlocking a card of
+  little value no longer puts a low-value card above the best one.
+  And **a description is not approval.** "Let riders mark a ride as done", "add a filter for rides that are done", "the
+  status should read done", "rename the button to commit" and "/ship done-button" each gave three hours of commit permission. Now
+  the word counts only on its own or after a short approving lead-in ("ok", "yes", "it's", "that's", "all", "we're", "go ahead
+  and"), every place the word stands in a message is weighed, and a slash command's arguments never count (the skill asks, and
+  the answer is its own message). A turn Claude Code marks as typed by the person counts even when its recorded text differs
+  from what the prompt hook saw (an image, an @file); the fingerprint is needed only where that mark is missing. The gate says
+  when a sign-off counts only by a signer on the local main, and the guide says why that is a convenience and GitHub the lock.
 - **3.2.2**: **only what you typed says "done".** The stop points' transcript reader took any user turn, so a summary after
   /compact or a task notice that said "all done" granted a commit; now a turn counts only when Claude Code marks it as the
   person's (`origin: human`, checked against a real transcript) and the prompt hook saw it (it notes a fingerprint of each message,

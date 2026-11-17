@@ -22,8 +22,9 @@ card first and leave a comment on it when you stop.
 1. Read the core of `docs/STYLE.md` (tokens, components, rules; it ends with the *Board notes* index), then the one board for that
    screen: its picture in `docs/design/png/` and its notes file in `docs/design/notes/`. Not the other notes files. Build what the board shows.
 2. Use only the tokens and components in `docs/STYLE.md`. No new hex colours, font sizes, radii, shadows or inline `style` attributes.
-3. Behaviour rules: one primary button per view; meaning never rests on colour alone; taps are 44 px; works at phone width, in light
-   and dark, with the keyboard.
+3. Behaviour rules: one primary button per view; meaning never rests on colour alone; taps are 44 px; works at each width of
+   `npm run surfaces -- --widths` (phone width only when the web app is used on phones: `project.surfaces`), in light and dark,
+   with the keyboard.
 4. <Project rules that came out of boards: shared empty/loading/error states, the one bottom sheet on phones, and so on.>
 5. **A new screen or part** (nothing on a board yet) is never invented in code: it goes through `/ui <n>` stage 1 (an HTML board with
    variants A, B, C and its pictures, `.claude/skills/ui/SKILL.md`), the owner picks, and stage 2 builds the pick, in the same commit
@@ -38,4 +39,4 @@ pictures and the numbered feedback rounds are kept to `ui` cards.
 
 **Done checklist for any UI change** (say it in the reply; `/ui` adds its board items to this one list): tokens only, no inline
 styles, matches the board (or the difference said), one primary button per view, meaning not by colour alone, 44 px targets,
-keyboard works, light and dark, phone width, the board card closed if one shipped.
+keyboard works, light and dark, each width the surfaces have (`npm run surfaces -- --widths`), the board card closed if one shipped.

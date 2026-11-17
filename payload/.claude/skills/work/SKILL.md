@@ -13,8 +13,8 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    then `npm run updates -- --short` (one line: Dependabot's security alerts and updates). A security
    alert: say it first, in plain words, and ask whether to deal with it before the card. An update that needs the owner (its
    "to look at" part): name it in one line and go on; the ones that merge by themselves are not mentioned.
-   **No card number given**: `npm run board -- --next 3` (the graph first: only cards nothing open holds back, those that
-   unlock the most first; then the owner's labels: first version, value for the effort) and offer those three in one line each, with its reason; the owner picks. Its notes about cards with no value
+   **No card number given**: `npm run board -- --next 3` (the graph first: only cards nothing open holds back, first-version
+   cards first, then by worth: its value for the effort plus that of the cards it unlocks) and offer those three in one line each, with its reason; the owner picks. Its notes about cards with no value
    label or issues waiting off the board (`npm run board -- --inbox`) are passed on in one line. Never read the whole board.
 1. **Read the card**: `npm run board -- --show <n>`. Never read the whole board.
    - Closed or in *Done*: say so and stop.
@@ -41,8 +41,9 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
    - `ui`: run `/ui <n>` and follow it instead of steps 2 to 5 here: it draws the board and stops for the pick, builds in
      a new chat after the pick (`/ui <n>` again, in the session folder, no `/build`), runs the feedback rounds there, and ends with `/ship` when the owner says done.
      A card of another type that turns out to need a new screen: ask to relabel it `ui` (or split it) before going on.
-   - **The light route** for a `feature` or `workflow` card labelled `effort: small` that adds no endpoint, screen, outside
-     host or sensitive file: no spec file. In chat, in a few lines: what changes for the user, the test that proves it (its
+   - **The light route** for a `feature` or `workflow` card below the size that needs a spec (`npm run levels -- --needs spec
+     <its effort>` says no; the owner sets it in `workflow/levels.json`: from medium cards in production, large in a
+     prototype) that adds no endpoint, screen, outside host or sensitive file: no spec file. In chat, in a few lines: what changes for the user, the test that proves it (its
      name), the files. On the yes it goes on like a small bug (step 3). The depth follows the size: spike, light, spec.
    - `spike`: run `/spike <n>` and follow it instead: a throwaway try with a time limit, no spec, tests or gate, ending in
      a decision note. A `feature` card for an idea nobody has tried yet: offer a spike first, in one line.

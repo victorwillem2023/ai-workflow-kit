@@ -124,7 +124,11 @@ const kitVersion = readFileSync(join(kit, 'VERSION'), 'utf8').trim();
 // the repository, so the right version can be fetched where the path does not exist
 // where the kit is on this computer, for stage.mjs --enter: this clone's git config (workflow.kit), never the committed record
 const kitPath = resolve(opt('--kit-path') ?? kit).replace(/\\/g, '/');
-const kitRepo = spawnSync('git', ['-C', kit, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout?.trim() || '';
+// (a copy of the kit, --kit-path, has no git of its own: the clone it names has the remote, and the record keeps the last one)
+const remoteOf = (dir) => spawnSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout?.trim() || '';
+const kitRepo = remoteOf(kit) || remoteOf(kitPath) || /^kitRepo=(.+)$/m.exec(mark)?.[1]?.trim() || '';
+// where the kit's history is (its tags, for what an older version wrote): this kit, else the clone --kit-path names
+process.env.WORKFLOW_KIT_HISTORY = kitPath;
 const markFile = join(target, 'workflow/record');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
 // the app map's request group as it was, to say after the update when it came out different (install-report.mjs)
@@ -249,7 +253,8 @@ const basePath = join(target, 'workflow', 'tools', 'baseline.json');
 if (!existsSync(basePath)) writeFileSync(basePath, JSON.stringify({ boundaries: [], sizes: {}, docs: [] }, null, 2) + '\n');
 
 // starter files that are not meant to live at their own name
-const rename = [['gitignore.txt', null], ['package-scripts.json', null], ['settings.local.json', '.claude/settings.local.json']];
+// the kit's Claude Code rules and hooks go in the tracked .claude/settings.json (addClaudeRules), so a commit carries them
+const rename = [['gitignore.txt', null], ['package-scripts.json', null], ['settings.local.json', '.claude/settings.json']];
 for (const [name, to] of rename) {
   const stray = join(target, name);
   if (!existsSync(stray)) continue;

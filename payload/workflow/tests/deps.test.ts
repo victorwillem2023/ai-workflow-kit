@@ -29,3 +29,9 @@ describe('glob braces', () => {
     assert.ok(re.test('src/web/Card.test.tsx') && re.test('tests/a.test.ts') && !re.test('tests/a.test.js'));
   });
 });
+
+describe("the kit's own tools", () => {
+  it('are never asked to be explained in docs/STACK.md (the kit chose them)', () => {
+    assert.deepEqual(unnamedDependencies(['knip', 'tsx', '@biomejs/biome', 'esbuild', 'left-pad'], ''), ['left-pad']);
+  });
+});

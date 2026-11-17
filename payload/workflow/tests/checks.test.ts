@@ -70,3 +70,10 @@ describe('secrets in a change', () => {
     assert.deepEqual(envFiles(['.env', '.env.example', 'apps/api/.env.local', 'src/env.ts']), ['.env', 'apps/api/.env.local']);
   });
 });
+
+describe("the kit's own settings are not secrets", () => {
+  it('a file path after a key named like a token passes (ui.tokens is src/web/styles.css)', () => {
+    assert.deepEqual(secretsIn(new Map([['workflow/config.json', ['  "ui": { "boards": "html", "tokens": "src/web/styles.css" },']]])), []);
+    assert.equal(secretsIn(new Map([['src/a.ts', ['const token = "' + 'ab12cd34ef56gh78ij90kl' + '";']]])).length, 1, 'a long literal still counts');
+  });
+});

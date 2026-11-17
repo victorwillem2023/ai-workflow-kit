@@ -22,7 +22,7 @@ sheets, empty / loading / error states.
 2. Only these components. If none fits, design the new part as a board first.
 3. One primary button per view.
 4. Meaning never rests on colour alone: icon and words too.
-5. Works on a phone: 44 px taps, the panel is a bottom sheet, the feature is mocked at phone width.
+5. Works at each width the product has (`npm run surfaces -- --widths`): 44 px taps; when it is used on phones, the panel is a bottom sheet there and the feature is mocked at phone width.
 6. No inline styles in the UI code: classes in the style sheet, built from the tokens; check both themes.
 7. Text is short, plain and measured: "5.8 km new to you", not "Great news!".
 8. <your own rules, added as boards agree them>

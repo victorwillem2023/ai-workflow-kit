@@ -1,6 +1,6 @@
 // What to build next, by script (no I/O here): the open cards that can be started (nothing they depend on is still open, or only
 // cards that are built and wait for the owner's check: those it starts on top of),
-// first-version cards first, then the ones that unlock the most, then by value for the effort, a low feasibility counting against. The labels come from `board.labels` (value, effort, feasibility,
+// first-version cards first, then by worth (its value for the effort plus that of every card it unlocks), a low feasibility counting against. The labels come from `board.labels` (value, effort, feasibility,
 // milestone); the owner sets them, the script only does the sum, so the order is the same every time and easy to argue with.
 
 import { cardGraph } from './cardgraph.mjs';
@@ -15,11 +15,11 @@ export const BUILT = ['Waiting for your check'];
 
 /** For each open card, the open cards it waits for, split: `on` built ones it can start on top of, `waits` the ones not built yet. */
 function split(cards, built) {
-  const { waitsFor, unlocks } = cardGraph(cards);
+  const { waitsFor, unlocks, unlocked } = cardGraph(cards);
   const column = new Map(cards.map((c) => [c.number, c.column]));
   const parts = new Map([...waitsFor].map(([n, deps]) => [n, {
     on: deps.filter((d) => built.includes(column.get(d))), waits: deps.filter((d) => !built.includes(column.get(d))) }]));
-  return { parts, unlocks };
+  return { parts, unlocks, unlocked };
 }
 
 /** The word after "<group>: " on a card ("value: high" -> "high"). */
@@ -39,18 +39,22 @@ export function scoreCard(card, firstVersion) {
 
 /** The open cards that can be started now, best first: [{ number, title, column, score, v1, unlocks, why }]. The graph comes
  *  first (lib/cardgraph.mjs): a card that waits for an open card is left out (`waitingCards` lists those), and among the rest
- *  first-version cards, then the ones that unlock the most other cards, then value for the effort. Ties: Ready, then older. */
+ *  first-version cards, then by worth: a card's own value for its effort plus that of every card it unlocks (unlocking a card of
+ *  little value is worth little; unlocking a valuable one is worth as much as doing it). Ties: Ready, then older. */
 export function rankCards(cards, { firstVersion, columns = STARTABLE, built = BUILT } = {}) {
-  const { parts, unlocks } = split(cards, built);
+  const { parts, unlocks, unlocked } = split(cards, built);
+  const byNo = new Map(cards.map((c) => [c.number, c]));
   return cards.filter((c) => c.state === 'open' && columns.includes(c.column) && !(parts.get(c.number)?.waits ?? []).length)
     .map((c) => {
       const s = scoreCard(c, firstVersion);
       const u = unlocks.get(c.number) ?? 0;
+      // what it opens is worth what those cards are worth
+      const opens = [...(unlocked.get(c.number) ?? [])].map((n) => byNo.get(n)).filter(Boolean).reduce((t, d) => t + scoreCard(d, firstVersion).score, 0);
       const on = parts.get(c.number)?.on ?? [];
       const top = on.length ? `starts on top of ${on.map((n) => `#${n}`).join(' and ')} (built, waiting for your check)` : '';
-      return { ...s, unlocks: u, on, why: [top, u ? `unlocks ${u} card${u === 1 ? '' : 's'}` : '', s.why].filter(Boolean).join(', ') };
+      return { ...s, unlocks: u, worth: Math.round((s.score + opens) * 100) / 100, on, why: [top, u ? `unlocks ${u} card${u === 1 ? '' : 's'}` : '', s.why].filter(Boolean).join(', ') };
     })
-    .sort((a, b) => Number(b.v1) - Number(a.v1) || b.unlocks - a.unlocks || a.on.length - b.on.length || b.score - a.score || (a.column === 'Ready' ? -1 : 0) - (b.column === 'Ready' ? -1 : 0) || a.number - b.number);
+    .sort((a, b) => Number(b.v1) - Number(a.v1) || b.worth - a.worth || a.on.length - b.on.length || b.unlocks - a.unlocks || (a.column === 'Ready' ? -1 : 0) - (b.column === 'Ready' ? -1 : 0) || a.number - b.number);
 }
 
 /**

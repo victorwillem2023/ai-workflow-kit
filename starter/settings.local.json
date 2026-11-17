@@ -59,6 +59,8 @@
       "Write(docs/company/SIGNOFFS.md)",
       "Edit(docs/company/SIGNERS.md)",
       "Write(docs/company/SIGNERS.md)",
+      "Edit(workflow/levels.json)",
+      "Write(workflow/levels.json)",
       "Bash(git push --no-verify:*)",
       "Bash(git push * --no-verify*)",
       "Bash(git push --force:*)",

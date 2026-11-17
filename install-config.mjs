@@ -83,32 +83,57 @@ function keepText(text, was, now, indent) {
 }
 const writeJson = (p, v) => writeFileSync(p, existsSync(p) ? rewriteJson(readFileSync(p, 'utf8'), v) : `${formatJson(v)}\n`);
 
+/** The kit's Claude Code settings: its allow and deny rules and its hooks (starter/settings.local.json in the kit). */
+export const kitClaudeSettings = (kit) => readJson(join(kit, 'starter', 'settings.local.json'));
+
 /**
- * Claude Code's settings are the project's own after the first install, but the kit's allow and deny rules it lacks are added, so a
- * project made earlier also gets a new rule (agents never skip the push guard: --no-verify, --force, another hooks path).
- * Returns the rules added.
+ * Claude Code's settings: the kit's allow and deny rules and its hooks (the stop points) live in the tracked .claude/settings.json,
+ * so a commit carries them to every clone and session (settings.local.json is often not in git, and is each person's own). An
+ * update adds the ones the project lacks there, and takes the kit's own out of settings.local.json (a project before 3.3 had them
+ * there; the person's own rules and hooks there stay). Returns the lines to report.
  */
 export function addClaudeRules({ target, kit }) {
-  const own = join(target, '.claude', 'settings.local.json');
-  if (!existsSync(own)) return [];
-  const kits = readJson(join(kit, 'starter', 'settings.local.json'));
-  const kitRules = kits.permissions ?? {};
-  const mine = readJson(own);
+  const shared = join(target, '.claude', 'settings.json');
+  const local = join(target, '.claude', 'settings.local.json');
+  if (!existsSync(shared) && !existsSync(local)) return [];
+  const kits = kitClaudeSettings(kit);
+  const mine = existsSync(shared) ? readJson(shared) : {};
   mine.permissions ??= {};
   const added = [];
   for (const kind of ['allow', 'deny']) {
     const list = (mine.permissions[kind] ??= []);
-    for (const r of kitRules[kind] ?? []) if (!list.includes(r)) { list.push(r); added.push(`${kind} ${r}`); }
+    for (const r of kits.permissions?.[kind] ?? []) if (!list.includes(r)) { list.push(r); added.push(`${kind} ${r}`); }
   }
-  // the kit's hooks (the stop points: workflow/scripts/stop-points.mjs) the project lacks, by their command; the project's own stay
+  // the kit's hooks the project lacks, by their command; the project's own stay
+  const kitCommands = Object.values(kits.hooks ?? {}).flat().flatMap((g) => (g.hooks ?? []).map((h) => h.command));
   for (const [event, groups] of Object.entries(kits.hooks ?? {})) for (const g of groups) {
     const have = (mine.hooks ??= {})[event] ??= [];
     const known = have.flatMap((x) => (x.hooks ?? []).map((h) => h.command));
     const missing = (g.hooks ?? []).filter((h) => !known.includes(h.command));
     if (missing.length) { have.push({ ...g, hooks: missing }); added.push(`hook ${event}: ${missing.map((h) => h.command).join(', ')}`); }
   }
-  if (added.length) writeJson(own, mine);
-  return added;
+  if (added.length || !existsSync(shared)) { mkdirSync(dirname(shared), { recursive: true }); writeJson(shared, mine); }
+  const moved = existsSync(local) ? takeKitsOut(local, kits, kitCommands) : 0;
+  return [...(added.length ? [`.claude/settings.json (tracked): ${added.join(', ')}`] : []),
+    ...(moved ? [`the kit's ${moved} rules and hooks moved from .claude/settings.local.json to .claude/settings.json; yours stay there`] : [])];
+}
+
+/** Takes the kit's rules and hooks out of a settings file, keeping the person's own: how many were taken out. */
+function takeKitsOut(file, kits, kitCommands) {
+  const s = readJson(file);
+  let n = 0;
+  for (const kind of ['allow', 'deny']) {
+    const before = s.permissions?.[kind]?.length ?? 0;
+    if (s.permissions?.[kind]) s.permissions[kind] = s.permissions[kind].filter((r) => !(kits.permissions?.[kind] ?? []).includes(r));
+    n += before - (s.permissions?.[kind]?.length ?? 0);
+  }
+  for (const [event, groups] of Object.entries(s.hooks ?? {})) {
+    s.hooks[event] = groups.map((g) => ({ ...g, hooks: (g.hooks ?? []).filter((h) => { const kits = kitCommands.includes(h.command); if (kits) n++; return !kits; }) }))
+      .filter((g) => g.hooks.length);
+    if (!s.hooks[event].length) delete s.hooks[event];
+  }
+  if (n) writeJson(file, s);
+  return n;
 }
 
 /**
@@ -192,14 +217,17 @@ const KNIP_CONFIGS = ['knip.json', 'knip.jsonc', '.knip.json', '.knip.jsonc', 'k
  * package.json runs or vite.config names as entry points, and index.html's module script. Without them knip calls the whole app
  * unused. Written once as knip.json (with knip's usual start files beside them); never over a config the project has.
  */
-export function knipEntries(target) {
+export function knipEntries(target, kitKnip = null) {
   const read = (f) => { try { return readFileSync(join(target, f), 'utf8'); } catch { return ''; } };
   const pkg = (() => { try { return JSON.parse(read('package.json')); } catch { return {}; } })();
-  if (pkg.knip || KNIP_CONFIGS.some((f) => existsSync(join(target, f)))) return null;
+  // the project's own knip config is left alone; the kit's (as it wrote it, `kitKnip`, with no start files yet) is filled in
+  const kits = (f) => f === 'knip.json' && kitKnip != null && read(f).replace(/\r\n/g, '\n').trim() === kitKnip.replace(/\r\n/g, '\n').trim();
+  if (pkg.knip || KNIP_CONFIGS.some((f) => existsSync(join(target, f)) && !kits(f))) return null;
   const scripts = Object.values(pkg.scripts ?? {}).join('\n');
   const ran = [...scripts.matchAll(/\bnode\s+([\w./-]+\.m?[jt]s)\b/g)].map((m) => m[1]).filter((f) => !f.startsWith('workflow/tools/'));
   const texts = [scripts, ...ran.map(read), ...['vite.config.ts', 'vite.config.js', 'vite.config.mjs'].map(read)];
-  const found = new Set();
+  // the files the scripts run are start files themselves; the paths named in them and in vite.config too
+  const found = new Set(ran.map((f) => f.replace(/^\.\//, '')));
   for (const t of texts) for (const m of t.matchAll(/['"`](?:\.\/)?((?:src|app|web|client|server)\/[\w./-]+\.(?:m?[jt]sx?))['"`]/g)) found.add(m[1]);
   for (const m of read('index.html').matchAll(/<script[^>]*type=["']module["'][^>]*src=["']\/?([\w./-]+)["']/g)) found.add(m[1]);
   const entries = [...found].filter((f) => existsSync(join(target, f))).sort();
@@ -208,11 +236,14 @@ export function knipEntries(target) {
 
 export function writeProjectFiles({ target, kit, lang, langs, modules, update, done, projectNode }) {
   let knipNote = '';
-  const entries = lang === 'ts' ? knipEntries(target) : null;
+  const kitKnip = existsSync(join(kit, 'starter-ts', 'knip.json')) ? readFileSync(join(kit, 'starter-ts', 'knip.json'), 'utf8') : null;
+  const entries = lang === 'ts' ? knipEntries(target, kitKnip) : null;
   if (entries) {
     const usual = ['{index,cli,main}.{js,mjs,cjs,jsx,ts,tsx,mts,cts}', 'src/{index,cli,main}.{js,mjs,cjs,jsx,ts,tsx,mts,cts}'];
-    writeFileSync(join(target, 'knip.json'), `${formatJson({ entry: [...entries, ...usual] })}\n`);
-    done.added.push('knip.json');
+    // the kit's knip.json keeps its ignore lists and gains the start files; a project with none gets them on their own
+    const own = existsSync(join(target, 'knip.json')) ? JSON.parse(readFileSync(join(target, 'knip.json'), 'utf8')) : {};
+    writeFileSync(join(target, 'knip.json'), `${formatJson({ entry: [...entries, ...usual], ...own })}\n`);
+    if (!done.added.includes('knip.json')) done.added.push('knip.json');
     knipNote = `  knip.json: the unused check starts from the files the build starts from (${entries.join(', ')}); add any it missed`;
   }
   const hint = writeProjectFilesRest({ target, kit, lang, langs, modules, update, done, projectNode });

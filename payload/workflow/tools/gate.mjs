@@ -28,7 +28,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { specPaths, outsideSpec } from './lib/scope.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec } from './lib/scope.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -38,6 +38,8 @@ import { namingProblems } from './lib/naming.mjs';
 import { policySteps, dataAdvice } from './lib/policy.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { FILE as LEVELS_FILE, levelOf, loosenedLine, readLevels } from './lib/levels.mjs';
+import { appsOf, surfacesOf } from './lib/surfaces.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -103,7 +105,8 @@ const npmScripts = existsSync('package.json') ? Object.keys(JSON.parse(readFileS
 const staleRefs = findStaleRefs(docTexts, (p) => existsSync(p), npmScripts);
 
 // rules files over their size budget (`budget`: path or glob -> bytes): [file, budget, size]
-const overBudget = config.budget ? docFiles.map((f) => [f, Object.entries(config.budget).find(([g]) => matchesAny(f, [g]))?.[1], statSync(f).size]).filter(([, max, size]) => max && size > max) : [];
+// (the size as committed: \r\n counts as \n, so a Windows checkout with core.autocrlf=true measures the same as Linux and CI)
+const overBudget = config.budget ? docFiles.map((f) => [f, Object.entries(config.budget).find(([g]) => matchesAny(f, [g]))?.[1], Buffer.byteLength(readFileSync(f, 'utf8').replace(/\r\n/g, '\n'))]).filter(([, max, size]) => max && size > max) : [];
 
 if (flag('--update-baseline')) {
   let reason = null;
@@ -205,7 +208,13 @@ function guardLines() {
   if (hook && existsSync(hook) && readFileSync(hook, 'utf8').includes('workflow/tools/protect.mjs')) return [];
   return ['advice: the push guard is not on this computer, so a push here may rewrite or delete main: npm run protect -- --local'];
 }
-if (flag('--advice')) { const a = [...adviceLines(), ...depsLines(), ...guardLines()]; if (a.length) console.log(a.join('\n')); process.exit(0); }
+/** --advice: only the advice lines, and what is loosened (workflow/levels.json), so the short run never looks cleaner. */
+function adviceOnly() {
+  const lv = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
+  console.log([...adviceLines(), ...depsLines(), ...guardLines(), ...(lv.loosened.length ? [loosenedLine(lv)] : [])].join('\n'));
+  process.exit(0);
+}
+if (flag('--advice')) adviceOnly();
 
 const changed = changedFiles();
 const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming });
@@ -222,7 +231,10 @@ function scopeLines() {
   const specs = readdirSync('workflow/specs').filter((f) => f.endsWith('.md'));
   if (specs.length !== 1) return [];
   const ignore = ['workflow/specs/**', config.map?.out, config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', ...(config.scopeIgnore ?? [])].filter(Boolean);
-  return outsideSpec(changed, specPaths(readFileSync(`workflow/specs/${specs[0]}`, 'utf8')), ignore)
+  const spec = readFileSync(`workflow/specs/${specs[0]}`, 'utf8');
+  // a kit update's spec says "the kit's files" once: every file the kit wrote (workflow/record) is named by it
+  const kitFiles = namesKitFiles(spec) && existsSync('workflow/record') ? kitFilesIn(readFileSync('workflow/record', 'utf8')) : [];
+  return outsideSpec(changed, [...specPaths(spec), ...kitFiles, ...(kitFiles.length ? ['workflow/record'] : [])], ignore)
     .map((f) => `scope: ${f} changed, but workflow/specs/${specs[0]} does not name it (add it to the spec or take the change out)`);
 }
 if (flag('--list')) {
@@ -339,6 +351,14 @@ const steps = [
   // (only a builder that knows --check: an older one would rewrite the file instead of checking it)
   existsSync('docs/flow/build-requests.mjs') && readFileSync('docs/flow/build-requests.mjs', 'utf8').includes("'--check'") && ['requests', () => run('node docs/flow/build-requests.mjs --check')],
   ['harness', () => run('node workflow/tools/harness.mjs --check')],
+  ['surfaces', () => {
+    // what the product is used on (project.surfaces): a list that makes sense, and a phone or desktop app as an app of its own
+    const { names, problems } = surfacesOf(config);
+    const roots = (config.apps ?? []).map((a) => String(a.root ?? '').replace(/\/$/, ''));
+    const missing = appsOf(names).filter((a) => !roots.includes(a) && !existsSync(a));
+    const out = [...problems, ...missing.map((a) => `project.surfaces names an app that is not there yet: ${a} (an entry in "apps" in the config, made when its first card is built)`)];
+    return problems.length ? { ok: false, out: out.join('\n') } : { ok: true, note: `${names.join(', ')}${missing.length ? `; ${missing.join(', ')} not made yet` : ''}` };
+  }],
   ['docs', () => {
     const fresh = newStaleRefs(staleRefs, baseline.docs ?? []);
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
@@ -383,18 +403,33 @@ const steps = [
 
 // the whole suite over its time budget (`testSeconds`): advice only, because a slow machine is not a broken change
 const slowLines = () => (config.testSeconds && suiteSeconds > config.testSeconds ? [`advice: the tests took ${Math.round(suiteSeconds)} s, the budget is ${config.testSeconds} s: make the slow ones faster or merge tests that check the same thing (npm run health)`] : []);
-const started = Date.now();
-for (const [name, fn] of steps) {
-  const t = Date.now();
-  const r = fn();
-  const secs = ((Date.now() - t) / 1000).toFixed(1);
-  if (!r.ok) {
-    console.log(`FAIL ${name} (${secs}s)`);
-    console.log(tail(r.out ?? ''));
-    process.exit(1);
+/**
+ * Runs the steps at the levels the owner set (workflow/levels.json: lib/levels.mjs): `off` is skipped and said, `advise` says what
+ * it found and goes on, `fail` stops the gate. A levels file with a problem fails before anything runs. Ends with what is loosened.
+ */
+function runSteps(steps) {
+  const levels = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
+  if (levels.problems.length) { console.log(`FAIL levels\n${levels.problems.join('\n')}`); process.exit(1); }
+  const advised = [];
+  for (const [name, fn] of steps) {
+    const level = levelOf(levels, name);
+    if (level === 'off') { console.log(`off  ${name} (${LEVELS_FILE})`); continue; }
+    const t = Date.now();
+    const r = fn();
+    const secs = ((Date.now() - t) / 1000).toFixed(1);
+    if (!r.ok && level === 'advise') {
+      console.log(`adv  ${name} (${secs}s) - would fail; advise in ${LEVELS_FILE}`);
+      advised.push(`advice: ${name} (set to advise): ${tail(r.out ?? '').split('\n').filter(Boolean).slice(0, 3).join(' | ')}`);
+      continue;
+    }
+    if (!r.ok) { console.log(`FAIL ${name} (${secs}s)`); console.log(tail(r.out ?? '')); process.exit(1); }
+    console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
   }
-  console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
+  for (const line of advised) console.log(line);
+  console.log(loosenedLine(levels));
 }
+const started = Date.now();
+runSteps(steps);
 // the app map (map module): code the map names changed while the map did not (lib/worksheet.mjs)
 const mapLines = existsSync('docs/flow/map.js') && existsSync('workflow/tools/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
 for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);

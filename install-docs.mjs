@@ -188,7 +188,10 @@ function updateKitBlocks({ target, kit, fill, text }) {
   const version = /^version=(.+)$/m.exec(mark)?.[1]?.trim();
   const fresh = kitBlocks(fill(readFileSync(join(kit, 'starter', 'CLAUDE.md'), 'utf8')));
   if (!version || !fresh.size) return { text, said };
-  const old = spawnSync('git', ['show', `v${version}:starter/CLAUDE.md`], { cwd: kit, encoding: 'utf8' });
+  // the version's own text, from this kit's tags, else from the clone a copy came from (--kit-path)
+  const places = [...new Set([kit, process.env.WORKFLOW_KIT_HISTORY].filter((d) => d && existsSync(d)))];
+  const old = places.map((cwd) => spawnSync('git', ['show', `v${version}:starter/CLAUDE.md`], { cwd, encoding: 'utf8' })).find((r) => r.status === 0)
+    ?? { status: 1 };
   if (old.status !== 0) return { text, said: [`its kit parts were left as they are (the kit here has no tag v${version} to compare them with)`] };
   const was = fill(old.stdout.replace(/\r\n/g, '\n'));
   const crlf = text.includes('\r\n');

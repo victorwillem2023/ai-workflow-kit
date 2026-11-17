@@ -28,7 +28,9 @@ describe('the stop points', () => {
     for (const text of ['is it done?', 'when you are done, tell me', 'what does the commit hook do?', 'push the button down a bit',
       'if it is done, show me the screen', 'the commit message is wrong', 'should we push this?',
       "I'm done reading the plan, now make the header blue", 'done with lunch, lets look at the map', 'add a commit button',
-      'make it say "done" when saved', 'It is done, but the footer is still wrong', 'well done', 'you said it was done']) {
+      'make it say "done" when saved', 'It is done, but the footer is still wrong', 'well done', 'you said it was done',
+      'let riders mark a ride as done', '/spec let riders mark a ride as done', 'add a filter for rides that are done',
+      'the status should read done', 'rename the button to commit', '/ship done-button']) {
       assert.deepEqual(allows(text), { commit: false, push: false }, text);
     }
   });
@@ -121,13 +123,14 @@ describe("the owner's words from Claude Code's transcript", () => {
     assert.deepEqual(notedFromTranscript(notice, typed('all done')), {}, 'a task notice, even with the same words');
     const human = line('user', 'all done', '2026-11-16T10:05:00Z', { origin: { kind: 'human' }, userType: 'external' });
     assert.deepEqual(notedFromTranscript(human, typed('all done')), { commit: Date.parse('2026-11-16T10:05:00Z') });
+    assert.deepEqual(notedFromTranscript(human, typed()), { commit: Date.parse('2026-11-16T10:05:00Z') }, 'marked as typed: counts even when the text differs from what the hook saw (an image, an @file)');
     assert.deepEqual(notedFromTranscript(t, typed('all done')), { commit: Date.parse('2026-11-16T10:03:00Z') }, 'only the typed one');
   });
-  it('a later "wait" takes it back, and a slash command counts by its arguments', () => {
+  it('a later "wait" takes it back, and a slash command never counts', () => {
     const t = [line('user', 'done', '2026-11-16T10:00:00Z'), line('user', 'wait', '2026-11-16T10:01:00Z')].join('\n');
     assert.deepEqual(notedFromTranscript(t, typed('done', 'wait')), {});
     const cmd = line('user', '<command-name>/ship</command-name><command-args>push it</command-args>', '2026-11-16T10:05:00Z');
-    assert.deepEqual(notedFromTranscript(cmd, typed('/ship push it')), { push: Date.parse('2026-11-16T10:05:00Z') });
+    assert.deepEqual(notedFromTranscript(cmd, typed('/ship push it')), {}, "a slash command's arguments are a topic, never the word");
   });
   it('the prompt hook notes every message by its fingerprint, and keeps the words', () => {
     const now = 1_000_000_000_000;

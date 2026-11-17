@@ -1,0 +1,6 @@
+{
+  "$comment": "How strict the gate is (workflow/tools/lib/levels.mjs). Yours to edit, never the agent's: it may propose a change, you make it. preset: production (every check fails) or prototype (structure checks only advise). checks: a quality check's level, fail, advise or off, over the preset's; the safety stops (secrets, signoff, migrations, the tests...) have none. process: from which card size (always, small, medium, large, never) a spec, a pitch and a UI board are needed. The gate prints what is loosened on every run.",
+  "preset": "production",
+  "checks": {},
+  "process": {}
+}

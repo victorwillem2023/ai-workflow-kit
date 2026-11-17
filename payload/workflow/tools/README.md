@@ -165,19 +165,35 @@ refuses, the script says so and the local guard still works. `npm run protect --
 What needs a public repository or a paid plan, and what stands in for it here:
 | GitHub enforces (public or paid) | Here instead (any plan) |
 |---|---|
-| no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.local.json` and `opencode.jsonc` (`npm run harness` adds a rule the first gained to the second) deny `git push --no-verify`, `--force`, `-f` and another hooks path |
+| no force push or delete of `main` | the push guard (a git hook); agents may not skip it: `.claude/settings.json` and `opencode.jsonc` (`npm run harness` adds a rule the first gained to the second) deny `git push --no-verify`, `--force`, `-f` and another hooks path |
 | a pull request merges only when its gate passed (`"flow": "pr"`) | `node workflow/scripts/session.mjs --merge <topic>` merges only when its checks are green; the gate still runs on every push |
 
-**The stop points** (Claude Code hooks in `.claude/settings.local.json`, `workflow/scripts/stop-points.mjs`): an agent's `git commit`
+**How strict it is** (`workflow/levels.json`, yours: the agent may propose a change, never make it; its settings deny the file
+and the stop-point hook refuses a shell write to it). Three kinds of rule, each treated its own way:
+| Kind | Which | Adjustable? |
+|---|---|---|
+| safety stops | commit and push wait for your word, the sign-off, secrets, leaks, migrations, the AI wrapper, the image, the network, the packages, typecheck, tests | no: on, or the part is not installed (a level for one fails the gate) |
+| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, covers, errors, map, harness, versions, settings, spikes, together, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
+| process weight | a spec, a pitch (`/shape`), a UI board | by the card's size: `process.spec`, `pitch`, `uiBoard` (`always`, `small`, `medium`, `large`, `never`) |
+
+`"preset": "production"` (every check fails; a spec from medium cards, a pitch for large ones, a board from small ones) or
+`"prototype"` (the structure checks advise; a spec only for large cards, no pitch) fills them in; the file's own lines win. The
+gate prints what is loosened on every run, `--advice` too, so a quiet project never looks cleaner than it is; `npm run levels`
+shows everything in force.
+
+**The stop points** (Claude Code hooks in the tracked `.claude/settings.json`, so every clone and session has them; `workflow/scripts/stop-points.mjs`): an agent's `git commit`
 `git merge`, `cherry-pick`, `revert`, `am` or `rebase` (also as `/usr/bin/git` or `git.exe`), and `--finish`, `--merge` or `--commit-notes` of the session script (also
 through `npm run session`), is refused until the owner has said "done" (or "commit", "finish it", or a short "yes" to the skill's
 question) in that same chat in the last 3 hours; a `git push`, `--push` or `gh pr merge` until they said "push". The word counts
 only when nothing about other work follows it: a question ("is it done?"), a condition ("when you are done, tell me"), another
 meaning ("push the button", "a commit button", "done reading the plan") or quoted text does not, and "wait" or "not yet" takes it
 back. In Claude Code the hook reads the owner's words from the chat's own transcript, and only the messages Claude Code marks as
-the person's own (`origin: human`) that the prompt hook also saw (it notes a fingerprint of each one): a summary after `/compact`,
-a task notice, a subagent's prompt or a hook's message never counts, and a file the agent writes cannot say them either. A
-reported "done" does not count ("well done", "you said it was done", "done, but the footer is still wrong").
+the person's own (`origin: human`; in a transcript without that mark, the ones the prompt hook saw, by a fingerprint of each): a
+summary after `/compact`, a task notice, a subagent's prompt or a hook's message never counts, and a file the agent writes cannot
+say them either. Only a short approval counts: the word on its own or after "ok", "yes", "it's", "that's", "all", "we're" or
+"go ahead and". A description does not ("let riders mark a ride as done", "rename the button to commit"), nor a reported one
+("well done", "you said it was done", "done, but the footer is still wrong"), nor a slash command's arguments ("/ship done-button":
+the skill asks, and the answer is its own message).
 `node workflow/scripts/stop-points.mjs --status` says what the note holds (the
 note is for OpenCode's plugin, `.opencode/plugins/stop-points.js`, which `npm run harness` writes and which asks the same script).
 The hook also refuses an agent's shell command that writes `docs/company/SIGNOFFS.md`, `SIGNERS.md` or the note, globs included.
@@ -295,7 +311,7 @@ never through a shell, and takes the runner as an argument (`workflow/tests/boar
 | `npm run board -- --depends <n> <m,k>` | card #n needs #m and #k done first: writes its `Depends on:` line, or extends it |
 | `npm run board -- --undepend <n> <m,k>` | takes #m and #k off that line; both print the full list the card ends up with |
 | `npm run board -- --rate <n> value high` | sets one label of a group (`value`, `effort`, `feasibility`, the words the config has) and takes the group's other label off, so a card never holds two |
-| `npm run board -- --next [n]` | the n (5) cards to build next, **the graph first**: a card whose dependency is still open (not closed, not in Done) is not offered but listed with what it waits for, and of the rest the ones that unlock the most cards come first; then, from the columns a card can start in: `first version` cards first (the first `board.labels.milestone`), then value for the effort (`value` high 3, medium 2, low 1, not set 1.5; divided by `effort` small 1, medium 2, large 4, unknown 3; times `feasibility` high 1, medium 0.75, low 0.5; a bug +0.5), each with its reason; says a tie at the top as one ("#a, #b are equal", marked `=`: nothing in the graph or the labels puts one first, so `/tidy` asks the owner once and keeps the answer as value labels), counts the cards with no value label and the issues off the board (`lib/rank.mjs`, a fixed sum: the owner's labels decide, not a model) |
+| `npm run board -- --next [n]` | the n (5) cards to build next, **the graph first**: a card whose dependency is still open (not closed, not in Done) is not offered but listed with what it waits for, and of the rest, from the columns a card can start in: `first version` cards first (the first `board.labels.milestone`), then by worth: a card's own value for the effort plus that of every card it unlocks (unlocking a card of little value adds little) (`value` high 3, medium 2, low 1, not set 1.5; divided by `effort` small 1, medium 2, large 4, unknown 3; times `feasibility` high 1, medium 0.75, low 0.5; a bug +0.5), each with its reason; says a tie at the top as one ("#a, #b are equal", marked `=`: nothing in the graph or the labels puts one first, so `/tidy` asks the owner once and keeps the answer as value labels), counts the cards with no value label and the issues off the board (`lib/rank.mjs`, a fixed sum: the owner's labels decide, not a model) |
 | `npm run board -- --inbox` | open issues that are not on the board (feedback from the form, error alerts, ideas filed on GitHub), the weekly reports aside |
 | `npm run board -- --adopt <n> --label <type> [--label <name>]...` | puts issue #n on the board in Backlog with its labels |
 | `npm run board -- --triage` | what needs a decision (`lib/triage.mjs`): more in progress than `board.wip` (2), waiting for your check over 3 days, in progress or blocked unchanged for 14, the inbox, startable cards with no value, likely duplicates (titles sharing most words), and over `board.backlogMax` (30) cards in Backlog the old low-value ones to prune; then the focus (finish these, then start this). `--next` prints one line when anything is found; `/tidy` acts on it |
@@ -360,7 +376,7 @@ The skills live once, in `.claude/skills/<name>/SKILL.md`; every agent reads tho
 - **OpenCode** reads the root `CLAUDE.md` (no `AGENTS.md`: with one, OpenCode reads it instead of `CLAUDE.md`; it does not load folder `CLAUDE.md` files, so the root file says to read them) and the same skills. `.opencode/commands/<name>.md` is one short file per
   skill naming the skill, the agent (plan or build) and the model; `node workflow/tools/harness.mjs` writes them from the skills and
   `workflow/config.json` (`harness.opencode`), and `--check` (part of the gate) fails when one is missing or out of date.
-  `opencode.jsonc` sets the models and mirrors `.claude/settings.local.json`'s permissions (the shell asks, the workflow's own
+  `opencode.jsonc` sets the models and mirrors the permissions of `.claude/settings.json` and `settings.local.json` (the shell asks, the workflow's own
   commands don't; `.env` and the data folders can't be read, so they are never sent to a model provider).
 - **Model rule**: the flow (`/work /spec /build /ship /ui`, Plan, Build, subagents) runs on a paid model. Free models only for
   jobs you start yourself and can rerun (`/idea /docs /check /find`, session titles): they are promotions with no published

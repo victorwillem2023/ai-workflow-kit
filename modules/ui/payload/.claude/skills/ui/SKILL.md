@@ -22,6 +22,8 @@ it). `/work <n>` sends a `ui` card here. Never commit before the owner says done
   `docs/design/README.md`, never read that whole). Not the other notes files.
 
 ## Short path: a small tweak to a part that exists
+(Which cards need a board is the owner's, in `workflow/levels.json`: `npm run levels -- --needs uiBoard <the card's effort>`;
+from small cards in production, only large ones in a prototype. Below it, a new part is built as a live draft too.)
 "The button feels clunky", a spacing, a label, a colour that breaks a rule: no board. Say in two lines what changes and which file
 in `src/web`, start the session (`node workflow/scripts/session.mjs <topic> --card <n>`), make it as a fast live draft, one pass, take the
 after picture (below), and stop for the owner to try it. The style rules and the done checklist still apply. If it grows into a new
@@ -36,9 +38,11 @@ part or a second screen, stop and go to stage 1.
      `src/web/styles.css` when it is not set; a project whose tokens live elsewhere sets it) for the variables (light on `:root`, dark on
      `data-theme='dark'`), the board's own layout in a short `<style>` built from those variables; no hex, no new size or radius;
    - **variants A, B, C** side by side on the one page, each with a letter, a one-line name and what it costs or gives up; mark the
-     one you recommend and say why in one sentence; the phone width (400 px) drawn for at least the recommended one;
+     one you recommend and say why in one sentence; each width of `npm run surfaces -- --widths` drawn for at least the
+     recommended one (400 px when it is used on phones; a phone app only: just that one);
    - the real words the app would show (short, plain, measured), the states that matter (empty, loading, error) where they apply.
-3. Pictures with the T1 script, four of them, in `docs/design/png/`:
+3. Pictures with the T1 script, in `docs/design/png/`: light and dark at each width the surfaces have (`npm run surfaces --
+   --widths`; the computer width as 1320, the phone pictures only when there is a phone width: four for `web-phone`):
    ```sh
    node workflow/scripts/shots.mjs docs/design/<Name>.html --width 1320 --theme light --full --out docs/design/png/<n>-<Name>.png
    node workflow/scripts/shots.mjs docs/design/<Name>.html --width 1320 --theme dark --full --out docs/design/png/<n>-<Name>-dark.png
@@ -101,7 +105,7 @@ It is a brief, not the design: redraw it on the project's tokens and parts as va
 
 ## Done checklist (say it in every stop of stage 2)
 The one in `src/web/CLAUDE.md` (*Done checklist for any UI change*: tokens only, no inline styles, matches the board, one primary
-button per view, meaning not by colour alone, 44 px targets, keyboard, light and dark, phone width), and for a board: before and
+button per view, meaning not by colour alone, 44 px targets, keyboard, light and dark, each width the surfaces have), and for a board: before and
 after pictures shown, the notes file and the README row current. A change to the list is made there, never only here.
 
 **Blocked** (waiting for the pick, an outside service, another card): `npm run board -- --block <n> "waiting for <what>"`. If the

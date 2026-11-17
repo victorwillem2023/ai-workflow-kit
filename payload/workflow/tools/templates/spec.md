@@ -24,7 +24,8 @@ Map ends it moves (with the app map): <the ends by their words, and how each mov
 or "none">
 
 ## Files that change
-One line per file: what changes in it. Look in `docs/MAP.md` first.
+One line per file: what changes in it. Look in `docs/MAP.md` first. (An update of the kit itself: write "the kit's files" once,
+and the files it wrote count as named.)
 
 ## Work packages (optional)
 Only when the work is big and splits cleanly (several large files, e.g. a refactor). Leave the section out otherwise: one builder does it all.

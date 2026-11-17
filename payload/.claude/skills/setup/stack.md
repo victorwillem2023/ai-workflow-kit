@@ -156,6 +156,10 @@ Always: a spending limit set at the provider, a cap on calls per user, answers k
 key in the environment, never in the code.
 
 ## 7. Tests
+What the product is used on (`project.surfaces`, asked first in /setup) decides which of these apply: browser tests and the page
+weight only with web pages; a phone app (`phone`, `phone-companion`) is an app of its own (`apps/mobile`, Expo:
+`workflow/guides/FRONTEND.md`) with its own unit tests and, once it has screens, Maestro flows on a simulator (not in the kit yet);
+an `api` or `cli` has no screens to test.
 The language's own runner (Vitest with Vite and React, `cargo test`, pytest, `go test`); Playwright for a few end-to-end checks of
 the main screens once there are screens. The quality score (`quality` in the config) is a set of real cases from the first week.
 With Vitest: `testAll` and `testFiles` are `npx vitest run --reporter=dot`, and `tests` is `**/*.test.{ts,tsx}`.
@@ -163,7 +167,7 @@ Playwright: `npm init playwright@latest`, then in `checks` of the config (the ga
 with `--all`; `setup` runs on GitHub only, on your own computer the browser is installed once):
 `{ "name": "e2e", "command": "npx playwright test --reporter=line", "when": ["src/web/**", "e2e/**"], "setup": "npx playwright install --with-deps chromium" }`
 
-With screens this is **not optional**, and the kit ships no browser test of its own: `/setup` adds Playwright as above the day
+With web pages (`npm run surfaces -- --web` says yes) this is **not optional**, and the kit ships no browser test of its own: `/setup` adds Playwright as above the day
 the first screen is planned (the README and LIFECYCLE.md say "not yet" for that reason). "Does it work for a person" is a test, not
 only the owner trying a URL. Start with one
 smoke test per main screen (it opens, the main action works) and an accessibility scan on each (`@axe-core/playwright`): it

@@ -43,7 +43,10 @@ export function addedDependencies(file, before, after) {
 }
 
 /** The names `stack` (the text of docs/STACK.md) never mentions; a Go module counts when its last part is named. */
+/** The tools the kit itself adds (its install line and its modules): a decision the kit made, not one the project must explain. */
+export const KIT_TOOLS = ['tsx', 'typescript', '@types/node', 'knip', '@biomejs/biome', '@happy-dom/global-registrator', 'esbuild'];
+
 export function unnamedDependencies(names, stack) {
   const text = String(stack ?? '').toLowerCase();
-  return names.filter((n) => !text.includes(n.toLowerCase()) && !text.includes(n.toLowerCase().split('/').pop()));
+  return names.filter((n) => !KIT_TOOLS.includes(n) && !text.includes(n.toLowerCase()) && !text.includes(n.toLowerCase().split('/').pop()));
 }

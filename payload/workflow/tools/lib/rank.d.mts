@@ -1,5 +1,5 @@
 type Card = { number: number; title: string; state: string; labels: string[]; column: string | null; body?: string | null };
-type Ranked = Card & { score: number; v1: boolean; why: string; unlocks?: number; on?: number[] };
+type Ranked = Card & { score: number; v1: boolean; why: string; unlocks?: number; worth?: number; on?: number[] };
 export const STARTABLE: string[];
 export const BUILT: string[];
 export function scoreCard(card: Card, firstVersion?: string): Ranked;

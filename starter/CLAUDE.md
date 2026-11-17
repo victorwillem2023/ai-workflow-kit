@@ -123,7 +123,8 @@ style rules, the feedback rounds and the done checklist.
 - Commit messages: a subject that says what changed for the user ("Area: what changed, and what else"), then the why.
 - **One feature, one session, one commit; the owner says when it is done.** Commit and `--finish` only on "finish it" /
   "commit and push"; push only when the owner says. A hook holds this (`workflow/scripts/stop-points.mjs`): a commit or push it refuses
-  is a reason to stop and ask, never to find another way. No tests-only or "fix after a check" commits (docs and settings left in the main folder go in first, on their own: `/ship` step 0); tests and
+  is a reason to stop and ask, never to find another way. How strict the gate is (`workflow/levels.json`) is the owner's: propose a
+  level, never change one. No tests-only or "fix after a check" commits (docs and settings left in the main folder go in first, on their own: `/ship` step 0); tests and
   typecheck pass at every commit. **Never** merge by hand in the main folder, `git push --force` or rewrite `main` (the
   owner's squash has its own steps: `workflow/tools/README.md`, *Commits and sessions*).
 <!-- /kit:writing-style -->

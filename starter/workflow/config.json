@@ -1,4 +1,5 @@
 {
+  "project": { "$comment": "what people use it on (lib/surfaces.mjs): web, web-phone, phone-companion, phone, desktop, cli, api; /setup asks", "surfaces": ["web-phone"] },
   "name": "{{PROJECT}}",
   "roots": ["src", "tests", "scripts", "tools", "workflow"],
   "skipFiles": [],

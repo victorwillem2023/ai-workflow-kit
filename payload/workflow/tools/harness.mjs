@@ -43,7 +43,9 @@ if (check) {
   process.exit(0);
 }
 const made = [];
-const claudeSettings = JSON.parse(read(join('.claude', 'settings.local.json')) ?? '{}');
+// Claude Code's rules as it sees them: the tracked settings.json (the kit's, since 3.3) and the person's settings.local.json
+const claudeFiles = ['settings.json', 'settings.local.json'].map((f) => JSON.parse(read(join('.claude', f)) ?? '{}'));
+const claudeSettings = { permissions: Object.fromEntries(['allow', 'deny', 'ask'].map((k) => [k, [...new Set(claudeFiles.flatMap((s) => s.permissions?.[k] ?? []))]])) };
 if (existsSync('opencode.jsonc')) {
   // written earlier: add the shell rules Claude Code's settings gained since (a new allow, a deny that keeps the push guard)
   const r = addMissingRules(read('opencode.jsonc'), claudeSettings);

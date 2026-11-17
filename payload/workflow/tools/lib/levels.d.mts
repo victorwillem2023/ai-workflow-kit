@@ -1,0 +1,12 @@
+export const FILE: string;
+export const LEVELS: string[];
+export const SIZES: string[];
+export const SAFETY: string[];
+export const QUALITY: string[];
+type Process = { spec: string; pitch: string; uiBoard: string };
+export const PRESETS: Record<string, { checks: Record<string, string>; process: Process }>;
+export type Levels = { preset: string; checks: Record<string, string>; process: Process; loosened: string[]; problems: string[] };
+export function readLevels(text: string | null | undefined, projectChecks?: string[]): Levels;
+export function levelOf(levels: Levels, name: string): string;
+export function loosenedLine(levels: Levels): string;
+export function needs(from: string, effort?: string | null): boolean;

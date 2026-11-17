@@ -70,14 +70,15 @@ export function cardGraph(cards) {
   // who needs whom, the other way round: dependents[n] = the open cards that list n
   const dependents = new Map();
   for (const [n, ws] of waitsFor) for (const d of ws) dependents.set(d, [...(dependents.get(d) ?? []), n]);
-  const unlocks = new Map();
+  const unlocks = new Map(), unlocked = new Map();
   for (const n of waitsFor.keys()) {
     const seen = new Set();
     const walk = (x) => { for (const y of dependents.get(x) ?? []) if (!seen.has(y) && y !== n) { seen.add(y); walk(y); } };
     walk(n);
     unlocks.set(n, seen.size);
+    unlocked.set(n, seen);
   }
-  return { waitsFor, unlocks, unknown, loops: findLoops(waitsFor) };
+  return { waitsFor, unlocks, unlocked, unknown, loops: findLoops(waitsFor) };
 }
 
 /** Cards that wait for each other in a circle (none of them can ever start): each loop once, smallest number first. */

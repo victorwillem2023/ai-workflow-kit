@@ -14,3 +14,12 @@ describe('scope guard', () => {
     assert.deepEqual(outsideSpec(changed, specPaths(spec), ['docs/MAP.md']), ['src/web/menu.ts']);
   });
 });
+
+describe("a kit update's spec", async () => {
+  const { kitFilesIn, namesKitFiles } = await import('../../workflow/tools/lib/scope.mjs');
+  it('says "the kit\'s files" once, and every file the record lists counts as named', () => {
+    assert.equal(namesKitFiles('## Files that change\n- the kit\'s files (an update to 3.3)\n'), true);
+    assert.equal(namesKitFiles('## Files that change\n- `src/a.ts`\n'), false);
+    assert.deepEqual(kitFilesIn('version=3.3.0\nsha 0123 workflow/tools/gate.mjs\nsha 4567 .claude/skills/ship/SKILL.md\n'), ['workflow/tools/gate.mjs', '.claude/skills/ship/SKILL.md']);
+  });
+});

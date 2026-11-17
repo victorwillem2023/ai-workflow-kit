@@ -9,8 +9,9 @@ import docFolders from './2.9.0-doc-folders.mjs';
 import productionBack from './2.9.3-production-back.mjs';
 import unusedCommand from './2.9.7-unused-command.mjs';
 import notesRule from './2.9.8-notes-rule.mjs';
+import knipAndNotes from './3.3.0-knip-and-notes.mjs';
 
-export const STEPS = [docFolders, productionBack, unusedCommand, notesRule];
+export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes];
 
 const parts = (v) => String(v).split('.').map(Number);
 /** a is older than b (2.9.7 < 2.9.10). */

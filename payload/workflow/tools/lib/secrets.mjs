@@ -16,7 +16,8 @@ const KINDS = [
   // (localhost, 127.0.0.1: the dev compose file's) is not one
   ['a password in a connection string', /\b[a-z][a-z0-9+.-]{1,20}:\/\/[^\s:/@'"`]*:(?![^@\s'"`]*(?:\$|\{|%s|<|\*\*\*|example|changeme|placeholder|xxxx|your[-_ ]))[^@\s'"`/]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])\b)[\w.-]+/i],
   // password = "long literal": a value read from the environment, a placeholder or a short word is not one
-  ['a password or key written into the code', /\b(?:password|passwd|secret|token|api[_-]?key)\w*["']?\s*[:=]\s*["'`](?![^"'`]*(?:\$\{|\{\{|<|example|changeme|placeholder|xxxx|your[-_ ]))[^"'`\s]{16,}["'`]/i],
+  // (a value that is a file's path is a setting, not a key: "tokens": "src/web/styles.css", the kit's own ui.tokens)
+  ['a password or key written into the code', /\b(?:password|passwd|secret|token|api[_-]?key)\w*["']?\s*[:=]\s*["'`](?![^"'`]*(?:\$\{|\{\{|<|example|changeme|placeholder|xxxx|your[-_ ]))(?![\w.-]*\/[\w./-]*\.[a-z]{1,5}["'`])[^"'`\s]{16,}["'`]/i],
 ];
 // A database that only runs on the developer's computer: a password that is the user name again on a host with no dot in it,
 // which is a compose service and never reached from outside (postgres://postgres:postgres@db:5432/app). Which file it is in does

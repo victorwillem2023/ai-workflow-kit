@@ -194,7 +194,8 @@ describe('migrations', () => {
     assert.deepEqual(due('2.8.5', 'before').map((s) => s.version), ['2.9.0', '2.9.3']);
     assert.deepEqual(due('2.9.1', 'before').map((s) => s.version), ['2.9.3'], 'a project at 2.9.1 still gets the correction');
     assert.deepEqual(due('2.9.3', 'before'), [], 'a project at 2.9.3 has its docs where they belong');
-    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7']);
+    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0']);
+    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0'], 'a project at 3.2.1 gets the knip.json and notes fix');
     const versions = STEPS.map((s) => s.version);
     assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
     for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
@@ -251,5 +252,34 @@ describe('doc paths', () => {
     assert.equal(movePaths('see docs/LAUNCH.md and ../docs/COSTS.md, not mydocs/LAUNCH.md'), 'see docs/run/LAUNCH.md and ../docs/company/COSTS.md, not mydocs/LAUNCH.md');
     assert.equal(movePathsBack(movePaths('docs/LAUNCH.md')), 'docs/LAUNCH.md');
     assert.deepEqual(oldPaths('docs/run/LAUNCH.md'), []);
+  });
+});
+
+describe('3.3.0 on a project from 3.2.1', async () => {
+  const { default: step, OLD_KNIP } = await import('../migrations/3.3.0-knip-and-notes.mjs');
+  it("knip.json as the kit wrote it gets the new ignore list and the build's start files; the notes placeholder goes", () => {
+    const d = folder();
+    writeFileSync(join(d, 'knip.json'), `${JSON.stringify(OLD_KNIP, null, 2)}\n`);
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { dev: 'vite', start: 'node src/server/main.ts' } }));
+    mkdirSync(join(d, 'src', 'server'), { recursive: true });
+    writeFileSync(join(d, 'src', 'server', 'main.ts'), '');
+    mkdirSync(join(d, 'docs', 'design', 'notes'), { recursive: true });
+    writeFileSync(join(d, 'docs', 'design', 'notes', 'README.md'), 'One notes file per board (/ui writes it).\n');
+    const r = step.run({ target: d, kit });
+    const knip = JSON.parse(readFileSync(join(d, 'knip.json'), 'utf8'));
+    assert.ok(knip.ignore.includes('workflow/**') && !knip.ignore.includes('scripts/**'), JSON.stringify(knip));
+    assert.ok(knip.entry?.includes('src/server/main.ts'), 'the start file the build names');
+    assert.equal(existsSync(join(d, 'docs', 'design', 'notes', 'README.md')), false);
+    assert.ok(existsSync(join(d, 'docs', 'design', 'notes', '.gitkeep')), 'the folder stays');
+    assert.equal(r.said.length, 2);
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('a knip.json the project changed stays as it is', () => {
+    const d = folder();
+    const own = { ...OLD_KNIP, ignore: [...OLD_KNIP.ignore, 'legacy/**'] };
+    writeFileSync(join(d, 'knip.json'), JSON.stringify(own));
+    step.run({ target: d, kit });
+    assert.deepEqual(JSON.parse(readFileSync(join(d, 'knip.json'), 'utf8')), own);
+    rmSync(d, { recursive: true, force: true });
   });
 });

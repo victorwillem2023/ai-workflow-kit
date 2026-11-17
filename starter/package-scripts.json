@@ -25,5 +25,7 @@
   "costs": "node workflow/tools/costs.mjs",
   "cost": "node workflow/tools/sessioncost.mjs",
   "coverage": "node workflow/tools/coverage.mjs",
-  "library": "node workflow/tools/library.mjs"
+  "library": "node workflow/tools/library.mjs",
+  "levels": "node workflow/tools/levels.mjs",
+  "surfaces": "node workflow/tools/surfaces.mjs"
 }

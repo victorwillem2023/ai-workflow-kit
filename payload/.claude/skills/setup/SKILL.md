@@ -32,6 +32,13 @@ them in `CLAUDE.md`, *This project's own rules*; propose `"flow": "pr"` with a r
      answers become `docs/PRODUCT.md`; the smallest version becomes the first cards, each with its `Depends on: #n` line, labelled `first version` (`npm run board -- --next`
      ranks them first). Say plainly if the answers point to a spike before any stack (`/spike`). An existing project: fill
      `docs/PRODUCT.md` from what the owner says in one round, and skip what they do not know yet.
+   - **What people use it on** (one question, before the stack, because it decides much of what follows): a web app on a
+     computer (`web`), a web app also used on phones (`web-phone`, the same pages at phone width), a phone app beside the web
+     app that does less (`phone-companion`), a phone app only (`phone`), a desktop app (`desktop`), a command line (`cli`), or
+     only an API (`api`); one or more. It goes in `project.surfaces` and sets the rest: the widths `/ui` draws and checks
+     (`npm run surfaces -- --widths`), whether pages are weighed and tested in a browser (only with web pages), and a phone or
+     desktop app as an app of its own (`apps/mobile`, `apps/desktop`: an entry in `apps`, with Expo for a phone app,
+     `workflow/guides/FRONTEND.md`). An existing project: read it from the code and say it back.
    - **A new project: the product first, then what to build it with.** Read `stack.md` in this folder. Ask its product
      questions in batches of four, in the owner's words, skipping what an earlier answer already settled. Then show one page,
      *What I would build*: every part chosen (language, what runs it, screens, backend, data, sign-in, where it runs, tests),
