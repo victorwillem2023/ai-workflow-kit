@@ -2,7 +2,7 @@
 // what a phase still needs; and a production deploy only in the production phase.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { PAYMENT, deployRefusal, fitPhase, missingFor, phaseLines } from '../../workflow/tools/lib/phase.mjs';
+import { PAYMENT, deployRefusal, fitPhase, missingFor, needsFor, phaseLines } from '../../workflow/tools/lib/phase.mjs';
 import { isProductionEnv } from '../../workflow/tools/lib/production.mjs';
 
 describe('the phase the facts fit', () => {
@@ -52,6 +52,9 @@ describe('what a phase still needs, and the production deploy', () => {
   it('a pilot needs errors seen and the security page; personal data needs the privacy page', () => {
     assert.deepEqual(missingFor('pilot', { personal: true }).map((m) => m.id), ['privacy', 'errors', 'security']);
     assert.deepEqual(missingFor('pilot', { errorsSeen: true, securityDoc: true }), []);
+    // every need, done or not, for "1 of 2 done"; the privacy page only where personal data is kept
+    assert.deepEqual(needsFor('pilot', { securityDoc: true }).map((n) => [n.id, n.done]), [['errors', false], ['security', true]]);
+    assert.equal(needsFor('pilot', { personal: true, privacyDoc: true })[0].id, 'privacy');
   });
   it('production adds backups restored once, a way back, monitoring, the scan and the run pages', () => {
     const all = { errorsSeen: true, securityDoc: true, secops: true, drill: true, rollback: true, monitoring: true, runDocs: true };

@@ -4,7 +4,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { about, glanceHtml, inline, linkTo, markdown, menu, titleOf } from '../../workflow/tools/lib/portal.mjs';
+import { about, inline, linkTo, markdown, menu, titleOf } from '../../workflow/tools/lib/portal.mjs';
+import { glanceHtml, rich } from '../../workflow/tools/lib/portalglance.mjs';
+import { themeCss, themeFrom } from '../../workflow/tools/lib/portaltheme.mjs';
+import { boardView } from '../../workflow/tools/lib/boardview.mjs';
 import { PORTS } from './session-repo';
 
 const known = new Set(['docs/PRODUCT.md', 'docs/run/LAUNCH.md', 'README.md']);
@@ -41,11 +44,66 @@ describe('the portal\'s pages', () => {
     assert.deepEqual(m[1].items.map((i) => i.label), ['PRODUCT'], 'the file map is under its own link, not in the list');
     assert.equal(m[2].items[0].kit, true);
   });
-  it('at a glance: what the tools said, and a quiet line when the board cannot be reached', () => {
-    const html = glanceHtml({ phase: ['phase: prototype (nothing outside depends on it yet)'], board: null, boardNote: 'The board could not be reached.', decisions: [], recent: [] });
-    assert.match(html, /phase: prototype/);
-    assert.match(html, /The board could not be reached\./);
-    assert.match(html, /None yet\./);
+});
+
+const card = (number: number, labels: string[], score: number) => ({ number, title: `Card ${number}`, column: 'Backlog', labels, score });
+
+describe('at a glance', () => {
+  const board = boardView({
+    ranked: [card(1, ['bug', 'value: medium', 'effort: small'], 2.5), card(2, ['bug', 'value: medium', 'effort: small'], 2.5), card(3, ['feature'], 2)],
+    tie: [card(1, ['bug', 'value: medium', 'effort: small'], 2.5), card(2, ['bug', 'value: medium', 'effort: small'], 2.5)],
+    waiting: [{ number: 4, title: 'Card 4', waitsFor: [3] }], inboxCount: 0,
+    triage: { findings: [{ kind: 'too-much-started', what: '3 cards in progress (the limit is 2)', suggest: 'finish one first', cards: [{ number: 9 }] }], counts: { open: 4, doing: 3, inbox: 0, backlog: 3 } },
+    repo: 'o/app',
+  });
+  it('the board as fields: the tie apart from the next cards, each with its labels, a link and the counts', () => {
+    assert.deepEqual(board.tie.map((c) => [c.number, c.value, c.effort, c.type]), [[1, 'medium', 'small', 'bug'], [2, 'medium', 'small', 'bug']]);
+    assert.deepEqual(board.next.map((c) => c.number), [3]);
+    assert.equal(board.next[0].url, 'https://github.com/o/app/issues/3');
+    assert.deepEqual([board.unranked, board.decisions[0].kind, board.waiting[0].waitsFor], [1, 'too-much-started', [3]]);
+  });
+  const g = { project: 'App', repo: 'o/app', styled: true, shipped: 2, stage: ['3 changes shipped this week and no retro yet: /retro (about 10 minutes).'],
+    phase: { phase: 'prototype', status: 'phase: prototype (nothing outside depends on it yet)', next: 'pilot', needs: [{ what: 'errors you get to see', done: false }, { what: 'the security page', done: true }] },
+    board, boardAge: 'fresh', asked: '19:01', decisions: [], recent: [] };
+  it('a tie is a question, the next cards have their columns, the next phase is a numbered list with how far along', () => {
+    const html = glanceHtml(g);
+    assert.match(html, /#1 and #2 score the same\. Which comes first\?/);
+    assert.match(html, /<div class="col">Medium<\/div><div class="col">Small<\/div>/);
+    assert.match(html, /Before the pilot phase<\/h2>[\s\S]*1 of 2 done/);
+    assert.match(html, /Tidy the board · \/tidy/, 'the one primary button, when the board needs decisions');
+    assert.match(html, /No retro yet/);
+  });
+  it('quiet parts are left out: no tie, no decisions, no warnings, no lists without entries', () => {
+    const calm = boardView({ ranked: [card(3, ['feature', 'value: high'], 3)], tie: [], waiting: [], triage: { findings: [], counts: {} } });
+    const html = glanceHtml({ ...g, board: calm, stage: [], decisions: [], recent: [] });
+    assert.doesNotMatch(html, /Question|Tidy the board|class="warn"|Latest decisions|Worth doing now/);
+  });
+  it('commands are chips that copy, card numbers link to the card; an old or failed board says so; no style sheet says how to make one', () => {
+    assert.match(rich('then /advise roadmap and npm run board -- --graph', 'o/app'), /data-copy="\/advise roadmap"[\s\S]*data-copy="npm run board -- --graph"/);
+    assert.match(rich('#12 waits', 'o/app'), /<a class="num" href="https:\/\/github\.com\/o\/app\/issues\/12"/);
+    assert.match(glanceHtml({ ...g, boardAge: 'old' }), /older than a quarter of an hour/);
+    assert.match(glanceHtml({ ...g, styled: false }), /no style sheet yet[\s\S]*\/ui/);
+  });
+});
+
+describe('the look: the project\'s own style sheet', () => {
+  const sheet = ['# App UI style', '', '## Colour (6 tokens, light and dark)', '', '| Token | Light | Dark | Use |', '|---|---|---|---|',
+    '| `--paper` | #eef2ee | #0e1613 | App background |', '| `--card` | #ffffff | #141e1a | Panels, cards |', '| `--ink` | #10261f | #e4ebe7 | Text |',
+    '| `--sign` | #f2c230 | #f2c230 | The one thing to do next |', '| `--sign-ink` | #10261f | #10261f | Text on yellow |', '| `--route-2` | #2457c5 | #6e9cff | Route 2, links, focus ring |',
+    '', '## Type (3 sizes, 2 voices)', '', 'Archivo. Condensed voice = `font-stretch: 74%`.', '', '| Name | Size | Voice | Use |', '|---|---|---|---|',
+    '| display | 44 | condensed 800 | Headline |', '| title | 20 | condensed 700 | Titles |', '| body | 16 | normal 400 | Text |', '| caption | 12 | normal 500 | Hints |',
+    '', '## Shape, space, depth', '', '- Radius: **8** (buttons), **14** (cards), **pill** (chips).'].join('\n');
+  it('finds each role by what its "Use" says, whatever the token is called; the font, the sizes and the radii too', () => {
+    const th = themeFrom(sheet);
+    assert.equal(th.found, true);
+    assert.deepEqual([th.light.bg, th.light.surface, th.light.text, th.light.primary, th.light.onPrimary, th.dark.link], ['#eef2ee', '#ffffff', '#10261f', '#f2c230', '#10261f', '#6e9cff']);
+    assert.deepEqual([th.family, th.stretch, th.sizes, th.radii], ['Archivo', '74%', [44, 20, 16, 12], [8, 14]]);
+    assert.ok(th.missing.includes('warn'), 'a role the sheet has no token for takes the plain one, and is named');
+    assert.match(themeCss(th), /--p-bg:#eef2ee[\s\S]*prefers-color-scheme:dark[\s\S]*--p-bg:#0e1613/);
+  });
+  it('no style sheet, or the kit\'s empty skeleton: the plain look, never a brand', () => {
+    assert.equal(themeFrom('').found, false);
+    assert.equal(themeFrom('# X\n\n## Colour (N tokens, light and dark)\nA table: token name, light value, dark value.\n').found, false);
   });
 });
 

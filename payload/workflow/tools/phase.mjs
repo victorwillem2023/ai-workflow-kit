@@ -5,11 +5,12 @@
 //   npm run phase                  the phase, the facts, and what the next one still needs
 //   npm run phase -- --next        the line for /next (prints nothing more than the status once a fact is said)
 //   npm run phase -- --ready [pilot|production]   what that phase still needs (default: the next one up)
+//   npm run phase -- --json        the phase, the facts and every need of the next phase, done or not (the docs portal)
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FILE, PHASES, readLevels } from './lib/levels.mjs';
-import { PAYMENT, fitPhase, missingFor, phaseLines } from './lib/phase.mjs';
+import { PAYMENT, fitPhase, missingFor, needsFor, phaseLines } from './lib/phase.mjs';
 import { isProductionEnv } from './lib/production.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
@@ -56,7 +57,11 @@ const { facts: trueFacts, fit } = fitPhase(facts);
 const up = PHASES[Math.min(PHASES.indexOf(phase) + 1, PHASES.length - 1)];
 const list = (target) => missingFor(target, has).map((m) => `  - ${m.what}`).join('\n');
 
-if (args.includes('--next')) {
+if (args.includes('--json')) {
+  // for the docs portal: the phase, the facts, what fits, and every need of the next phase, done or not
+  const status = phaseLines({ phase, facts: trueFacts }).status;
+  console.log(JSON.stringify({ phase, fit, status, facts: trueFacts.map((f) => f.says.replace(/ \(.*\)$/, '')), next: phase === 'production' ? null : up, needs: phase === 'production' ? [] : needsFor(up, has) }));
+} else if (args.includes('--next')) {
   // remembered per computer in git's own folder, shared by the session folders; never committed
   const at = join(git('rev-parse', '--git-common-dir') ?? '.git', 'workflow-phase-said');
   const said = (read(at) ?? '').split('\n').filter(Boolean);

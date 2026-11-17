@@ -1,17 +1,22 @@
 // The docs portal: every doc of the project in one page in the browser, with what matters now at the top (the phase and what the
-// next one needs, the stage, the board, the latest decisions, what changed lately). Read-only, live: each page is made from the
-// files when it is opened, and an open tab reloads itself when a doc changes. Only on this computer (127.0.0.1), on its own port,
-// outside the session range so a session's finish or clean never stops it (`portal.port` in the config; else the main port - 1).
+// next one needs, the board, what is worth doing now, the latest decisions, what changed lately). Read-only, live: each page is
+// made from the files when it is opened, and an open tab reloads itself when a doc changes. It wears the project's own style
+// sheet (docs/STYLE.md, lib/portaltheme.mjs), a plain look until there is one. Only on this computer (127.0.0.1), on its own
+// port, outside the session range so a session's finish or clean never stops it (`portal.port` in the config; else main - 1).
 //   npm run portal                 start it in the background if it is not running, and open it in a new browser tab (/portal)
 //   npm run portal -- --serve      run it here, in the foreground
 //   npm run portal -- --stop       stop the one running
 //   --no-open                      start it, but open no tab (prints the link)
 import { execFile, execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync, statSync, watch } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, watch } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname } from 'node:path';
+import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { about, glanceHtml, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
+import { about, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
+import { glanceHtml } from './lib/portalglance.mjs';
+import { themeCss, themeFrom } from './lib/portaltheme.mjs';
+import { shipping } from './lib/retro.mjs';
+import { MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 }).trim(); } catch { return ''; } };
 const root = git('rev-parse', '--show-toplevel') || process.cwd();
@@ -21,6 +26,7 @@ const config = (() => { try { return JSON.parse(readFileSync('workflow/config.js
 const port = Number(args.includes('--port') ? args[args.indexOf('--port') + 1] : config.portal?.port ?? (config.session?.mainPort ?? 8787) - 1);
 const url = `http://127.0.0.1:${port}`;
 const project = config.project?.name ?? (() => { try { return JSON.parse(readFileSync('package.json', 'utf8')).name; } catch { return 'The project'; } })();
+const repo = config.board?.repo ?? null;
 const read = (f) => { try { return readFileSync(f, 'utf8'); } catch { return ''; } };
 
 /** The docs the portal shows, as repo paths: the tracked and new Markdown under docs/ and the kit's guides, and the two at the top. */
@@ -30,63 +36,92 @@ function listDocs() {
 }
 const kitFiles = () => new Set(read('workflow/record').split(/\r?\n/).map((l) => /^sha \S+ (.+)$/.exec(l)?.[1]).filter(Boolean));
 
-/** A tool's output lines, without waiting on it for long; '' lines and the tool's own prefix taken off. */
+// the font the style sheet names, from the project's own packages (@fontsource, as a web app installs it), so it shows offline
+const FONT_DIRS = (family) => ['@fontsource-variable', '@fontsource'].map((s) => join('node_modules', s, family.toLowerCase().replace(/\s+/g, '-'), 'files'));
+function fontFile(family) {
+  for (const dir of family ? FONT_DIRS(family) : []) {
+    if (!existsSync(dir)) continue;
+    // the basic Latin file (latin-ext holds only the accented letters)
+    const files = readdirSync(dir).filter((f) => /-latin-(?!ext)/.test(f) && f.endsWith('.woff2') && !/italic/.test(f));
+    const pick = files.find((f) => /wdth-normal|standard-normal|wght-normal/.test(f)) ?? files.find((f) => /-latin-400-normal/.test(f));
+    if (pick) return { dir, file: pick, variable: !/-\d00-/.test(pick) };
+  }
+  return null;
+}
+const fontFace = (family, font) => (font ? `@font-face{font-family:'${family}';font-style:normal;font-display:swap;src:url('/font/${font.file}') format('woff2');${font.variable ? 'font-weight:100 900;font-stretch:62% 125%;' : ''}}` : '');
+
+/** The theme from docs/STYLE.md, with its font when the project has the file: { css, found, font }. */
+function theme() {
+  const th = themeFrom(read('docs/STYLE.md'));
+  const font = fontFile(th.family);
+  return { css: themeCss(th, fontFace(th.family, font)), found: th.found, font };
+}
+
+/** A tool's output: its lines ('' lines and its own prefix taken off), or null when it could not run. */
 const tool = (file, toolArgs) => new Promise((done) => {
   if (!existsSync(file)) { done(null); return; }
-  execFile(process.execPath, [file, ...toolArgs], { encoding: 'utf8', timeout: 20000, maxBuffer: 8 << 20 }, (e, out) => {
+  execFile(process.execPath, [file, ...toolArgs], { encoding: 'utf8', timeout: 30000, maxBuffer: 8 << 20 }, (e, out) => {
     done(e && !out ? null : String(out).split(/\r?\n/).map((l) => l.replace(/^(?:stage|board): /, '').trim()).filter(Boolean));
   });
 });
+const json = (lines) => { try { return lines ? JSON.parse(lines.join('\n')) : null; } catch { return null; } };
 
 // the board and the stage ask GitHub, which takes seconds: the page never waits on them. Each answer is kept for five minutes and
 // asked again in the background after that; when a new answer differs, the open tabs reload to show it
 const slow = new Map();
 function cached(file, toolArgs) {
   const key = `${file} ${toolArgs.join(' ')}`;
-  const was = slow.get(key) ?? { at: 0, lines: null, asked: null };
+  const was = slow.get(key) ?? { at: 0, lines: null, asked: null, askedAt: 0 };
   if (Date.now() - was.at > 5 * 60 * 1000) {
     slow.set(key, { ...was, at: Date.now() });
     tool(file, toolArgs).then((lines) => {
-      slow.set(key, { at: Date.now(), lines, asked: new Date().toLocaleTimeString() });
+      // a failed ask keeps the last good answer, with its time, so the page can say how old it is
+      slow.set(key, lines ? { at: Date.now(), lines, asked: new Date().toLocaleTimeString(), askedAt: Date.now() } : { ...was, at: Date.now(), failed: true });
       if (JSON.stringify(lines) !== JSON.stringify(was.lines)) reloadTabs();
     });
   }
   return slow.get(key);
 }
 
-/** Docs under a folder by when git last changed them, newest first: [{ path, title, date }]. */
+/** Docs under the paths by when git last changed them, newest first: [{ path, title, date, ts }]. */
 function byDate(paths, n) {
-  const log = git('log', '--name-only', '--format=%x00%cs', '-n', '200', '--', ...paths);
+  const log = git('log', '--name-only', '--format=%x00%ct', '-n', '300', '--', ...paths);
   const seen = new Map();
-  let date = '';
+  let ts = 0;
   for (const line of log.split('\n')) {
-    if (line.startsWith('\u0000')) { date = line.slice(1); continue; }
-    if (line.endsWith('.md') && !seen.has(line) && existsSync(line)) seen.set(line, date);
+    if (line.startsWith('\u0000')) { ts = Number(line.slice(1)); continue; }
+    if (line.endsWith('.md') && !seen.has(line) && existsSync(line)) seen.set(line, ts);
   }
-  return [...seen].slice(0, n).map(([path, d]) => ({ path, title: titleOf(path, read(path)), date: d }));
+  const day = (t) => new Date(t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return [...seen].slice(0, n).map(([path, t]) => ({ path, title: titleOf(path, read(path)), date: day(t), ts: t }));
+}
+
+/** Features that went onto main this week (lib/retro.mjs, as /retro and the stage count them). */
+function shippedThisWeek() {
+  const log = git('log', MAIN, '--first-parent', '--since=9.weeks', '--format=%cI%x09%s');
+  if (!log) return null;
+  const commits = log.split('\n').filter(Boolean).map((l) => { const [date, ...rest] = l.split('\t'); return { date, subject: rest.join('\t') }; });
+  return shipping(commits, new Date()).weeks.at(-1)?.features ?? 0;
 }
 
 let phaseCache = null;
 let docsCache = null;
-async function glance() {
+async function glance(styled) {
   // the phase is read from the files: asked again only after one changed (the watch clears it), or a minute later
   // (and the dates from git's history with it: they change with a commit, so a minute is soon enough)
   if (!phaseCache || Date.now() - phaseCache.at > 60 * 1000) {
-    const lines = await Promise.all([tool('workflow/tools/phase.mjs', []), tool('workflow/tools/phase.mjs', ['--ready'])]);
     const recent = byDate(['docs', 'README.md'], 10).filter((d) => !/^docs\/(?:MAP|README)\.md$/.test(d.path)).slice(0, 8);
-    phaseCache = { at: Date.now(), lines, decisions: byDate(['docs/decisions'], 5), recent };
+    phaseCache = { at: Date.now(), phase: json(await tool('workflow/tools/phase.mjs', ['--json'])), decisions: byDate(['docs/decisions'], 5), recent, shipped: shippedThisWeek() };
   }
-  const [phase, missing] = phaseCache.lines;
   const stage = cached('workflow/tools/stage.mjs', []);
-  const board = cached('workflow/tools/board.mjs', ['--next', '3']);
-  const boardNote = !board.asked ? 'Asking the board…' : board.lines ? `As of ${board.asked} (asked every five minutes)` : 'The board could not be reached (GitHub and the gh command).';
+  const board = config.board?.project ? cached('workflow/tools/board.mjs', ['--next', '3', '--json']) : null;
+  const old = board?.askedAt && Date.now() - board.askedAt > 15 * 60 * 1000;
+  const boardAge = !board ? '' : !board.asked ? (board.failed ? 'failed' : 'asking') : board.failed || old ? 'old' : 'fresh';
   return glanceHtml({
-    phase: phase?.filter((l) => !/still missing|^- |^Nothing missing/.test(l)) ?? [],
-    missing: missing?.filter((l) => l.startsWith('- ')).map((l) => l.slice(2)) ?? [],
-    stage: stage.lines ?? [],
-    board: board.lines, boardNote,
-    decisions: phaseCache.decisions,
-    recent: phaseCache.recent,
+    project, repo, styled, phase: phaseCache.phase, stage: stage.lines ?? [], shipped: phaseCache.shipped,
+    board: json(board?.lines), boardAge, asked: board?.asked,
+    boardNote: !board ? 'The board is not set up (/setup makes it).' : board.failed && !board.lines ? 'The board could not be reached (GitHub and the gh command).' : 'Asking the board…',
+    decisions: phaseCache.decisions, recent: phaseCache.recent,
   });
 }
 
@@ -108,18 +143,26 @@ async function answer(req, res) {
     return;
   }
   // the docs are read again only after one changed (the watch clears them)
-  docsCache ??= { docs: listDocs(), kit: kitFiles() };
-  const { docs, kit } = docsCache;
+  // the docs and the look are read again only after a doc changed (the watch clears them; docs/STYLE.md is a doc)
+  docsCache ??= { docs: listDocs(), kit: kitFiles(), theme: theme() };
+  const { docs, kit, theme: th } = docsCache;
   const known = new Set(docs.map((d) => d.path));
   if (path === '/search.json') return send(200, 'application/json', JSON.stringify(docs.map((d) => ({ path: d.path, title: titleOf(d.path, d.text), text: d.text.toLowerCase() }))));
+  // the style sheet's font, from the project's own packages (only that one folder, only .woff2)
+  if (path.startsWith('/font/')) {
+    const name = path.slice(6);
+    if (!th.font || name !== th.font.file) return send(404, 'text/plain', 'not found');
+    res.writeHead(200, { 'content-type': 'font/woff2', 'cache-control': 'max-age=86400' });
+    return res.end(readFileSync(join(th.font.dir, name)));
+  }
   const maps = { file: known.has('docs/MAP.md'), app: existsSync('docs/flow/index.html') };
-  const nav = (current) => menuHtml(menu(docs, kit), current, maps);
-  if (path === '/') return send(200, TYPES['.html'], pageHtml({ project, title: 'At a glance', nav: nav(''), body: `<h1>${project}</h1>${await glance()}` }));
+  const page = (o) => pageHtml({ project, theme: th.css, nav: menuHtml(menu(docs, kit), o.doc ?? '', maps), ...o });
+  if (path === '/') return send(200, TYPES['.html'], page({ title: 'At a glance', body: await glance(th.found) }));
   if (path.startsWith('/doc/')) {
     const doc = docs.find((d) => d.path === path.slice(5));
-    if (!doc) return send(404, TYPES['.html'], pageHtml({ project, title: 'Not found', nav: nav(''), body: '<h1>Not found</h1><p>That doc is not in the project (any more).</p>' }));
+    if (!doc) return send(404, TYPES['.html'], page({ title: 'Not found', body: '<h1>Not found</h1><p class="quiet">That doc is not in the project (any more).</p>' }));
     const crumb = `${doc.path}${kit.has(doc.path) ? ' · the kit\'s guide (an update replaces it)' : ''} · ${about(doc.text)}`;
-    return send(200, TYPES['.html'], pageHtml({ project, title: titleOf(doc.path, doc.text), nav: nav(doc.path), crumb, body: markdown(doc.text, { from: doc.path, known }) }));
+    return send(200, TYPES['.html'], page({ title: titleOf(doc.path, doc.text), doc: doc.path, crumb, body: markdown(doc.text, { from: doc.path, known }) }));
   }
   if (path.startsWith('/file/')) {
     const file = path.slice(6);

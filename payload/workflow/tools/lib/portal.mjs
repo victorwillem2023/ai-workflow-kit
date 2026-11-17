@@ -129,60 +129,96 @@ export function menu(docs, kit = new Set()) {
   return sections.filter((s) => s.items.length);
 }
 
-/** The menu as HTML, the open doc marked. */
+
+const chevron = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg>';
+
+/** The sidebar: the main links, the docs opened lately (filled in the browser), then each group folded, the open doc marked. */
 export function menuHtml(sections, current = '', maps = {}) {
-  const link = (it) => `<a href="/doc/${esc(it.path)}" title="${esc(it.what)}"${it.path === current ? ' class="here"' : ''}>${esc(it.label)}${it.kit ? ' <small>kit</small>' : ''}</a>`;
+  const link = (it) => `<a href="/doc/${esc(it.path)}" title="${esc(it.what)}"${it.path === current ? ' aria-current="page"' : ''}>${esc(it.label)}${it.kit ? '<small>kit</small>' : ''}</a>`;
   const block = (s) => {
-    const open = !s.folder || s.items.some((it) => it.path === current) ? ' open' : '';
-    return `<details${open}><summary>${esc(s.title)} <small>${s.items.length}</small></summary>${s.items.map(link).join('')}</details>`;
+    const open = s.title === 'Start here' || s.items.some((it) => it.path === current) ? ' open' : '';
+    return `<details${open}><summary><span>${esc(s.title)}</span><small>${s.items.length}</small>${chevron}</summary>${s.items.map(link).join('')}</details>`;
   };
-  const mapLinks = [maps.file && '<a href="/doc/docs/MAP.md">File map</a>', maps.app && '<a href="/file/docs/flow/index.html" target="_blank">App map</a>'].filter(Boolean);
-  return `<a class="home${current ? '' : ' here'}" href="/">At a glance</a>${mapLinks.length ? `<div class="maps">${mapLinks.join('')}</div>` : ''}${sections.map(block).join('')}`;
+  const main = [`<a href="/"${current ? '' : ' aria-current="page"'}>At a glance</a>`, maps.file && `<a href="/doc/docs/MAP.md"${current === 'docs/MAP.md' ? ' aria-current="page"' : ''}>File map</a>`,
+    maps.app && '<a href="/file/docs/flow/index.html" target="_blank">App map</a>'].filter(Boolean).join('');
+  return `<div class="links">${main}</div><div id="recent" class="group" hidden><div class="cap">Opened lately</div></div><div class="group">${sections.map(block).join('')}</div>`;
 }
 
-/**
- * The "at a glance" block from what the tools say: { phase: [lines], missing: [lines], stage: [lines], board: [lines] | null,
- * boardNote, decisions: [{ path, title, date }], recent: [{ path, title, date }] }.
- */
-export function glanceHtml(g) {
-  const lines = (xs) => (xs?.length ? `<ul>${xs.map((l) => `<li>${inline(l)}</li>`).join('')}</ul>` : '');
-  const docs = (xs) => (xs?.length ? `<ul class="docs">${xs.map((d) => `<li><a href="/doc/${esc(d.path)}">${esc(d.title)}</a> <small>${esc(d.date)}</small></li>`).join('')}</ul>` : '<p class="quiet">None yet.</p>');
-  const card = (title, body) => `<section class="card"><h2>${title}</h2>${body}</section>`;
-  return `<div class="glance">${[
-    card('Where the project is', `${lines(g.phase)}${g.missing?.length ? `<p class="quiet">The next phase still needs:</p>${lines(g.missing)}` : ''}${lines(g.stage)}`),
-    card('On the board', g.board ? `${lines(g.board)}${g.boardNote ? `<p class="quiet">${esc(g.boardNote)}</p>` : ''}` : `<p class="quiet">${esc(g.boardNote ?? 'The board is not set up.')}</p>`),
-    card('Latest decisions', docs(g.decisions)),
-    card('Changed lately', docs(g.recent)),
-  ].join('')}</div>`;
-}
+const STYLE = `*{box-sizing:border-box}[hidden]{display:none!important}html{background:var(--p-bg)}body{margin:0;background:var(--p-bg);color:var(--p-text);font-family:var(--p-font);font-size:var(--p-s-body);line-height:1.5}
+a{color:var(--p-link)}a:hover{color:var(--p-text)}:focus-visible{outline:2px solid var(--p-link);outline-offset:2px}
+.layout{display:flex;flex-wrap:wrap;min-height:100vh}
+nav{flex:1 1 248px;max-width:300px;background:var(--p-surface);border-right:1px solid var(--p-line);padding:16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow:auto}
+nav .project{font-size:var(--p-s-title);font-weight:700;font-stretch:var(--p-stretch);padding:4px 8px}
+nav label{font-size:var(--p-s-caption);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--p-caption);padding:0 8px}
+nav input{width:100%;height:44px;padding:0 12px;border:1px solid var(--p-control);border-radius:var(--p-r1);background:var(--p-raised);color:var(--p-text);font:inherit;font-size:var(--p-s-ui);margin-top:4px}
+nav input::placeholder{color:var(--p-caption)}
+nav a{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border-radius:var(--p-r1);color:var(--p-text);font-size:var(--p-s-ui);font-weight:500;text-decoration:none}
+nav a:hover{background:var(--p-raised);color:var(--p-text)}nav a[aria-current=page]{background:var(--p-raised);font-weight:600}nav a small{margin-left:auto;font-size:var(--p-s-caption);color:var(--p-caption)}
+nav .links a{color:var(--p-muted)}nav .links a[aria-current=page]{color:var(--p-text)}
+nav .group{border-top:1px solid var(--p-line);padding-top:8px;display:flex;flex-direction:column}
+nav summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-radius:var(--p-r1);cursor:pointer;font-size:var(--p-s-ui);font-weight:500;list-style:none}
+nav summary::-webkit-details-marker{display:none}nav summary:hover{background:var(--p-raised)}nav summary span{flex:1 1 auto}nav summary small{font-size:var(--p-s-caption);color:var(--p-caption)}
+nav summary svg{color:var(--p-caption);transition:transform .15s}nav details[open] summary svg{transform:rotate(90deg)}nav details a{padding-left:24px}
+#recent .cap{padding:0 12px 4px}nav .foot{margin-top:auto;border-top:1px solid var(--p-line);padding-top:12px}
+.theme{height:36px;padding:0 12px;border:1px solid var(--p-control);border-radius:999px;background:none;color:var(--p-muted);font:inherit;font-size:var(--p-s-caption);cursor:pointer}
+main{flex:999 1 560px;min-width:0;padding:32px}main>.inner{max-width:1040px;display:flex;flex-direction:column;gap:24px}
+.cap{font-size:var(--p-s-caption);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--p-caption)}
+h1{margin:0;font-size:var(--p-s-display);line-height:1.1;font-weight:800;font-stretch:var(--p-stretch)}
+h2{margin:8px 0 0;font-size:var(--p-s-title);line-height:1.2;font-weight:700;font-stretch:var(--p-stretch)}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}.top>div{display:flex;flex-direction:column;gap:4px}
+.primary{height:44px;padding:0 16px;border:0;border-radius:var(--p-r1);background:var(--p-primary);color:var(--p-onPrimary);font:inherit;font-size:var(--p-s-ui);font-weight:600;cursor:pointer}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.tile,.panel{background:var(--p-surface);border:1px solid var(--p-line);border-radius:var(--p-r2);padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat{font-size:var(--p-s-stat);line-height:1.15;font-weight:800;font-stretch:var(--p-stretch)}.note{font-size:var(--p-s-caption);font-weight:500;color:var(--p-muted)}
+.split{display:flex;flex-wrap:wrap;align-items:flex-start;gap:24px}.main-col{flex:3 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px}.side-col{flex:1 1 280px;max-width:380px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.question{border:1px solid var(--p-muted);border-radius:var(--p-r2);padding:16px;display:flex;flex-direction:column;gap:8px}.question .cap{color:var(--p-muted)}.ask{font-weight:700}
+.panel{gap:12px}.quiet{margin:0;color:var(--p-muted);font-size:var(--p-s-ui)}
+.ranked{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:52px minmax(0,1fr) 64px 56px 64px 44px;align-items:center;gap:8px;min-height:56px;padding:8px 12px;border:1px solid var(--p-control);border-radius:var(--p-r1);background:var(--p-raised)}
+.row.head{min-height:0;padding:0 12px;border:0;background:none;font-size:var(--p-s-caption);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--p-caption)}.row.head .col,.row.head .score{font-size:var(--p-s-caption);font-weight:500;font-stretch:normal}
+.num{font-size:var(--p-s-title);font-weight:700;font-stretch:var(--p-stretch);color:var(--p-muted);text-decoration:none}a.num:hover{color:var(--p-link)}
+.what{display:flex;flex-direction:column;gap:2px;min-width:0}.title{font-size:var(--p-s-ui);font-weight:600}.facts{font-size:var(--p-s-caption);font-weight:500;color:var(--p-caption)}
+.col{font-size:var(--p-s-ui);font-weight:500}.unset{color:var(--p-warn);font-size:var(--p-s-caption)}.score{font-size:var(--p-s-title);font-weight:700;font-stretch:var(--p-stretch);text-align:right}
+.sub{border-top:1px solid var(--p-line);padding-top:12px;display:flex;flex-direction:column;gap:8px}.line{font-size:var(--p-s-ui);font-weight:500}.line .num{font-size:inherit}
+.warn,.notice{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border:1px solid var(--p-line);border-radius:var(--p-r1);background:var(--p-surface);font-size:var(--p-s-ui);font-weight:500}
+.notice{display:block;line-height:2}.warn svg{color:var(--p-warn);flex:none;margin-top:2px}.warn strong,.warn-text{color:var(--p-warn);font-weight:600}.warn .num{font-size:inherit}
+.progress{display:flex;align-items:center;gap:12px;font-size:var(--p-s-caption);font-weight:500;color:var(--p-muted)}.bar{flex:1 1 auto;height:6px;border-radius:999px;background:var(--p-raised);overflow:hidden}.bar i{display:block;height:100%;background:var(--p-ok)}
+.needs{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px;font-size:var(--p-s-ui);font-weight:500}.needs li.done{color:var(--p-caption)}.tick{color:var(--p-ok);font-weight:700}
+.docs{padding:4px 16px;gap:0}.docs a{display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 0;font-size:var(--p-s-ui);font-weight:500;text-decoration:none;border-bottom:1px solid var(--p-line)}.docs a:last-child{border-bottom:0}
+.docs a span{flex:1 1 auto;min-width:0}.docs small{font-size:var(--p-s-caption);color:var(--p-caption);white-space:nowrap}.docs b{font-size:var(--p-s-caption);color:var(--p-onPrimary);background:var(--p-primary);border-radius:999px;padding:0 8px;font-weight:600}
+.chip{display:inline-flex;align-items:center;height:28px;padding:0 10px;margin:2px 0;border:1px solid var(--p-control);border-radius:999px;background:var(--p-raised);color:var(--p-text);font:inherit;font-size:var(--p-s-caption);font-weight:600;cursor:pointer;vertical-align:baseline}
+.chip:hover{border-color:var(--p-link)}.chip.copied{border-color:var(--p-ok);color:var(--p-ok)}
+.inner.doc{display:block;max-width:820px}.doc h1{margin:4px 0 8px}.doc p{margin:0 0 12px}.doc h2{margin-top:32px;padding-bottom:4px;border-bottom:1px solid var(--p-line)}.doc h3{font-size:var(--p-s-body);margin:24px 0 4px}
+.doc p,.doc li{max-width:72ch}.doc code{background:var(--p-raised);border:1px solid var(--p-line);padding:1px 5px;border-radius:6px;font-size:.88em}
+.doc pre{background:var(--p-surface);border:1px solid var(--p-line);padding:12px 16px;border-radius:var(--p-r1);overflow:auto}.doc pre code{padding:0;border:0;background:none}
+.doc .table{overflow-x:auto}.doc table{border-collapse:collapse;margin:12px 0;font-size:var(--p-s-ui)}.doc th,.doc td{border:1px solid var(--p-line);padding:8px 10px;text-align:left;vertical-align:top}
+.doc th{background:var(--p-surface);font-size:var(--p-s-caption);letter-spacing:.04em;text-transform:uppercase;color:var(--p-muted)}.doc blockquote{margin:12px 0;padding:4px 16px;border-left:3px solid var(--p-primary);color:var(--p-muted)}
+.doc img{max-width:100%}.doc hr{border:0;border-top:1px solid var(--p-line);margin:24px 0}.crumb{font-size:var(--p-s-caption);color:var(--p-caption)}
+.results a{display:flex;flex-direction:column;padding:10px 0;border-bottom:1px solid var(--p-line);text-decoration:none;font-weight:600}.results small{color:var(--p-caption);font-weight:400}
+@media (max-width:1100px){.side-col{max-width:none}}@media (max-width:760px){nav{position:static;height:auto;max-width:none}main{padding:20px 16px}.row{grid-template-columns:48px minmax(0,1fr) 48px}.row .col,.row.head .col{display:none}}`;
 
-const STYLE = `:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#6a6f76;--line:#e4e1da;--side:#f3f1ec;--accent:#2f6f5e;--code:#efece5;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#16181b;--fg:#e6e3dd;--muted:#9aa0a6;--line:#2c3036;--side:#1d2024;--accent:#7cc4ad;--code:#23272c;color-scheme:dark}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
-.layout{display:grid;grid-template-columns:270px 1fr;min-height:100vh}nav{background:var(--side);border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:0;height:100vh;overflow:auto}
-nav .project{font-weight:700;font-size:17px;margin:0 6px 10px}nav input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);margin-bottom:10px}
-nav a{display:block;padding:3px 8px;border-radius:5px;color:var(--fg);text-decoration:none;font-size:14px}nav a:hover{background:var(--line)}nav a.here{background:var(--accent);color:var(--bg)}
-nav summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);margin:10px 4px 4px;text-transform:uppercase;letter-spacing:.03em}nav small{color:var(--muted);font-weight:400}nav a.here small{color:inherit}
-nav .maps{display:flex;gap:6px;margin:6px 0}nav .maps a{border:1px solid var(--line)}nav .home{font-weight:600}
-main{padding:28px 40px 80px;max-width:980px;width:100%}h1{font-size:28px;margin:0 0 12px}h2{font-size:21px;margin:28px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}h3{font-size:17px;margin:22px 0 6px}
-a{color:var(--accent)}code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px}pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
-.table{overflow-x:auto}table{border-collapse:collapse;margin:10px 0;font-size:14px}th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}th{background:var(--side)}
-blockquote{margin:12px 0;padding:2px 14px;border-left:3px solid var(--accent);color:var(--muted)}img{max-width:100%}
-.glance{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:22px}.card{border:1px solid var(--line);border-radius:10px;padding:4px 16px 12px;background:var(--side)}
-.card h2{border:0;font-size:16px;margin:12px 0 6px}.card ul{padding-left:18px;margin:6px 0}.quiet{color:var(--muted);font-size:14px}.docs small{color:var(--muted)}
-.crumb{color:var(--muted);font-size:13px;margin-bottom:6px}.results a{display:block;padding:6px 0;border-bottom:1px solid var(--line);text-decoration:none}.results small{display:block;color:var(--muted)}
-@media (max-width:760px){.layout{grid-template-columns:1fr}nav{position:static;height:auto}main{padding:20px 16px}}`;
-
-// search over every doc (/search.json, fetched once), and a reload when a doc changes (/events, the server watches the folders)
-const SCRIPT = `const q=document.getElementById('q'),main=document.querySelector('main'),page=main.innerHTML;let all=null;
+// search over every doc (/search.json, fetched once), a reload when a doc changes (/events), the light/dark switch, copying a
+// command chip, and what only this browser keeps: the docs opened lately and what is new since the last visit
+const SCRIPT = `const root=document.documentElement,q=document.getElementById('q'),main=document.querySelector('main .inner'),page=main.innerHTML;let all=null;
+const store=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem('portal:'+k)??'null');localStorage.setItem('portal:'+k,JSON.stringify(v))}catch{return null}};
+const theme=store('theme');if(theme)root.dataset.theme=theme;
+const tb=document.getElementById('theme'),label=()=>{tb.textContent='Theme: '+(root.dataset.theme??'system')};label();
+tb.onclick=()=>{const n={undefined:'light',light:'dark',dark:undefined}[root.dataset.theme];if(n)root.dataset.theme=n;else delete root.dataset.theme;store('theme',n??null);label()};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;navigator.clipboard?.writeText(b.dataset.copy).then(()=>{b.classList.add('copied');setTimeout(()=>b.classList.remove('copied'),1200)})});
 q.addEventListener('input',async()=>{const w=q.value.trim().toLowerCase().split(/\\s+/).filter(Boolean);if(!w.length){main.innerHTML=page;return}
-all??=await (await fetch('/search.json')).json();const hit=all.filter(d=>w.every(x=>d.text.includes(x))).slice(0,40);
-main.innerHTML='<h1>Search</h1>'+(hit.length?'<div class="results">'+hit.map(d=>{const i=d.text.indexOf(w[0]);const s=d.text.slice(Math.max(0,i-60),i+120).replace(/[<>&]/g,'');
-return '<a href="/doc/'+d.path+'">'+d.title.replace(/[<>&]/g,'')+'<small>'+d.path+' — …'+s+'…</small></a>'}).join('')+'</div>':'<p class="quiet">Nothing found.</p>')});
+all??=await (await fetch('/search.json')).json();const hit=all.filter(d=>w.every(x=>d.text.includes(x))).slice(0,40);const t=s=>s.replace(/[<>&]/g,'');
+main.innerHTML='<h1>Search</h1>'+(hit.length?'<div class="results">'+hit.map(d=>{const i=d.text.indexOf(w[0]);return '<a href="/doc/'+d.path+'">'+t(d.title)+'<small>'+d.path+' · …'+t(d.text.slice(Math.max(0,i-60),i+120))+'…</small></a>'}).join('')+'</div>':'<p class="quiet">Nothing found.</p>')});
+const here=document.body.dataset.doc;let recent=store('recent')??[];
+if(here){recent=[{path:here,title:document.title.split(' · ')[0]},...recent.filter(r=>r.path!==here)].slice(0,5);store('recent',recent)}
+const box=document.getElementById('recent');if(recent.length){box.hidden=false;for(const r of recent){const a=document.createElement('a');a.href='/doc/'+r.path;a.textContent=r.title;if(r.path===here)a.setAttribute('aria-current','page');box.append(a)}}
+if(!here){const seen=Number(store('seen')??0);if(seen)for(const a of document.querySelectorAll('[data-ts]'))if(Number(a.dataset.ts)>seen){const b=document.createElement('b');b.textContent='New';a.querySelector('span').after(b)}
+setTimeout(()=>store('seen',Math.floor(Date.now()/1000)),3000)}
 new EventSource('/events').onmessage=()=>location.reload();`;
 
-/** The whole page. */
-export const pageHtml = ({ project, title, nav, body, crumb = '' }) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${esc(project)}</title><style>${STYLE}</style></head>
-<body><div class="layout"><nav><div class="project">${esc(project)}</div><input id="q" type="search" placeholder="Search every doc" autocomplete="off">${nav}</nav>
-<main>${crumb ? `<div class="crumb">${esc(crumb)}</div>` : ''}${body}</main></div><script>${SCRIPT}</script></body></html>`;
+/** The whole page: the theme from the project's style sheet (lib/portaltheme.mjs), the sidebar, the page itself. */
+export const pageHtml = ({ project, title, nav, body, crumb = '', theme = '', doc = '' }) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${esc(project)}</title><style>${theme}${STYLE}</style></head>
+<body${doc ? ` data-doc="${esc(doc)}"` : ''}><div class="layout"><nav aria-label="Docs"><div class="project">${esc(project)}</div>
+<div><label for="q">Search</label><input id="q" type="search" placeholder="Search every doc" autocomplete="off"></div>${nav}
+<div class="foot"><button id="theme" class="theme" type="button">Theme</button></div></nav>
+<main><div class="inner${doc ? ' doc' : ''}">${crumb ? `<div class="crumb">${esc(crumb)}</div>` : ''}${body}</div></main></div><script>${SCRIPT}</script></body></html>`;

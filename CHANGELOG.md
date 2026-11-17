@@ -2,6 +2,18 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.0.0**: **the kit works in phases and has a portal** (3.4 to 3.5 brought them in; 4.0 finishes them). **The portal wears the
+  project's own style sheet**: `docs/STYLE.md`'s colours, found by what each token's use says ("App background", "Panels, cards",
+  "Text on yellow"), so no project renames anything; its font, from the project's own `@fontsource` package, so it shows offline;
+  its sizes, condensed voice and radii; light and dark as the sheet gives them, with a switch. No style sheet yet: a plain look, and
+  a line saying `/ui` writes one (the `ui` skeleton now names the uses the portal reads; `/portal` offers to make it first).
+  **At a glance, redesigned**: four numbers (the phase, shipped this week, board decisions waiting, cards without a value); the
+  board as a page, not sentences: a tie as a question, the next cards with value, effort, feasibility and score in columns, what
+  waits, what needs a decision (`npm run board -- --next <n> --json`); the next phase's needs as a numbered list with "1 of 2 done"
+  (`npm run phase -- --json`, `needsFor`); what is worth doing now; the latest decisions and what changed, marked "New" since your
+  last visit. Commands are chips that copy on a click, card numbers open the card, the one primary button is "Tidy the board"
+  when the board needs decisions, a quiet part (no tie, no warning) is left out, and an old or failed board answer says so. Doc
+  pages in the same look; the sidebar keeps the docs opened lately.
 - **3.5.0**: **the docs portal: `/portal` (`npm run portal`).** Every doc of the project in one page in the browser, with what
   matters now at the top: the phase and what the next one still needs, the stage, the next cards on the board, the latest
   decisions and the docs that changed lately. A menu grouped as the docs index groups them (the kit's guides marked), links

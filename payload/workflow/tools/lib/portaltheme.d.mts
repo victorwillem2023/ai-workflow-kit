@@ -1,0 +1,10 @@
+type Roles = Record<string, string>;
+export type Theme = { found: boolean; light: Roles; dark: Roles; family: string | null; stretch: string | null; sizes: number[]; radii: number[]; missing: string[] };
+export const ROLES: [string, RegExp][];
+export const NEUTRAL: { light: Roles; dark: Roles };
+export function colourTokens(md: string): { token: string; light: string; dark: string; use: string }[];
+export function matchRoles(tokens: { token: string; light: string; dark: string; use: string }[]): Record<string, { token: string; light: string; dark: string; use: string }>;
+export function typeOf(md: string): { family: string | null; stretch: string | null; sizes: number[] };
+export function radiiOf(md: string): number[] | null;
+export function themeFrom(md: string | null | undefined): Theme;
+export function themeCss(th: Theme, fontFace?: string): string;

@@ -15,4 +15,9 @@ Cheap and read-only: change no file.
 3. If it says the port is in use: another program (or another project's portal) has it. Say so, and that
    `"portal": { "port": <a free number> }` in `workflow/config.json` gives it another one (offer to add it; do it on a yes).
 
+4. The portal wears the project's own style sheet (`docs/STYLE.md`: its colours, font, sizes and radii). When there is none
+   yet, or only the kit's empty skeleton, the page says so and wears a plain look: offer, in plain words, to make the style
+   sheet first ("the look of the app, written down once; the portal and every new screen follow it"), with `/ui` (the ui
+   module). On a yes, that is its own piece of work; the portal follows the sheet as soon as it is written.
+
 Nothing to do in the portal itself: it only reads. A doc to change is `/docs`; a question about the code is `/find`.

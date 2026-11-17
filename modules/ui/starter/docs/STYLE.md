@@ -6,6 +6,9 @@ any new token, component or rule. (Skeleton from the workflow kit: fill each sec
 ## Colour (N tokens, light and dark)
 A table: token name, light value, dark value, what it means. Define them as CSS variables on `:root` (light) and
 `[data-theme='dark']`. Rule of thumb: ~16 tokens, one brand/primary colour, status colours (ok, warn, alert), neutral surfaces and text.
+Say each token's use in plain words: the docs portal (`/portal`) wears this page and finds its colours by them: app background,
+panels/cards, hover/selected, text, secondary text, captions, dividers, borders of controls, the primary action, text on primary,
+links/focus, warning, good news.
 
 ## Type (N sizes, 2 voices)
 Six sizes at most, named (not pixel values in code). Say which voice is for headings and which for body.

@@ -9,6 +9,4 @@ export function about(text: string): string;
 export function titleOf(path: string, text: string | null | undefined): string;
 export function menu(docs: { path: string; text: string }[], kit?: Set<string>): Section[];
 export function menuHtml(sections: Section[], current?: string, maps?: { file?: boolean; app?: boolean }): string;
-export function glanceHtml(g: { phase?: string[]; missing?: string[]; stage?: string[]; board?: string[] | null; boardNote?: string;
-  decisions?: DocDate[]; recent?: DocDate[] }): string;
-export function pageHtml(o: { project: string; title: string; nav: string; body: string; crumb?: string }): string;
+export function pageHtml(o: { project: string; title: string; nav: string; body: string; crumb?: string; theme?: string; doc?: string }): string;

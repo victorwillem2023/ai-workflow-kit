@@ -58,6 +58,11 @@ export function phaseLines({ phase, facts, said = [] }) {
  *   drill?: boolean, rollback?: boolean, monitoring?: boolean, runDocs?: boolean }} has
  */
 export function missingFor(phase, has) {
+  return needsFor(phase, has).filter((n) => !n.done).map(({ id, what }) => ({ id, what }));
+}
+
+/** Everything a phase needs, done or not: [{ id, what, done }] (the portal shows "2 of 5 done"). */
+export function needsFor(phase, has) {
   const need = [
     ['privacy', ['pilot', 'production'], has.personal && !has.privacyDoc, 'what personal data is kept, why and where (docs/company/PRIVACY.md)'],
     ['errors', ['pilot', 'production'], !has.errorsSeen, 'errors you get to see: the logger and docs/PRODUCTION.md (the production module) or docs/run/MONITORING.md'],
@@ -68,7 +73,8 @@ export function missingFor(phase, has) {
     ['scan', ['production'], !has.secops, 'the weekly security scan (.github/workflows/secops.yml, /secops)'],
     ['run', ['production'], !has.runDocs, 'where and how it runs (docs/run/, /launch)'],
   ];
-  return need.filter(([, phases, missing]) => phases.includes(phase) && missing).map(([id, , , what]) => ({ id, what }));
+  // the privacy page is a need only for a project that keeps personal data: without any, it is not "done", it does not apply
+  return need.filter(([id, phases]) => phases.includes(phase) && (id !== 'privacy' || has.personal)).map(([id, , missing, what]) => ({ id, what, done: !missing }));
 }
 
 /** A production deploy goes only in the production phase: null when it may, else the line that says why not. */

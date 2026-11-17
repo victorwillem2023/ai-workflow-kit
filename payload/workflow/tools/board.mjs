@@ -11,6 +11,7 @@
 //   --show <number>              a card's title, column, labels and text
 //   --search "<words>"           cards (open and closed) whose title or text has the words: number, title, column
 //   --next [n]                   the n (5) startable cards to build next: first-version cards first, then value for the effort (lib/rank.mjs)
+//   --next [n] --json            the same as fields: the tie, the next cards, the waiting ones, the triage (lib/boardview.mjs)
 //   --triage                     the view for /tidy: too much in progress, cards waiting for you, stalled or long-blocked work, the inbox,
 //                                cards without a value, likely duplicates, an old backlog to prune; and the focus (lib/triage.mjs)
 //   --graph                      which card needs which, as a tree (a "Depends on: #n" line in a card's text; lib/cardgraph.mjs)
@@ -27,6 +28,7 @@ import { renderTriage, triage, triageLine } from './lib/triage.mjs';
 import { adoptCard, closeCard, createCard, dependCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 import { inbox, rankCards, STARTABLE, TOOL_ISSUES, topTie, waitingCards } from './lib/rank.mjs';
 import { renderTree } from './lib/cardgraph.mjs';
+import { boardView } from './lib/boardview.mjs';
 import { ghRun } from './lib/gh.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -122,6 +124,12 @@ async function main() {
     const all = listCards(board, run);
     const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)) });
     const n = Number(value('--next')) || 5;
+    if (argv.includes('--json')) {
+      // the same ranking as fields, for the docs portal (lib/boardview.mjs)
+      const { waiting: held, loops } = waitingCards(all, { columns: board.columns.filter((c) => STARTABLE.includes(c)) });
+      console.log(JSON.stringify(boardView({ ranked, tie: topTie(ranked), waiting: held, loops, inboxCount: inbox(all, undefined, toolIssues).length, triage: triage(all, triageOptions()), n, repo: board.repo })));
+      return;
+    }
     if (!ranked.length) console.log('board: no open card can be started (Backlog, Needs a board or decision, Ready), or each waits for another');
     // a tie at the top is said as one, never dressed up as an order (the card number is no reason): the owner picks, once
     const tie = topTie(ranked);
