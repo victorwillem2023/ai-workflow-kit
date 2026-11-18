@@ -2,6 +2,11 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.0.4**: **dropping a spike leaves the main folder's modules alone.** `session.mjs --drop spike-<topic>` removed the folder
+  with `git worktree remove --force` while its `node_modules` link was still there; on Windows that followed the link and
+  emptied the main folder's `node_modules/.bin` (`'tsc' is not recognized` in the next gate; `npm rebuild` put it back). The
+  link is now taken away by itself first, as `--remove` and `--finish` already did, and `--push`'s temporary folder does the same.
+  A test drops a spike with uncommitted work and checks main's `node_modules/.bin` is still there.
 - **4.0.3**: **the gate's audit checks what ships** (`npm audit --audit-level=high --omit=dev`). A dev tool's advisory with
   no fix yet (picomatch, through knip and Vite) failed every TypeScript project's gate for code no user runs; the weekly security
   scan (OSV-Scanner on the lock files) and Dependabot's alerts still report the dev tools, and /next shows a security alert first.

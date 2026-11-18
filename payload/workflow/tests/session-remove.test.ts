@@ -136,4 +136,19 @@ describe('cleaning up after a session', () => {
     delete r.env.WORKFLOW_HOLD_TEST;
     assert.ok(existsSync(marker), 'also when the folder is held');
   });
+
+  it('dropping a spike with uncommitted work never reaches the main folder\'s node_modules through the link', () => {
+    const r = makeRepo();
+    const marker = join(r.main, 'node_modules', '.bin', 'tsc');
+    mkdirSync(join(r.main, 'node_modules', '.bin'), { recursive: true });
+    writeFileSync(marker, 'keep\n');
+    session(r, 'spike-load');
+    writeFileSync(join(r.wt('spike-load'), 'loose.txt'), 'not committed\n');
+    mkdirSync(join(r.main, 'docs', 'decisions'), { recursive: true });
+    writeFileSync(join(r.main, 'docs', 'decisions', 'spike-load.md'), 'what it taught\n');
+    const dropped = run(r, '--drop', 'spike-load');
+    assert.ok(dropped.ok, dropped.out);
+    assert.equal(existsSync(r.wt('spike-load')), false);
+    assert.equal(readFileSync(marker, 'utf8'), 'keep\n', 'main\'s modules are untouched');
+  });
 });

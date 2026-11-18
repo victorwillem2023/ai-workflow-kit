@@ -41,7 +41,7 @@
 // WORKFLOW_GH (tests): a node script that stands in for the gh command.
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { heldMessage, removeEmptyStrangers, removeFolder } from './session-stop.mjs';
+import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
 import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, stopServer, ensurePackages, rebaseOn, remakeMap, runChecks, gh } from './session-core.mjs';
 import { sync, checkMain, commitNotes, carryNotes, serve, catchUpSession, onOf, branchExists, stackedOn, restack } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
@@ -116,6 +116,8 @@ function drop(topic) {
   const note = join(main, 'docs', 'decisions', `${topic}.md`);
   if (!existsSync(note)) throw new Error(`Write what the spike taught first: docs/decisions/${topic}.md in the main folder (the /spike skill says what goes in it).`);
   stopServer(dir);
+  // the link first, by itself: "worktree remove --force" follows it on Windows and empties the main folder's node_modules/.bin
+  unlinkModules(dir);
   git(main, 'worktree', 'remove', '--force', dir);
   try { git(main, 'branch', '-D', topic); } catch { console.log(`Branch "${topic}" is kept: git still sees it in use.`); }
   console.log(`Spike "${topic}" is dropped; what it taught is in docs/decisions/${topic}.md.`);
@@ -262,7 +264,7 @@ function push(o) {
     else git(main, 'update-ref', 'refs/heads/main', now, old);
     console.log(`Pushed ${waiting(s.ahead.length)} to origin/main.`);
   } finally {
-    rmSync(join(tmp, 'node_modules'), { force: true });
+    unlinkModules(tmp);
     gitQuiet(main, 'worktree', 'remove', '--force', tmp);
     rmSync(tmp, { recursive: true, force: true });
     gitQuiet(main, 'worktree', 'prune');
