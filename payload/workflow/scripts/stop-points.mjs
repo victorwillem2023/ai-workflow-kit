@@ -93,16 +93,32 @@ export function needsWord(command) {
   return null;
 }
 
-// the owner's own files: the sign-off record, its signers, and this script's note
-const OWN = ['SIGNOFFS.md', 'SIGNERS.md', 'workflow-said.json', 'levels.json'];
+// the owner's own files: the sign-off record, its signers, and this script's note; each by where it lives, so a glob is judged
+// by whether it could name it there
+const OWN_AT = { 'SIGNOFFS.md': 'docs/company/SIGNOFFS.md', 'SIGNERS.md': 'docs/company/SIGNERS.md', 'workflow-said.json': '.git/workflow-said.json', 'levels.json': 'workflow/levels.json' };
+const OWN = Object.keys(OWN_AT);
 // a command that writes files it names (a redirect is judged by where it points: reading the record into /tmp is fine)
 const WRITES = /(?:\btee\b|\bsed\s+(?:-\w*i|--in-place)|\bperl\s+-\w*i|\b(?:cp|mv|rm|truncate|dd|install|ln)\b|\b(?:write|append)File(?:Sync)?\b|\bcreateWriteStream\b|\bopen\s*\([^)]*['"][wa]|\bSet-Content\b|\bAdd-Content\b|\bOut-File\b|\bgit\s+(?:checkout|restore|apply|am)\b)/;
-const globRe = (g) => new RegExp(`^${g.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
+// one path segment of a glob as a pattern (`**` any number of segments, `*` and `?` within one; everything else literal)
+const segRe = (s) => (s === '**' ? '.*' : s.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]'));
 
-/** The names of the owner's files a command reaches, also through a glob (SIGN*.md, workflow-s*). */
+/**
+ * Whether a glob could name the owner's file at `at` (its path in the project): its last segments against the file's last ones.
+ * A glob of wildcards alone and no folder (a lone star or two: a code comment's, a multiplication, a CSS rule) names no file
+ * of its own; `workflow/*`, `*.json` and `**` + `/levels*` do.
+ */
+function globNames(word, at) {
+  const segs = word.replace(/\/+$/, '').split('/').filter((s, i) => s || i === 0);
+  if (segs.length === 1 && /^[*?]*$/.test(segs[0])) return false;
+  const file = at.split('/');
+  const tail = segs.slice(-file.length);
+  return new RegExp(`(?:^|/)${tail.map(segRe).join('/')}$`, 'i').test(at);
+}
+
+/** The names of the owner's files a command reaches, also through a glob (SIGN*.md, workflow-s*, workflow/*). */
 function ownNamed(command) {
-  const words = String(command ?? '').split(/[\s"'`;&|<>()=,]+/).filter(Boolean).map((w) => basename(w.replace(/\\/g, '/')));
-  return OWN.filter((name) => words.some((w) => (/[*?[]/.test(w) ? globRe(w).test(name) : w.toLowerCase() === name.toLowerCase())));
+  const words = String(command ?? '').split(/[\s"'`;&|<>()=,]+/).filter(Boolean).map((w) => w.replace(/\\/g, '/'));
+  return OWN.filter((name) => words.some((w) => (/[*?]/.test(w) ? globNames(w, OWN_AT[name]) : basename(w).toLowerCase() === name.toLowerCase())));
 }
 
 /**

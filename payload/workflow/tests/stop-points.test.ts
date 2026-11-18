@@ -114,6 +114,17 @@ describe("the owner's own sign-off record", () => {
     assert.match(r.why ?? '', /If the command only reads it, run that part on its own and the write as another command/);
     assert.match(verdict('echo {} > workflow/levels.json', {}, 0).why ?? '', /it has a redirect \(>\) into it/);
   });
+  it("reads a lone star as a comment or a sum, not a glob of the owner's files; a glob with a folder is judged by where it points", () => {
+    // what Trailsmith's sessions were refused: a script that writes a source file, with a doc comment or CSS in it
+    for (const c of ["python - <<'EOF'\np='src/x.ts'; s=open(p).read()\ns=s.replace('a', '/** One drag. */\\n')\nopen(p,'w').write(s)\nEOF",
+      "cat > css/a.css <<'EOF'\n/* the strip */\n.a { b: c; }\nEOF\nsed -i 's#^x#&y#' src/a.ts", 'node -e "fs.writeFileSync(p, a * b)"',
+      "sed -i 's/a/b/' docs/guide/*.md", 'grep -rn "rm" docs/guide/*', "python -c \"open('board.json','w').write(s[0])\""]) {
+      assert.equal(verdict(c, {}, 0).ok, true, c);
+    }
+    for (const c of ['rm workflow/*', 'cp x.json workflow/*.json', 'rm -rf **/*.json', "sed -i 's/a/b/' /c/p/workflow/lev*", 'printf x >> docs/company/SIGN*.md']) {
+      assert.equal(verdict(c, {}, 0).ok, false, c);
+    }
+  });
 });
 
 describe('commands that get around the plain spelling', () => {

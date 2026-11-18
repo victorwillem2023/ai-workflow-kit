@@ -10,11 +10,24 @@ import { resolve } from 'node:path';
 const MAX_FAILURES = 40; // a broken import can fail hundreds of tests the same way: show the first, count the rest
 const MAX_LINES = 12;    // lines of one failure's message
 
-/** The short text of one failure: the test, where it is, and the head of its error. */
+/**
+ * A long message cut to MAX_LINES: its first lines and its last ones. The last ones matter most: a test that asserts a
+ * command's output prints the command's progress first and its error last ("Squashed 2 commits ... npm run test ..." and
+ * only then what broke), so keeping only the head cut away exactly the cause.
+ */
+export function shortMessage(text) {
+  const lines = String(text).split('\n').filter((l) => l.trim());
+  if (lines.length <= MAX_LINES) return lines;
+  const head = 3;
+  const tail = MAX_LINES - head - 1;
+  return [...lines.slice(0, head), `... (${lines.length - head - tail} lines left out)`, ...lines.slice(-tail)];
+}
+
+/** The short text of one failure: the test, where it is, and its error (head and tail when it is long). */
 export function failureText(data) {
   const err = data.details?.error;
   const cause = err?.cause ?? err;
-  const message = String(cause?.message ?? err?.message ?? 'failed').split('\n').filter((l) => l.trim()).slice(0, MAX_LINES).join('\n    ');
+  const message = shortMessage(cause?.message ?? err?.message ?? 'failed').join('\n    ');
   const where = data.file ? ` (${data.file.replace(/\\/g, '/').replace(/^.*\/(?=tests\/)/, '')}${data.line ? `:${data.line}` : ''})` : '';
   return `FAIL ${data.name}${where}\n    ${message}\n`;
 }

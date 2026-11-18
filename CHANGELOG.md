@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.3.2**: **a code comment no longer looks like a write to the owner's files**. The stop-points hook read a lone `*` or
+  `**` as a glob of every file, and those stand in every doc comment (`/** … */`), CSS rule and sum: any command that wrote
+  one source file and had a comment in it was refused as writing `workflow/levels.json` (eight times in one real project's
+  day). A glob now counts only when it could name the file where it lives (`workflow/*`, `*.json`, `docs/company/SIGN*.md`
+  still do; `docs/guide/*` does not), and a `[` in a command no longer breaks the check. **A failing test shows its cause**:
+  the quiet reporter cuts a long failure message to its first lines and its last ones, where a command's error is, instead
+  of the first twelve only.
 - **4.3.1**: **the skills, written to be followed**, now that the budget no longer squeezes them. Every skill and its helper
   files (`try-it.md`, `several.md`, `together.md`, `setup/when.md`) has a heading per step, one action per line and one
   condition per bullet; the long prompts and commands stand in their own blocks. Step numbers and what each step does are

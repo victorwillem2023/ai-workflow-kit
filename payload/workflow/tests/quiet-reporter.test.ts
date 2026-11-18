@@ -52,9 +52,15 @@ test('hundreds of failures are cut to the first 40 with a count of the rest', as
   assert.match(out, /and 5 more failures/);
 });
 
-test('a very long failure message is cut to its first lines', () => {
+test('a very long failure message keeps its first lines and its last ones, where a command\'s error is', () => {
   const text = failureText({ name: 'n', details: { error: { message: Array.from({ length: 50 }, (_, i) => `line ${i}`).join('\n') } } });
   assert.equal(text.split('\n').length, 14);
+  assert.match(text, /line 0\n {4}line 1\n {4}line 2\n {4}\.\.\. \(39 lines left out\)\n {4}line 42\n/);
+  assert.match(text, /line 49\n$/, 'the last line, where the error is, is kept');
+  // a --finish that failed after squashing: its progress first, the reason last (the session test that once failed this way)
+  const finish = ['Squashed 2 commits into one: Plans: b and c', 'npm run test …', '> test', '> node check.cjs',
+    ...Array.from({ length: 12 }, (_, i) => `check output ${i}`), 'Error: the folder could not be removed: EBUSY'].join('\n');
+  assert.match(failureText({ name: 'f', details: { error: { message: finish } } }), /EBUSY/);
 });
 
 test('a file that fails with no test of its own failing shows its exit code and the last lines it wrote to stderr', async () => {
