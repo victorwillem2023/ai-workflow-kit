@@ -6,53 +6,74 @@ model: haiku
 
 # /next  or  /next <which command for ...?>
 
-Change no file, set no label, start nothing: this is the one command that is safe at any moment. At most eight lines and the
-closing question.
+This is the one command that is safe at any moment: change no file, set no label, start nothing. Answer in at most eight
+lines, then the closing question.
 
-**Asked which command** for something ("how do I check what this costs?", "where do I start the deploy?"): find it in
-`workflow/guides/WORKFLOW.md`, *The commands, by stage* (`grep -n` the words, read only that table), and answer with the command and one
-line on what it does. Not in the table: say so and offer `/find`. Then stop. A command whose skill is not in
-`.claude/skills/` was left out of a lean install: say so, and that `node <kit>/install.mjs . --update --with <part>` adds it.
-Never offer a skill that is not installed as the next step.
+## Asked which command
 
-**Otherwise**, four commands, all read-only:
-1. `npm run updates -- --short`: a security alert first; an update only when it needs the owner (its "to look at" part; the
-   ones that merge by themselves are not the owner's job).
-2. `node workflow/tools/stage.mjs`: where the project is, from facts (a look back due, the roadmap empty, the first version built
-   and nowhere to run it, a card that must come before the first deploy). Each `stage:` line is a next step. Then
-   `npm run phase -- --next`: its `phase:` line goes in your answer as it is, one quiet line, never a question. A line under it
-   is said once and is a next step in plain words: `New:` (a fact appeared) "people now <fact>: the checks could get stricter
-   (the pilot/production phase); I can show what is still missing"; `The facts fit ...` (the phase is stricter than anything
-   depends on) "a lighter phase would make shipping faster; the safety checks stay". The switch is the owner's, in
-   `workflow/levels.json`; never offer to make it, and never bring the phase up again when no such line is printed.
-3. `npm run board -- --next 3`: the cards to start, best first (the dependency graph first, then the owner's labels). A card that
-   "starts on top of #m" does not wait for #m's check: say so. **A tie** ("#a, #b are equal"): never present the card number as
-   an order; deciding it is a next step of its own (the board tidy-up asks it once and keeps the answer).
-4. With the app map, `npm run board -- --gaps`, and the board's notes (cards with no value, issues off the board, "the board
-   needs ... decisions"): together one next step, the board tidy-up.
-   When the phase lets the guide and the app map wait (`npm run levels -- --needs upkeep small` says no) and five or more
-   commits came since the last catch-up (`git rev-list --count <the hash in docs/.caught-up>..HEAD`; that commit gone after a
-   squash: `git rev-list --count --since=<its date> HEAD`; no file: since the last commit that changed `docs/guide` or
-   `docs/flow/map.js`):
-   one next step, "bring the guide and the app map up to the <n> features since (/docs catch-up)".
-Nothing to start: offer `/idea` or `/shape` for the next thing in `docs/PRODUCT.md`; no `docs/PRODUCT.md` and no cards: `/setup`.
+For "how do I check what this costs?" or "where do I start the deploy?": find it in `workflow/guides/WORKFLOW.md`, *The
+commands, by stage* (`grep -n` the words, and read only that table). Answer with the command and one line on what it does,
+then stop.
+- Not in the table: say so, and offer `/find`.
+- A command whose skill is not in `.claude/skills/` was left out of a lean install: say so, and that
+  `node <kit>/install.mjs . --update --with <part>` adds it. Never offer a skill that is not installed as the next step.
 
-**Faster, together**, only when it pays for itself: several builders cost a session each, so it is offered by the size of the
-work, from the cards' effort labels. Two or three cards to start that do not depend on each other, have different area labels
-(so they are unlikely to touch the same files) and are each `effort: medium` or `large`: add one choice: "Build #a, #b and #c at the same time (about as long as the longest;
-it costs about the three together, and you try three things at the end). (/work a b c)". Small cards are not
-worth a builder each: two `effort: small` cards in the same area are offered as one session instead ("Do #a and #b together,
-one change (/work a b)"); small ones in different areas simply go one after the other. Cards that depend on each other are never
-offered together; `/work` sorts them again (combined, one after the other, or side by side).
+## Otherwise: four read-only commands
 
-**End with ONE question**: the next steps found, at most four, most urgent first (a security alert, the `stage:` lines, the
-board tidy-up when it has decisions, the top card), the one you recommend marked with why in a few words (the quick ones that
-keep the rest honest first: a look back due, an empty roadmap, decisions waiting; then the card).
-**On the answer, do not run it here**: say "Start it in a new chat (so it begins clean, on the right model): type `<command>`".
-A new chat gives the command its own model (planning on the strong one) and none of this chat's reading. "Not now" ends it.
+1. **`npm run updates -- --short`**: a security alert comes first. An update counts only when it needs the owner (its "to look
+   at" part); the ones that merge by themselves are not the owner's job.
+2. **`node workflow/tools/stage.mjs`**: where the project is, from facts (a look back due, the roadmap empty, the first
+   version built and nowhere to run it, a card that must come before the first deploy). Each `stage:` line is a next step.
+   Then **`npm run phase -- --next`**: its `phase:` line goes into your answer as it is, one quiet line, never a question. A
+   line under it is said once, as a next step in plain words:
+   - `New:` (a fact appeared): "people now <fact>: the checks could get stricter (the pilot/production phase); I can show what
+     is still missing".
+   - `The facts fit ...` (the phase is stricter than anything depends on): "a lighter phase would make shipping faster; the
+     safety checks stay".
 
-**Each choice in plain words**, as someone who never heard of the workflow would follow it: what will happen, what you get, how
-long; the command after it in brackets, never as the choice itself:
+   Switching the phase is the owner's job, in `workflow/levels.json`: never offer to make the switch, and never bring the
+   phase up again when no such line is printed.
+3. **`npm run board -- --next 3`**: the cards to start, best first (the dependency graph first, then the owner's labels).
+   - A card that "starts on top of #m" does not wait for #m's check: say so.
+   - **A tie** ("#a, #b are equal"): never present the card numbers as an order. Deciding it is a next step of its own: the
+     board tidy-up asks it once and keeps the answer.
+4. **The board's notes**: with the app map, `npm run board -- --gaps`, together with the board's notes (cards with no value,
+   issues off the board, "the board needs ... decisions"). All of them make one next step: the board tidy-up.
+
+   **The guide and app map catch-up**, when the phase lets them wait (`npm run levels -- --needs upkeep small` says no) and
+   five or more commits came since the last catch-up. Count them with
+   `git rev-list --count <the hash in docs/.caught-up>..HEAD`. When that commit is gone after a squash:
+   `git rev-list --count --since=<its date> HEAD`. With no file: since the last commit that changed `docs/guide` or
+   `docs/flow/map.js`. Then one next step: "bring the guide and the app map up to the <n> features since (/docs catch-up)".
+
+**Nothing to start**: offer `/idea` or `/shape` for the next thing in `docs/PRODUCT.md`. No `docs/PRODUCT.md` and no cards: `/setup`.
+
+## Faster, together
+
+Offer this only when it pays for itself. Several builders cost a session each, so the offer follows the size of the work, from
+the cards' effort labels:
+
+- **Two or three cards to start** that do not depend on each other, have different area labels (so they are unlikely to touch
+  the same files), and are each `effort: medium` or `large`: add one choice. "Build #a, #b and #c at the same time (about as
+  long as the longest; it costs about the three together, and you try three things at the end). (/work a b c)"
+- **Two `effort: small` cards in the same area**: not worth a builder each, so offer them as one session. "Do #a and #b
+  together, one change (/work a b)". Small ones in different areas simply go one after the other.
+- Cards that depend on each other are never offered together; `/work` sorts them again (combined, one after the other, or
+  side by side).
+
+## End with ONE question
+
+The next steps you found, at most four, most urgent first: a security alert, the `stage:` lines, the board tidy-up when it
+has decisions, the top card. Mark the one you recommend, with why in a few words. The quick ones that keep the rest honest
+come first: a look back due, an empty roadmap, decisions waiting; then the card.
+
+**On the answer, do not run it here.** Say: "Start it in a new chat (so it begins clean, on the right model): type
+`<command>`". A new chat gives the command its own model (planning on the strong one) and none of this chat's reading.
+"Not now" ends it.
+
+**Each choice in plain words**, as someone who never heard of the workflow would follow it: what will happen, what you get,
+how long. The command goes after it in brackets, never as the choice itself:
+
 - `/retro`: "Look back on the week (about 10 minutes): what shipped, what went well, what got in the way. Each lesson becomes a
   check or a rule, so it does not happen again. (/retro)"
 - `/advise roadmap`: "Say where the project is and what would show it is ready for the next step (a few minutes), for example

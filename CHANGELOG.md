@@ -2,6 +2,18 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.3.1**: **the skills, written to be followed**, now that the budget no longer squeezes them. Every skill and its helper
+  files (`try-it.md`, `several.md`, `together.md`, `setup/when.md`) has a heading per step, one action per line and one
+  condition per bullet; the long prompts and commands stand in their own blocks. Step numbers and what each step does are
+  unchanged, so a project's own `.claude/project/<command>.md` ("after step 3") still lands in the right place, and every
+  command, path and stop word is still there. **The review sees the new files**: `/review` and `/ship`'s one reviewer read the
+  diff from the merge-base and the files git does not know yet (`git ls-files --others --exclude-standard`), never by staging
+  them (that would make a later `--catch-up` refuse); before, a feature made of new files was reviewed by its edits to old
+  ones only, and `/ship` step 3 missed a new doc. Both use the merge-base diff, never `git diff main`. **The sign goes in with
+  the feature**: `/ship` writes the *How we will know it worked* line into `docs/PRODUCT.md` before `--finish` (step 6), not
+  after it, where it was left behind. `/review` follows the phase line (a baselined file that grew is a *Later* item in a
+  prototype). `/spec` step 6 and the `/ui` description say where the build happens now; a card with no effort label counts
+  as medium in `/ship` too.
 - **4.3.0**: **a prototype moves at a prototype's pace, and flaky tests are seen instead of retried away**, from a week of a
   real project's history (55 workflow commits against 59 product ones; 4.4 docs files touched per feature). **The phase sets
   the ceremony, not only the gate**: `workflow/levels.json` gets two more process steps, `review` (from which card size `/ship`
