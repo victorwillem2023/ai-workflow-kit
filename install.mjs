@@ -38,6 +38,7 @@ import { runMigrations } from './migrations/index.mjs';
 import { moveToWorkflowFolder } from './migrations/3.0.0-workflow-folder.mjs';
 import { moveKitPathsBack } from './kit-layout.mjs';
 import { addModuleSections, printReport, writeScripts } from './install-steps.mjs';
+import { hookProblem } from './payload/workflow/tools/lib/hookcheck.mjs';
 import { STAGE_FOLDERS, mergeKitBlocks, rewriteChangedRules, keepNamedStageDocs, nameHelpersInCodeDocs, pruneStageCopies, stageSetup, unmarkEnteredStages, unmarkInstalled } from './install-docs.mjs';
 
 const kit = dirname(fileURLToPath(import.meta.url));
@@ -308,3 +309,6 @@ writeFileSync(markFile, `# which ai-workflow-kit this project came from and what
 printReport({ kit, target, before, kitVersion, force, update, done, lang, langs: LANGS, profile, modules, lean, gateOnly, parts, without,
   kitPartsAdded, harnessLine, addedSettings, claudeAdded, lfHint, rulesRewritten, written, stages, unmarked, requestsBefore, layout,
   migrated, framework, nodeTypes, happyDom, aiLibs });
+// last and loud: the stop points must start (a hook script that cannot load lets every commit and push through: lib/hookcheck.mjs)
+const hookLine = hookProblem(target);
+if (hookLine) { console.log(`\n${hookLine}\n`); process.exitCode = 1; }

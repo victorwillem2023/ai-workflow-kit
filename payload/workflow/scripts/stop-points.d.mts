@@ -10,3 +10,4 @@ export function nextNote(all: Record<string, Noted>, key: string, said: Said, no
 export function typedText(entry: unknown): string | null;
 export function notedFromTranscript(jsonl: string, typed?: Set<string>): Noted;
 export const typedPrint: (text: string) => string;
+export function editVerdict(main: string, file: string, o?: { ignored?: boolean; mainEdits?: boolean }): string | null;

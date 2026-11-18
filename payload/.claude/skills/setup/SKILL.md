@@ -2,6 +2,7 @@
 name: setup
 description: Set up {{PROJECT}} for the AI workflow right after the kit is installed: interviews the owner, then fills CLAUDE.md, workflow/config.json, the guide, docs/ARCHITECTURE.md and the folder notes from the answers and the code, writes the OpenCode commands, makes the board, and runs the gate. Run once, from the main folder.
 model: opus
+disable-model-invocation: true
 ---
 
 # /setup

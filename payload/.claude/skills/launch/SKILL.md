@@ -2,6 +2,7 @@
 name: launch
 description: Decide and set up where {{PROJECT}} runs before its first real deploy ("/launch", "/launch 31", or in plain words: "ready to deploy", "put it online", "go live", "where should this run?"): walks the owner through the platform (any cloud or on-prem), the shape (one server to a cluster), the database, the load balancer, server sizes, the infrastructure tool, environments, CI/CD and monitoring, then writes the decision record, the infra/ stacks, the deploy settings and the run docs, and plans the first change for the owner to apply. Never applies anything itself. Run from the main folder.
 model: opus
+disable-model-invocation: true
 ---
 
 # /launch [card number]

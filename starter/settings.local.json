@@ -91,6 +91,15 @@
             "command": "node workflow/scripts/stop-points.mjs --tool"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node workflow/scripts/stop-points.mjs --edit"
+          }
+        ]
       }
     ]
   }

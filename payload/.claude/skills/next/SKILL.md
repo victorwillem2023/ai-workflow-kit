@@ -30,6 +30,11 @@ Never offer a skill that is not installed as the next step.
    an order; deciding it is a next step of its own (the board tidy-up asks it once and keeps the answer).
 4. With the app map, `npm run board -- --gaps`, and the board's notes (cards with no value, issues off the board, "the board
    needs ... decisions"): together one next step, the board tidy-up.
+   When the phase lets the guide and the app map wait (`npm run levels -- --needs upkeep small` says no) and five or more
+   commits came since the last catch-up (`git rev-list --count <the hash in docs/.caught-up>..HEAD`; that commit gone after a
+   squash: `git rev-list --count --since=<its date> HEAD`; no file: since the last commit that changed `docs/guide` or
+   `docs/flow/map.js`):
+   one next step, "bring the guide and the app map up to the <n> features since (/docs catch-up)".
 Nothing to start: offer `/idea` or `/shape` for the next thing in `docs/PRODUCT.md`; no `docs/PRODUCT.md` and no cards: `/setup`.
 
 **Faster, together**, only when it pays for itself: several builders cost a session each, so it is offered by the size of the

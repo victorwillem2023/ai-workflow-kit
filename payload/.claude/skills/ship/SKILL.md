@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Finish a {{PROJECT}} feature after the owner says it is done: full gate, docs check against the spec, security review if flagged, one commit, session finish. Never run before the owner says done.
+description: Finish a {{PROJECT}} feature after the owner says it is done: the gate, docs check against the spec, one fresh review (with security when flagged) when the phase asks for it, one commit, session finish. Never run before the owner says done.
 model: sonnet
 ---
 
@@ -28,22 +28,28 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
 2. `npm run gate:ship` must pass (the phase decides how much it runs: the whole suite in pilot and production, the tests the
    change reaches in a prototype; its last line says which). A second `gate:ship` on the same files stops at once and says so; it runs again after any change. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.
-   For anything bigger than a small fix, have fresh eyes review it before the commit: start a subagent that has not seen this
-   chat (the Task tool, on Opus: judging needs the strong model), with only this as its task: "Follow `.claude/skills/review/SKILL.md` for <topic>, in <the session
-   folder>. Change no file. Report the list." Fix what it finds that the spec backs, and show the owner the rest.
+   **Fresh eyes, once.** A review is needed when `npm run levels -- --needs review <the card's effort>` says yes (large cards
+   in a prototype, medium and up after), when the spec's "Security triggers" says yes, or when a sensitive file changed. Then
+   start ONE subagent that has not seen this chat (the Task tool, on Opus: judging needs the strong model), with only this
+   as its task: "In <the session folder>, read the diff once: `git diff $(git merge-base main HEAD)` (it includes uncommitted
+   work). Follow `.claude/skills/review/SKILL.md` for <topic>[, and, on the same diff, a security review following the
+   `security-review` skill's method: read files only under <the session folder>]. Change no file. Report one list, worst
+   first, each finding with its file and line." (the bracketed part only when "Security triggers" says yes). Fix what it
+   finds that the spec backs, and show the owner the rest. No review needed: say so in one line ("no review: a medium card
+   in a prototype").
    **A fix that changes what it does** (other numbers, other rules, another screen) means the owner's check was of another
    version: hand it over again (`try-it.md`, with what the fix changed and an example before and after) and stop until they say
    done. Only fixes that keep the behaviour (a rename, a test, a comment) go on without a new check.
    **A sensitive file changed** (the gate's *signoff* line): the review is not optional. Then stop and hand the owner the check:
    the files, the spec's *Sources*, and `cd <session folder> && npm run signoff` to run in their own terminal. You never run it,
    never write `docs/company/SIGNOFFS.md`, and never call the change checked before the gate passes with their row.
-3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first.
-4. Security: if "Security triggers" says yes, review **this feature's changes, never the folder this chat runs in**: the
-   `security-review` skill reviews its own folder against `origin/HEAD`, which from the main folder is main's newest commit,
-   not this feature. Start a subagent that has not seen this chat (the Task tool, on Opus) with only this task: "Do a security
-   review, following the `security-review` skill's method, of exactly this diff and nothing else:
-   `git -C <session folder> diff $(git -C <session folder> merge-base main HEAD)` (it includes uncommitted work). Read files
-   only under <session folder>. Change no file. Report each finding with its file and line." Fix what it finds first.
+3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first. The user guide and the
+   app map are not missing when the phase lets them wait (`npm run levels -- --needs upkeep <effort>` says no): the next
+   `/docs catch-up` brings them up for every feature since. Never rebuild generated pages (`docs/MAP.md`, `docs/README.md`)
+   by hand for this: `--finish` writes them once, on top of main.
+4. Security: done in step 2's one review when "Security triggers" says yes. It reviews **this feature's diff, never the folder
+   this chat runs in**: the `security-review` skill alone would compare its own folder with `origin/HEAD`, which from the main
+   folder is main's newest commit, not this feature. Fix what it finds first.
 5. The spec and its try command (`workflow/specs/<topic>.*`) stay until step 7: `--finish` deletes them in both folders once the feature is on main.
 6. No commit of your own: step 7 commits everything left under the approved subject, as ONE commit. Subject = what changed for the user ("Area: what changed, and what else"),
    body = a few lines of what the feature now does. Add the Co-Authored-By line the session gives. The subject is also the
@@ -60,7 +66,8 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    `- <date to look>: <sign> (<the commit's subject>)` (in the same commit), and when there is a card, on the card too:
    `gh issue comment <n> --repo <board.repo> --body-file <file>` ("Shipped. How we will know it worked: <sign>, look on <date>.").
    `npm run retro` reads both back once the date has come.
-9. Report in plain language, with an example where a term is technical: what changed, what the tests check. Anything still
+9. Report in plain language, with an example where a term is technical: what changed, what the tests check. A `flaky:` line
+   the gate printed becomes a card unless one is there (`npm run board -- --search "Flaky test"`; the line names the `--add`). Anything still
    open is a question with a recommendation, or a card made now (`.claude/skills/build/try-it.md`, *Open points become cards*), never a bare "unsure".
 
 **This project's own**: when `.claude/project/ship.md` exists, read it before you start: it holds this project's own steps and rules for /ship, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

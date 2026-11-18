@@ -3,7 +3,8 @@
 //   safety stops     commit and push wait for the owner's word, the sign-off, secrets, migrations, the AI wrapper, the image, the
 //                    network, the packages, typecheck and the tests: no level. They are on, or their part is not installed.
 //   quality checks   layers, untested code, sizes, docs...: each `fail` (the gate fails), `advise` (it says so and passes) or `off`
-//   process weight   from which size of card a spec, a pitch (/shape) and a UI board are needed: a typo fix needs none of them
+//   process weight   from which size of card a spec, a pitch (/shape), a UI board and a fresh review are needed, and the user
+//                    guide and app map are kept up in the card itself (below it they wait for one /docs catch-up pass)
 // The phase fills them in (`phase`, called `preset` before kit 3.4): `prototype` while nothing outside depends on the product (the
 // structure checks advise, specs only for large cards, /ship runs the tests the change reaches), `pilot` once a few real people use
 // it or it keeps their data (structure still advises; untested code, docs and errors fail; /ship runs the whole suite), `production`
@@ -25,25 +26,25 @@ export const SAFETY = ['secrets', 'leaks', 'signoff', 'migrations', 'ai', 'image
 
 /** The quality checks a level applies to (a project's own `checks` entries are quality checks too, by their names). */
 export const QUALITY = ['layers', 'size', 'functions', 'ratchets', 'nesting', 'circles', 'untested', 'variants', 'budget', 'naming',
-  'copies', 'settings', 'versions', 'spikes', 'covers', 'together', 'scope', 'map', 'requests', 'harness', 'surfaces', 'docs', 'spec', 'errors', 'quality'];
+  'copies', 'settings', 'versions', 'spikes', 'covers', 'together', 'scope', 'map', 'requests', 'harness', 'surfaces', 'docs', 'spec', 'errors', 'waits', 'quality'];
 
 const PROTOTYPE_ADVISE = ['size', 'functions', 'ratchets', 'nesting', 'circles', 'untested', 'budget', 'naming', 'copies', 'covers',
-  'docs', 'errors', 'spikes', 'quality', 'map', 'harness'];
+  'docs', 'errors', 'spikes', 'quality', 'map', 'harness', 'waits'];
 
-// what a pilot holds to again: real people meet its errors, its docs and its untested code
-const PILOT_FAIL = ['untested', 'covers', 'docs', 'errors'];
+// what a pilot holds to again: real people meet its errors, its docs and its untested code, and a flaky test hides a real failure
+const PILOT_FAIL = ['untested', 'covers', 'docs', 'errors', 'waits'];
 const advise = (names) => Object.fromEntries(names.map((c) => [c, 'advise']));
 
 /** The phases, lightest first; `ship` is what /ship's gate runs (`gate.mjs --ship`): the tests the change reaches, or all of them. */
 export const PHASES = ['prototype', 'pilot', 'production'];
 export const PRESETS = {
-  prototype: { checks: advise(PROTOTYPE_ADVISE), process: { spec: 'large', pitch: 'never', uiBoard: 'large' }, ship: 'reached' },
-  pilot: { checks: advise(PROTOTYPE_ADVISE.filter((c) => !PILOT_FAIL.includes(c))), process: { spec: 'large', pitch: 'never', uiBoard: 'medium' }, ship: 'all' },
-  production: { checks: {}, process: { spec: 'medium', pitch: 'large', uiBoard: 'small' }, ship: 'all' },
+  prototype: { checks: advise(PROTOTYPE_ADVISE), process: { spec: 'large', pitch: 'never', uiBoard: 'large', review: 'large', upkeep: 'never' }, ship: 'reached' },
+  pilot: { checks: advise(PROTOTYPE_ADVISE.filter((c) => !PILOT_FAIL.includes(c))), process: { spec: 'large', pitch: 'never', uiBoard: 'medium', review: 'medium', upkeep: 'always' }, ship: 'all' },
+  production: { checks: {}, process: { spec: 'medium', pitch: 'large', uiBoard: 'small', review: 'medium', upkeep: 'always' }, ship: 'all' },
 };
 
 /**
- * The levels in force: { phase, preset (the same, its old name), checks: { name: level }, process: { spec, pitch, uiBoard },
+ * The levels in force: { phase, preset (the same, its old name), checks: { name: level }, process: { spec, pitch, uiBoard, review, upkeep },
  * ship: 'reached' | 'all', reach: 'chain' | 'direct', cache: 'picked' | 'all', loosened: [line], problems: [line] }.
  * `text` is workflow/levels.json (null when there is none: production); `projectChecks` the names of the config's own checks.
  */
@@ -93,6 +94,9 @@ export function loosenedLine(levels) {
     ? `levels (${FILE}, phase ${levels.phase}): loosened ${levels.loosened.join(', ')}`
     : `levels (${FILE}, phase ${levels.phase}): nothing loosened`;
 }
+
+/** A process level in words: "every card", "large cards", "no card". */
+export const fromWords = (from) => (from === 'always' ? 'every card' : from === 'never' ? 'no card' : from === 'large' ? 'large cards' : `${from} cards and up`);
 
 /** Whether a card of `effort` (small, medium, large) needs the step whose process level is `from` (always ... never). */
 export function needs(from, effort) {

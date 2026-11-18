@@ -9,6 +9,7 @@ part a change touches. Where every other doc is (product, company, build, run, d
 The owner wants to understand and steer the project, not just receive features. So:
 - **A stage in plain words** ("ready to deploy", "let's get users", "what now?"): the command comes from `/next` (it reads where
   the project is, `workflow/tools/stage.mjs`, and `workflow/guides/WORKFLOW.md`, *The commands, by stage*), never improvised.
+  The stage commands (`/setup`, `/launch`, `/market`, `/advise`, `/arch`, `/secops`) are typed by the owner: suggest one, never run it.
 - **The stack is decided**: `docs/STACK.md` says what the app is built with and why. A new library or service is the owner's
   decision first: propose it in the plan with the reason, and add its line there in the same commit.
 - **Plan before code** for anything bigger than a small fix: what the user will see change, which files, which test proves it,
@@ -16,8 +17,8 @@ The owner wants to understand and steer the project, not just receive features. 
   `/ship <topic>` finishes it only when the owner says done (`workflow/tools/README.md`, read by the section).
 - **Model choice**: each skill's `model:` line; a script before a model, never asking one what a tool can check (`workflow/guides/TOKENS.md`).
 - **Anchor with Tests**: No behaviour change in `src/core` without a test whose name says what the app now does. Write the test first.
-- **Docs in the same commit**: the guide part and `README.md` when a feature changes; `docs/ARCHITECTURE.md` when the layers or
-  flow change; `docs/code/<folder>.md` when a part moves. A doc with a `<!-- covers: ... -->` line fails the gate when its
+- **Docs in the same commit**: the guide part and `README.md` when a feature changes (or in one `/docs catch-up` pass, when the phase line under
+  *Code structure* says they wait); `docs/ARCHITECTURE.md` when the layers or flow change; `docs/code/<folder>.md` when a part moves. A doc with a `<!-- covers: ... -->` line fails the gate when its
   files change and it does not; generated parts: `npm run map`.
 - **The backlog is the GitHub board**: one card at a time (`npm run board -- --show <n>`), never the whole list; "blocked,
   waiting for X" is `npm run board -- --block <n> "<reason>"`.
@@ -56,8 +57,11 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 - Tests: `{{TESTS}}`, <runner>. Fakes for every outside service; never hit the network in tests.{{TEST_TIPS}}
 
 <!-- kit:code-structure -->
-## Code structure (a new feature is a new file)
-1. A new feature gets its own file, named after it. Never add a feature to a file in `workflow/tools/baseline.json`: the gate fails if one grows.
+## Code structure (where a new feature goes)
+<!-- generated: phase -->
+<!-- /generated -->
+
+1. A new feature gets its own file, named after it. Never add a feature to a file in `workflow/tools/baseline.json`: the gate says so if one grows (whether it stops you: the phase line above).
 2. Split by responsibility, not to hit a number: 300 lines is a sign to look, 400 the gate's limit for a new file.
 3. A function over about 60 lines is split into named steps. A file opens with a comment saying what it does (the file map is built from it).
 4. A file takes what it needs as arguments or a small context; it does not import the big class or the whole store.
@@ -73,6 +77,8 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 8. Add, don't rework: a shared function or type keeps its shape for one feature's convenience; the feature gets its own version or an option.
    That is about shapes, never about rules: a rule (how a total is worked out, what counts as valid) is not copied, see 11 to 14.
 9. A failing test is information. Change a test's expectation only for an intended behaviour change, naming the test and why; never just to pass.
+   A test that fails with nothing changed under it is flaky: report it with its output, never run it again hoping for green
+   (the gate lists flaky tests by itself).
 10. Anything else you notice goes in the report, not the commit.
 <!-- /kit:changing-code -->
 
@@ -110,7 +116,9 @@ Every token read is paid for again on every later turn of the chat, so read by t
   `npm run map -- --find <word>` or `npm run map -- --uses <path>`, then open the file.
 - **Before editing in a folder, read its `CLAUDE.md`** (its rules; Claude Code loads it, other agents must read it). Where things
   are in a folder: `docs/code/<folder>.md`, by `grep -n`.
-- Read big docs by the section (`grep -n '^## '`): `docs/ARCHITECTURE.md`, `workflow/tools/README.md`, <other big docs>.
+- Read big docs by the section (`grep -n '^## '`):
+<!-- generated: bigdocs -->
+<!-- /generated -->
 - `head -5` before opening a file (each opens with what it does), `grep -n` the function, read only that range. Large files: <list>.
 - `npm test` and the gate print only failures; ask for the full output (`npm run test:full`) only when a failure is unclear.
 

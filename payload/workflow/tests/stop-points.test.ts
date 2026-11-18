@@ -2,7 +2,27 @@
 // agent's command that commits or pushes without them is refused with a reason.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { HOLDS_MS, needsWord, nextNote, notedFromTranscript, saidInPrompt, typedPrint, verdict } from '../../workflow/scripts/stop-points.mjs';
+import { editVerdict, HOLDS_MS, needsWord, nextNote, notedFromTranscript, saidInPrompt, typedPrint, verdict } from '../../workflow/scripts/stop-points.mjs';
+
+describe('code is written only in a session folder', () => {
+  const main = 'C:\\work\\app';
+  it('refuses an edit of code in the main folder, with where to write it instead', () => {
+    assert.match(editVerdict(main, 'C:\\work\\app\\src\\core\\plan.ts') ?? '', /^Refused: src\/core\/plan\.ts is code in the main folder.*session folder/);
+    assert.match(editVerdict('C:/work/app', 'c:\\Work\\App\\tests\\plan.test.ts') ?? '', /tests\/plan\.test\.ts/, 'any case, either slash');
+    assert.match(editVerdict(main, `${main}\\docs\\flow\\build-requests.mjs`) ?? '', /is code/, 'a script under docs/ that node runs is code, not a note');
+  });
+  it('lets docs and settings through there, and anything in another folder', () => {
+    for (const f of ['docs\\PRODUCT.md', 'docs\\flow\\map.js', 'CLAUDE.md', 'workflow\\config.json', 'workflow\\specs\\plan.md', '.claude\\project\\ship.md']) {
+      assert.equal(editVerdict(main, `${main}\\${f}`), null, f);
+    }
+    assert.equal(editVerdict(main, 'C:\\work\\app-plan\\src\\core\\plan.ts'), null, 'a session folder next to it');
+    assert.equal(editVerdict(main, 'C:\\Users\\me\\AppData\\Local\\Temp\\x.mjs'), null, 'the scratchpad');
+  });
+  it('lets a file git ignores through, and a project that chose to edit code in the main folder', () => {
+    assert.equal(editVerdict(main, `${main}\\src\\a.ts`, { ignored: true }), null);
+    assert.equal(editVerdict(main, `${main}\\src\\a.ts`, { mainEdits: true }), null);
+  });
+});
 
 const allows = (text: string) => { const s = saidInPrompt(text); return { commit: s.commit, push: s.push }; };
 

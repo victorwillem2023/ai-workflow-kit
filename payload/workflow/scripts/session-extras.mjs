@@ -8,10 +8,12 @@ import { basename, dirname, join } from 'node:path';
 import { git, gitQuiet, here, main, PREFIX, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, mapPages, ensurePackages, npmRun, rebaseOn, gh } from './session-core.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 /**
- * Docs and settings left in the main folder (by /docs, /lesson, /shape or the owner's own edits): any .md file, the workflow config,
- * the Renovate policy and the agent's settings. They are the owner's, not a feature's, and go in as their own commit (--commit-notes).
+ * Docs and settings left in the main folder (by /docs, /lesson, /shape or the owner's own edits): any .md file, everything under
+ * docs/ (the app map too), the workflow config, the Renovate policy and the agent's settings (notes.mjs). They are the owner's,
+ * not a feature's, and go in as their own commit (--commit-notes).
  */
-export const NOTE = /(\.md$|^workflow\/config\.json$|^renovate\.json$|^\.claude\/|^\.opencode\/)/i;
+export { NOTE } from './notes.mjs';
+import { NOTE } from './notes.mjs';
 
 // untrimmed: a porcelain line can start with a space (" M file"), which git()'s trim would take off the first one
 export const looseFiles = () => execFileSync('git', ['status', '--porcelain', '-uall'], { cwd: main, encoding: 'utf8' }).split('\n').filter(Boolean)

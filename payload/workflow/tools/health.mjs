@@ -9,6 +9,7 @@ import { codeTest } from './lib/lang.mjs';
 import { lineCount, oversize } from './lib/size.mjs';
 import { longFunctions, copiedFunctions } from './lib/funclen.mjs';
 import { countPatterns } from './lib/ratchet.mjs';
+import { hookProblem } from './lib/hookcheck.mjs';
 
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
@@ -46,3 +47,5 @@ if (!process.argv.includes('--offline')) {
     row('dependency updates', line.replace(/^updates: /, ''));
   } catch { row('dependency updates', 'not checked (npm run updates)'); }
 }
+// the stop points must start: a hook script that cannot load lets every commit, push and main-folder edit through (lib/hookcheck.mjs)
+row('stop points', hookProblem('.') ?? 'start');

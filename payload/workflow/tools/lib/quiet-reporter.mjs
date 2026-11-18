@@ -2,6 +2,9 @@
 // run costs a few tokens instead of a line per test (the default prints one line per test).
 //   node --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs
 // `npm run test:full` keeps the default, line-per-test output.
+// With WORKFLOW_TEST_RESULTS set (the gate sets it) it also writes there which files failed, { failed: [file] }, so the gate keeps
+// the passes of a failed run and sees a flaky file (lib/testcache.mjs).
+import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const MAX_FAILURES = 40; // a broken import can fail hundreds of tests the same way: show the first, count the rest
@@ -33,10 +36,12 @@ export default async function* quietReporter(source) {
   // (its stderr names the file as it was given, its failure by the full path: one key for both)
   const key = (f) => resolve(f).replace(/\\/g, '/').toLowerCase();
   let failures = 0;
+  const failedFiles = new Set();
   for await (const event of source) {
     const data = event.data ?? {};
     if (event.type === 'test:stderr' && data.file) stderr.set(key(data.file), `${stderr.get(key(data.file)) ?? ''}${data.message ?? ''}`.slice(-8000));
     if (event.type === 'test:fail') {
+      if (data.file) failedFiles.add(data.file);
       // a file or suite that failed only because a test inside it did is not a failure of its own
       if (data.details?.error?.failureType === 'subtestsFailed') continue;
       failures++;
@@ -46,6 +51,9 @@ export default async function* quietReporter(source) {
       const m = /^(tests|pass|fail|cancelled|skipped|todo|duration_ms) (\S+)/.exec(String(data.message));
       if (m) totals[m[1]] = m[2];
     }
+  }
+  if (process.env.WORKFLOW_TEST_RESULTS) {
+    try { writeFileSync(process.env.WORKFLOW_TEST_RESULTS, JSON.stringify({ failed: [...failedFiles] })); } catch { /* the gate then keeps nothing new */ }
   }
   if (failures > MAX_FAILURES) yield `... and ${failures - MAX_FAILURES} more failures (npm run test:full shows all)\n`;
   const seconds = totals.duration_ms ? ` in ${Math.round(Number(totals.duration_ms) / 1000)} s` : '';

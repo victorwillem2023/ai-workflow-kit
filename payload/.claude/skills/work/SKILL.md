@@ -1,6 +1,6 @@
 ---
 name: work
-description: Work on one {{PROJECT}} board card from start to finish ("work on card 42 today"): reads the card, picks the route from its type label (ui goes to /ui; feature, bug, workflow here), plans and stops for a yes, builds in a session folder, stops while the owner tries it, and ships only when the owner says done. Run from the main folder.
+description: Work on one {{PROJECT}} board card from start to finish ("work on card 42 today"), or a batch of bugs in one go ("/work bugs"): reads the card, picks the route from its type label (ui goes to /ui; feature, bug, workflow here), plans and stops for a yes, builds in a session folder, stops while the owner tries it, and ships only when the owner says done. Run from the main folder.
 model: opus
 ---
 
@@ -55,7 +55,14 @@ and where to stop. Run it from the main folder in a fresh chat. Never commit bef
 3. **Build in a session folder**, tests first; move the card to *In progress* (`npm run board -- --move <n> "In progress"`).
    - With a spec: `/build <topic>`, in the new chat (steps 3 to 5 then run there).
    - A small bug: `node workflow/scripts/session.mjs <topic>`, then in that folder write the failing test, run it and see it
-     fail, fix, and run `npm run gate` until it passes.
+     fail, fix, and run `npm run gate` until it passes. A test that fails with nothing changed under it is flaky: report it,
+     never run the gate again hoping for green.
+   - **Several bugs at once** (`/work bugs`: the open `bug` cards, `gh issue list --repo <board.repo> --label bug --state open
+     --json number,title`, offered as one batch for a yes; or `/work 12 14 15` all `bug`): one session (`<topic>` = `bugs-<date>`, `--card
+     12,14,15`), each bug first as one failing test row (a case in the test file that already holds its kind, never a test file
+     per bug), then the fixes, one gate, one commit closing every card. In a prototype, a bug that breaks no core flow (the
+     app map's ends; no map: what the owner named first in `docs/PRODUCT.md`) is not fixed: mark it weak on the map or leave
+     the card in Backlog, and say so in one line.
 4. **Stop while the owner tries it**: hand it over as `.claude/skills/build/try-it.md` says (the server already running and the
    link, or a try command for a change without a screen; plain words, examples, their own numbers, edge cases) and move the card
    to *Waiting for your check*. Feedback goes to the same builder (`/build` step 6). "continue" or "ok" is not "done": ask.

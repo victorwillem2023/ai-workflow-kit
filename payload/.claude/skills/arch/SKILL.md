@@ -2,6 +2,7 @@
 name: arch
 description: The {{PROJECT}} architecture board ("/arch one repo or several for the portal?", "/arch should we split the importer out"): the architecture panel of /advise (simplicity and cost, operations and scale, security and data, product and time), for decisions that are hard to undo. Read-only. Run from the main folder.
 model: opus
+disable-model-invocation: true
 ---
 
 # /arch <question>  or  /arch <card number>

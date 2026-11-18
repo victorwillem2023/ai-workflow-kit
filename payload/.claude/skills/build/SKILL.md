@@ -1,6 +1,6 @@
 ---
 name: build
-description: Build a {{PROJECT}} spec without the owner changing folders (typing /build is the owner's approval of the spec): sets up the session folder, copies the spec, and starts a subagent that builds it there. Run from the main folder, in a new chat, after /spec.
+description: Build a {{PROJECT}} spec without the owner changing folders (typing /build is the owner's approval of the spec): sets up the session folder, copies the spec, and builds it there (in this chat for a small or medium card, by a subagent for a large one). Run from the main folder, in a new chat, after /spec.
 model: sonnet
 ---
 
@@ -24,16 +24,23 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
      tell the owner if it already has changes (it may be half built).
 3. The spec: a new folder gets it from step 2 by itself (`session.mjs` copies `workflow/specs/<topic>.md`, which git does not
    carry). A reused folder: copy it into `../{{PREFIX}}-<topic>/workflow/specs/` only when the main folder's copy is newer or the folder's copy is missing.
-4. Start one subagent (use your agent's task/subagent tool), named `build-<topic>`. The plan was made by the strong model, so
-   building it is coding: **Sonnet** (in Claude Code `model: "sonnet"`; in OpenCode the config's `model`). **Opus** only when the
-   spec's "Suggested model" says so (a design decision left open) or a sensitive file is in it (`sensitive.paths`). Never a free model for a build.
+4. **Who builds.** A small or medium card (its effort label, `npm run board -- --show <n>`; none: medium) whose "Suggested model" is Sonnet and that touches no
+   sensitive file: **build it in this chat yourself**, following the prompt below as your own rules. This chat is already
+   fresh and on the building model, and every feedback round then costs one context, not two. Every file you write is
+   under the session folder, by its absolute path; the main folder is only read (a hook refuses code written there). Otherwise (a large card, Opus suggested,
+   a sensitive file) start one subagent (use your agent's task/subagent tool), named `build-<topic>`. The plan was made by
+   the strong model, so building it is coding: **Sonnet** (in Claude Code `model: "sonnet"`; in OpenCode the config's
+   `model`). **Opus** only when the spec's "Suggested model" says so (a design decision left open) or a sensitive file is in
+   it (`sensitive.paths`). Never a free model for a build.
    Add to the prompt below, when the spec touches a sensitive file: "A failing *signoff* check is the owner's step, not yours:
    leave it failing and say so in the report."
    Give it this prompt, with the real absolute folder:
    > Build the approved spec `<folder>/workflow/specs/<topic>.md`. Read it first, and the CLAUDE.md of each folder you touch; read
    > `<folder>/workflow/tools/README.md`, *What it checks*, only if a gate failure is unclear.
    > Work ONLY in `<folder>`: use absolute paths and start every Bash command with `cd <folder> &&`. Never edit the
-   > main folder or another session's folder. Write the tests first, then the code. Run `npm run gate` until it passes. Update the spec's
+   > main folder or another session's folder. Write the tests first, then the code. Run `npm run gate` and fix what it names
+   > until it passes. A test that fails with nothing you changed under it is flaky: put it under Questions with its output,
+   > never run the gate again hoping it turns green (the gate lists flaky tests by itself). Update the spec's
    > `## Status`. Do NOT commit, push or run `--finish`: the owner says when it is done. A failure main has fixed since (or a fix the
    > spec needs from main): `cd <folder> && node workflow/scripts/session.mjs --catch-up <topic>` brings main in and leaves your
    > work as it is; never `git stash`, `git merge` or `git rebase` yourself. Start no dev server. If the change has no
@@ -43,11 +50,11 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
    > one line per test, what it checks. **Questions**: each a choice for the owner, with your recommendation and what each
    > answer changes, with an example; or "none". **Later**: work noticed and left out (outside the spec or outside your files),
    > a title and one line why each; or "none". Never a bare "not sure about X": make it a question or a later item.
-5. When it reports, make its *Later* items cards and hand it to the owner as `.claude/skills/build/try-it.md` says: `node workflow/scripts/session.mjs --serve <topic>` for a
+5. When it reports (or you finish, building here), make its *Later* items cards and hand it to the owner as `.claude/skills/build/try-it.md` says: `node workflow/scripts/session.mjs --serve <topic>` for a
    screen (the owner only opens the link), the try command for no screen, then the message in plain words with examples, their own
    numbers and edge cases. Stop there.
-6. Feedback rounds: the owner talks here; forward it to the same subagent/session so it keeps context (use your agent's follow-up/message mechanism). Do not start a second
-   subagent for the same topic. Ask it to keep the diff small and to change only presentation code for UI feedback. A round
+6. Feedback rounds: the owner talks here. Built here: change it here. Built by a subagent: forward it to the same one so it
+   keeps context (use your agent's follow-up/message mechanism); do not start a second subagent for the same topic. Ask it to keep the diff small and to change only presentation code for UI feedback. A round
    that changes what it does is handed over again (`try-it.md`, step 3).
 7. Never commit or finish. When the owner says it is done, run `/ship <topic>` (it works in the session folder).
 

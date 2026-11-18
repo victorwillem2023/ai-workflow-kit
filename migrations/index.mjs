@@ -15,8 +15,11 @@ import commandsByPhase from './3.4.3-commands-by-phase.mjs';
 import settingsNotCode from './3.4.3-settings-not-code.mjs';
 import auditWhatShips from './4.0.3-audit-what-ships.mjs';
 import testsOffline from './4.2.0-tests-offline.mjs';
+import measuredDocs from './4.3.0-measured-docs.mjs';
+import upkeepConflicts from './4.3.0-upkeep-conflicts.mjs';
+import rootBudget from './4.3.0-root-budget.mjs';
 
-export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips, testsOffline];
+export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips, testsOffline, measuredDocs, upkeepConflicts, rootBudget];
 
 const parts = (v) => String(v).split('.').map(Number);
 /** a is older than b (2.9.7 < 2.9.10). */

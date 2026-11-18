@@ -2,6 +2,7 @@
 name: secops
 description: Act on {{PROJECT}}'s weekly security report ("/secops", "what did the security scan find?", "fix the security findings"): reads the latest report, says in plain words what needs the owner, proposes a fix for each finding, and on the owner's yes makes it a card or a small fix. Never fixes without a yes; never commits by itself.
 model: sonnet
+disable-model-invocation: true
 ---
 
 # /secops

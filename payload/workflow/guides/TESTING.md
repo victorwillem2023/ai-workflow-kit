@@ -89,6 +89,15 @@ never run again until it passes and never marked "skip". The usual causes, in th
 3. the order things finish in (wait for the thing itself, never for a number of milliseconds);
 4. the network (a fake that throws finds it).
 
+The gate sees them for you: a file that failed and then passes with the same code under it is flaky by definition, and every
+gate run lists it (`flaky:` lines, with what failed and the card to make) until it has passed ten times in a row, in any
+session, with no failure between: one pass proves nothing, a flaky test passes most of the time. The saved failure also shows a false alarm at a
+glance: one that names a missing command or package says the computer changed, not the code. A second attempt after a failure
+runs only the files that failed. A changed test that waits a fixed time (`setTimeout(r, 20)`, `sleep(50)`) gets the *waits*
+check (advice in a prototype, fails from pilot): wait for the thing itself through one shared helper (a `waitFor` or `settle`
+in the tests' helper file, never a private copy per test file), or use the fake clock. Several sessions running their gates
+at once share the computer's cores, so a busy machine does not turn a slow wait into a failure.
+
 ## Speed
 The whole suite has a time budget (`testSeconds` in `workflow/config.json`); the gate says when it is passed. A slow suite
 is run less, so it protects less. Keep rule tests free of I/O, start the database once per run, and keep browser tests few.

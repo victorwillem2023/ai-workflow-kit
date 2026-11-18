@@ -2,6 +2,54 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.3.0**: **a prototype moves at a prototype's pace, and flaky tests are seen instead of retried away**, from a week of a
+  real project's history (55 workflow commits against 59 product ones; 4.4 docs files touched per feature). **The phase sets
+  the ceremony, not only the gate**: `workflow/levels.json` gets two more process steps, `review` (from which card size `/ship`
+  starts a fresh reviewer: large cards in a prototype, medium and up after) and `upkeep` (from which size the user guide and
+  the app map are kept up in the card itself: never in a prototype, every card after). Below it they wait for **`/docs
+  catch-up`**, one pass over every feature since the last one, which `/next` offers once five commits wait. **CLAUDE.md says
+  what the phase loosens**: a generated block at the top of *Code structure* (`npm run map` fills it from `levels.json`) names
+  the code rules that are advice in this phase, so agents stop treating "never add to a baselined file" as a stop in a
+  prototype; rule 1 no longer says the gate fails. **A step is the default in a prototype** when the end state is bigger than
+  the card; the End state line and its card are still written. **One fresh reviewer**: the review and, when the spec flags
+  it, the security review are one Opus subagent reading the diff once. **Small and medium cards are built in the `/build`
+  chat itself**, so a feedback round is paid once; a large card, an Opus build or a sensitive file still gets its subagent.
+  **`/work bugs`**: the open bugs in one session and one commit, each first as a failing test row; in a prototype a bug that
+  breaks no core flow is marked weak instead. **Measured doc sizes**: CLAUDE.md's list of the docs too big to read whole is a
+  generated block (`bigdocs`), so it can no longer say 16 KB for a doc of 54; an update turns a project's own bullet into it.
+  **The stage commands stay out of every chat** (`/setup`, `/launch`, `/market`, `/advise`, `/arch`, `/secops`:
+  `disable-model-invocation`): the owner types them when `/next` says so. **Flaky tests**: the gate keeps passes file by
+  file, also after a failed run, so a second attempt runs only what failed; a file that failed and then passes with the same
+  code under it is flaky by definition and goes on a list shared by every session (`workflow-flaky.json` in git's common
+  folder), printed on every gate run with what failed and the card to make (its text keeps the whole failure, so a false alarm from a
+  changed computer shows at a glance), until it has passed ten times in a row, counted in every session, with no failure between
+  (a failure sets the count back; one pass proves nothing, since a picked test always has changed code under it). The builder is told a test
+  that fails with nothing changed under it is reported, never rerun hoping for green (CLAUDE.md, rule 9). A new quality check,
+  **`waits`**: a test line the change adds (by its number in the diff) that waits a fixed time (`setTimeout(r, 20)`, `sleep(50)`, `time.sleep`) is advice in a
+  prototype and fails from pilot; `wait-ok: <reason>` keeps one that must stay. **Gates share the computer**: while other
+  sessions' gates run their tests, `node --test` gets `--test-concurrency` set to this gate's share of the cores
+  (`commands.testConcurrency` for another runner). A failed run keeps only what really ran: the files go in batches of 300
+  and a batch after a failing one never runs, so it is neither passed nor failed. **Code is written only in a session folder,
+  held by a hook**: an agent's Edit or Write of a code file in the main folder is refused (`stop-points.mjs --edit`, a new
+  PreToolUse hook on Edit, Write, MultiEdit and NotebookEdit); docs and settings, ignored files and every other folder go
+  through, and `session.mainEdits: true` turns it off for a project that edits code there. Everything under `docs/` counts as
+  a note now (the app map and its data too), so a `/docs catch-up` in the main folder never stops `/ship`; a script there
+  that node runs (`.mjs`, `.cjs`, `.ts`) stays code. A known limit: a shell write (`sed -i`, a redirect) into the main folder
+  is not seen by the hook; `--check-main` stops it at `/ship`. **`/docs catch-up` keeps its own
+  marker** (`docs/.caught-up`, the last commit it covered), so a card that updates the guide itself hides no earlier feature (after the owner's squash it
+  goes by the marker's date).
+  **Your own rules are named**: an update lists each line of CLAUDE.md or `.claude/project/*.md` that still asks for the guide
+  or the app map in every card while the phase lets them wait (yours win; nothing is changed). **Fix**: `session.mjs --push`
+  when someone pushed in the meantime replays the finished features and checks them, and threw instead (`runChecks` was not
+  imported); a test now covers that path.
+  **The stop points are checked after every update**: the report ends with a loud `THE STOP POINTS DO NOT START` line when
+  `stop-points.mjs --status` fails (a file it imports is missing, as after a half-applied update), and `npm run health` shows the
+  same; a hook script that cannot load lets every commit, push and main-folder edit through, since Claude Code blocks only on
+  exit code 2 (making the hook fail closed is a card of its own). **The root CLAUDE.md budget is 20 KB** (was 14.5 KB; an update
+  raises a budget still at the old default), and the lines the kit generates no longer count: squeezing the rules under the old
+  limit made them harder to follow, and one misread rule costs a feedback round. The limit that matters is attention, so the
+  root file holds only what every chat needs; a rule for some work goes in a skill or a folder file (those stay at 4.5 KB). The
+  phase line is written in full words.
 - **4.2.0**: **less waiting, fewer surprises, from what real sessions reported.** **No run twice on the same files**: a green
   `gate:ship` records the files it passed on, a second `gate:ship` on them stops at once and says so, and `--finish` checks only
   what changed since: nothing when main did not move, the quick gate on what the rebase brought in when it did (about 15 minutes

@@ -2,6 +2,7 @@
 name: advise
 description: The {{PROJECT}} advisory board ("/advise platform would Cloud Run suit us better", "/advise buy or host routing", "/advise roadmap", "/advise growth why do visitors not sign up", "/advise ai" for where AI could make the app better, "/advise" alone for what it would change): a panel of AI advisors (cloud architect, infrastructure and DevOps engineer, sysadmin, FinOps, security, product strategist, growth, AI product engineer), each reading the official docs before answering, answer apart; the chair compares them and gives a recommendation, a pilot to test it, the pages to read, and a proposed decision record. The owner decides. Read-only. Run from the main folder.
 model: opus
+disable-model-invocation: true
 ---
 
 # /advise [panel] [question]

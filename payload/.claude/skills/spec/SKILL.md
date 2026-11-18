@@ -25,7 +25,9 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    without it. Then ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation).
    **Every choice between designs** labels each option *end state* or *a step*, and recommends the end state. A step is
    recommended only for a named reason: it needs another card first, it is far bigger than the card's effort, or no test
-   covers the code it changes yet. An option that adds a special case beside the general rule (an `if` for one kind of input,
+   covers the code it changes yet. **In a prototype** (`npm run levels` names the phase) a step is the default whenever the
+   end state is bigger than the card: the product may still change under it, so learn first. The End state line and its
+   card are still written, so nothing is forgotten. An option that adds a special case beside the general rule (an `if` for one kind of input,
    a second way of doing a job the code already does) is always a step, never the end state: extend the rule's home instead.
    The same holds for infra (a stack, a module, a pipeline) and docs (a doc that grew into a list, two docs saying one thing).
    **The end state needs a split or a refactor first** (a file past its size, a rule living in two places, a stack shaped for
@@ -53,6 +55,9 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
      call, where writes may come from, a limit, a format every caller must use)? A new endpoint, a new check on input or a new
      permission usually does. Yes: the rule in one line and its new row, and `docs/ARCHITECTURE.md` goes under "Docs that change"
      so `/ship` holds the commit to it. No: "none".
+   - **Docs that change**: the user guide part and the app map go there only when `npm run levels -- --needs upkeep <effort>`
+     says yes; otherwise the line says "guide and app map: the next `/docs catch-up`". `docs/ARCHITECTURE.md` for a new rule
+     always goes there. Never `docs/MAP.md` or `docs/README.md`: they are generated at `--finish`.
    - Tests: name each as what the app now does; behaviour in `src/core` or `src/pipeline` needs one. Which level each
      belongs to, and the tests a route, a bug or a query always brings: `workflow/guides/TESTING.md`, *What every change needs*.
    - Security: any new endpoint, file reader or outbound fetch gets limits listed and a `security-review` before finish.

@@ -2,6 +2,7 @@
 name: market
 description: Bring {{PROJECT}} to market ("/market", "/market ads", "/market launch", or in plain words: "get users", "how do people find it?", "start selling", "pricing"): positioning, pricing, the landing page and its launch check, analytics that count the funnel, search, the channels and paid ads (Google Ads, and whether AdSense fits), and the launch checklist; writes the answers in docs/market/MARKET.md and turns the work into cards. Never spends money, never opens ad accounts, never publishes. Run from the main folder.
 model: opus
+disable-model-invocation: true
 ---
 
 # /market [positioning | pricing | page | convert | ads | launch | review]

@@ -15,7 +15,7 @@ import { matchesAny } from './lib/glob.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { parseK8s, parseTf, renderInfraMap } from './lib/infra.mjs';
 import { networkPolicy } from './lib/netpolicy.mjs';
-import { blockMakers, fillBlocks, hasBlocks } from './lib/docblocks.mjs';
+import { bare, blockMakers, fillBlocks, hasBlocks } from './lib/docblocks.mjs';
 import { renderDocsIndex } from './lib/docsindex.mjs';
 import { lines } from './lib/text.mjs';
 
@@ -62,7 +62,10 @@ if (docsListed.length) {
   const kitFiles = new Set(lines(read('workflow/record')).map((l) => /^sha \S+ (.+)$/.exec(l)?.[1]).filter(Boolean));
   pages.push(['docs/README.md', renderDocsIndex(docsListed.map((path) => ({ path, text: writing.get(path) ?? read(path) })), kitFiles)]);
 }
-const makers = blockMakers({ config, toolVersions: read('.tool-versions'), envExample: read('.env.example') });
+// the docs too big to read whole, for CLAUDE.md's reading rules: the docs the gate reads plus the tools' own README
+const docSizes = listed.filter((f) => f.endsWith('.md') && (matchesAny(f, config.docs?.include ?? []) || f === 'workflow/tools/README.md') && !matchesAny(f, config.docs?.exclude ?? []))
+  .map((f) => [f, Buffer.byteLength(bare(read(f).replace(/\r\n/g, '\n')))]);
+const makers = blockMakers({ config, toolVersions: read('.tool-versions'), envExample: read('.env.example'), levelsText: existsSync('workflow/levels.json') ? read('workflow/levels.json') : null, docSizes });
 for (const f of listed.filter((x) => x.endsWith('.md') && matchesAny(x, config.docs?.include ?? ['docs/*.md', 'docs/*/*.md']))) {
   const was = readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
   if (hasBlocks(was)) pages.push([f, fillBlocks(was, makers)]);

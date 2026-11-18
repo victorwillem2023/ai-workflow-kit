@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v4.x` tag** (now `v4.2.0`). 4.0 works in phases (prototype, pilot, production, read from facts about
+> **Build on the latest `v4.x` tag** (now `v4.3.0`). 4.0 works in phases (prototype, pilot, production, read from facts about
 > who depends on the product: fast while you build, strict once people rely on it) and has the docs portal (`/portal`): every doc
 > in one page, in the project's own style sheet, with where the project stands at the top. 3.0 put the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
@@ -233,7 +233,7 @@ it is changed; the steps since the project's version run once (`migrations/`), a
 Every version, newest first, with what it fixed and why: `CHANGELOG.md`.
 
 ## Things learned the hard way (kept in the skills and CLAUDE.md)
-- Keep `CLAUDE.md` short (write each rule once; a root file of ~13 KB is plenty); push detail into folder-level `CLAUDE.md` files and docs that are read on demand.
+- Keep `CLAUDE.md` short (write each rule once; a root file holds only what every chat needs, up to about 20 KB); push detail into folder-level `CLAUDE.md` files and docs that are read on demand.
 - Generate a file map (`docs/MAP.md`) and search it; never let the AI read a 47 KB index whole.
 - Start the build in a new chat after the plan is approved: otherwise the whole planning read rides along on every feedback round.
 - A test run that prints one line per test cost 684 KB per passing run; print only failures.

@@ -25,13 +25,13 @@ Each skill's front matter carries its `model:` line; `npm run harness` turns it 
 | Rule | Why |
 |---|---|
 | **A new chat per build.** `/work` plans and stops at the yes; `/build <topic>` runs in a new chat. A `ui` card: `/ui <n>` draws and stops at the pick; `/ui <n>` again in a new chat builds it. | The spec carries everything the build needs. Without the split, the whole planning read (cards, docs, code searched for the plan, a 35-100 KB board page) is sent again on every feedback round. A small bug without a spec stays in one chat. |
-| **Builders are subagents** that read the spec and the `CLAUDE.md` of the folders they touch. | The lead chat stays small; feedback goes to the same builder, which keeps its own context. |
+| **Small and medium cards are built in the `/build` chat itself; a large one by a subagent** that reads the spec and the `CLAUDE.md` of the folders it touches. | The `/build` chat is already fresh, so a feedback round is paid once; a large card keeps the lead chat small, and its feedback goes to the same builder. |
 | **Cheap helpers on a small model**: `/idea`, `/docs`, `/check`, `/find` (`model: haiku` in Claude Code, the `cheapModel` in OpenCode). | They are easy to check and to rerun. The flow itself never runs on a free model: a free model that runs out mid-build stalls it. |
 
 ## What is loaded by itself
 | Rule | Why |
 |---|---|
-| **Root `CLAUDE.md` short** (about 10-13 KB): each rule once, details behind a pointer. | It is read at the start of every chat. |
+| **Root `CLAUDE.md` holds only what every chat needs** (budget 20 KB, the generated lines not counted): each rule once, in full words; what only some work needs goes in a skill or a folder file. | It is read at the start of every chat, and cached after; its real cost is attention: the more rules it holds, the less each one is followed. One misread rule costs a feedback round, far more than its bytes. |
 | **Folder `CLAUDE.md` files hold only their rules** (bullets, 1-4 KB). Where things are lives in `docs/code/<folder>.md`, read by `grep -n`. | A folder's `CLAUDE.md` is loaded with every file read in that folder. |
 | **`/build` reads its rare cases only when needed** (`build/several.md` for several topics or work packages). | The skill text is loaded on every build. |
 

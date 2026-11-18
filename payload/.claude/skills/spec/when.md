@@ -7,7 +7,8 @@ spec keeps (when it fails, new rules, tests, security) are in the skill itself.
 The app map (with the map module): `npm run board -- --map` shows the ends this card is on, and `grep -n` in
 `docs/flow/map.js` finds the decisions it touches. Name each end the change moves (gap to built, a new end, a weak one
 fixed), put `docs/flow/map.js` under "Files that change", and give every decision it touches its file (`f: 'src/...'`),
-so the gate can tell when that code changes without its node.
+so the gate can tell when that code changes without its node. When the phase lets the app map wait (`npm run levels -- --needs
+upkeep <effort>` says no), the spec still names the ends it moves, and the map itself waits for the next `/docs catch-up`.
 
 ## Stored data
 **Stored data** (a table, a column, a query, a migration): the spec names them as `workflow/guides/DATA.md`, *In a spec*,

@@ -204,7 +204,9 @@ function updateKitBlocks({ target, kit, fill, text }) {
     const before = kitBlocks(was).get(name) ?? sectionAt(was, heading);
     const current = mine ?? (before ? sectionAt(now, before.replace(/^<!-- kit:[\w-]+ -->\n/, '').split('\n')[0]) : null);
     if (!current || !before || current === block) continue;
-    const plain = (t) => t.replace(/^<!-- kit:[\w-]+ -->\n|\n<!-- \/kit:[\w-]+ -->$/g, '');
+    // a generated block inside a part (CLAUDE.md's phase line, filled by npm run map) is the project's own facts, not an edit
+    const plain = (t) => t.replace(/^<!-- kit:[\w-]+ -->\n|\n<!-- \/kit:[\w-]+ -->$/g, '').replace(/(<!--\s*generated:\s*[a-z-]+\s*-->)[\s\S]*?(<!--\s*\/generated\s*-->)/g, '$1$2');
+    if (plain(current) === plain(block)) continue;
     if ([plain(before), movePaths(plain(before)), moveKitPaths(plain(before)), moveKitPaths(movePaths(plain(before)))].includes(plain(current))) now = now.replace(current, block);
     else theirs.push(heading.replace(/^## /, ''));
   }

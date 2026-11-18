@@ -5,7 +5,7 @@ export const REACH: string[];
 export const CACHE: string[];
 export const SAFETY: string[];
 export const QUALITY: string[];
-type Process = { spec: string; pitch: string; uiBoard: string };
+type Process = { spec: string; pitch: string; uiBoard: string; review: string; upkeep: string };
 export const PHASES: string[];
 export const PRESETS: Record<string, { checks: Record<string, string>; process: Process; ship: string }>;
 export type Levels = { phase: string; preset: string; ship: string; reach: string; cache: string; checks: Record<string, string>; process: Process; loosened: string[]; problems: string[] };
@@ -13,3 +13,4 @@ export function readLevels(text: string | null | undefined, projectChecks?: stri
 export function levelOf(levels: Levels, name: string): string;
 export function loosenedLine(levels: Levels): string;
 export function needs(from: string, effort?: string | null): boolean;
+export function fromWords(from: string): string;

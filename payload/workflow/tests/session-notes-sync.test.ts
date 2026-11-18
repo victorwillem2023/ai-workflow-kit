@@ -91,4 +91,21 @@ describe('docs and settings left in the main folder', () => {
     ownerNotes(r);
     assert.match(run(r, '--commit-notes').out, /Say what the commit is/);
   });
+
+  it('--push replays the finished features on what someone pushed meanwhile, checks them there, and pushes', () => {
+    const r = repo(true);
+    // a finished feature waiting on the local main, and a commit someone else pushed to origin in the meantime
+    writeFileSync(join(r.main, 'feature.txt'), 'mine\n');
+    git(r.main, 'add', '-A'); git(r.main, 'commit', '-qm', 'Feature: mine');
+    const other = join(r.root, 'elsewhere');
+    git(r.root, 'clone', '-q', r.origin, other);
+    writeFileSync(join(other, 'theirs.txt'), 'theirs\n');
+    git(other, 'add', '-A'); git(other, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'Feature: theirs'); git(other, 'push', '-q', 'origin', 'main');
+    const pushed = run(r, '--push');
+    assert.ok(pushed.ok, pushed.out);
+    assert.match(pushed.out, /replaying 1 finished feature/);
+    assert.ok(existsSync(r.checkLog), 'the checks ran on the replayed features (runChecks, kit 4.3.0: it was not imported and this path threw)');
+    const log = git(r.origin, 'log', '--format=%s', 'main');
+    assert.match(log, /^Feature: mine\nFeature: theirs/, 'mine on top of theirs, on origin');
+  });
 });

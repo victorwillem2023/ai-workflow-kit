@@ -31,6 +31,10 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   rewrite), and the reason is printed. Splitting a file and re-running `--update-baseline` shrinks the list. An optional `reasons`
   map in `baseline.json` (`"<file>": "<why it stays>"`) is kept for files still in the list and dropped for the rest; a reason
   for a file not in the list fails as a stale reason.
+- **waits**: a test line the change adds (a new test file: all of it) that waits a fixed time (`setTimeout(r, 20)`, `sleep(50)`, `time.sleep(0.1)`, `time.Sleep`)
+  holds on an idle computer and fails on a busy one: wait for the thing itself, or use a fake clock. A wait that must stay says
+  why with `wait-ok: <reason>` on its line. The waits an old test already had are not the change's: touching it never fails on
+  them. Advice in a prototype, fails from pilot (`lib/waits.mjs`).
 - **functions** (when `functions` is in the config): a new function of `functions.maxLines` lines or more fails, and a long one in
   the baseline may not grow. Found by counting braces, so it reads TypeScript, JavaScript, Rust, Go and the like.
 - **ratchets** (when `ratchets` is in the config): each counts patterns in some files, for example checks on what kind a thing is
@@ -184,13 +188,14 @@ and the stop-point hook refuses a shell write to it). Three kinds of rule, each 
 | Kind | Which | Adjustable? |
 |---|---|---|
 | safety stops | commit and push wait for your word, the sign-off, secrets, leaks, migrations, the AI wrapper, the image, the network, the packages, typecheck, tests | no: on, or the part is not installed (a level for one fails the gate) |
-| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, spec, covers, errors, map, harness, versions, settings, spikes, together, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
-| process weight | a spec, a pitch (`/shape`), a UI board | by the card's size: `process.spec`, `pitch`, `uiBoard` (`always`, `small`, `medium`, `large`, `never`) |
+| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, spec, covers, errors, waits, map, harness, versions, settings, spikes, together, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
+| process weight | a spec, a pitch (`/shape`), a UI board, a fresh review at `/ship`, the user guide and app map kept up in the card itself | by the card's size: `process.spec`, `pitch`, `uiBoard`, `review`, `upkeep` (`always`, `small`, `medium`, `large`, `never`); below `upkeep` the guide and the app map wait for one `/docs catch-up` pass |
 
 The phase fills them in (`"phase"`; `"preset"` before kit 3.4 is still read; no file is production): `"prototype"` while nothing
-outside depends on the product (the structure checks advise; a spec only for large cards, no pitch; `/ship` runs the tests the change
-reaches, `gate.mjs --ship`), `"pilot"` once other people can open it or it keeps their personal data (structure still advises;
-untested code, docs, covers and errors fail; `/ship` runs the whole suite) and `"production"` once it takes money or has a
+outside depends on the product (the structure checks advise; a spec and a fresh review only for large cards, no pitch; the guide
+and the app map wait for a `/docs catch-up` pass; `/ship` runs the tests the change reaches, `gate.mjs --ship`), `"pilot"` once
+other people can open it or it keeps their personal data (structure still advises; untested code, docs, covers, errors and
+fixed waits fail; a review from medium cards; `/ship` runs the whole suite) and `"production"` once it takes money or has a
 production address people rely on (every check fails; a spec from medium cards, a pitch for large ones, a board from small ones;
 a deploy to a production environment is refused in any other phase). The file's own lines win. `npm run phase` reads the facts
 (an address in `deploy`, personal data on `docs/company/PRIVACY.md`, a payment package, a production environment or a launch
@@ -204,11 +209,24 @@ default is `"chain"`.
 skipped, and the tests line says how many. Not for the whole suite (`--all`, `--ship` in pilot and production) unless
 `"cache": "all"` in `workflow/levels.json` says so (the files still to run then go in batches of 300); never on GitHub;
 `--fresh` runs them anyway. Changing `workflow/levels.json`, the baseline or a spec runs neither the whole suite nor the kit's
-tests (`ignoreChanged`, and `KIT_SETTINGS` in `lib/testplan.mjs`). The record is `.git/workflow-tests-passed.json`, this checkout's own. The
+tests (`ignoreChanged`, and `KIT_SETTINGS` in `lib/testplan.mjs`). The record is `.git/workflow-tests-passed.json`, this checkout's own,
+kept file by file also after a failed run (the reporter names the failed files; `lib/testrun.mjs`), so a second attempt runs only
+what failed.
+
+**Flaky tests** (`lib/testcache.mjs`): a file that failed and then passes with the same code under it is flaky by definition. The
+tests line says FLAKY, the file goes on the list in git's common folder (`workflow-flaky.json`, shared by every session), and
+every gate run prints it with its first failing line and the card to make (`Flaky test: <file>`, its text with the whole failure
+kept in `workflow-flaky/<file>.md` next to the list), until it has passed ten times in a row, counted in every session, with no
+failure between (a failure sets the count back to nought and keeps its output as the newest evidence). Only a real run
+counts: a test the cache skips adds nothing, so a fixed test that is rarely picked stays listed a while (the safe side). Two
+gates take turns writing the list (a lock beside it), so neither loses what the other added. A failing test is
+reported, never run again hoping for green (CLAUDE.md, rule 9). **Side by side**: while other gates of the project run their
+tests, `node --test` gets `--test-concurrency` set to this gate's share of the cores (another runner: `commands.testConcurrency`,
+with `{n}`; `""` turns it off), so five sessions do not slow each other into failures. The
 gate prints what is loosened on every run, `--advice` too, so a quiet project never looks cleaner than it is; `npm run levels`
 shows everything in force.
 
-**The stop points** (Claude Code hooks in the tracked `.claude/settings.json`, so every clone and session has them; `workflow/scripts/stop-points.mjs`): an agent's `git commit`
+**The stop points** (Claude Code hooks in the tracked `.claude/settings.json`, so every clone and session has them; `workflow/scripts/stop-points.mjs`): an agent's Edit or Write of a code file in the main folder is refused (code is written only in a session folder; docs and settings, ignored files and other folders go through, but a script under `docs/` that node runs is code; `session.mainEdits: true` turns it off; a shell write such as `sed -i` is not seen here, and `--check-main` stops it at `/ship`). And an agent's `git commit`
 `git merge`, `cherry-pick`, `revert`, `am` or `rebase` (also as `/usr/bin/git` or `git.exe`), and `--finish`, `--merge` or `--commit-notes` of the session script (also
 through `npm run session`), is refused until the owner has said "done" (or "commit", "finish it", or a short "yes" to the skill's
 question) in that same chat in the last 3 hours; a `git push`, `--push` or `gh pr merge` until they said "push". The word counts

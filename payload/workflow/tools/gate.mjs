@@ -25,7 +25,7 @@ import { errorRuleFindings, notRead } from './lib/errorrules.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { buildGraph, affectedTests, projectAliases } from './lib/graph.mjs';
-import { cacheSalt, recordPasses, splitByCache, testKey } from './lib/testcache.mjs';
+import { bare } from './lib/docblocks.mjs'; import { flakyNow, recordPaths, runTests } from './lib/testrun.mjs'; import { addedLineNumbers, fixedWaits } from './lib/waits.mjs';
 import { findViolations, newViolations } from './lib/boundaries.mjs';
 import { oversize, sizeVerdict, updateSizes, sizeNote } from './lib/size.mjs';
 import { globToRegExp, matchesAny } from './lib/glob.mjs';
@@ -122,8 +122,9 @@ const npmScripts = existsSync('package.json') ? Object.keys(JSON.parse(readFileS
 const staleRefs = findStaleRefs(docTexts, (p) => existsSync(p), npmScripts);
 
 // rules files over their size budget (`budget`: path or glob -> bytes): [file, budget, size]
-// (the size as committed: \r\n counts as \n, so a Windows checkout with core.autocrlf=true measures the same as Linux and CI)
-const overBudget = config.budget ? docFiles.map((f) => [f, Object.entries(config.budget).find(([g]) => matchesAny(f, [g]))?.[1], Buffer.byteLength(readFileSync(f, 'utf8').replace(/\r\n/g, '\n'))]).filter(([, max, size]) => max && size > max) : [];
+// (the size as committed: \r\n counts as \n, so a Windows checkout with core.autocrlf=true measures the same as Linux and CI;
+// the generated lines are left out: facts the kit writes, which a project cannot shorten)
+const overBudget = config.budget ? docFiles.map((f) => [f, Object.entries(config.budget).find(([g]) => matchesAny(f, [g]))?.[1], Buffer.byteLength(bare(readFileSync(f, 'utf8').replace(/\r\n/g, '\n')))]).filter(([, max, size]) => max && size > max) : [];
 
 if (flag('--update-baseline')) {
   let reason = null;
@@ -272,31 +273,12 @@ if (flag('--list')) {
 }
 
 let suiteSeconds = 0;
-/**
- * The tests that passed before with the same code under them (lib/testcache.mjs), skipped while you build: only for picked files,
- * on this computer. Not for the whole suite (--all, --ship in pilot and production), --fresh or GitHub. null: run them all.
- */
-function passCache() {
-  if (flag('--fresh') || process.env.CI || config.testPicking === false || plan.mode === 'none') return null;
-  // the whole suite (--all, --ship in pilot and production) only with "cache": "all" in workflow/levels.json, the owner's choice
-  const whole = plan.whole || plan.mode === 'suite';
-  if (whole && levels.cache !== 'all') return null;
-  const candidates = plan.mode === 'suite' ? [...graph.files.keys()].filter(isTest).sort() : plan.files;
-  const at = `${gitOk('rev-parse', '--git-dir') ?? '.git'}/workflow-tests-passed.json`;
-  let passed = {};
-  try { passed = JSON.parse(readFileSync(at, 'utf8')); } catch { passed = {}; }
-  // what the graph does not show: the packages, the settings, and every changed file it cannot follow (a fixture, a stylesheet)
-  const leaning = ['package-lock.json', 'tsconfig.json', 'tsconfig.gate.json', 'workflow/config.json', ...changed.filter((f) => !graph.files.has(f))];
-  const salt = cacheSalt(leaning.map((f) => [f, readIf(f)]));
-  const keys = Object.fromEntries(candidates.map((f) => [f, testKey(f, graph, salt)]));
-  const { run: toRun, skipped } = splitByCache(candidates, keys, passed);
-  return { run: toRun, skipped, save: () => { try { writeFileSync(at, JSON.stringify(recordPasses(passed, toRun, keys))); } catch { /* not kept: they run again */ } } };
-}
+const testPaths = recordPaths(gitOk); // what passed here, the flaky list, the gates running tests now (lib/testrun.mjs)
 const tail = (text) => text.trim().split('\n').slice(-config.failTailLines).join('\n');
-function run(cmd, cwd) {
+function run(cmd, cwd, env) {
   // the commands come from workflow/config.json, the project's own file, never from outside input
   // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-  const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20, ...(cwd ? { cwd } : {}) });
+  const r = spawnSync(cmd, { shell: true, encoding: 'utf8', maxBuffer: 256 << 20, ...(cwd ? { cwd } : {}), ...(env ? { env: { ...process.env, ...env } } : {}) });
   return { ok: r.status === 0, out: (r.stdout ?? '') + (r.stderr ?? '') };
 }
 
@@ -433,19 +415,20 @@ const steps = [
   ['typecheck', () => run(config.commands.typecheck)],
   ['tests', () => {
     if (plan.mode === 'none') return { ok: true, note: plan.note };
-    const t0 = Date.now();
-    const cache = passCache();
-    const files = cache ? cache.run : plan.files;
-    if (cache && !files.length) return { ok: true, note: `${plan.note}; all ${cache.skipped.length} passed before with the same code (--fresh runs them)` };
-    // a language whose runner takes no file list (Go: `go test ./...`, testPicking false) runs its whole suite; with the cache, the
-    // files still to run go in batches of 300 (a command line holds no more), each batch's files side by side
-    const batches = [];
-    for (let i = 0; i < files.length; i += 300) batches.push(files.slice(i, i + 300));
-    const r = !cache && (plan.mode === 'suite' || config.testPicking === false) ? run(config.commands.testAll)
-      : batches.reduce((acc, b) => (acc.ok ? run(`${config.commands.testFiles} ${b.join(' ')}`) : acc), { ok: true, out: '' });
-    if (plan.whole && !cache?.skipped.length) suiteSeconds = (Date.now() - t0) / 1000;
-    if (cache && r.ok) cache.save();
-    return { ...r, note: cache?.skipped.length ? `${plan.note}; ${cache.skipped.length} passed before with the same code` : plan.note };
+    const { r, seconds } = runTests({ config, plan, graph, changed, levels, isTest, run, readIf, paths: testPaths, fresh: flag('--fresh') });
+    if (seconds) suiteSeconds = seconds;
+    return r;
+  }],
+  // a test line this change adds that waits a fixed time holds on an idle computer and fails on a busy one (lib/waits.mjs); the
+  // old waits of a touched test are not this change's (they are a card of their own), a new test file is all new
+  ['waits', () => {
+    const tests = changed.filter((f) => isTest(f) && existsSync(f));
+    if (!tests.length) return { ok: true };
+    const added = addedLineNumbers(gitOk('diff', '-U0', '--diff-filter=d', base, '--', ...tests) ?? '');
+    const fresh = new Set(git('ls-files', '--others', '--exclude-standard', '--', ...tests).split('\n').filter(Boolean));
+    const found = tests.flatMap((f) => fixedWaits(f, readFileSync(f, 'utf8'))
+      .filter((x) => fresh.has(f) || added.get(f)?.has(x.line)).map((x) => `${f}:${x.line}: ${x.say}`));
+    return found.length ? { ok: false, out: found.join('\n') } : { ok: true };
   }],
   ...appSteps({ config, changed, all: wholeSuite, run, matches: matchesAny }), // several apps: each one's own (lib/apps.mjs)
   ...dueChecks(config.checks, changed, wholeSuite).map(({ check, due, why }) => [check.name, () => {
@@ -500,5 +483,5 @@ if (shipTree) { try { recordShipPass('.', shipTree); } catch { /* not recorded *
 const mapLines = existsSync('docs/flow/map.js') && existsSync('workflow/tools/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
 // a rule row that grew into a list of files (lib/rulerows.mjs): said when the change touches the doc
 const ruleLines = changed.includes('docs/ARCHITECTURE.md') && existsSync('docs/ARCHITECTURE.md') ? longRuleCells('docs/ARCHITECTURE.md', readFileSync('docs/ARCHITECTURE.md', 'utf8'), config.docs?.ruleCellMax ?? 200) : [];
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...ruleLines, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
+for (const line of [...flakyNow(testPaths), ...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...ruleLines, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

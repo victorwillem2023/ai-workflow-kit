@@ -3,6 +3,7 @@
 // a commit waits for the owner's own "done" and a push for the owner's own "push".
 //   node workflow/scripts/stop-points.mjs --prompt   (UserPromptSubmit) the owner said done / commit / push: noted, with the time
 //   node workflow/scripts/stop-points.mjs --tool     (PreToolUse, Bash) a commit or push without that word in the last hours: refused
+//   node workflow/scripts/stop-points.mjs --edit     (PreToolUse, Edit/Write) code written in the main folder: refused (sessions only)
 //   node workflow/scripts/stop-points.mjs --status   what is noted now
 // Where the owner's words are read: in Claude Code, from the chat's own transcript (`transcript_path` in the hook's input: the
 // person's messages as Claude Code recorded them, never a tool's output), so a file the agent writes cannot say "done" for the
@@ -16,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { NOTE } from './notes.mjs';
 
 /** How long the owner's word holds: a "done" said this morning does not commit tonight's next feature. */
 export const HOLDS_MS = 3 * 60 * 60 * 1000;
@@ -133,6 +135,22 @@ export function verdict(command, noted, now = Date.now()) {
   return { ok: false, why: `Stop point: this ${word === 'push' ? 'push' : 'commit'} waits for the owner. They have not said ${say} in this chat in the last ${HOLDS_MS / 3600000} hours. Hand the change over as the skill says and ask; do not try another way to ${word}. (workflow/scripts/stop-points.mjs)` };
 }
 
+/**
+ * The verdict on an agent's Edit or Write of `file` (absolute) in a project whose main folder is `main`: null when it may, else
+ * why not. Code is written only in a session folder; the main folder takes docs and settings (notes.mjs). A file outside the
+ * main folder (a session folder, the scratchpad), one git ignores, or a project that says `session.mainEdits: true` is let through.
+ */
+export function editVerdict(main, file, { ignored = false, mainEdits = false } = {}) {
+  if (!main || !file || mainEdits || ignored) return null;
+  const norm = (p) => p.replace(/\\/g, '/').replace(/\/+$/, '');
+  const root = norm(main);
+  const at = norm(file);
+  if (at.toLowerCase() !== root.toLowerCase() && !at.toLowerCase().startsWith(`${root.toLowerCase()}/`)) return null;
+  const rel = at.slice(root.length + 1);
+  if (!rel || NOTE.test(rel)) return null;
+  return `Refused: ${rel} is code in the main folder. Code is written only in a session folder (\`node workflow/scripts/session.mjs <topic>\`, then every path under ../<prefix>-<topic>); the main folder takes docs and settings only. If you are building in this chat, write the same file under the session folder instead. (workflow/scripts/stop-points.mjs; a project that edits code here sets "session": { "mainEdits": true } in workflow/config.json)`;
+}
+
 /** The text a person typed, from one line of Claude Code's transcript; null for anything else (a tool's result, the harness's own). */
 export function typedText(entry) {
   if (entry?.type !== 'user' || entry.message?.role !== 'user') return null;
@@ -209,6 +227,22 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   try { input = mode === '--status' ? {} : JSON.parse(readFileSync(0, 'utf8') || '{}'); } catch { /* no input: nothing to hold */ }
   // the folder Claude Code says the command runs in, else the hook's own (a path it cannot use is no reason to let a commit through)
   const cwd = input.cwd && existsSync(input.cwd) ? input.cwd : process.cwd();
+  if (mode === '--edit') {
+    // an agent's Edit or Write: code in the main folder is refused (editVerdict); anything it cannot tell is let through
+    const target = input.tool_input?.file_path ?? input.tool_input?.notebook_path;
+    if (!target) process.exit(0);
+    const file = resolve(cwd, target);
+    let main = null;
+    try { main = execFileSync('git', ['worktree', 'list', '--porcelain'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\n')[0].replace(/^worktree /, '').trim(); } catch { process.exit(0); }
+    if (!main || !existsSync(join(main, 'workflow', 'scripts', 'session.mjs'))) process.exit(0); // no sessions here: nothing to hold
+    let mainEdits = false;
+    try { mainEdits = JSON.parse(readFileSync(join(main, 'workflow', 'config.json'), 'utf8')).session?.mainEdits === true; } catch { /* the default */ }
+    let ignored = false;
+    try { execFileSync('git', ['check-ignore', '-q', file], { cwd: main, stdio: 'ignore' }); ignored = true; } catch { /* not ignored, or outside */ }
+    const why = editVerdict(main, file, { ignored, mainEdits });
+    if (why) { process.stderr.write(`${why}\n`); process.exit(2); }
+    process.exit(0);
+  }
   const file = noteFile(cwd) ?? noteFile(process.cwd());
   if (!file) process.exit(0); // not in a git repository: nothing to hold
   const all = existsSync(file) ? readNote(file) : {};

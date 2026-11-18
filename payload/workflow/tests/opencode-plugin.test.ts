@@ -22,7 +22,8 @@ type Hooks = {
 async function load(): Promise<Hooks> {
   execFileSync('git', ['init', '-q'], { cwd: dir });
   mkdirSync(join(dir, 'workflow', 'scripts'), { recursive: true });
-  copyFileSync(resolve('workflow/scripts/stop-points.mjs'), join(dir, 'workflow', 'scripts', 'stop-points.mjs'));
+  // the hook script and what it imports (a missing one makes it fail to start, and every refusal turns into a pass)
+  for (const f of ['stop-points.mjs', 'notes.mjs']) copyFileSync(resolve('workflow/scripts', f), join(dir, 'workflow', 'scripts', f));
   mkdirSync(join(dir, 'workflow', 'tools', 'lib'), { recursive: true }); // what it imports first: no console windows
   copyFileSync(resolve('workflow/tools/lib/nowindow.mjs'), join(dir, 'workflow', 'tools', 'lib', 'nowindow.mjs'));
   mkdirSync(join(dir, '.opencode', 'plugins'), { recursive: true });
