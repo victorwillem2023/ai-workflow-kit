@@ -8,6 +8,7 @@
 //   npm run secops -- --publish <file>    this week's report as an issue labelled "security-report" (last week's is closed)
 //   npm run secops -- --enable            turn on Dependabot alerts and security updates for the repository
 // Never fails on a finding (exit 0): it reports. The scanner versions live only in SCANNERS below (Renovate keeps them current).
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

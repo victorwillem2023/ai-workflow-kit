@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // The numbers that say whether the code is staying healthy, in one screen: npm run health. Reads the same settings as the
 // gate (workflow/config.json) and changes nothing. A number going the wrong way between two runs is a card.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { matchesAny } from './lib/glob.mjs';

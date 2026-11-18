@@ -10,7 +10,8 @@ section (`grep -n '^## '` lists them), never whole. The flow runs in Claude Code
 | `npm run gate` | layer rules, file size, doc references, typecheck, then only the tests the change can reach |
 | `npm run gate:all` | the same with the whole suite |
 | `npm run gate -- --fresh` | the picked tests even when they passed before with the same code (skipped otherwise) |
-| `npm run gate:ship` | what `/ship` runs before `--finish`: the whole suite in the pilot and production phases, the tests the change reaches in a prototype (`workflow/levels.json`) |
+| `npm run gate:ship` | what `/ship` runs before `--finish`: the whole suite in the pilot and production phases, the tests the change reaches in a prototype (`workflow/levels.json`). A pass is recorded: a second run on the same files stops at once, and `--finish` checks only what changed since (`--fresh` runs it anyway) |
+| `npm run gate -- --only <files>` | one builder of several (work packages): the type errors in these files only, and the tests that reach them; the neighbours' errors are counted and left |
 | `npm run portal` | every doc in one page in the browser, in the project's own style sheet (`docs/STYLE.md`: its colours by what each token's use says, its font from `node_modules/@fontsource`, its sizes and radii; a plain look until there is one, `lib/portaltheme.mjs`), with at the top four numbers, the board (a tie as a question, the next cards with value, effort, feasibility and score, what waits, what needs a decision: `npm run board -- --next 3 --json`), the next phase's needs with how far along (`npm run phase -- --json`), what is worth doing now, the latest decisions and what changed since your last visit: started in the background when it is not running (127.0.0.1, `portal.port` or the main port - 1, outside the session range), a new tab opened; each page is made when it is opened and an open tab reloads when a doc changes; only files git knows are served (`--stop`, `--serve` in the foreground, `--no-open`). `/portal` |
 | `npm run phase` | the phase, the facts it is read from, and what the next phase still needs (`--ready [pilot|production]`; `--next` is /next's line) |
 | `npm run map` | rewrite `docs/MAP.md`, the file map: one line per source file (opening comment + imports); `--check` fails if it is out of date; `-- --find <words>` prints only the map lines whose description has every word, under their folder; `-- --uses <file>` (e.g. `config/vibes`) prints the lines that import that file; both print at most 25 lines |
@@ -109,6 +110,9 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   or `go.mod` that `docs/STACK.md` does not name gets an `advice:` line.
 - **scope**: with one spec in `workflow/specs/`, a changed file the spec never names is printed as a `scope:` line (`"scope": "fail"` makes
   it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out).
+- **rule rows** (advice, when the change touches `docs/ARCHITECTURE.md`): a cell of *Rules and where each lives* past 200
+  characters (`docs.ruleCellMax` in the config) gets an `advice:` line: a row names its home, its check and a folder or a pattern,
+  never a list of files.
 - **spec**: an approved spec in `workflow/specs/` must name its end state (the `End state:` line: the best version, and whether
   this spec is it or a step toward it). Missing, empty or still the placeholder fails; a step that names no card for the rest
   gets an `advice:` line. A spec not approved yet is still being written and is not read.

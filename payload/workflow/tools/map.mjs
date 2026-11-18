@@ -5,6 +5,7 @@
 //   node workflow/tools/map.mjs           write it     node workflow/tools/map.mjs --check   fail if it is out of date
 //   node workflow/tools/map.mjs --find <words>   print only the map lines whose description has every word (without their imports; --imports adds them);  --uses <file>   the lines that import that file (read the map, write nothing)
 // Settings: `map` in workflow/config.json ({ out, folders }).
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';

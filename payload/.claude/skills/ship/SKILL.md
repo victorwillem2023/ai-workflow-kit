@@ -26,7 +26,7 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    Code left in the main folder still stops here.
 1. Read `workflow/specs/<topic>.md`.
 2. `npm run gate:ship` must pass (the phase decides how much it runs: the whole suite in pilot and production, the tests the
-   change reaches in a prototype; its last line says which). Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
+   change reaches in a prototype; its last line says which). A second `gate:ship` on the same files stops at once and says so; it runs again after any change. Report a failure with its output; do not continue. A `scope:` line names a changed file the spec
    does not mention: add it to the spec's files (say why in the report) or take the change out.
    For anything bigger than a small fix, have fresh eyes review it before the commit: start a subagent that has not seen this
    chat (the Task tool, on Opus: judging needs the strong model), with only this as its task: "Follow `.claude/skills/review/SKILL.md` for <topic>, in <the session
@@ -38,18 +38,20 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    the files, the spec's *Sources*, and `cd <session folder> && npm run signoff` to run in their own terminal. You never run it,
    never write `docs/company/SIGNOFFS.md`, and never call the change checked before the gate passes with their row.
 3. Docs: every file under "Docs that change" is in `git diff main --stat`. Missing one: fix it first.
-4. Security: if "Security triggers" says yes, run the `security-review` skill and fix findings first. It compares with
-   `origin/HEAD`; when that is missing (a repo whose remote was added after `git init`), run `git remote set-head origin main`
-   in the main folder (a local reference only; step 0's `--check-main` sets it too) and run the skill again: never review by hand
-   instead.
-5. Delete `workflow/specs/<topic>.md` (and its try command `workflow/specs/<topic>.try.*`, if any) in the session folder and in the main folder (`/build` copied it from there; it is ignored, so nothing else removes it).
-6. Commit everything as ONE commit: subject = what changed for the user ("Area: what changed, and what else"),
+4. Security: if "Security triggers" says yes, review **this feature's changes, never the folder this chat runs in**: the
+   `security-review` skill reviews its own folder against `origin/HEAD`, which from the main folder is main's newest commit,
+   not this feature. Start a subagent that has not seen this chat (the Task tool, on Opus) with only this task: "Do a security
+   review, following the `security-review` skill's method, of exactly this diff and nothing else:
+   `git -C <session folder> diff $(git -C <session folder> merge-base main HEAD)` (it includes uncommitted work). Read files
+   only under <session folder>. Change no file. Report each finding with its file and line." Fix what it finds first.
+5. The spec and its try command (`workflow/specs/<topic>.*`) stay until step 7: `--finish` deletes them in both folders once the feature is on main.
+6. No commit of your own: step 7 commits everything left under the approved subject, as ONE commit. Subject = what changed for the user ("Area: what changed, and what else"),
    body = a few lines of what the feature now does. Add the Co-Authored-By line the session gives. The subject is also the
    line users read in the changelog (`npm run changelog` groups the subjects by area; a release writes them into `CHANGELOG.md`
    with `--release <version>`), so show it to the owner first as "Changelog: <subject>" and change it if it says how, not what.
    Keep the approved subject and body: step 7 passes them, so the finished commit carries them even when the session already
    had a commit (a checkpoint a stacked session saved, an earlier round).
-7. `node workflow/scripts/session.mjs --finish <topic> --subject "<approved subject>" --body "<body, with the Co-Authored-By line>"` (squash under that message, rebase on the local `main`, typecheck, tests; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node workflow/scripts/session.mjs --push` sends them; run it only when the owner says so.
+7. `node workflow/scripts/session.mjs --finish <topic> --subject "<approved subject>" --body "<body, with the Co-Authored-By line>"` (commits what is left, squashes under that message, rebases on the local `main`, and checks only what changed since `gate:ship` passed: nothing, when main did not move; the feature is on the local `main`, NOT pushed, and the session's card moves to Waiting for your check; when the spec's "Card stays open after this spec" line says yes, add `--partial "<what is left>"`: the card stays in In progress and the comment says what is left). Tell the owner how many features wait and that `node workflow/scripts/session.mjs --push` sends them; run it only when the owner says so.
    A session built on another one ("Starts on: <topic>") is refused until that one is finished: ship that one first. Finishing a
    base moves the sessions on it onto main by itself; pass on what it says about them (one that could not move names
    `--restack <topic>`). Combined cards (`Card: #12, #14`) all move with the one commit.

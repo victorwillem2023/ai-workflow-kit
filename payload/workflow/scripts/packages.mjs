@@ -5,6 +5,7 @@
 // installs what is missing (npm install, which follows the lock).
 //   node workflow/scripts/packages.mjs            say what is missing or at another version (exit 1 when anything is)
 //   node workflow/scripts/packages.mjs --own      in a session folder: its own packages (npm ci there) instead of the main folder's
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
@@ -37,6 +38,33 @@ export function checkPackages(dir) {
   return packagesOutOfDate(readFileSync(lock, 'utf8'), (name) => {
     try { return JSON.parse(readFileSync(join(dir, 'node_modules', name, 'package.json'), 'utf8')).version ?? null; } catch { return null; }
   });
+}
+
+/**
+ * The commands the project's own packages give that have no shortcut in node_modules/.bin: [{ pkg, bin }]. Removing a session
+ * folder once emptied the main folder's .bin through its link (tsc, tsx gone: "'tsc' is not recognized" in every gate) while the
+ * packages themselves stayed, so checkPackages saw nothing; `npm rebuild` puts the shortcuts back.
+ * @param {Record<string, unknown>} pkg package.json
+ * @param {(name: string) => Record<string, unknown> | null} manifest node_modules/<name>/package.json, or null when not installed
+ * @param {(bin: string) => boolean} hasShortcut whether node_modules/.bin/<bin> is there
+ */
+export function missingShortcuts(pkg, manifest, hasShortcut) {
+  const names = Object.keys({ ...(pkg?.dependencies ?? {}), ...(pkg?.devDependencies ?? {}) });
+  return names.flatMap((name) => {
+    const m = manifest(name);
+    if (!m?.bin) return [];
+    // "bin": "./cli.js" is named after the package (its last part, for a scoped one); an object names each command
+    const bins = typeof m.bin === 'string' ? [String(m.name ?? name).split('/').pop()] : Object.keys(m.bin);
+    return bins.filter((bin) => !hasShortcut(bin)).map((bin) => ({ pkg: name, bin }));
+  });
+}
+
+/** The same for a project folder (empty when it has no package.json or no node_modules). */
+export function checkShortcuts(dir) {
+  const read = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
+  const pkg = read(join(dir, 'package.json'));
+  if (!pkg || !existsSync(join(dir, 'node_modules'))) return [];
+  return missingShortcuts(pkg, (name) => read(join(dir, 'node_modules', name, 'package.json')), (bin) => existsSync(join(dir, 'node_modules', '.bin', bin)));
 }
 
 /**

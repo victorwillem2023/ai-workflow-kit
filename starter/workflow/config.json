@@ -8,7 +8,7 @@
   "commands": {
     "typecheck": "npm run typecheck",
     "testAll": "npm test",
-    "testFiles": "node --disable-warning=ExperimentalWarning --import tsx --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs"
+    "testFiles": "node --disable-warning=ExperimentalWarning --import tsx --import ./workflow/tools/lib/testnet.mjs --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs"
   },
   "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
   "size": { "maxLines": 400, "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.mjs"] },

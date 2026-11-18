@@ -3,6 +3,7 @@
 // a spec, a pitch and a UI board are needed. The skills ask here (/work, /spec, /ui); the owner changes the file, never an agent.
 //   npm run levels                 the levels, and what is loosened
 //   npm run levels -- --needs spec medium   yes or no: does a medium card need a spec? (spec, pitch, uiBoard; small, medium, large)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { FILE, levelOf, loosenedLine, needs, QUALITY, readLevels, SAFETY } from './lib/levels.mjs';

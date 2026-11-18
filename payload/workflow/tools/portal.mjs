@@ -7,6 +7,7 @@
 //   npm run portal -- --serve      run it here, in the foreground
 //   npm run portal -- --stop       stop the one running
 //   --no-open                      start it, but open no tab (prints the link)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, watch } from 'node:fs';
 import { createServer } from 'node:http';

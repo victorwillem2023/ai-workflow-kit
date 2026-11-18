@@ -2,6 +2,23 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.2.0**: **less waiting, fewer surprises, from what real sessions reported.** **No run twice on the same files**: a green
+  `gate:ship` records the files it passed on, a second `gate:ship` on them stops at once and says so, and `--finish` checks only
+  what changed since: nothing when main did not move, the quick gate on what the rebase brought in when it did (about 15 minutes
+  of repeat runs in one ship). **`--finish --subject` commits what is left** itself: it went into the one squashed commit anyway.
+  **The security review reviews the feature**: `/ship` hands a fresh subagent the session's own diff, never the folder the chat
+  runs in (which reviewed main's newest commit). **Tests never reach the network**: every TypeScript test run loads
+  `workflow/tools/lib/testnet.mjs` first; a connection to another computer, or to this computer's dev servers unless the test
+  listens there itself, fails the test file and names the address (a stand-in browser at `http://127.0.0.1:8787/` had been loading
+  a help video from the running main server); an update adds it to test commands still as the kit wrote them.
+  **`npm run gate -- --only <files>`** for one builder of several: the type errors in its own files, and the tests that reach them.
+  **Every session removal checks the main folder's command shortcuts** (`node_modules/.bin`) and puts them back with `npm rebuild`
+  when one is gone. **Rule rows stay short**: `docs/ARCHITECTURE.md`'s table gets a column for the check and a folder or pattern
+  for who keeps to the rule, never a list of files; a cell past 200 characters gets an advice line when the doc changes. **The spec
+  moves by itself**: a new session folder gets it, `--finish` deletes it and its try command in both folders. **A refused shell
+  edit says what was seen** (a write and `levels.json`'s name in one command) and how to get past it. **No console windows
+  flickering on Windows**: every kit command hides the window of each process it starts (`workflow/tools/lib/nowindow.mjs`).
+  The builder's report already ends in four short parts (4.1.0).
 - **4.1.0**: **the best design, not the quickest patch**, for app code, infra and docs alike. Every spec names its **end
   state** near the top (`End state: <the best version>. This spec: <is it | a step toward it, because ...; the rest is card
   #n>`), and the gate refuses an approved spec whose line is missing or empty (a new quality check, `spec`; a step with no card

@@ -6,6 +6,7 @@
 //   npm run library -- --add <name>    bring it into the project (the kit's update adds it as a part and keeps it current);
 //                                      only on the owner's yes, and committed with the change that needed it
 // The skills that plan big parts (/advise, /arch, /launch, /market) look here before proposing one.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

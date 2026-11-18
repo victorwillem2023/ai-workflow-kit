@@ -2,6 +2,7 @@
 // The numbers for the weekly retro (/retro reads them): features shipped per week for 8 weeks and the streak, how the code's
 // health moved since a week ago (from workflow/tools/baseline.json and the test files), and the board's counts.
 //   npm run retro
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { healthMoves, shipping, signsDue, signsDueInProduct } from './lib/retro.mjs'; import { ghRun } from './lib/gh.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';

@@ -39,10 +39,11 @@
 // workflow/config.json ({main} in a value is the main folder: use it to share a big data folder instead of copying it).
 // The board is reached through workflow/tools/lib/board.mjs; a board that cannot be reached is one warning line, never a stop.
 // WORKFLOW_GH (tests): a node script that stands in for the gh command.
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
-import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, stopServer, ensurePackages, rebaseOn, remakeMap, runChecks, gh } from './session-core.mjs';
+import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, finishChecks, bringSpec, dropSpecs, gh } from './session-core.mjs';
 import { sync, checkMain, commitNotes, carryNotes, serve, catchUpSession, onOf, branchExists, stackedOn, restack } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 async function make(topic, card, on) {
@@ -76,6 +77,7 @@ async function make(topic, card, on) {
   git(main, 'worktree', 'add', '-b', topic, dir, from);
   if (from !== MAIN) git(main, 'config', `branch.${topic}.kitOn`, from);
   symlinkSync(join(main, 'node_modules'), join(dir, 'node_modules'), 'junction');
+  bringSpec(dir, topic);
   const env = join(dir, '.env');
   // the copy keeps the keys but not main's own PORT or the session.env names: a second line would be ambiguous
   const own = new RegExp(`^\\s*(${['PORT', ...Object.keys(SESSION_ENV)].join('|')})\\s*=`);
@@ -100,6 +102,7 @@ function remove(topic) {
   catch { throw new Error(`Branch "${topic}" is not merged into main yet. Finish it first: node workflow/scripts/session.mjs --finish ${topic}`); }
   stopServer(dir);
   const held = removeFolder(main, dir) === 'held';
+  ensureShortcuts(); // a removal that went through the link anyway leaves main without tsc: put back here, not in the next gate
   // -D: "-d" asks whether it is merged into the branch the main folder has checked out, which may be another session's; main was checked above
   try { git(main, 'branch', '-D', topic); } catch (e) { if (!held) throw e; console.log(`Branch "${topic}" is kept: git still sees it in use.`); }
   console.log(held ? heldMessage(dir) : `Session "${topic}" is removed.`);
@@ -119,6 +122,7 @@ function drop(topic) {
   // the link first, by itself: "worktree remove --force" follows it on Windows and empties the main folder's node_modules/.bin
   unlinkModules(dir);
   git(main, 'worktree', 'remove', '--force', dir);
+  ensureShortcuts();
   try { git(main, 'branch', '-D', topic); } catch { console.log(`Branch "${topic}" is kept: git still sees it in use.`); }
   console.log(`Spike "${topic}" is dropped; what it taught is in docs/decisions/${topic}.md.`);
 }
@@ -149,7 +153,9 @@ async function finish(topic, o) {
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   if (git(dir, 'branch', '--show-current') !== topic) throw new Error(`${dir} is not on branch "${topic}".`);
-  if (looseWork(dir)) throw new Error(`${dir} has uncommitted work. Commit it first, with any message (--subject puts the approved one on the feature's single commit), or ask the owner.`);
+  if (looseWork(dir) && !o.subject) throw new Error(`${dir} has uncommitted work. Finish with --subject "<the approved subject>" (it goes into the feature's one commit), or ask the owner.`);
+  // with the approved subject, what is left goes in too: it is squashed under that subject below anyway (never the node_modules link)
+  if (looseWork(dir)) { git(dir, 'add', '-A', '--', ...looseFiles(dir)); git(dir, 'commit', '-q', '-m', 'the work left at --finish'); }
   const on = onOf(topic);
   // built on another session: that one is finished first (its check comes first), which moves this one onto main
   if (on && branchExists(on) && !isAncestor(main, on, MAIN)) throw new Error(`"${topic}" is built on top of "${on}", which is not finished yet. Finish "${on}" first (that moves "${topic}" onto main by itself), then this one.`);
@@ -175,12 +181,13 @@ async function finish(topic, o) {
     if (git(dir, 'rev-parse', 'HEAD') !== original) git(dir, 'reset', '--hard', original);
     throw e;
   }
-  if (!o.noChecks) runChecks(dir, '--finish', base);
+  if (!o.noChecks) finishChecks(dir, base);
   const card = cardOf(topic);
   const subject = git(dir, 'log', '-1', '--format=%s');
   if (FLOW === 'pr') return openPullRequest(topic, dir, card, subject, o);
   if (git(main, 'branch', '--show-current') === MAIN) git(main, 'merge', '--ff-only', topic);
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone
+  dropSpecs(topic, [main, dir]); // on main now: the commit says what was built
   // the sessions built on this one leave its old commits behind and sit on main now (or say what is in the way)
   for (const s of stackedOn(topic)) restack(s, original);
   // the change may have added a package: the main folder (and every session through its link) gets it now
@@ -224,9 +231,10 @@ async function merge(topic) {
   const dir = folderOf(topic);
   if (existsSync(dir) && looseWork(dir)) console.log(`${dir} has uncommitted work, so it is kept.`);
   else {
-    if (existsSync(dir)) { stopServer(dir); if (removeFolder(main, dir) === 'held') console.log(heldMessage(dir)); }
+    if (existsSync(dir)) { stopServer(dir); if (removeFolder(main, dir) === 'held') console.log(heldMessage(dir)); ensureShortcuts(); }
     gitQuiet(main, 'branch', '-D', topic);
   }
+  dropSpecs(topic, [main]);
   for (const c of eachCard(card)) await onBoard(`Say on card #${c} that it is merged`, (lib, board, run) => lib.commentCard(board, run, Number(c), 'Merged into main.'));
   console.log(`Merged "${topic}" into main; the local main is up to date.`);
 }
@@ -268,6 +276,7 @@ function push(o) {
     gitQuiet(main, 'worktree', 'remove', '--force', tmp);
     rmSync(tmp, { recursive: true, force: true });
     gitQuiet(main, 'worktree', 'prune');
+    ensureShortcuts();
   }
 }
 

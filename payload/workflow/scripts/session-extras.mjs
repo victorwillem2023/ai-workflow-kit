@@ -1,5 +1,6 @@
 // What workflow/scripts/session.mjs gained after its first version: the main folder's own notes (--check-main, --commit-notes, --sync),
 // a session's dev server (--serve), and sessions built on another one (--on, --restack). Built on session-core.mjs.
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

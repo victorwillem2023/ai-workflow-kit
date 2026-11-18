@@ -5,6 +5,7 @@
 //   node workflow/tools/coverage.mjs                 the code under src/
 //   node workflow/tools/coverage.mjs --include "src/core/**"
 // Another language: "commands.coverage" in workflow/config.json, a command that writes an lcov file, and "coverageFile" its path.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

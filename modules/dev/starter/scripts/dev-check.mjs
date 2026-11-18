@@ -3,6 +3,7 @@
 //      the dev server restarts on a changed source file but never installs anything), else `npm install`;
 //   2. nothing already listens on the server's port (an earlier start.cmd or dev window still open).
 // Exit code 0: go on. 1: npm install failed. 2: the port is taken.
+import '../workflow/tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';

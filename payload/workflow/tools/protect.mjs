@@ -5,6 +5,7 @@
 //   node workflow/tools/protect.mjs --check   say what is in place; changes nothing
 // The GitHub rule needs gh, admin rights, and a public repository or a paid plan; when GitHub refuses, the local guard still works.
 // A hook that is already there and is not ours is left alone and named.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

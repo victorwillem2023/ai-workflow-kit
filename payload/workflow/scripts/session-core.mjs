@@ -1,13 +1,14 @@
 // The shared base of workflow/scripts/session.mjs: git and the folders, the ports, the main folder against origin (and catching up),
 // the board, the packages, rebasing and the checks. session-extras.mjs and session.mjs build on it; it runs nothing by itself.
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { checkPackages, describeMissing } from './packages.mjs';
+import { checkPackages, checkShortcuts, describeMissing } from './packages.mjs';
 import { stopMessage, stopSessionServer } from './session-stop.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
-import { ghRun } from '../tools/lib/gh.mjs';
+import { ghRun } from '../tools/lib/gh.mjs'; import { changedSince, shipPassOf } from '../tools/lib/shippass.mjs';
 
 export const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
@@ -129,6 +130,9 @@ export const isAncestor = (dir, a, b) => { try { git(dir, 'merge-base', '--is-an
 
 /** Uncommitted work in a session's folder (the node_modules link is ours: an older project's .gitignore says "node_modules/", which matches a folder, not a link). */
 export const looseWork = (dir) => git(dir, 'status', '--porcelain').split('\n').some((l) => l && !/^\?\? node_modules\/?$/.test(l));
+/** Those files by name, for git add (untrimmed: the status columns come first; a rename's new name; -z leaves names unquoted). */
+export const looseFiles = (dir) => execFileSync('git', ['status', '--porcelain', '-z'], { cwd: dir, encoding: 'utf8' }).split('\0')
+  .filter((l) => l.length > 3 && /^[ MADRCU?!]{2} /.test(l)).map((l) => l.slice(3)).filter((f) => !/^node_modules\/?$/.test(f));
 
 export const stopServer = (dir) => { const said = stopMessage(stopSessionServer(dir, { mainPort: MAIN_PORT, firstPort: FIRST_PORT })); if (said) console.log(said); };
 
@@ -154,6 +158,17 @@ export function ensurePackages(when) {
   const ok = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: main, stdio: 'inherit', shell: process.platform === 'win32' }).status === 0;
   const left = checkPackages(main);
   if (!ok || left.length) console.log(`Still not as the lock lists them${left.length ? `: ${describeMissing(left)}` : ''}. Run npm install in ${main} and read what it says.`);
+}
+
+/** After a session folder is removed: the main folder's command shortcuts (node_modules/.bin) are all there, or npm rebuild puts them back. */
+export function ensureShortcuts() {
+  const gone = checkShortcuts(main);
+  if (!gone.length) return;
+  console.log(`The main folder's node_modules/.bin lost ${gone.length} command${gone.length === 1 ? '' : 's'} (${gone.slice(0, 4).map((g) => g.bin).join(', ')}${gone.length > 4 ? ', ...' : ''}): putting them back (npm rebuild)...`);
+  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
+  spawnSync('npm', ['rebuild'], { cwd: main, stdio: 'ignore', shell: process.platform === 'win32' });
+  const left = checkShortcuts(main);
+  console.log(left.length ? `Still missing: ${left.map((g) => g.bin).join(', ')}. Run npm rebuild in ${main} and read what it says.` : 'They are back.');
 }
 
 // a shell only on Windows, where npm is a .cmd file; the arguments are fixed script names, never outside input
@@ -219,6 +234,32 @@ export function runChecks(dir, again, since) {
     if (!npmRun(dir, step, false)) throw new Error(`npm run ${step} failed. Fix it in ${dir} and run ${again} again. Nothing was pushed.`);
   }
 }
+
+/**
+ * The checks after the squash, rebase and map: none when gate:ship passed on exactly these files (lib/shippass.mjs), the quick
+ * gate on what differs from them when it passed on others (what the rebase brought in), else the quick gate on the feature.
+ */
+export function finishChecks(dir, base) {
+  const passed = shipPassOf(dir);
+  if (!passed) return runChecks(dir, '--finish', base);
+  const pages = mapPages(dir);
+  const differ = changedSince(dir, passed).filter((f) => !pages.includes(f));
+  if (!differ.length) return console.log('gate:ship passed on exactly these files: not checked again.');
+  console.log(`gate:ship passed; ${differ.length} file${differ.length === 1 ? '' : 's'} changed since (the rebase), so those are checked:`);
+  runChecks(dir, '--finish', passed);
+}
+
+/** A topic's files in a folder's workflow/specs/ (its spec, its try command): ignored by git, so they are moved by hand here. */
+const specFilesOf = (dir, topic) => { const d = join(dir, 'workflow/specs'); return existsSync(d) ? readdirSync(d).filter((f) => f.startsWith(`${topic}.`)).map((f) => join(d, f)) : []; };
+/** A new session folder gets the spec waiting in the main folder (git does not carry it: workflow/specs/ is ignored). */
+export function bringSpec(dir, topic) {
+  const spec = join(main, 'workflow/specs', `${topic}.md`);
+  if (!existsSync(spec)) return;
+  mkdirSync(join(dir, 'workflow/specs'), { recursive: true });
+  copyFileSync(spec, join(dir, 'workflow/specs', `${topic}.md`));
+}
+/** A finished topic's spec and try command go, in each folder given: the feature's commit says what was built. */
+export const dropSpecs = (topic, dirs) => { for (const d of dirs) for (const f of specFilesOf(d, topic)) rmSync(f, { force: true }); };
 
 /** gh that must work: its output, or an error with the first line it printed. */
 export function gh(...args) {

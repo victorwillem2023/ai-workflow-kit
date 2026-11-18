@@ -5,6 +5,7 @@
 //   npm run changelog -- --title "v1.4.0"   the heading (default: today's date)
 //   npm run changelog -- --prepend          put it at the top of CHANGELOG.md instead of printing it
 //   npm run changelog -- --release v1.4.0   a release: the section under that version at the top of CHANGELOG.md, and package.json set to it
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { changelogText, groupCommits } from './lib/changelog.mjs';

@@ -7,6 +7,7 @@
 //   node workflow/tools/stage.mjs --json             the same in a few words each (title, command, time), for the docs portal
 //   node workflow/tools/stage.mjs --enter run|market   start a stage: the kit's update brings that stage's folder (docs/run/ with
 //                                                      its guides, docs/market/), from the kit on this computer (git config workflow.kit)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

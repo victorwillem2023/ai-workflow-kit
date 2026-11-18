@@ -5,6 +5,7 @@
 // Already over the budget the first time (an older project): that weight becomes the baseline (workflow/tools/perf-baseline.json),
 // and only heavier than it, with a little room, fails.
 //   node workflow/tools/perfbudget.mjs [--no-build] [--update]   (--update: today's weight is the baseline again)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';

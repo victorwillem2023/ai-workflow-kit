@@ -4,6 +4,7 @@
 // the goals are not met. Never against production unless the owner planned it: use the dev server or staging, made-up data.
 //   npm run load -- smoke | load | stress | spike | soak   [--url <address>]   [--script-only]
 //   (--script-only prints the k6 script to keep and change by hand in load/, which then wins over the made one)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

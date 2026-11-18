@@ -6,6 +6,7 @@
 //   node workflow/tools/sessioncost.mjs            the last 7 days
 //   node workflow/tools/sessioncost.mjs --days 30
 // Reads only; OpenCode's sessions are not in these records.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';

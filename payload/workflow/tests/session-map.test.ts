@@ -3,7 +3,7 @@
 // only in those pages is solved by writing them again; and a folder that cannot be removed still lets the card be told.
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { addFile, commitIn, ghCalls, ghCmd, git, makeRepo, roots, run, type Repo } from './session-repo';
@@ -64,5 +64,54 @@ describe('finish and the pages the map writes', () => {
     assert.match(f.out, /uncommitted work[\s\S]*--remove kept/);
     assert.ok(existsSync(r.wt('kept')), 'the folder with the stray file is kept');
     assert.ok(ghCalls(r).some((c) => ghCmd(c) === 'issue comment' && /Finished on the local main/.test(c.input)), 'the card is told it is on main');
+  });
+  it('with the approved subject, commits the work left in the folder into the one commit; without it, refuses', () => {
+    const r = indexRepo();
+    assert.ok(run(r, 'left').ok);
+    addFile(r.wt('left'), 'b.txt', 'add b');
+    writeFileSync(join(r.wt('left'), 'c.txt'), 'not committed\n');
+    const refused = run(r, '--finish', 'left');
+    assert.equal(refused.ok, false);
+    assert.match(refused.out, /uncommitted work\. Finish with --subject/);
+    const f = run(r, '--finish', 'left', '--subject', 'Plans: b and c');
+    assert.ok(f.ok, f.out);
+    assert.equal(page(r.main, 'c.txt'), 'not committed\n', 'the left work is on main');
+    assert.equal(git(r.main, 'log', '-1', '--format=%s'), 'Plans: b and c');
+    assert.equal(git(r.main, 'rev-list', '--count', 'origin/main..main'), '1', 'one commit for the feature');
+  });
+  it('takes the waiting spec into the new folder, and removes it and its try command from both when finished', () => {
+    const r = indexRepo();
+    const specs = (dir: string) => join(dir, 'workflow/specs');
+    mkdirSync(specs(r.main), { recursive: true });
+    writeFileSync(join(specs(r.main), 'plan.md'), '# Spec: plan\n');
+    writeFileSync(join(specs(r.main), 'plan-other.md'), '# Spec: plan-other\n');
+    assert.ok(run(r, 'plan').ok);
+    assert.equal(readFileSync(join(specs(r.wt('plan')), 'plan.md'), 'utf8'), '# Spec: plan\n');
+    writeFileSync(join(specs(r.wt('plan')), 'plan.try.ts'), 'try\n');
+    addFile(r.wt('plan'), 'p.txt', 'add p');
+    const f = run(r, '--finish', 'plan');
+    assert.ok(f.ok, f.out);
+    assert.equal(existsSync(join(specs(r.main), 'plan.md')), false, 'gone from the main folder');
+    assert.ok(existsSync(join(specs(r.main), 'plan-other.md')), 'another topic\'s spec stays');
+  });
+  it('does not check again what gate:ship passed on, and checks only what the rebase brought in', () => {
+    const r = indexRepo();
+    const passed = (dir: string) => execFileSync('node', ['--input-type=module', '-e', "import('./workflow/tools/lib/shippass.mjs').then((m) => m.recordShipPass('.'))"], { cwd: dir });
+    const checked = () => (existsSync(r.checkLog) ? readFileSync(r.checkLog, 'utf8').length : 0);
+    assert.ok(run(r, 'same').ok);
+    addFile(r.wt('same'), 'b.txt', 'add b');
+    passed(r.wt('same'));
+    const f = run(r, '--finish', 'same');
+    assert.ok(f.ok, f.out);
+    assert.match(f.out, /gate:ship passed on exactly these files: not checked again/);
+    assert.equal(checked(), 0, 'no test ran');
+    assert.ok(run(r, 'moved').ok);
+    addFile(r.wt('moved'), 'c.txt', 'add c');
+    passed(r.wt('moved'));
+    addFile(r.main, 'd.txt', 'main moves on');
+    const g = run(r, '--finish', 'moved');
+    assert.ok(g.ok, g.out);
+    assert.match(g.out, /changed since \(the rebase\), so those are checked/);
+    assert.ok(checked() > 0, 'the checks ran on what came in');
   });
 });

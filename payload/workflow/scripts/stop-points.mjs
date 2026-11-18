@@ -10,6 +10,7 @@
 // What this is: a stop for an agent that would commit by mistake or take a shortcut, not a lock against one that sets out to
 // get around it with the same shell; the lock for that is on GitHub (branch protection, a required review: workflow/tools/README.md).
 // A refused command says why, so the agent stops and asks; the owner's own terminal is never held.
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -113,7 +114,9 @@ export function ownersOnly(command) {
   const intoOwn = ownNamed(redirected.join(' '));
   const named = intoOwn.length ? intoOwn : WRITES.test(c) ? ownNamed(c) : [];
   if (!named.length) return null;
-  if (named.includes('levels.json')) return 'workflow/levels.json is the owner\'s (how strict the gate is): propose the change and let them make it';
+  // say what was seen: a command that only reads the file but writes another one (sed -i on a source file) is refused as well
+  const seen = intoOwn.length ? 'a redirect (>) into it' : `"${c.match(WRITES)?.[0]}" and the file's name in one command`;
+  if (named.includes('levels.json')) return `this command looks like it writes workflow/levels.json (it has ${seen}). That file is the owner's: how strict the gate is. If the command only reads it, run that part on its own and the write as another command; if it means to change it, propose the change and let the owner make it`;
   return named.includes('workflow-said.json') ? 'the stop points\' note is written only by the hook, from what the owner types'
     : `${named.join(' and ')} ${named.length === 1 ? 'is' : 'are'} written only by \`npm run signoff\`, in the owner's own terminal`;
 }

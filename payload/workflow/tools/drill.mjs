@@ -7,6 +7,7 @@
 //     holding a dead man's switch URL, e.g. Healthchecks.io>" }
 // The commands are the project's own (litestream restore, pgbackrest restore, restic restore, the platform's CLI), so it works
 // with any backup tool and any platform. Run it on a computer or server that may hold the data; it never touches production.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';

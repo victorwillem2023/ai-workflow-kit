@@ -22,8 +22,8 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
      starts on top of that built card, `.claude/skills/work/together.md`); note the port it prints. A board warning line in its output is not a failure.
    - present: reuse it. Read its `.env` for `PORT`; do not recreate or reset it. Run `git -C ../{{PREFIX}}-<topic> status --short` and
      tell the owner if it already has changes (it may be half built).
-3. Copy `workflow/specs/<topic>.md` into `../{{PREFIX}}-<topic>/workflow/specs/` (the spec is untracked, so the worktree does not have it).
-   Overwrite only if the main folder's copy is newer or the folder's copy is missing.
+3. The spec: a new folder gets it from step 2 by itself (`session.mjs` copies `workflow/specs/<topic>.md`, which git does not
+   carry). A reused folder: copy it into `../{{PREFIX}}-<topic>/workflow/specs/` only when the main folder's copy is newer or the folder's copy is missing.
 4. Start one subagent (use your agent's task/subagent tool), named `build-<topic>`. The plan was made by the strong model, so
    building it is coding: **Sonnet** (in Claude Code `model: "sonnet"`; in OpenCode the config's `model`). **Opus** only when the
    spec's "Suggested model" says so (a design decision left open) or a sensitive file is in it (`sensitive.paths`). Never a free model for a build.

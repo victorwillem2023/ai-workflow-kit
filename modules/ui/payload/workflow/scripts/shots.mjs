@@ -2,6 +2,7 @@
 // driven over its DevTools protocol (Node's built-in WebSocket, no packages). It can click a selector or press keys first.
 // Usage: node workflow/scripts/shots.mjs <url or file> [--width 1280] [--height 800] [--theme light|dark] [--click <selector>]...
 //        [--press <key>]... [--wait <ms>] [--full] [--out shot.png]
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';

@@ -6,6 +6,7 @@
 // Every command goes through execFileSync with an argument list (no shell); PIDs are digits checked before use.
 // WORKFLOW_HOLD_TEST (tests only): the removal acts as Windows does when a terminal is open in the folder (the files go,
 // git forgets the worktree, the empty folder stays and git says "Permission denied").
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmdirSync, unlinkSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';

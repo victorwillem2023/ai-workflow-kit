@@ -87,6 +87,13 @@ describe("the owner's own sign-off record", () => {
     assert.equal(verdict('git diff -- docs/company/SIGNOFFS.md', {}, 0).ok, true);
     assert.equal(verdict('grep done docs/company/SIGNOFFS.md > /tmp/o', {}, 0).ok, true, 'reading it into another file');
   });
+  it('says what it saw when a command reads levels.json and writes another file, and how to get past it', () => {
+    const r = verdict("cat workflow/levels.json && sed -i 's/a/b/' src/map/fix.ts", {}, 0);
+    assert.equal(r.ok, false);
+    assert.match(r.why ?? '', /looks like it writes workflow\/levels\.json \(it has "sed -i" and the file's name in one command\)/);
+    assert.match(r.why ?? '', /If the command only reads it, run that part on its own and the write as another command/);
+    assert.match(verdict('echo {} > workflow/levels.json', {}, 0).why ?? '', /it has a redirect \(>\) into it/);
+  });
 });
 
 describe('commands that get around the plain spelling', () => {

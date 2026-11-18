@@ -15,7 +15,7 @@ A fix, or a change to a rule every feature keeps to: the rule in one line, its r
 each lives*), and the kinds of case that share it. The change goes in the rule's home. Anything else: "none".
 
 New rules: <none | the rule in one line ("the API only accepts writes from this site", "only this computer may ask") and its row
-to add to `docs/ARCHITECTURE.md`, *Rules and where each lives*; then `docs/ARCHITECTURE.md` is under "Docs that change">
+to add to `docs/ARCHITECTURE.md`, *Rules and where each lives* (its home, its check, who keeps to it as a folder or a pattern, never a list of files); then `docs/ARCHITECTURE.md` is under "Docs that change">
 
 ## When it fails
 Each thing that can go wrong (bad input, a service down, a missing record): what the person sees, and its error code, so a

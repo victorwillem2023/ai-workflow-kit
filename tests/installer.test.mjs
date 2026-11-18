@@ -206,8 +206,8 @@ describe('migrations', () => {
     assert.deepEqual(due('2.8.5', 'before').map((s) => s.version), ['2.9.0', '2.9.3']);
     assert.deepEqual(due('2.9.1', 'before').map((s) => s.version), ['2.9.3'], 'a project at 2.9.1 still gets the correction');
     assert.deepEqual(due('2.9.3', 'before'), [], 'a project at 2.9.3 has its docs where they belong');
-    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0', '3.4.3', '4.0.3']);
-    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0', '3.4.3', '4.0.3'], 'a project at 3.2.1 gets the knip.json and notes fix');
+    assert.deepEqual(due(null, 'config').map((s) => s.version), ['2.9.7', '3.3.0', '3.4.0', '3.4.3', '4.0.3', '4.2.0']);
+    assert.deepEqual(due('3.2.1', 'config').map((s) => s.version), ['3.3.0', '3.4.0', '3.4.3', '4.0.3', '4.2.0'], 'a project at 3.2.1 gets the knip.json and notes fix');
     const versions = STEPS.map((s) => s.version);
     assert.deepEqual(versions, [...versions].sort((a, b) => (older(a, b) ? -1 : older(b, a) ? 1 : 0)), 'STEPS are oldest first');
     for (const s of STEPS) assert.ok(['before', 'claude', 'config'].includes(s.phase) && s.what && typeof s.run === 'function', `${s.version} has a phase, a what and a run`);
@@ -350,5 +350,33 @@ describe('3.3.0 on a project from 3.2.1', async () => {
     step.run({ target: d, kit });
     assert.deepEqual(JSON.parse(readFileSync(join(d, 'knip.json'), 'utf8')), own);
     rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe('tests never reach the network (4.2.0)', () => {
+  it('the kit\'s test commands load the guard once; a project\'s own command stays', async () => {
+    const { default: step, OLD_TESTS } = await import('../migrations/4.2.0-tests-offline.mjs');
+    const d = folder({
+      'package.json': JSON.stringify({ scripts: { test: OLD_TESTS[0], 'test:full': OLD_TESTS[1], 'test:e2e': 'playwright test' } }, null, 2),
+      'workflow/config.json': JSON.stringify({ commands: { testFiles: OLD_TESTS[2] } }, null, 2),
+    });
+    assert.equal(step.run({ target: d }).said.length, 2);
+    const pkg = JSON.parse(readFileSync(join(d, 'package.json'), 'utf8'));
+    assert.match(pkg.scripts.test, /--import tsx --import \.\/workflow\/tools\/lib\/testnet\.mjs --test --test-reporter/);
+    assert.match(pkg.scripts['test:full'], /testnet\.mjs --test "/);
+    assert.equal(pkg.scripts['test:e2e'], 'playwright test');
+    assert.match(JSON.parse(readFileSync(join(d, 'workflow/config.json'), 'utf8')).commands.testFiles, /testnet\.mjs --test --test-reporter/);
+    assert.deepEqual(step.run({ target: d }).said, [], 'once');
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { test: 'vitest run' } }));
+    assert.deepEqual(step.run({ target: d }).said, [], "the project's own stays");
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('the starter writes the guarded commands, the same the migration makes', async () => {
+    const { OLD_TESTS, guarded } = await import('../migrations/4.2.0-tests-offline.mjs');
+    const scripts = JSON.parse(readFileSync(new URL('../starter/package-scripts.json', import.meta.url), 'utf8'));
+    const config = JSON.parse(readFileSync(new URL('../starter/workflow/config.json', import.meta.url), 'utf8'));
+    assert.equal(scripts.test, guarded(OLD_TESTS[0]));
+    assert.equal(scripts['test:full'], guarded(OLD_TESTS[1]));
+    assert.equal(config.commands.testFiles, guarded(OLD_TESTS[2]));
   });
 });

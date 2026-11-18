@@ -9,6 +9,7 @@
 //   --env <name>                                 any of the above for that environment (deploy.environments.<name>: staging, production)
 // A production environment (--env production) is refused until the phase is production (workflow/levels.json, npm run phase).
 // Only when the owner says so. Refuses uncommitted files and a commit that is not on origin/main: what runs is a commit you can find again.
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

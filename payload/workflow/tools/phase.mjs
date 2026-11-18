@@ -6,6 +6,7 @@
 //   npm run phase -- --next        the line for /next (prints nothing more than the status once a fact is said)
 //   npm run phase -- --ready [pilot|production]   what that phase still needs (default: the next one up)
 //   npm run phase -- --json        the phase, the facts and every need of the next phase, done or not (the docs portal)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

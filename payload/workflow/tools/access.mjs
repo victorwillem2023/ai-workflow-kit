@@ -4,6 +4,7 @@
 //   npm run access              print the review
 //   npm run access -- --publish open it as an issue labelled "access-review" (a checklist to work through)
 //   npm run access -- --done    set "Last review: <today>" in docs/company/ACCESS.md, after every line is settled
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { accessReport, compareAccess, parseAccess } from './lib/access.mjs';

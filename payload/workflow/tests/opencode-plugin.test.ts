@@ -23,6 +23,8 @@ async function load(): Promise<Hooks> {
   execFileSync('git', ['init', '-q'], { cwd: dir });
   mkdirSync(join(dir, 'workflow', 'scripts'), { recursive: true });
   copyFileSync(resolve('workflow/scripts/stop-points.mjs'), join(dir, 'workflow', 'scripts', 'stop-points.mjs'));
+  mkdirSync(join(dir, 'workflow', 'tools', 'lib'), { recursive: true }); // what it imports first: no console windows
+  copyFileSync(resolve('workflow/tools/lib/nowindow.mjs'), join(dir, 'workflow', 'tools', 'lib', 'nowindow.mjs'));
   mkdirSync(join(dir, '.opencode', 'plugins'), { recursive: true });
   const file = join(dir, '.opencode', 'plugins', 'stop-points.mjs');
   writeFileSync(file, OPENCODE_PLUGIN);

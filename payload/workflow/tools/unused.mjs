@@ -4,6 +4,7 @@
 // finding a change adds fails, named. workflow/tools/unused-baseline.json is the baseline; lib/unused.mjs reads knip's report.
 //   node workflow/tools/unused.mjs            fail on what is new since the baseline
 //   node workflow/tools/unused.mjs --update   take today's findings as the baseline (say why in the commit)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { compareUnused, unusedFindings } from './lib/unused.mjs';

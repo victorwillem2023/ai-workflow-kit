@@ -8,6 +8,7 @@
 // (the review is reading the diff; the owner runs the playbook). Runs in Docker like the infra check; the cloud credentials come
 // from the environment (TF_VAR_*, HCLOUD_*, AWS_*, ARM_*, GOOGLE_*, SCW_*, OVH_*, DIGITALOCEAN_*, PULUMI_*, and launch.credentials)
 // and are handed to the container by name, never printed. The saved plan can hold secrets: it stays beside git's own data.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash, randomInt } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';

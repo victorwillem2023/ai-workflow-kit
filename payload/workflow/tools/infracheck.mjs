@@ -9,6 +9,7 @@
 //   startup scripts (cloud-init*.yaml, user-data*, startup*.sh): no secrets, no curl | sh, cloud-init's schema check
 //   Helm charts (deploy/helm/<chart>/, the cluster module): helm lint and helm template per values-<env>.yaml, kubeconform
 //   all: Trivy's configuration scan of infra/ (open firewalls, public buckets, unencrypted disks...)
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

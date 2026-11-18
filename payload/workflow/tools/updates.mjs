@@ -3,6 +3,7 @@
 //   npm run updates               the security alerts, then each waiting pull request and what to do with it
 //   npm run updates -- --short    one line (the start of /work, the health screen)
 // Reads GitHub through gh and changes nothing. GitHub that cannot be reached is one line, never a failure (exit 0).
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { autoMerges, holdSnippet, judgePr, readAlerts, runtimeNode, shortLine, toolImages, updateTools } from './lib/updates.mjs';

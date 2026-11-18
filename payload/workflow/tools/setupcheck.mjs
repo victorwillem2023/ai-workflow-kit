@@ -5,6 +5,7 @@
 // changes, and every week; here: npm run setup-check (bash needed: Git Bash on Windows).
 //   npm run setup-check            run it
 //   npm run setup-check -- --list  only say what it would run
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

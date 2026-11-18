@@ -32,3 +32,25 @@ describe('the packages the lock lists', () => {
     assert.match(describeMissing(Array.from({ length: 7 }, (_, i) => ({ name: `p${i}`, want: '1', have: null }))), /^7 packages .*p4 missing; \.\.\.\)$/);
   });
 });
+
+describe('the command shortcuts in node_modules/.bin', async () => {
+  const { missingShortcuts } = await import('../../workflow/scripts/packages.mjs');
+  const manifests: Record<string, Record<string, unknown>> = {
+    typescript: { name: 'typescript', bin: { tsc: './bin/tsc', tsserver: './bin/tsserver' } },
+    tsx: { name: 'tsx', bin: './dist/cli.mjs' },
+    '@biomejs/biome': { name: '@biomejs/biome', bin: { biome: 'bin/biome' } },
+    '@scope/tool': { name: '@scope/tool', bin: './cli.js' },
+    zod: { name: 'zod' },
+  };
+  const pkg = { dependencies: { zod: '^3' }, devDependencies: { typescript: '^5', tsx: '^4', '@biomejs/biome': '^2', '@scope/tool': '1', gone: '1' } };
+  it('names each command a direct package gives whose shortcut is gone', () => {
+    const there = new Set(['tsserver', 'biome']);
+    assert.deepEqual(missingShortcuts(pkg, (n) => manifests[n] ?? null, (b) => there.has(b)), [
+      { pkg: 'typescript', bin: 'tsc' }, { pkg: 'tsx', bin: 'tsx' }, { pkg: '@scope/tool', bin: 'tool' },
+    ]);
+  });
+  it('says nothing when every shortcut is there, or for a package that is not installed', () => {
+    assert.deepEqual(missingShortcuts(pkg, (n) => manifests[n] ?? null, () => true), []);
+    assert.deepEqual(missingShortcuts({}, () => null, () => false), []);
+  });
+});

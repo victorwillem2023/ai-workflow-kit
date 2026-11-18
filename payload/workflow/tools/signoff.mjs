@@ -11,6 +11,7 @@
 //   --base <ref>                       compare with this commit instead of where the branch left main
 // The private key is ~/.config/ai-workflow-kit/signoff-key.pem (WORKFLOW_SIGNOFF_KEY: another path), encrypted with the passphrase. Every
 // part that signs asks for it in a terminal with a person typing (no pipe, no CI), so an agent cannot sign.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';

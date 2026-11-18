@@ -10,7 +10,8 @@ When the spec has a "Work packages" section with two or more packages, one topic
 2. **Waves.** Wave 1 is every package with no `after:`; a package whose `after:` is done goes in the next wave. At most 3 builders per
    wave, started in **one message** (several Agent calls, named `build-<topic>-<package>`). Start the next wave when the whole wave has reported.
 3. Add this to each builder's prompt (step 4): "You own only these files: <list>. Edit no other file; if you need one, say so in your
-   report. Run only the tests that reach your files (`node --test` on them), not `npm run gate`: neighbours are mid-edit. Do not touch
+   report. Check with `npm run gate -- --only <your files>` (the type errors in your files only, and the tests that reach
+   them), never the whole `npm run gate`: neighbours are mid-edit. Do not touch
    a shared file (the list under *Shared files* in CLAUDE.md, *Git and sessions*) unless your package owns it."
 4. After the last wave, you (the lead) make the shared-file edits, run `npm run gate` once and fix the seams (or send them to the
    owning builder). Then step 5: one summary, with every package's *Questions* and *Later* items together (the same item from two packages once).

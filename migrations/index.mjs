@@ -14,8 +14,9 @@ import typecheckIncremental from './3.4.0-typecheck-incremental.mjs';
 import commandsByPhase from './3.4.3-commands-by-phase.mjs';
 import settingsNotCode from './3.4.3-settings-not-code.mjs';
 import auditWhatShips from './4.0.3-audit-what-ships.mjs';
+import testsOffline from './4.2.0-tests-offline.mjs';
 
-export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips];
+export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips, testsOffline];
 
 const parts = (v) => String(v).split('.').map(Number);
 /** a is older than b (2.9.7 < 2.9.10). */

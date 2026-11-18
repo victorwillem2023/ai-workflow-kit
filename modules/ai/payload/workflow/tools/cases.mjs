@@ -3,6 +3,7 @@
 // by code (lib/cases.mjs) and prints "N of M cases pass" for the quality score. They call the real model unless the project's
 // run.ts says otherwise, so they cost money: the quality config runs them only when the wrapper or a prompt changes.
 //   npm run cases [-- --only <name part>]
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

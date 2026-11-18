@@ -15,7 +15,10 @@
 //   or when a doc names a missing file or npm script)
 //   --advice      only print the advice lines (security-review, hostile-input test, SQL built from a value, a route with no refusal test, a missing push guard) (a full run prints them at the end; they never fail the gate)
 //   --base <ref>  compare with this commit instead of the merge-base with origin/main
+//   --only <files> one builder of several: the type errors in these files only, and the tests that reach them (lib/only.mjs)
+//   --ship        what /ship runs (the phase says how much); a pass is recorded, and a second --ship on the same files stops at once
 // Project settings live in workflow/config.json; nothing here knows about the project.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { checkPackages, describeMissing, packagesFix } from '../../workflow/scripts/packages.mjs';
 import { testPlan } from './lib/testplan.mjs';
 import { errorRuleFindings, notRead } from './lib/errorrules.mjs';
@@ -32,7 +35,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { kitFilesIn, namesKitFiles, specPaths, outsideSpec } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { recordShipPass, shipPassOf, treeOf } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -61,6 +64,12 @@ const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 <
 const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
 // what the change is compared with: --base, or where this branch left main (no commit yet: git's empty tree, all new)
+// gate:ship on exactly the files it passed on before (lib/shippass.mjs) tells nothing new: said, and not run again
+const shipTree = flag('--ship') && !process.env.CI ? (() => { try { return treeOf('.'); } catch { return null; } })() : null;
+if (shipTree && !flag('--fresh') && shipPassOf('.') === shipTree) {
+  console.log('gate:ship passed on exactly these files already: not run again (a change, or --fresh, runs it)');
+  process.exit(0);
+}
 const base = baseArg ?? gitOk('merge-base', 'HEAD', ORIGIN_MAIN) ?? gitOk('merge-base', 'HEAD', MAIN) ?? (gitOk('rev-parse', '--verify', 'HEAD') ? 'HEAD' : '4b825dc642cb6eb9a060e54bf8d69288fbee4904');
 
 function listFiles() {
@@ -236,6 +245,15 @@ const plan = testPlan({ whole: wholeSuite, unknown: reach.all, reached: reach.te
 /** The specs in workflow/specs/ as [name, text] pairs (none when the folder is not there). */
 const specFiles = () => (existsSync('workflow/specs') ? readdirSync('workflow/specs').filter((f) => f.endsWith('.md')).map((f) => [f, readFileSync(`workflow/specs/${f}`, 'utf8')]) : []);
 const specAdvice = [];
+// --only <files>: one builder of several, its own files' type errors and the tests reaching them (lib/only.mjs)
+const ownFiles = onlyFiles(args);
+if (ownFiles) {
+  const reached = affectedTests(graph, ownFiles, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming, depth: Infinity });
+  const r = onlyCheck({ files: ownFiles, typecheck: config.commands.typecheck, testFiles: config.commands.testFiles, tests: reached.tests, run });
+  console.log(r.lines.join('\n'));
+  process.exit(r.ok ? 0 : 1);
+}
+
 // the scope guard: with one spec in workflow/specs/, the changed files it does not name
 function scopeLines() {
   if (config.scope === 'off' || !existsSync('workflow/specs')) return [];
@@ -476,7 +494,11 @@ function runSteps(steps) {
 }
 const started = Date.now();
 runSteps(steps);
+// green: --finish and the next gate:ship know these files passed (a write that fails only costs a run)
+if (shipTree) { try { recordShipPass('.', shipTree); } catch { /* not recorded */ } }
 // the app map (map module): code the map names changed while the map did not (lib/worksheet.mjs)
 const mapLines = existsSync('docs/flow/map.js') && existsSync('workflow/tools/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
+// a rule row that grew into a list of files (lib/rulerows.mjs): said when the change touches the doc
+const ruleLines = changed.includes('docs/ARCHITECTURE.md') && existsSync('docs/ARCHITECTURE.md') ? longRuleCells('docs/ARCHITECTURE.md', readFileSync('docs/ARCHITECTURE.md', 'utf8'), config.docs?.ruleCellMax ?? 200) : [];
+for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...ruleLines, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

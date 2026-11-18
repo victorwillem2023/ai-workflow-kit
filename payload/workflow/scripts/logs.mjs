@@ -6,6 +6,7 @@
 //   node workflow/scripts/logs.mjs <topic> [--follow] [--ref <reference>] [--level warn]     a session's server
 //   node workflow/scripts/logs.mjs <file> ...                                                  any log file
 //   node workflow/scripts/logs.mjs                                                             which logs there are
+import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, watchFile } from 'node:fs';
 import { tmpdir } from 'node:os';

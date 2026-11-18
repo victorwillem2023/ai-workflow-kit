@@ -4,6 +4,7 @@
 // patterns on the added lines) still runs either way. A `checks` entry of the gate, so `gitleaks` is never a must.
 //   node workflow/tools/leaks.mjs            what this change adds (its commits since it left main, and what is not committed)
 // gitleaks: https://github.com/gitleaks/gitleaks (a single binary; brew, scoop, or the release page).
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawnSync } from 'node:child_process';
 import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 

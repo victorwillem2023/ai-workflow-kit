@@ -6,6 +6,7 @@
 //   node workflow/tools/harness.mjs --check   says which command files are missing or out of date, writes nothing (exit 1 when any)
 // Settings: the "harness" block of workflow/config.json: { "opencode": { model, cheapModel, smallModel, exploreModel } | false,
 // "private": [".env", "data/"], "agentsMd": false }. No "harness" block: OpenCode on with the kit's default models.
+import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
