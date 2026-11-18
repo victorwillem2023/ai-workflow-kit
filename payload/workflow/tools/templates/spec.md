@@ -1,6 +1,7 @@
 # Spec: <topic>
 
 Card: #<n> (`npm run board -- --show <n>`; cards combined into one commit: #<n>, #<m>), type <ui | feature | bug | workflow>
+End state: <the best version, in one sentence>. This spec: <is it | a step toward it, because <reason>; the rest is card #<n>>
 Starts on: <main | <topic> of a built, unfinished card it needs (`.claude/skills/work/together.md`)>
 Card stays open after this spec: <no | yes, what is left>
 Owner approval: <not yet | approved on YYYY-MM-DD>
@@ -72,4 +73,7 @@ Things noticed but not part of this change.
 ## Status (updated at the end of every session)
 - Done:
 - Open:
-- Unsure:
+- Questions for the owner: each a choice, with your recommendation and what each answer changes, with an example ("A race
+  on a Monday: plan the long run on the Saturday before (recommended) or the Sunday? Saturday gives a rest day before it").
+- Later: work noticed and left out, one line each (a title and why it matters). Each becomes a card at the hand-over. No
+  bare "not sure about X": every open point is a question or a later card.

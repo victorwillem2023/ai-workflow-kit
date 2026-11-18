@@ -20,7 +20,21 @@ exists (or make one with `npm run board -- --add "<title>" --label <type>`). `/w
    Its type label (`ui`, `feature`, `bug`, `workflow`; a `spike` card goes to /spike, not a spec) goes on the spec's "Card:" line; a card with none: ask which.
    Find what the feature does now in the guide part for it (`docs/GUIDE.md` lists them; open only that file in `docs/guide/`) and the files in `docs/MAP.md` (search them, don't read them
    whole) and open only the ranges you need.
-2. Ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation). Then, only when it applies:
+2. **The end state first**: say in one sentence what the best version of this is (the design that scales and that nobody
+   would want to redo), before choosing anything. It goes on the spec's "End state:" line; the gate refuses an approved spec
+   without it. Then ask the owner the open questions (use AskUserQuestion; only real decisions, with a recommendation).
+   **Every choice between designs** labels each option *end state* or *a step*, and recommends the end state. A step is
+   recommended only for a named reason: it needs another card first, it is far bigger than the card's effort, or no test
+   covers the code it changes yet. An option that adds a special case beside the general rule (an `if` for one kind of input,
+   a second way of doing a job the code already does) is always a step, never the end state: extend the rule's home instead.
+   The same holds for infra (a stack, a module, a pipeline) and docs (a doc that grew into a list, two docs saying one thing).
+   **The end state needs a split or a refactor first** (a file past its size, a rule living in two places, a stack shaped for
+   one server, a module that knows too much): plan it, never build around it. It goes in this spec when it fits the card's
+   effort; otherwise make a refactor card now (no behaviour change, the same test results before and after), put
+   `Depends on: #<refactor card>` on this card (`npm run board -- --depends <this> <refactor>`), and offer to do that one first.
+   **A step recommended**: make the end-state card in the same go (`npm run board -- --add "<title>" --label <type> --body-file
+   <file>`, the body ending `Depends on: #<this card>`), and put its number on the End state line (`the rest is card #<n>`).
+   Then, only when it applies:
    - **Hard to undo** (a new service or datastore, a platform or provider, a boundary): suggest `/arch` first (the architecture
      board, `docs/run/SCALING.md`) and write the spec on its accepted decision.
    - **Under `infra/`**: the spec names what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).

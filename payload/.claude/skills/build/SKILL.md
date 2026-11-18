@@ -38,9 +38,12 @@ With one topic and one builder, steps 1 to 7 below are all there is. **Several t
    > spec needs from main): `cd <folder> && node workflow/scripts/session.mjs --catch-up <topic>` brings main in and leaves your
    > work as it is; never `git stash`, `git merge` or `git rebase` yourself. Start no dev server. If the change has no
    > screen, write the try command `workflow/specs/<topic>.try.<ext>` (`.claude/skills/build/try-it.md`, step 1) and run it once.
-   > Report in plain language: what changed, what each test checks, two or three examples with their real inputs and what they
-   > give, the edge cases with what they give, what you were unsure of, anything noticed but left out of scope.
-5. When it reports, hand it to the owner as `.claude/skills/build/try-it.md` says: `node workflow/scripts/session.mjs --serve <topic>` for a
+   > End with a short report in plain words, exactly these four parts and nothing before them: **Done**: what a person can now
+   > do, two or three examples with their real inputs and what each gives, and the edge cases with what they give. **Tests**:
+   > one line per test, what it checks. **Questions**: each a choice for the owner, with your recommendation and what each
+   > answer changes, with an example; or "none". **Later**: work noticed and left out (outside the spec or outside your files),
+   > a title and one line why each; or "none". Never a bare "not sure about X": make it a question or a later item.
+5. When it reports, make its *Later* items cards and hand it to the owner as `.claude/skills/build/try-it.md` says: `node workflow/scripts/session.mjs --serve <topic>` for a
    screen (the owner only opens the link), the try command for no screen, then the message in plain words with examples, their own
    numbers and edge cases. Stop there.
 6. Feedback rounds: the owner talks here; forward it to the same subagent/session so it keeps context (use your agent's follow-up/message mechanism). Do not start a second

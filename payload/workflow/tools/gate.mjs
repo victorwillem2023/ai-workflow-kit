@@ -32,7 +32,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { kitFilesIn, namesKitFiles, specPaths, outsideSpec } from './lib/scope.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -233,6 +233,9 @@ const plan = testPlan({ whole: wholeSuite, unknown: reach.all, reached: reach.te
   forced: Boolean(process.env.CI || (process.env.WORKFLOW_KIT_TESTS && process.env.WORKFLOW_KIT_TESTS !== '0')) || flag('--kit') || config.testPicking === false, matches: matchesAny,
   kitTests: config.kitTests, kitMachinery: config.kitMachinery, skipKit: process.env.WORKFLOW_KIT_TESTS === '0' });
 
+/** The specs in workflow/specs/ as [name, text] pairs (none when the folder is not there). */
+const specFiles = () => (existsSync('workflow/specs') ? readdirSync('workflow/specs').filter((f) => f.endsWith('.md')).map((f) => [f, readFileSync(`workflow/specs/${f}`, 'utf8')]) : []);
+const specAdvice = [];
 // the scope guard: with one spec in workflow/specs/, the changed files it does not name
 function scopeLines() {
   if (config.scope === 'off' || !existsSync('workflow/specs')) return [];
@@ -392,6 +395,13 @@ const steps = [
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
     return { ok: true, note: `${docTexts.size} docs, ${staleRefs.length} known stale` };
   }],
+  // an approved spec names its end state, the best version, before it picks one (lib/endstate.mjs); its advice prints at the end
+  ['spec', () => {
+    const specs = specFiles();
+    const { fails, advice } = endStateProblems(specs);
+    specAdvice.push(...advice);
+    return fails.length ? { ok: false, out: fails.join('\n') } : { ok: true, note: specs.some(([, t]) => isApproved(t)) ? 'the end state is named' : 'no approved spec here' };
+  }],
   // the changed code keeps problems findable: no empty catch, no console in the server; another language's: "not checked" (lib/errorrules.mjs)
   ['errors', () => {
     const found = changed.filter((f) => existsSync(f)).flatMap((f) => errorRuleFindings(f, readFileSync(f, 'utf8')).map((x) => `${f}:${x.line}: ${x.rule}: ${x.say}`));
@@ -468,5 +478,5 @@ const started = Date.now();
 runSteps(steps);
 // the app map (map module): code the map names changed while the map did not (lib/worksheet.mjs)
 const mapLines = existsSync('docs/flow/map.js') && existsSync('workflow/tools/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
-for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
+for (const line of [...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) console.log(line);
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

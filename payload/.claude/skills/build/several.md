@@ -13,7 +13,7 @@ When the spec has a "Work packages" section with two or more packages, one topic
    report. Run only the tests that reach your files (`node --test` on them), not `npm run gate`: neighbours are mid-edit. Do not touch
    a shared file (the list under *Shared files* in CLAUDE.md, *Git and sessions*) unless your package owns it."
 4. After the last wave, you (the lead) make the shared-file edits, run `npm run gate` once and fix the seams (or send them to the
-   owning builder). Then step 5: one summary, with each package's "unsure" list.
+   owning builder). Then step 5: one summary, with every package's *Questions* and *Later* items together (the same item from two packages once).
 5. Feedback goes to the builder that owns the file (SendMessage). Nothing is committed; `/ship <topic>` as usual.
 No spec packages, or a single package: step 4 above, one builder.
 

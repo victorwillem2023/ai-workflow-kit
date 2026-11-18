@@ -58,6 +58,7 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
    `- <date to look>: <sign> (<the commit's subject>)` (in the same commit), and when there is a card, on the card too:
    `gh issue comment <n> --repo <board.repo> --body-file <file>` ("Shipped. How we will know it worked: <sign>, look on <date>.").
    `npm run retro` reads both back once the date has come.
-9. Report in plain language, with an example where a term is technical: what changed, what the tests check, what you were unsure of.
+9. Report in plain language, with an example where a term is technical: what changed, what the tests check. Anything still
+   open is a question with a recommendation, or a card made now (`.claude/skills/build/try-it.md`, *Open points become cards*), never a bare "unsure".
 
 **This project's own**: when `.claude/project/ship.md` exists, read it before you start: it holds this project's own steps and rules for /ship, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

@@ -91,7 +91,7 @@ Why the flow is split this way, and what keeps a session cheap: `workflow/guides
 `/work 12 14 15` reads the three cards and writes their plans one after another in the same chat; then one `/build <their topics>` in a new chat approves and builds them all.
 Then, in a new chat, `/build a b c` starts one builder per plan, at most 3 at the same time (more with `board.wip` in `workflow/config.json`, how many cards may be in progress at once), each in its own folder and port. If two plans change the
 same file, the later one waits until the first is finished with `/ship`. You get one summary with each folder, URL and
-"unsure" list. Give feedback naming the topic ("on fan-out: ..."), and ship one at a time: `/ship a`, then `/ship b`.
+questions for you (each with a recommendation); what was left out is already on the board as new cards. Give feedback naming the topic ("on fan-out: ..."), and ship one at a time: `/ship a`, then `/ship b`.
 `ui` cards join only after you have picked a variant.
 
 ## One big plan, several builders

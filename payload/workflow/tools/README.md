@@ -109,6 +109,9 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   or `go.mod` that `docs/STACK.md` does not name gets an `advice:` line.
 - **scope**: with one spec in `workflow/specs/`, a changed file the spec never names is printed as a `scope:` line (`"scope": "fail"` makes
   it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out).
+- **spec**: an approved spec in `workflow/specs/` must name its end state (the `End state:` line: the best version, and whether
+  this spec is it or a step toward it). Missing, empty or still the placeholder fails; a step that names no card for the rest
+  gets an `advice:` line. A spec not approved yet is still being written and is not read.
 - **quality** (when `quality.command` is in the config): the command prints "79 of 106"; fewer passing than the baseline fails.
   It runs when a changed file matches `quality.when` (default `src/**`) and with `--all`. `--update-baseline` stores the score.
   A command that cannot run on this computer prints `quality skipped: <why>` (the AI cases with no API key): the gate shows it as
@@ -177,7 +180,7 @@ and the stop-point hook refuses a shell write to it). Three kinds of rule, each 
 | Kind | Which | Adjustable? |
 |---|---|---|
 | safety stops | commit and push wait for your word, the sign-off, secrets, leaks, migrations, the AI wrapper, the image, the network, the packages, typecheck, tests | no: on, or the part is not installed (a level for one fails the gate) |
-| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, covers, errors, map, harness, versions, settings, spikes, together, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
+| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, spec, covers, errors, map, harness, versions, settings, spikes, together, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
 | process weight | a spec, a pitch (`/shape`), a UI board | by the card's size: `process.spec`, `pitch`, `uiBoard` (`always`, `small`, `medium`, `large`, `never`) |
 
 The phase fills them in (`"phase"`; `"preset"` before kit 3.4 is still read; no file is production): `"prototype"` while nothing

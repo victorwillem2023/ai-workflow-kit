@@ -22,25 +22,36 @@ it is the try command alone.
 
 ## 2. The message: plain words, real examples
 
-No file names, function names or code terms; where a term is needed, an example says what it means. In this order:
+Written so the owner can check each step in about a minute and never needs to ask a follow-up question. No file names,
+function names or code terms. Where a word needs explaining, show it with an example instead ("the long run, the one run a
+week over 15 km"). Short sentences, one idea each. In this order:
 
 1. **Open**: the link, or the one command to paste. With a server, also its log, as `--serve` printed it
    (`node workflow/scripts/logs.mjs <topic> --follow`): what each click did on the server, one line per request. Something looks wrong:
    the reference on the screen or in the console goes to `/debug`.
 2. **What is new**: one or two sentences on what a person can now do.
-3. **Try this**: two or three numbered steps with real example values, each with what should appear ("Set a 10 km run on
-   1 March with three free days: a plan of 14 weeks appears, week 1 has three runs, the longest 5 km"). The expected results
-   come from the tests or from running the example yourself, never from a guess.
+3. **Try this**: two or three numbered steps. Each gives exactly what to type or click, with the real values, and exactly what
+   should appear, with its numbers ("Type 10 km, race on 1 March, three free days, then press Make plan. You should see 14
+   weeks; week 1 has three runs; the longest is 5 km"). Never "check that the plan looks right": say what right is. The
+   expected results come from the tests or from running the example yourself, never from a guess.
 4. **Then try your own**: invite the owner's own numbers ("your real goal and your usual week") and say what to look for: would
    you follow this plan?
 5. **Edge cases**: two to four, each with the input and the answer it should give (a date in the past: refused, and it says why;
    a goal far beyond the usual week: a warning). Take them from the spec's cases and the tests.
 6. **On the app map** (with the map module): the ends this change built or moved, by their words, and that `docs/flow/index.html`
    shows them (open it in the browser).
-7. **Not in this card**: what is deliberately missing, so it is not reported as a fault.
-8. **Unsure**: the builder's "unsure" list in plain words.
+7. **Not in this card**: what is deliberately missing, so it is not reported as a fault, with the card each one is on now.
+8. **Questions for you**: the builder's *Questions*, each asked as a choice with the recommendation first and what each answer
+   would change, with an example. None: leave the part out.
 
 End with: "Say **done** when it works, or tell me what is wrong." Move the card to *Waiting for your check*.
+
+### Open points become cards
+Before the message, every *Later* item from the builder (and anything else noticed and left out) becomes a Backlog card,
+without asking: the owner should never have to ask for them. For each: `npm run board -- --search "<2-3 main words>"`; an open
+card that is the same idea gets a comment instead of a twin. Otherwise make it as `.claude/skills/idea/SKILL.md` steps 2 to 4
+say (your best guess for the labels, no question; a short body; `Depends on: #<this card>` when it builds on this one). An item that is really a decision is not a
+card: it goes under *Questions for you*. The message lists the new card numbers under *Not in this card*.
 
 ## 3. After the check
 

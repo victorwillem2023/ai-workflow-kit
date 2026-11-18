@@ -21,10 +21,15 @@ The owner wants to understand and steer the project, not just receive features. 
   files change and it does not; generated parts: `npm run map`.
 - **The backlog is the GitHub board**: one card at a time (`npm run board -- --show <n>`), never the whole list; "blocked,
   waiting for X" is `npm run board -- --block <n> "<reason>"`.
-- **One change at a time**: no extra cleanups or "while I was there" edits. Mention them instead.
+- **One change at a time**: no extra cleanups or "while I was there" edits; each becomes a card. Small steps are about what goes
+  in one commit, never a reason to pick the smaller design.
+- **The best design, not the quickest patch**, for app code, infra and docs alike: every plan names the end state first (clean,
+  easy to change, the version that scales). No special case beside a rule that could take it, no second way of doing one job:
+  extend the rule's home, and split or refactor first when that is what it takes (`/spec` step 2).
 - **Advice fits the project** (`project.audience`: `me`, `team`, `customers`). For `me`, never bring up launch, market, access
   reviews, privacy texts or "this already exists"; such a remark is made once, when it matters. All beyond the gate is optional.
-- After a change, report in plain language: what changed, what the test checks, what you weren't sure of.
+- After a change, report in plain language: what changed, what the test checks, and each open point as a question with your
+  recommendation or a card made for it, never a bare "not sure".
 - **Talk to the owner in plain words.** What it means for the person using the app before how it works; a technical word gets a
   few words of explanation the first time ("the gate, the checks that run before a commit"). Short sentences.
 <!-- /kit:how-we-work -->
@@ -57,8 +62,9 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 3. A function over about 60 lines is split into named steps. A file opens with a comment saying what it does (the file map is built from it).
 4. A file takes what it needs as arguments or a small context; it does not import the big class or the whole store.
 5. Touching a baselined file for a feature: first move the part you touch into its own file (same commit), or write the feature in a new file and leave only a call in the old one.
-6. Splits belong to the feature that needs them, never a separate refactor commit; the one exception is a card that moves a rule
-   into one place (rule 13), with no behaviour change and the same test results before and after.
+6. A split or refactor the end state needs is planned, never worked around: in the feature's own commit when it fits the card,
+   else a refactor card of its own, done first (the feature's card depends on it), with no behaviour change and the same test
+   results before and after. A card that moves a rule into one place (rule 13) is one of those.
 <!-- /kit:code-structure -->
 
 <!-- kit:changing-code -->

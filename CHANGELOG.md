@@ -2,6 +2,20 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.1.0**: **the best design, not the quickest patch**, for app code, infra and docs alike. Every spec names its **end
+  state** near the top (`End state: <the best version>. This spec: <is it | a step toward it, because ...; the rest is card
+  #n>`), and the gate refuses an approved spec whose line is missing or empty (a new quality check, `spec`; a step with no card
+  for the rest gets an advice line). `/spec` labels every design choice *end state* or *a step* and recommends the end state; a
+  step only for a named reason (another card first, far bigger than the card, no tests yet), and then the end-state card is
+  made in the same go with its `Depends on:` line. A special case beside a rule that could take it, or a second way of doing
+  one job, is never the end state. **A split or refactor the end state needs is planned, never worked around**: in the
+  feature's commit when it fits, else a refactor card done first (CLAUDE.md, rule 6, which no longer forbids a refactor
+  commit). CLAUDE.md says small steps are about one commit, never a reason to pick the smaller design. `/review` asks whether
+  the change moves toward the end state or leaves two ways of doing one thing. **Open points become cards**: the builder's
+  report ends in four fixed parts (Done, Tests, Questions, Later); every *Later* item is made a Backlog card at the hand-over
+  without asking (a twin of an open card gets a comment instead), and every question comes as a choice with a recommendation,
+  never a bare "not sure about X". **The hand-over is plainer**: each try step says exactly what to type and exactly what
+  should appear, a word that needs explaining gets an example instead, and the owner should need no follow-up question.
 - **4.0.4**: **dropping a spike leaves the main folder's modules alone.** `session.mjs --drop spike-<topic>` removed the folder
   with `git worktree remove --force` while its `node_modules` link was still there; on Windows that followed the link and
   emptied the main folder's `node_modules/.bin` (`'tsc' is not recognized` in the next gate; `npm rebuild` put it back). The

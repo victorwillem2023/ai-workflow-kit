@@ -13,6 +13,12 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
 1. Read `workflow/specs/<topic>.md`, then `git diff main --stat` and the diff of the files that matter (not generated ones).
 2. Answer these, each with the file and line when the answer is no:
    - **Does it do what the spec says the user sees?** Name anything missing, and anything built that the spec never asked for.
+   - **Does this move toward the end state, or leave two ways of doing one thing?** The spec's "End state:" line says what
+     the best version is. A second path beside an old one for the same job, a special case (`if` this kind, else the old way)
+     where the general rule could have taken it, or a copy of logic that already has a home is a finding, with what one way
+     would look like. The same for infra and docs: a second stack or module for what one already does, a doc that repeats
+     another or lists what a folder or a pattern would name. Code that grew messier to fit the change (a file past its size,
+     a function doing two jobs) is a finding with the split or refactor that would clean it.
    - **Were tests bent to pass?** List every existing test whose expectation changed (`git diff main -- tests`), and whether
      the spec meant that change.
    - **Was a rule copied?** A rule written a second time when it already has a home (`docs/ARCHITECTURE.md`, *Rules and where each lives*).
