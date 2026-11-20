@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v4.x` tag** (now `v4.3.2`). 4.0 works in phases (prototype, pilot, production, read from facts about
+> **Build on the latest `v4.x` tag** (now `v4.4.0`). 4.0 works in phases (prototype, pilot, production, read from facts about
 > who depends on the product: fast while you build, strict once people rely on it) and has the docs portal (`/portal`): every doc
 > in one page, in the project's own style sheet, with where the project stands at the top. 3.0 put the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
@@ -31,7 +31,7 @@ You steer, Claude plans, builds and checks; scripts do the checking so the AI do
 | Stage | What the kit gives it |
 |---|---|
 | **Idea** | `/idea`: one card per idea, bug or wish on a GitHub board; `/shape`: is it worth building (the problem, today's alternative, the first ten users, the smallest version, when to stop); `/spike`: a throwaway try of the riskiest part |
-| **Plan** | `/setup`: who it is for, the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to do next and which command, by value for the effort, at any point; `/tidy` (`npm run board -- --triage`): the board kept from piling up; `/estimate`: a change's work and cost from `docs/company/COSTS.md`; `/advise`: up to three advisors on a choice, citing the docs; `/spec`: a plan with named tests and how we will know it worked |
+| **Plan** | `/setup`: who it is for, the product (`docs/PRODUCT.md`), then the stack and the layers it proposes; `/next` (`npm run board -- --next`): what to do next and which command, by value for the effort, at any point; `/tidy` (`npm run board -- --triage`): the board kept from piling up, and one goal at a time with a finish line (`npm run board -- --focus`: a kind of request made really good, a part of the app finished, or code health when a number got worse; where goals come from follows the phase), a limit on cards in progress, cards the AI makes waiting for your yes, and a "where I stopped" line between sessions; `/estimate`: a change's work and cost from `docs/company/COSTS.md`; `/advise`: up to three advisors on a choice, citing the docs; `/spec`: a plan with named tests and how we will know it worked |
 | **Build** | `/work` and `/build`: tests first, one session folder per card, the gate (layers, size, copies, secrets, tests the change reaches) |
 | **Ship** | `/review` and `/ship`: one commit when you say done; the gate on GitHub; one scanned release image per commit (distroless for TypeScript and Go, a slim image for Python and Rust); a page-weight budget once there are screens. browser smoke and accessibility tests are added by `/setup` as a project check (Playwright, from `stack.md`) once there are screens: **not yet** shipped as kit code |
 | **Run** | from day one in a TypeScript app (the production module): checked settings, safe logs, health and readiness, stopping without downtime, a record of personal data (**Not yet** for Python, Go and Rust); `npm run deploy` from your computer to one host, health-gated, then watched for 5 minutes (the canary) and rolled back on its own; AI inside the app behind one wrapper with the OWASP rules (`workflow/guides/AI-SECURITY.md`). `/launch` decides where it runs, for any platform and infrastructure tool (`docs/run/LAUNCH.md`), writes `infra/` and the environments; every infrastructure change is tested with mocks, planned, reviewed against what was expected and applied by you (`docs/run/IAC.md`); deploys go from GitHub to staging by themselves, and to production only when you run it (or a required reviewer approves, checked before it deploys); `npm run drill` proves the backups. Guides for CI/CD, monitoring, releases and user testing, the service mesh, and scaling with the architecture board (`/arch`) |
@@ -63,7 +63,7 @@ UI and security are first-class parts of the flow, not extras:
 ```
 install.mjs               puts it all into a project (see below); --modules ui,security,testing,dev picks parts
 payload/                  CORE machinery (copied; overwritten only with --force)
-  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market /advise /estimate /tidy /debug, and the cheap helpers /next /check /find /docs
+  .claude/skills/         /setup /idea /shape /spike /work /spec /build /ship /review /retro /lesson /secops /launch /arch /market /advise /estimate /tidy /sweep /debug, and the cheap helpers /next /check /find /docs
                           infracheck and infraplan (infrastructure checked, planned, reviewed, applied), drill (the restore drill)
   workflow/tools/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
@@ -163,7 +163,7 @@ npm i -D tsx typescript @types/node@^26 knip @biomejs/biome # the installer prin
 |---|---|
 | `minimal` | the gate and its checks only: no commands, no board, no sessions, no CLAUDE.md. The safety net and nothing else. |
 | `solo` | the build loop: `/setup` `/next` `/idea` `/work` `/spec` `/build` `/ship` `/review` `/check` `/find` `/docs` `/debug` `/lesson`, the board, sessions, the stop points (was `--lean`) |
-| `product` | solo and the stages: `/shape` `/spike` `/tidy` `/estimate` `/advise` `/launch` `/market` `/retro` `/secops`, and every module |
+| `product` | solo and the stages: `/shape` `/spike` `/tidy` `/sweep` `/estimate` `/advise` `/launch` `/market` `/retro` `/secops`, and every module |
 | `team` | product, with pull requests, a required review and the team roles (`workflow/guides/TEAM.md`) |
 
 `--with <part>` adds one (`--with ai`, `--with retro`), `--without <part>` leaves one out (`--without market,ui`). Each skill is

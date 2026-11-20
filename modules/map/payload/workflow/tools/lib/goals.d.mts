@@ -1,0 +1,2 @@
+export interface Goal { id: string; name: string; kind: string; done: number; left: number; total: number; cards: number[]; uncarded: number; notes: string[]; due?: boolean }
+export function mapGoals(flow: { groups: { name: string; stages: any[] }[]; kinds?: Record<string, string[]> }, cards: { number: number; state: string }[]): Goal[];

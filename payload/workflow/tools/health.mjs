@@ -10,6 +10,8 @@ import { lineCount, oversize } from './lib/size.mjs';
 import { longFunctions, copiedFunctions } from './lib/funclen.mjs';
 import { countPatterns } from './lib/ratchet.mjs';
 import { hookProblem } from './lib/hookcheck.mjs';
+import { codeHotspots } from './lib/codestate.mjs';
+import { hotspotLines } from './lib/hotspots.mjs';
 
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
@@ -49,3 +51,5 @@ if (!process.argv.includes('--offline')) {
 }
 // the stop points must start: a hook script that cannot load lets every commit, push and main-folder edit through (lib/hookcheck.mjs)
 row('stop points', hookProblem('.') ?? 'start');
+// what the state of the code says to work on, each with the principle behind it (lib/hotspots.mjs); the code health goal names the same
+console.log(`\n${hotspotLines(codeHotspots(process.cwd(), config))}`);

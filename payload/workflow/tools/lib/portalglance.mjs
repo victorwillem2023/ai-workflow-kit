@@ -25,6 +25,41 @@ export function rich(text, repo = null) {
   return t;
 }
 
+/**
+ * The product in a few words, from its README: { lead, text }. `lead`: the bold line a README opens with (its pitch), when it
+ * has one; `text`: its first paragraph of plain sentences (headings, pictures, badges, tables, lists, quotes and code left out).
+ */
+export function productIntro(readme) {
+  const md = String(readme ?? '').replace(/\r\n/g, '\n').replace(/^\s*(```|~~~)[\s\S]*?^\s*\1.*$/gm, '');
+  const firstPara = md.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p && !/^(?:[<#|>\-*!\[]|\d+[.)]\s)/.test(p)) ?? '';
+  const before = firstPara ? md.slice(0, md.indexOf(firstPara)) : md;
+  const lead = /<(?:b|strong)>([^<]{8,200})<\/(?:b|strong)>/.exec(before)?.[1] ?? /^\*\*([^*\n]{8,200})\*\*$/m.exec(before)?.[1] ?? '';
+  const text = firstPara.replace(/\s*\n\s*/g, ' ');
+  return { lead: lead.trim(), text: text.length > 420 ? `${text.slice(0, 420).replace(/\s+\S*$/, '')}…` : text };
+}
+
+/** What the app does, from the guide's index (docs/GUIDE.md): its table of parts as [{ title, path, what }]. */
+export function guideParts(guide, from = 'docs/GUIDE.md') {
+  const dir = from.replace(/[^/]+$/, '');
+  return [...String(guide ?? '').matchAll(/^\|\s*\[([^\]]+)\]\(([^)\s#]+\.md)\)\s*\|\s*([^|\n]*?)\s*\|/gm)]
+    .map(([, title, href, what]) => ({ title: title.trim(), path: `${dir}${href}`.replace(/[^/]+\/\.\.\//g, ''), what: what.trim() }));
+}
+
+/** The product block that opens the page: the pitch, what it is, and what it does (each part a link to its guide page). */
+function productPart(p) {
+  if (!p || (!p.lead && !p.text && !p.parts?.length)) return '';
+  const parts = p.parts?.length ? `<h2>What it does</h2><section class="panel parts">${p.parts.map((x) => `<a href="/doc/${esc(x.path)}"><span>${esc(x.title)}</span><small>${esc(x.what.replace(/`/g, ''))}</small></a>`).join('')}</section>` : '';
+  return `<section class="product">${p.lead ? `<p class="lead">${esc(p.lead)}</p>` : ''}${p.text ? `<p>${esc(p.text.replace(/[`*]/g, ''))}</p>` : ''}</section>${parts}`;
+}
+
+/** What the owner is on: the cards in progress and to try, and the picked focus block (npm run board -- --focus). */
+function nowPart(b, repo) {
+  if (!b?.was && !b?.focus) return '';
+  const was = b.was ? `<div class="line">${rich(b.was.replace(/^you were on: /, ''), repo)}</div>` : '';
+  const focus = b.focus ? `<div class="line"><strong>${rich(b.focus.replace(/^focus: /, 'Focus: '), repo)}</strong></div>` : `<div class="line quiet">No focus picked: ${chip('/tidy focus')} picks what the coming days are about.</div>`;
+  return `<h2>You are on</h2><section class="panel now">${focus}${was}</section>`;
+}
+
 const chip = (cmd) => (cmd ? `<button class="chip" data-copy="${esc(cmd)}" title="Copy">${esc(cmd)}</button>` : '');
 const caption = (s) => `<div class="cap">${s}</div>`;
 const num = (c) => (c.url ? `<a class="num" href="${esc(c.url)}" target="_blank" rel="noopener">#${c.number}</a>` : `<span class="num">#${c.number}</span>`);
@@ -86,7 +121,8 @@ function sidePart(g) {
 /**
  * The page: g = { project, repo, phase: { phase, facts: [id], next, needs: [{ short, how, done }] }, stage: [{ title, command,
  * time }], shipped, board (lib/boardview.mjs) or null, boardNote, boardAge: 'fresh' | 'asking' | 'old' | 'failed', asked,
- * decisions, recent, styled }.
+ * decisions, recent, styled, product: { lead, text, parts } }. The product comes first: what it is and what it does; then
+ * what the owner is on, and the workflow's numbers under "Where it stands".
  */
 export function glanceHtml(g) {
   const b = g.board;
@@ -100,6 +136,7 @@ export function glanceHtml(g) {
   const tidy = decisions.length ? '<button class="primary" data-copy="/tidy" title="Copy /tidy">Tidy the board · /tidy</button>' : '';
   const unstyled = g.styled ? '' : `<div class="notice" role="note">No style sheet yet, so a plain look. ${chip('/ui')} writes <code>docs/STYLE.md</code>; the portal follows it.</div>`;
   return `${unstyled}<header class="top"><div>${caption(`At a glance${age ? ` · ${age}` : ''}`)}<h1>${esc(g.project)}</h1></div>${tidy}</header>`
+    + productPart(g.product) + nowPart(b, g.repo) + (g.product ? '<h2>Where it stands</h2>' : '')
     + `<section class="tiles" aria-label="Numbers">${tiles.filter(Boolean).join('')}</section>`
     + `<div class="split"><div class="main-col">${boardPart(b, g.repo, g.boardNote ?? 'No board yet: /setup makes it.')}</div><div class="side-col">${sidePart(g)}</div></div>`;
 }

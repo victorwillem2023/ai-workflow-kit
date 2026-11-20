@@ -10,6 +10,9 @@ const COST = { small: 1, medium: 2, large: 4, unknown: 3 };
 const ODDS = { high: 1, medium: 0.75, low: 0.5 };
 /** The columns a card can be started from; the rest are being worked on, waiting, blocked or done. */
 export const STARTABLE = ['Backlog', 'Needs a board or decision', 'Ready'];
+/** The label of a card an agent made on its own (an open point, something noticed): it waits for the owner's yes
+ *  (board --accept) before it is ranked or offered, so the list to choose from only grows by what the owner let in. */
+export const TO_SORT = 'to sort';
 /** The columns of a card that is built but not finished: what depends on it can start on top of it (session.mjs --on). */
 export const BUILT = ['Waiting for your check'];
 
@@ -44,7 +47,7 @@ export function scoreCard(card, firstVersion) {
 export function rankCards(cards, { firstVersion, columns = STARTABLE, built = BUILT } = {}) {
   const { parts, unlocks, unlocked } = split(cards, built);
   const byNo = new Map(cards.map((c) => [c.number, c]));
-  return cards.filter((c) => c.state === 'open' && columns.includes(c.column) && !(parts.get(c.number)?.waits ?? []).length)
+  return cards.filter((c) => c.state === 'open' && columns.includes(c.column) && !c.labels.includes(TO_SORT) && !(parts.get(c.number)?.waits ?? []).length)
     .map((c) => {
       const s = scoreCard(c, firstVersion);
       const u = unlocks.get(c.number) ?? 0;

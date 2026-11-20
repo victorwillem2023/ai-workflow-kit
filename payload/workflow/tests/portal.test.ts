@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { about, docBody, inline, linkTo, markdown, menu, titleOf } from '../../workflow/tools/lib/portal.mjs';
-import { glanceHtml, rich } from '../../workflow/tools/lib/portalglance.mjs';
+import { glanceHtml, guideParts, productIntro, rich } from '../../workflow/tools/lib/portalglance.mjs';
 import { themeCss, themeFrom } from '../../workflow/tools/lib/portaltheme.mjs';
 import { boardView } from '../../workflow/tools/lib/boardview.mjs';
 import { PORTS } from './session-repo';
@@ -56,15 +56,18 @@ describe('the portal\'s pages', () => {
     assert.equal(titleOf('docs/x.md', 'no heading'), 'x');
     assert.equal(about('<p align="center"><img src="i.svg"></p>\n\n# Guide\n\nEverything in detail. More.'), 'Everything in detail');
   });
-  it('the menu: start here, the product, the subjects, the other folders, then the kit\'s guides, each doc marked when it is the kit\'s', () => {
+  it('the menu: start here, the product, the subjects, the other folders; folded at the end the templates nobody filled in and everything that is the kit\'s', () => {
     const docs = ['README.md', 'docs/PRODUCT.md', 'docs/MAP.md', 'docs/run/LAUNCH.md', 'docs/decisions/a.md', 'workflow/guides/WORKFLOW.md'].map((path) => ({ path, text: `# ${path}\n\nIt is ${path}.` }));
     const m = menu(docs, new Set(['docs/run/LAUNCH.md']));
-    assert.deepEqual(m.map((s) => s.title), ['Start here', 'The product and how it is built', 'Running it', 'Decisions', 'How we work with the AI (the kit\'s guides)']);
+    assert.deepEqual(m.map((s) => s.title), ['Start here', 'The product and how it is built', 'Decisions', 'The kit\'s guides (for the AI)']);
+    assert.deepEqual(m[3].items.map((i) => [i.path, i.kit]), [['docs/run/LAUNCH.md', true], ['workflow/guides/WORKFLOW.md', false]], 'a doc the kit wrote is with the kit\'s guides, not among the project\'s own');
+    const blank = menu([{ path: 'docs/PRODUCT.md', text: '# The product\n\n## The problem\n<what goes wrong for whom, today>\n\n## Today\n<a spreadsheet, another app, nothing>\n\n## Users\n<who, and where to reach them>\n' },
+      { path: 'README.md', text: '<p align="center">\n<img src="a.svg" width="72" height="72" alt="">\n</p>\n<h1 align="center">App</h1>\n' }, { path: 'docs/STACK.md', text: '# Stack\n\nNode.\n' }]);
+    assert.deepEqual(blank.map((s) => [s.title, s.items.map((i) => i.path)]), [['Start here', ['README.md']], ['The product and how it is built', ['docs/STACK.md']], ['Not filled in yet', ['docs/PRODUCT.md']]]);
     assert.deepEqual(m[1].items.map((i) => i.path), ['docs/PRODUCT.md'], 'the file map is under its own link, not in the list');
     // each doc by its title, the project's name taken off its front; the file is the tooltip
     const named = menu([{ path: 'docs/PRODUCT.md', text: '# Trailsmith: the product\n' }, { path: 'docs/STACK.md', text: '# How Trailsmith is built\n' }], new Set(), 'trailsmith');
     assert.deepEqual(named[0].items.map((i) => [i.label, i.what]), [['How Trailsmith is built', 'docs/STACK.md'], ['The product', 'docs/PRODUCT.md']]);
-    assert.equal(m[2].items[0].kit, true);
   });
 });
 
@@ -115,6 +118,22 @@ describe('at a glance', () => {
     assert.match(rich('#12 waits', 'o/app'), /<a class="num" href="https:\/\/github\.com\/o\/app\/issues\/12"/);
     assert.match(glanceHtml({ ...g, boardAge: 'old' }), /over 15 minutes old/);
     assert.match(glanceHtml({ ...g, styled: false }), /No style sheet yet[\s\S]*\/ui/);
+  });
+});
+
+describe('the product opens the page', () => {
+  const readme = '<p align="center">\n  <img src="icon.svg" width="72" alt="">\n</p>\n\n<h1 align="center">Trailsmith</h1>\n\n<p align="center">\n  <b>Describe your route in a sentence.</b>\n</p>\n\n'
+    + '[![ci](https://x/badge.svg)](https://x)\n\nTrailsmith reads the sentence and tries dozens\nof routes. No account.\n\n## Quick start\n\nRun it.\n';
+  const guide = '# Guide\n\n| Part | What is in it |\n|---|---|\n| [Setting up](guide/setup.md) | installing, every `.env` setting |\n| [On a bike](guide/bike.md) | road, gravel and MTB |\n';
+  it('the pitch and the first plain paragraph from the README, and what it does from the guide\'s parts', () => {
+    assert.deepEqual(productIntro(readme), { lead: 'Describe your route in a sentence.', text: 'Trailsmith reads the sentence and tries dozens of routes. No account.' });
+    assert.deepEqual(productIntro('# App\n\nIt plans runs.\n'), { lead: '', text: 'It plans runs.' });
+    assert.deepEqual(guideParts(guide), [{ title: 'Setting up', path: 'docs/guide/setup.md', what: 'installing, every `.env` setting' }, { title: 'On a bike', path: 'docs/guide/bike.md', what: 'road, gravel and MTB' }]);
+  });
+  it('comes before the numbers, with what the owner is on; a page without it is as it was', () => {
+    const html = glanceHtml({ project: 'Trailsmith', product: { ...productIntro(readme), parts: guideParts(guide) }, board: { tie: [], next: [], waiting: [], unranked: 0, inbox: 0, decisions: [], focus: 'focus: UI (1 of 5 done, 4 to start)', was: 'you were on: in progress: #5 Week header' } });
+    assert.match(html, /<p class="lead">Describe your route in a sentence\.<\/p>[\s\S]*What it does<\/h2>[\s\S]*href="\/doc\/docs\/guide\/bike\.md"><span>On a bike<\/span><small>road, gravel and MTB<\/small>[\s\S]*You are on<\/h2>[\s\S]*Focus: UI \(1 of 5 done, 4 to start\)[\s\S]*in progress: #5 Week header[\s\S]*Where it stands<\/h2>[\s\S]*class="tiles"/);
+    assert.doesNotMatch(glanceHtml({ project: 'App' }), /What it does|You are on|Where it stands/);
   });
 });
 

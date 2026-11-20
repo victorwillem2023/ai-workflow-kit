@@ -1,8 +1,9 @@
 // What workflow/scripts/session.mjs gained after its first version: the main folder's own notes (--check-main, --commit-notes, --sync),
 // a session's dev server (--serve), and sessions built on another one (--on, --restack). Built on session-core.mjs.
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
-import { execFileSync, spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { startHidden } from '../tools/lib/hidden.mjs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { git, gitQuiet, here, main, PREFIX, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, mapPages, ensurePackages, npmRun, rebaseOn, gh } from './session-core.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
@@ -86,10 +87,9 @@ export async function serve(topic) {
   const scripts = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts ?? {};
   if (!scripts.dev) throw new Error(`${dir} has no "dev" script, so there is nothing to open: a change without a screen is tried with a command (.claude/skills/build/try-it.md).`);
   const log = join(tmpdir(), `${PREFIX}-${topic}-dev.log`);
-  const out = openSync(log, 'w');
-  // a shell only on Windows, where npm is a .cmd file; the arguments are fixed, never outside input
-  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-  spawn('npm', ['run', 'dev'], { cwd: dir, detached: true, stdio: ['ignore', out, out], shell: process.platform === 'win32', windowsHide: true }).unref();
+  // a shell only on Windows, where npm is a .cmd file; the arguments are fixed, never outside input. Started through
+  // lib/hidden.mjs: a plain detached start opened a console window on Windows for the server and for each of its restarts
+  startHidden('npm', ['run', 'dev'], { cwd: dir, log, shell: process.platform === 'win32' });
   for (let i = 0; i < 120; i++) {
     if (await answers()) {
       if (await stillAnswers()) { console.log(`The dev server runs: ${url} (--finish stops it)\n${watch}`); return; }

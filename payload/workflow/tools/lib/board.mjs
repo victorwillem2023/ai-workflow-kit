@@ -215,6 +215,11 @@ export function rateCard(board, run, number, group, word) {
   return label;
 }
 
+/** Takes `label` off card #number (the owner let a card an agent made onto the list: board --accept). */
+export function unlabelCard(board, run, number, label) {
+  gh(run, `taking "${label}" off card #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, '--remove-label', label]);
+}
+
 /** Card #number depends on the cards `on` (they must be done first): a "Depends on: #a, #b" line in its text, kept in one line. */
 /** Adds (or with remove takes off) what card `number` depends on; returns the full list it ends up with. */
 export function dependCard(board, run, number, on, { remove = false } = {}) {

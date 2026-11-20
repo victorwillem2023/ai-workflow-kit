@@ -22,6 +22,11 @@ owner says done.
 owner picks. The order comes from the cards' dependencies first (only cards nothing open holds back, first-version cards
 first), then from their worth (value for the effort, plus the value of the cards they unlock). Pass on its notes about cards
 with no value label, or issues waiting off the board (`npm run board -- --inbox`), in one line. Never read the whole board.
+While a goal or focus is picked (its `goal:` or `focus:` line), those three are its cards: say the line. A `together, ...`
+line is an offer of its own: cards that go in one session, one after another, or side by side.
+
+**A card number outside the picked focus** (`npm run board -- --focus` lists the block's cards): say so in one line ("#n is
+outside the UI block you picked") and go on; the owner chose it. Never add it to the block yourself.
 
 ## 1. Read the card
 
@@ -78,6 +83,10 @@ On the owner's yes, move the card to *Ready* (`/spec` does this itself).
 
 ## 3. Build in a session folder, tests first
 
+**Room to start**: `npm run board -- --room`. When it prints STOP (more cards in progress than `board.wip`), stop here: name
+the cards in progress in one line each and ask which to finish or park first (park: `--move <n> "Ready"`). A card that is
+already *In progress* (picked up again) needs no room.
+
 Move the card to *In progress*: `npm run board -- --move <n> "In progress"`.
 
 - **With a spec**: `/build <topic>`, in the new chat. Steps 3 to 5 then happen there.
@@ -114,7 +123,8 @@ change without a screen, in plain words, with examples, the owner's own numbers 
 ## Several cards (`/work 12 14 15`)
 
 1. Read each card as step 1 says, one `--show` per card. `ui` cards go their own route (`/ui <n>`), not this one.
-2. Sort them as `together.md` says, and show the sorting with the plans:
+2. Start from the script's sorting, `npm run board -- --together <n,m,...>` (from the labels, the dependencies and the app
+   map), check it against what the cards and the code say as `together.md` says, and show the sorting with the plans:
    - **combined**: one spec, one session, one commit that closes them all;
    - **stacked**: one starts on top of the other (its spec's "Starts on" line);
    - **side by side**: each on its own.

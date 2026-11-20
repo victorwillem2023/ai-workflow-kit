@@ -21,8 +21,10 @@ The owner wants to understand and steer the project, not just receive features. 
   *Code structure* says they wait); `docs/ARCHITECTURE.md` when the layers or flow change; `docs/code/<folder>.md` when a part moves. A doc with a `<!-- covers: ... -->` line fails the gate when its
   files change and it does not; generated parts: `npm run map`.
 - **The backlog is the GitHub board**: one card at a time (`npm run board -- --show <n>`), never the whole list; "blocked,
-  waiting for X" is `npm run board -- --block <n> "<reason>"`.
-- **One change at a time**: no extra cleanups or "while I was there" edits; each becomes a card. Small steps are about what goes
+  waiting for X" is `npm run board -- --block <n> "<reason>"`. The owner works towards one goal at a time
+  (`npm run board -- --focus`); when they stop for now, leave one line for the next session: `npm run board -- --stopped "<line>"`.
+- **One change at a time**: no extra cleanups or "while I was there" edits; each becomes a card that waits for the owner's yes
+  (`npm run board -- --add ... --unsorted`). Small steps are about what goes
   in one commit, never a reason to pick the smaller design.
 - **The best design, not the quickest patch**, for app code, infra and docs alike: every plan names the end state first (clean,
   easy to change, the version that scales). No special case beside a rule that could take it, no second way of doing one job:

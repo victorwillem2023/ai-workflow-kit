@@ -30,6 +30,8 @@ card first and leave a comment on it when you stop.
    variants A, B, C and its pictures, `.claude/skills/ui/SKILL.md`), the owner picks, and stage 2 builds the pick, in the same commit
    as the board, its notes file and its README row. A card that is not labelled `ui` and turns out to need one: stop and ask to
    relabel or split it. **A small tweak to a part that exists**: a fast live draft is allowed, no board, one pass, then the owner tries it.
+- **A script that needs a real browser** (walk a flow, measure the page): `workflow/scripts/browser.mjs` (`openBrowser`);
+  `workflow/scripts/memory.mjs` checks that the page lets go of what it drew, `workflow/scripts/weigh.mjs` what the build weighs.
 6. **Browser feedback** is one numbered list per round: one pass per round, with before and after pictures (`workflow/scripts/shots.mjs`).
 7. If you must deviate from a board, say so in the commit body and in your reply, and write it in the board's notes file (`docs/STYLE.md`
    too when a token, component or rule changes). Never leave code and style sheet disagreeing.

@@ -1,6 +1,8 @@
 # Cards that go together: combine, stack, or side by side
 
-Used by `/work` (step 1 and *Several cards*) and `/spec`. The aim: the owner never waits for a commit on main when the work
+Used by `/work` (step 1 and *Several cards*) and `/spec`. The script proposes a sorting first
+(`npm run board -- --together [n,m]`: small cards on the same part in one session, a card after the one it needs, bigger
+cards of different parts side by side); these rules decide, since the script only sees labels, dependencies and the app map. The aim: the owner never waits for a commit on main when the work
 could go on, and work that belongs together is not split into commits that only make sense as a pair. The owner sees the
 choice with the plan, and can say otherwise.
 

@@ -16,6 +16,7 @@ export function commentCard(board: Board, run: GhRunner, number: number, text: s
 /** Moves card #number to the Blocked column and comments "Blocked: <reason>"; an empty reason is refused before any call. */
 export function blockCard(board: Board, run: GhRunner, number: number, reason: string, cache?: BoardCache): void;
 export function readCard(board: Board, run: GhRunner, number: number): Card;
+export function unlabelCard(board: Board, run: Run, number: number, label: string): void;
 export function rateCard(board: Board, run: GhRunner, number: number, group: string, word: string): string;
 export function searchCards(board: Board, run: GhRunner, words: string): { number: number; title: string; state: string; column: string | null }[];
 /** `unknownLabels`: labels the config names (types and `labels`) that the repo does not have. */

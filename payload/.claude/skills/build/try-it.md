@@ -54,11 +54,12 @@ End with: "Say **done** when it works, or tell me what is wrong." Move the card 
 ### Open points become cards
 
 Before the message, every *Later* item from the builder (and anything else noticed and left out) becomes a Backlog card,
-without asking: the owner should never have to ask for them. For each item:
+without asking: the owner should never have to ask for them. They wait for the owner's yes before they are offered
+(`--unsorted`), so the list to choose from only grows by what the owner let in. For each item:
 
 1. Search first: `npm run board -- --search "<2-3 main words>"`. An open card with the same idea gets a comment instead of a twin.
 2. Otherwise make it as `.claude/skills/idea/SKILL.md` steps 2 to 4 say: your best guess for the labels, no question, a short
-   body, and `Depends on: #<this card>` when it builds on this one.
+   body, and `Depends on: #<this card>` when it builds on this one; add `--unsorted` to its `npm run board -- --add`.
 
 An item that is really a decision is not a card: it goes under *Questions for you*. The message lists the new card numbers
 under *Not in this card*.

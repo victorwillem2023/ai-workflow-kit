@@ -42,7 +42,7 @@ export function moduleNeeds(modules, { framework = false } = {}) {
 // work, spec, build, ship, review, check, find, docs, debug, lesson, the gate, the board, the map, sessions) is always there.
 // A part's guides and tools travel with it (a lean project without /market has no GROWTH.md either).
 const CORE_PARTS = {
-  shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/'],
+  shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/', '.claude/skills/sweep/'],
   estimate: ['.claude/skills/estimate/'],
   advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/run/BUY-OR-HOST.md', 'docs/run/SCALING.md', 'docs/company/STAGES.md', 'docs/company/ROADMAP.md'],
   launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],

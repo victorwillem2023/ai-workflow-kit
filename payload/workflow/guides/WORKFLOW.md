@@ -16,6 +16,9 @@ the rules the agent follows are in `CLAUDE.md`.
 
 ## The idea in one minute
 - **The board is the only backlog.** Every idea, bug and wish is one card on the GitHub board.
+- **One goal at a time, few cards at once.** You pick a goal with a finish line (`/tidy focus`), and `/next` shows how far it
+  is. No more than `board.wip` cards are in progress: `/work` and `/build` stop and ask before one more starts. Cards the AI
+  makes along the way wait for your yes before they are offered, and the last session's "where I stopped" line opens the next.
 - **You steer, the agent builds.** The agent plans and stops for your yes, builds and stops for you to try it,
   and commits only when you say it is done. (`CLAUDE.md` calls the person steering "the owner".)
 - **One card, one session folder, one commit.** Each piece of work happens in its own folder
@@ -35,7 +38,9 @@ come when a stage needs them; past the gate, every one is optional (`project.aud
 | Idea | `/idea <a sentence>` | Adds a card to Backlog. Checks for a duplicate first, picks the labels, answers `#<n> made in Backlog: <url>`. Works in any folder. |
 | Idea | `/shape <n>` | Is it worth building: the questions, fitted to who it is for; sets the card's value. |
 | Idea | `/spike <n>` | A throwaway try of the riskiest part, ending in a decision note. |
-| Plan | `/tidy` | When the board piles up: one batch of tidy-ups for your yes, then the week's focus. |
+| Plan | `/tidy` | When the board piles up: one batch of tidy-ups for your yes, then the focus block. |
+| Plan | `/sweep [theme]` | The full clean-up, when `/tidy` is not enough: every open card, one theme at a time, 25 per round. What to close, merge or split, and the area, value and effort each card lacks; you approve each round. |
+| Plan | `/tidy focus` | Pick the goal for the coming days, with a finish line: one kind of request made really good ("hikes to a top: 14 of 26 done"), one part of the app finished, or code health (speed, reliability, tidy code) when a number got worse. Until it is done `/next` and `/work` offer only its cards. Without the app map: a block of cards of one area. Where goals come from follows the phase: the product itself in a prototype, what users report once they use it. |
 | Plan | `/estimate <n or a sentence>` | What one change costs: the work, the money a month now and at 10 times, and what else it brings. |
 | Plan | `/advise [panel] [question]` | Help choosing between options: up to three advisors, each citing the docs; `/arch` is its architecture panel; `/advise ai` looks where AI could make the app better, once the first version works. You decide. |
 | Build | `/work <n>` | The main entry. Plans card n and stops for your yes, in the steps below. Run it from the main folder in a fresh chat. |
@@ -119,6 +124,9 @@ A small tweak to something that exists (spacing, a label, a colour) skips the bo
 |---|---|
 | read one card | `npm run board -- --show <n>` |
 | find a card | `npm run board -- --search "<words>"` |
+| see the goal you are on, or the ones to pick from | `npm run board -- --focus` |
+| let in the cards made while building (they wait for your yes) | `npm run board -- --unsorted`, then `--accept <n,m>` |
+| close the cards nobody touched for eight weeks | `npm run board -- --expire`, then `--expire --yes` |
 | see the running sessions and unpushed work | `node workflow/scripts/session.mjs --list` |
 | park a card ("waiting for X") | `npm run board -- --block <n> "<reason>"` |
 | move a card by hand | `npm run board -- --move <n> "<column>"` |

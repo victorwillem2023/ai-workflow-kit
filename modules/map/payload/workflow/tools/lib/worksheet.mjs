@@ -17,7 +17,8 @@ export function loadFlow(root) {
   let requests = {};
   try { requests = JSON.parse(readFileSync(join(root, 'workflow/config.json'), 'utf8')).map?.requests ?? {}; } catch { /* no config: the kit's places */ }
   const requestPages = [requests.index ?? 'docs/REQUESTS.md', requests.folder ?? 'docs/requests/'];
-  return { groups: [...(window.FLOW_REQUESTS ? [window.FLOW_REQUESTS] : []), ...window.FLOW.groups], requestPages };
+  // kinds: which stages each kind of request runs through (lib/goals.mjs measures a kind by its page and by those stages)
+  return { groups: [...(window.FLOW_REQUESTS ? [window.FLOW_REQUESTS] : []), ...window.FLOW.groups], requestPages, kinds: window.FLOW.kinds ?? {} };
 }
 
 /** Every end of the map with where it is: group › stage, and the stage's source file (where to fix it). */

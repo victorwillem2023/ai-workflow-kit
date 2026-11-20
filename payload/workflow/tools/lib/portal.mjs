@@ -131,7 +131,8 @@ export const titleOf = (path, text) => /^#\s+(.+)$/m.exec(String(text ?? '').rep
 
 /**
  * The menu: sections of { title, items: [{ path, label, what, kit }] }, in the order a project meets them: start here, the
- * product and how it is built, the subject folders, the other folders under docs/, then the kit's own guides.
+ * product and how it is built, the subject folders, the other folders under docs/; then, folded away, the templates nobody
+ * filled in yet and every guide that is the kit's (for the AI more than for the owner).
  */
 /** A doc's title as the portal lists it: the project's name taken off its front ("Trailsmith: the product" is "The product"). */
 export function docTitle(path, text, project = '') {
@@ -140,7 +141,15 @@ export function docTitle(path, text, project = '') {
   return t ? t[0].toUpperCase() + t.slice(1) : posix.basename(path, '.md');
 }
 
+/** A template nobody filled in: three or more lines that are still a `<what goes here>` placeholder (words with a space
+ *  between angle brackets; an HTML tag has an attribute with "=", a closing "/" or no space). */
+export const unfilled = (text) => (String(text ?? '').match(/^<(?=[^<>\n]* )[^<>\n=\/!]{12,}>$/gm) ?? []).length >= 3;
+
 export function menu(docs, kit = new Set(), project = '') {
+  // what the owner reads comes first: the kit's own guides and the templates nobody filled in are folded away at the end
+  const all = docs;
+  const later = (d) => kit.has(d.path) || /^workflow\//.test(d.path) || (unfilled(d.text) && !/^(?:README|CLAUDE)\.md$/.test(d.path));
+  docs = all.filter((d) => !later(d));
   // each doc by its title (docTitle); the file is the tooltip
   const item = (d) => ({ path: d.path, label: docTitle(d.path, d.text, project), what: d.path, kit: kit.has(d.path) });
   const sorted = (xs) => xs.map(item).sort((a, b) => a.label.localeCompare(b.label));
@@ -153,7 +162,8 @@ export function menu(docs, kit = new Set(), project = '') {
   const subjects = new Set(SUBJECTS.map(([f]) => f));
   const others = [...new Set(docs.map((d) => /^docs\/([^/]+)\//.exec(d.path)?.[1]).filter((f) => f && !subjects.has(f)))].sort();
   for (const f of others) sections.push({ title: `${f[0].toUpperCase()}${f.slice(1)}`, items: sorted(where(new RegExp(`^docs/${f}/`))), folder: true });
-  sections.push({ title: 'How we work with the AI (the kit\'s guides)', items: sorted(where(/^workflow\/(?:guides\/[^/]+|tools\/README)\.md$/)), folder: true });
+  sections.push({ title: 'Not filled in yet', items: all.filter((d) => later(d) && !kit.has(d.path) && !/^workflow\//.test(d.path)).map(item).sort((a, b) => a.label.localeCompare(b.label)), folder: true });
+  sections.push({ title: 'The kit\'s guides (for the AI)', items: all.filter((d) => kit.has(d.path) || /^workflow\//.test(d.path)).map(item).sort((a, b) => a.label.localeCompare(b.label)), folder: true });
   return sections.filter((s) => s.items.length);
 }
 
@@ -222,6 +232,9 @@ h2{margin:8px 0 0;font-size:var(--p-s-title);line-height:1.2;font-weight:700;fon
 .warn .hint{color:var(--p-muted);font-weight:500}.warn strong{font-weight:600}
 .needs{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px;font-size:var(--p-s-ui);font-weight:500}.needs li.done{color:var(--p-caption)}.tick{color:var(--p-ok);font-weight:700}
 .docs{padding:4px 16px;gap:0}.docs a{display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 0;font-size:var(--p-s-ui);font-weight:500;text-decoration:none;border-bottom:1px solid var(--p-line)}.docs a:last-child{border-bottom:0}
+.product{display:flex;flex-direction:column;gap:8px;max-width:760px}.product p{margin:0;color:var(--p-muted)}.product .lead{font-size:var(--p-s-title);font-weight:600;color:var(--p-text)}
+.parts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 24px;padding:4px 16px}.parts a{display:flex;flex-direction:column;gap:2px;padding:10px 0;text-decoration:none;border-bottom:1px solid var(--p-line)}.parts a span{font-size:var(--p-s-ui);font-weight:600;color:var(--p-text)}.parts a small{font-size:var(--p-s-caption);color:var(--p-caption)}.parts a:hover span{color:var(--p-link)}
+.now{display:flex;flex-direction:column;gap:8px}.now .line{font-size:var(--p-s-ui)}
 .docs a span{flex:1 1 auto;min-width:0}.docs small{font-size:var(--p-s-caption);color:var(--p-caption);white-space:nowrap}.docs b{font-size:var(--p-s-caption);color:var(--p-onPrimary);background:var(--p-primary);border-radius:999px;padding:0 8px;font-weight:600}
 .chip{display:inline-flex;align-items:center;height:28px;padding:0 10px;margin:2px 0;border:1px solid var(--p-control);border-radius:999px;background:var(--p-raised);color:var(--p-text);font:inherit;font-size:var(--p-s-caption);font-weight:600;cursor:pointer;vertical-align:baseline}
 .chip:hover{border-color:var(--p-link)}.chip.copied{border-color:var(--p-ok);color:var(--p-ok)}

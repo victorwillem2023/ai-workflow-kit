@@ -14,7 +14,7 @@ import { createServer } from 'node:http';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { docBody, docTitle, markdown, menu, menuHtml, pageHtml, titleOf } from './lib/portal.mjs';
-import { glanceHtml } from './lib/portalglance.mjs';
+import { glanceHtml, guideParts, productIntro } from './lib/portalglance.mjs';
 import { themeCss, themeFrom } from './lib/portaltheme.mjs';
 import { shipping } from './lib/retro.mjs';
 import { MAIN } from './lib/branch.mjs';
@@ -124,6 +124,8 @@ async function glance(styled) {
     board: json(board?.lines), boardAge, asked: board?.asked,
     boardNote: !board ? 'No board yet: /setup makes it.' : board.failed && !board.lines ? 'The board could not be reached (GitHub and gh).' : 'Asking the board…',
     decisions: phaseCache.decisions, recent: phaseCache.recent,
+    // the product itself opens the page: its pitch from the README, what it does from the guide's parts
+    product: { ...productIntro(read('README.md')), parts: guideParts(read('docs/GUIDE.md')) },
   });
 }
 

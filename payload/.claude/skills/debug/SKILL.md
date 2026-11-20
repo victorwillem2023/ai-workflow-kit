@@ -41,11 +41,19 @@ A failing test named for what the app should do ("refuses a race date in the pas
 step 1, run so that it fails for the reason found. When a test cannot reach it (a timing, or an outside service), say why,
 and how it was shown instead.
 
+**A page that gets slow or heavy** (with the ui module), before any script of your own:
+- it grows the longer it is used: `node workflow/scripts/memory.mjs <url> --step "<one round, in the page>" --detached` repeats
+  the round and says what the page still holds;
+- it loads slowly: `node workflow/scripts/weigh.mjs` says which folders, packages and files make the build heavy;
+- anything else in a real browser (a flow to walk, pictures of each step): import `openBrowser` from
+  `workflow/scripts/browser.mjs` in a short script, never start a browser by hand.
+
 ## 5. Then fix it through the usual route
 
 - **A small fix**: the bug route of `/work`: a session folder, the test from step 4 first, `npm run gate`, handed over as
   `.claude/skills/build/try-it.md` says.
-- **Anything bigger**: a `bug` card with the cause and the test (`/idea`), so it is planned.
+- **Anything bigger**: a `bug` card with the cause and the test (`/idea`), so it is planned. The owner asked for this one, so
+  it goes on the list at once (no `--unsorted`).
 
 Either way, close the gap that made it hard to find: an error without its `doing` or `cause`, a path that logged nothing, a
 catch that swallowed the error (CLAUDE.md, *Requests, errors and logs*).

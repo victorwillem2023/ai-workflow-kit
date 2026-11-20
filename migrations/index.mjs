@@ -18,8 +18,9 @@ import testsOffline from './4.2.0-tests-offline.mjs';
 import measuredDocs from './4.3.0-measured-docs.mjs';
 import upkeepConflicts from './4.3.0-upkeep-conflicts.mjs';
 import rootBudget from './4.3.0-root-budget.mjs';
+import codeHealthArea from './4.4.0-code-health-area.mjs';
 
-export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips, testsOffline, measuredDocs, upkeepConflicts, rootBudget];
+export const STEPS = [docFolders, productionBack, unusedCommand, notesRule, knipAndNotes, typecheckIncremental, commandsByPhase, settingsNotCode, auditWhatShips, testsOffline, measuredDocs, upkeepConflicts, rootBudget, codeHealthArea];
 
 const parts = (v) => String(v).split('.').map(Number);
 /** a is older than b (2.9.7 < 2.9.10). */

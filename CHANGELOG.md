@@ -2,6 +2,49 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.4.0**: **one goal at a time, with a finish line; the product on the portal's first page; no terminal window from the dev
+  server.** From a real board: 333 open cards in 16 areas, 8 in progress, 254 without a value, and `/next` offering the three
+  best of all of them, so every day was a bit of everything and work got lost.
+  **Goals with a finish line** (`npm run board -- --focus`, `/tidy focus`): with the app map the kit measures each kind of
+  request (`docs/REQUESTS.md`: its page's cases that are built, and the weak and missing ends of the steps it runs through, from
+  `kinds` in `docs/flow/map.js`), each part of the app (its ends), and code health (the baseline's numbers and the flaky list),
+  and suggests four: what is due, the one closest to its finish line, the biggest ("A hike to a top: 14 of 26 done; 8 cards, 3
+  things with no card yet"). The owner picks one; until it is done `--next`, `/next` and `/work` offer only its cards, and its
+  count moves as they ship. A kind with no page yet starts with writing it; things left with no card get cards in `/tidy focus`.
+  Without the app map, a block of five cards of one area (`--focus --areas`). **The direction follows the phase**
+  (`DIRECTION` in `lib/focus.mjs`; `direction.goals` in `workflow/levels.json` is the owner's): in a prototype the product
+  itself; in a pilot what users reported (`feedback` cards) comes first; in production what the running app reports (`alert`,
+  `error`, `incident`). **Code health gets its turn**: it is due when a number got worse since the goal was last picked, or
+  after eight shipped cards with no card closed under the new area `area: Code health` (an update adds it to the board's areas).
+  **A limit that holds**: `npm run board -- --room` exits 3 when `board.wip` cards are in progress; `/work` and `/build` stop
+  and ask which to finish or park first, and `--next` says STOP. **New cards wait for a yes**: a card an agent makes on its own
+  (an open point, something noticed, a spec's end-state step) gets `to sort` (`--add ... --unsorted`) and is never offered until
+  the owner lets it in (`--unsorted`, `--accept`); `--expire` lists the cards untouched for eight weeks and `--expire --yes`
+  closes them (reopenable). **Where you stopped**: `--stopped "<line>"` (`/ship` and `/build` write it) opens the next
+  `--next`, followed by the cards in progress and the ones waiting to be tried. **`/sweep`: every card, once**
+  (`npm run board -- --sweep`): one theme at a time, 25 per round, the most incomplete first: what to close, merge or split,
+  and the area, type, value and effort each one lacks, each round for the owner's yes. It travels with the `tidy` part.
+  **What the code says to work on** (`lib/hotspots.mjs`, at the end of `npm run health` and in the code health goal): each
+  suggestion names its files, its numbers and the principle behind it: a file changed often that is also too big ("refactor
+  where you work": 87 commits in 90 days on a 601-line file in a real project), files changed often with no test ("a test
+  before the change"), flaky tests, import circles; an area with three or more open bugs is a goal of its own ("stabilise
+  before you build on it"). **Cards that go together** (`lib/together.mjs`, `npm run board -- --together`, and in `--next`):
+  the script proposes it instead of the owner having to see it: small cards on the same part of the app in one session, a
+  card right after the one it needs, bigger cards of different parts side by side, each with its `/work` command; `/work`
+  still checks it against the cards and the code. **Scripts agents kept writing from scratch** (ui module): a session wrote
+  eight throwaway files to find a page that kept every route it had drawn. `workflow/scripts/browser.mjs` is a headless
+  Chrome or Edge to drive from a script (`openBrowser`: `go`, `ev`, `until`, `shot`); `workflow/scripts/memory.mjs` repeats
+  one round of what the owner does and says whether the page grows every round, and with `--detached` what it still holds;
+  `workflow/scripts/weigh.mjs` says what a Vite build weighs by folder, package and file. `/debug` points at them.
+  **The portal opens with the product**: the README's pitch and first paragraph, *What it does* (the guide's parts as links),
+  then what you are on (the goal and its count, the cards in progress), and only then the workflow's numbers. Every doc the kit
+  wrote is in one folded group at the end of the menu, and a template nobody filled in is under *Not filled in yet*. **Fewer
+  docs installed**: the tool radar, the common parts (email, payments, uploads, jobs, time), APIs and frontends join the kit's
+  library (`npm run library`): a new project gets them when a card needs one; a project that has them keeps them.
+  **No terminal window from the dev server**: `session.mjs --serve` started `npm run dev` detached, and on Windows a detached
+  process has no console, so cmd, npm and the server each opened a visible window (measured). It now starts through a small
+  hidden launcher (`lib/hidden.mjs`) whose console has no window, shared by everything below it; the launcher sits in the temp
+  folder, so it never holds the session folder open.
 - **4.3.2**: **a code comment no longer looks like a write to the owner's files**. The stop-points hook read a lone `*` or
   `**` as a glob of every file, and those stand in every doc comment (`/** … */`), CSS rule and sum: any command that wrote
   one source file and had a comment in it was refused as writing `workflow/levels.json` (eight times in one real project's

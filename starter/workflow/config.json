@@ -94,7 +94,7 @@
     "columns": ["Backlog", "Needs a board or decision", "Ready", "In progress", "Waiting for your check", "Blocked", "Done"],
     "types": ["ui", "feature", "bug", "workflow", "spike"],
     "labels": {
-      "areas": ["area: UI", "area: Backend", "area: Workflow and docs"],
+      "areas": ["area: UI", "area: Backend", "area: Workflow and docs", "area: Code health"],
       "value": ["value: high", "value: medium", "value: low"],
       "effort": ["effort: small", "effort: medium", "effort: large", "effort: unknown"],
       "feasibility": ["feasibility: high", "feasibility: medium", "feasibility: low"],

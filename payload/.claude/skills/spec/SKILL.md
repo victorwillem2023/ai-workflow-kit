@@ -57,9 +57,9 @@ for one server, a module that knows too much): plan it, never build around it.
 
 **When a step is recommended**: make the end-state card in the same go, its body ending with `Depends on: #<this card>`:
 
-    npm run board -- --add "<title>" --label <type> --body-file <file>
+    npm run board -- --add "<title>" --label <type> --body-file <file> --unsorted
 
-Then put its number on the End state line (`the rest is card #<n>`).
+It waits for the owner's yes with the spec's (`--accept <n>` when the spec is approved). Then put its number on the End state line (`the rest is card #<n>`).
 
 **Only when it applies:**
 

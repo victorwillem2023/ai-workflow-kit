@@ -136,8 +136,10 @@ feature has shipped, put it on the card too, when there is one: `gh issue commen
 
 In plain language, with an example wherever a term is technical: what changed, and what the tests check.
 - A `flaky:` line the gate printed becomes a card, unless one is there already (`npm run board -- --search "Flaky test"`; the
-  line names the `--add` to run).
+  line names the `--add` to run; add `--label "area: Code health"` when the board has it).
 - Anything still open is a question with your recommendation, or a card made now (`.claude/skills/build/try-it.md`, *Open
-  points become cards*), never a bare "unsure".
+  points become cards*, made with `--unsorted`), never a bare "unsure".
+- **Where it leaves off**: one line for the next session, `npm run board -- --stopped "<what shipped; what comes next>"`, for
+  example "Shipped #380, rides to a top; next in the goal: #379". The next `/next` starts with it.
 
 **This project's own**: when `.claude/project/ship.md` exists, read it before you start: it holds this project's own steps and rules for /ship, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

@@ -26,7 +26,10 @@ group that says "none in the config" is skipped. The card gets:
 
 - **Exactly one type**: `ui` (a screen or part of the UI), `feature` (something the app does), `bug` (something broken),
   `workflow` (how we work; nothing in the app changes) or `spike` (a quick throwaway try to answer one question).
-- **One existing area label.** Never create an area label: when none fits, ask the owner.
+- **One existing area label.** Never create an area label: when none fits, ask the owner. Performance, refactoring and test
+  work goes under `area: Code health` when the list has it. The area is the card's theme: it decides which focus block the
+  card is offered in (`npm run board -- --focus`), so a new card waits for its theme's turn and never joins the block the
+  owner is in.
 - **One `effort: ...` and one `feasibility: ...`**: yours to estimate, from the code (`npm run map -- --find <word>` shows what
   it would touch). Never leave them out: a card without them can only be ranked by guesswork.
 - **One `value: ...`**, from `docs/PRODUCT.md` when it decides it, with the reason in the report:

@@ -26,7 +26,9 @@ Read `workflow/specs/<topic>.md` in the main folder. **The owner typing `/build`
 
 The folder is `../{{PREFIX}}-<topic>`, next to the main folder.
 
-- **Missing**: run `node workflow/scripts/session.mjs <topic> --card <n>` in the main folder, and note the port it prints.
+- **Missing**: first `npm run board -- --room`. STOP there (more cards in progress than `board.wip`): ask the owner which to
+  finish or park before this one starts; their answer that this one goes ahead anyway is enough. Then run
+  `node workflow/scripts/session.mjs <topic> --card <n>` in the main folder, and note the port it prints.
   - `n` is the spec's "Card: #n" line; `--card 12,14` for combined cards; leave `--card` out when there is none.
   - A "Starts on: <other topic>" line: add `--on <other topic>`, so the session starts on top of that built card
     (`.claude/skills/work/together.md`).
@@ -102,6 +104,9 @@ The owner talks here.
 - Built here: change it here.
 - Built by a subagent: forward the feedback to that same one, so it keeps its context (your agent's follow-up or message
   mechanism). Never start a second subagent for the same topic.
+
+**The owner stops for now** ("tomorrow", "later"): one line for the next session,
+`npm run board -- --stopped "<topic>: <what works, what is left of the feedback>"`, so the next `/next` starts with it.
 
 Keep the diff small, and for UI feedback change only presentation code. A round that changes what the feature does is handed
 over again (`try-it.md`, step 3).
