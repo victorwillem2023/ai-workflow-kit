@@ -48,7 +48,7 @@ export function makeRepo({ prefix = 'app' }: { prefix?: string } = {}): Repo {
   for (const s of SCRIPTS) copyFileSync(s, join(main, 'workflow', 'scripts', basename(s)));
   mkdirSync(join(main, 'workflow', 'tools', 'lib'), { recursive: true });
   // the board library and what it imports (a missing one fails every card move in these repos, silently: the board is only a warning)
-  for (const lib of ['board.mjs', 'cardgraph.mjs', 'branch.mjs', 'gh.mjs', 'shippass.mjs', 'nowindow.mjs', 'hidden.mjs', 'frommain.mjs', 'signoff.mjs']) copyFileSync(resolve('workflow/tools/lib', lib), join(main, 'workflow', 'tools', 'lib', lib));
+  for (const lib of ['board.mjs', 'cardgraph.mjs', 'branch.mjs', 'gh.mjs', 'shippass.mjs', 'nowindow.mjs', 'hidden.mjs', 'frommain.mjs', 'signoff.mjs', 'folderenv.mjs']) copyFileSync(resolve('workflow/tools/lib', lib), join(main, 'workflow', 'tools', 'lib', lib));
   // the project's own config, with the session folders named app-<topic> whatever the project calls its own
   const config = JSON.parse(readFileSync(resolve('workflow/config.json'), 'utf8'));
   writeFileSync(join(main, 'workflow/config.json'), JSON.stringify({ ...config, session: { prefix, firstPort: 8788 + PORTS, mainPort: 8787 + PORTS, env: {} } }));

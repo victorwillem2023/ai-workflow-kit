@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v4.x` tag** (now `v4.6.1`). 4.0 works in phases (prototype, pilot, production, read from facts about
+> **Build on the latest `v4.x` tag** (now `v4.7.0`). 4.0 works in phases (prototype, pilot, production, read from facts about
 > who depends on the product: fast while you build, strict once people rely on it) and has the docs portal (`/portal`): every doc
 > in one page, in the project's own style sheet, with where the project stands at the top. 3.0 put the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several

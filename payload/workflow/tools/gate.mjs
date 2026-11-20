@@ -47,10 +47,12 @@ import { policySteps, dataAdvice } from './lib/policy.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 import { FILE as LEVELS_FILE, levelOf, loosenedLine, readLevels } from './lib/levels.mjs';
-import { appsOf, surfacesOf } from './lib/surfaces.mjs'; import { lines } from './lib/text.mjs';
+import { appsOf, surfacesOf } from './lib/surfaces.mjs'; import { lines } from './lib/text.mjs'; import { useFolderEnv } from './lib/folderenv.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
+// the folder's .env decides, never a PORT or data folder left set in the shell: the tests and checks started below go by it (lib/folderenv.mjs)
+if (!process.env.CI) useFolderEnv(root);
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
@@ -297,7 +299,7 @@ const steps = [
   }],
   ['size', () => {
     const v = sizeVerdict(sizes, baseline.sizes, baseline.reasons ?? {});
-    if (v.failing.length) return { ok: false, out: v.failing.map((x) => `${x.file} is ${x.lines} lines (limit ${config.size.maxLines}): split it`).join('\n') };
+    if (v.failing.length) return { ok: false, out: v.failing.map((x) => `${x.file} is ${x.lines} lines (limit ${config.size.maxLines}): split it along what changes together (one responsibility per file), not only to get under the number`).join('\n') };
     if (v.stale.length) return { ok: false, out: v.stale.map((f) => `${f} has a reason in baseline.json but is not in the size list (stale reason): remove it`).join('\n') };
     return { ok: true, note: sizeNote(sizes, v, baseline.reasons ?? {}) };
   }],
@@ -378,7 +380,7 @@ const steps = [
     return { ok: true, note: existsSync('.tool-versions') ? '' : 'no .tool-versions yet' };
   }],
   // the policy checks (spikes, image, network, signoff, covers): lib/policy.mjs
-  ...policySteps({ config, git, gitOk, base, files, isTest, matchesAny, readText, docTexts }),
+  ...policySteps({ config, git, gitOk, base, files, isTest, matchesAny, readText, docTexts, phase: levels.phase }),
   config.together?.length && ['together', () => {
     const m = missingPartners(config.together, changed);
     if (m.length) return { ok: false, out: m.map((r) => `${r.name}: ${r.changed.join(', ')} changed and nothing under ${r.needs.join(', ')} did. These change together`).join('\n') };
@@ -419,7 +421,12 @@ const steps = [
     const missing = checkPackages('.');
     return missing.length ? { ok: false, out: `${describeMissing(missing)}: ${packagesFix('.', missing)}` } : { ok: true };
   }],
-  ['typecheck', () => run(config.commands.typecheck)],
+  ['typecheck', () => {
+    // a change of only docs and settings (`ignoreChanged`, the files no test is picked for either) cannot break a type: not run
+    // again for it (the notes commit, a doc edit). With --all, at /ship in a pilot or in production, and on GitHub it always runs.
+    if (!wholeSuite && !process.env.CI && changed.every((f) => matchesAny(f, config.ignoreChanged))) return { ok: true, note: changed.length ? 'only docs and settings changed: nothing it reads' : 'nothing changed' };
+    return run(config.commands.typecheck);
+  }],
   ['tests', () => {
     if (plan.mode === 'none') return { ok: true, note: plan.note };
     const { r, seconds } = runTests({ config, plan, graph, changed, levels, isTest, run, readIf, paths: testPaths, fresh: flag('--fresh') });

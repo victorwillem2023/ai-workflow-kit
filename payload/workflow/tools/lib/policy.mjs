@@ -13,7 +13,7 @@ import { editedMigrations } from './datacheck.mjs';
 export { dataAdvice } from './datacheck.mjs';
 
 /** The steps, from what the gate already knows: the config, git, the base commit, the code files, the docs. */
-export function policySteps({ config, git, gitOk, base, files, isTest, matchesAny, readText, docTexts }) {
+export function policySteps({ config, git, gitOk, base, files, isTest, matchesAny, readText, docTexts, phase }) {
   return [
   ['spikes', () => {
     // a spike's code is thrown away (node workflow/scripts/session.mjs --drop spike-<topic>); what it taught is in docs/decisions/
@@ -51,6 +51,8 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
     const localOnly = v.files.length && !verdictWith(pushed).ok;
     // an entry that covers no file guards nothing (a typing mistake, or code that is not written yet): said on every run, never silent
     const dead = deadPaths(config.sensitive.paths, [...git('ls-files', '--cached', '--others', '--exclude-standard').split('\n'), ...all].filter(Boolean), matchesAny);
+    // while prototyping the list may name code that is not written yet; once people depend on the product, a guard that guards nothing stops the gate
+    if (dead.length && phase && phase !== 'prototype') return { ok: false, out: `sensitive.paths names ${dead.join(', ')}, which cover${dead.length === 1 ? 's' : ''} no file, so a change there would pass with no sign-off (phase ${phase}). Write the folder as it is in the project (src/accounts/ covers every file under it), or take the entry out of workflow/config.json.` };
     const deadNote = dead.length ? `sensitive.paths: ${dead.join(', ')} cover${dead.length === 1 ? 's' : ''} no file, so nothing there is guarded (a folder is written as src/accounts/; fix it or take it out of workflow/config.json)` : '';
     const signedNote = v.files.length ? `${v.files.length} signed${localOnly ? ` (by a signer only on the local main: push ${SIGNERS} first, or GitHub's check refuses it)` : ''}` : '';
     return { ok: true, note: [signedNote, deadNote].filter(Boolean).join('; ') };

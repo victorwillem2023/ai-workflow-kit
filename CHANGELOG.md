@@ -2,6 +2,29 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.7.0**: **the .env decides for the gate too, a mistyped sensitive folder fails once people depend on the product, a
+  faster gate for a docs change, and the session script's own tests are in the kit.**
+  **The `.env` decides, not the shell, everywhere** (`lib/folderenv.mjs`): 4.6.0 did this for `--serve` and `--finish`; now
+  the gate does it before it starts a test or a check, and a session folder also drops the names only the main folder's
+  `.env` sets. A `PORT` or data folder left set in the owner's terminal can no longer reach a session's tests.
+  **A sensitive entry that covers no file** is a note in a prototype and fails the *signoff* check in a pilot and in
+  production: by then a guard that guards nothing is a hole, not a plan.
+  **A kit fix reaches open sessions, a bigger step waits**: a session folder runs the main folder's tools only across a fix
+  release (4.6.0 to 4.6.2). After a step that may have changed the settings (4.6 to 4.7) its own copy runs and says to
+  bring main in first, because the newer tools would read settings the session does not have yet.
+  **No typecheck for a change of only docs and settings** (`ignoreChanged`): it cannot break a type, and on a real project
+  the typecheck was 5 to 16 of the quick gate's 7 to 18 seconds; the notes commit and a doc edit no longer pay it. With
+  `--all`, at `/ship` in a pilot or in production, and on GitHub it always runs.
+  **The session script's own tests live in the kit**: 35 tests of `--finish`, `--check-main`, `--push`, the card moves and
+  `--list`/`--clean` existed only in the project the script was first written in, as one file that ran for 166 seconds and
+  set the length of that project's whole suite. They are the kit's now, in five files that run side by side
+  (`workflow/tests/session-finish`, `-main`, `-push`, `-board`, `-list`), and as kit tests they only run when the
+  machinery changed or on GitHub. **A project that still has its own copy (`tests/session-script.test.ts`) deletes it.**
+  **The gate says how to split**: its message for a file over the size limit was only "split it", which invites cutting a
+  file in two to get under the number; it now says "split it along what changes together (one responsibility per file)",
+  as the health report and the rules in CLAUDE.md already do.
+  Also: `--serve --lan` has a test (on a computer with a network address), and the session part of the tools README is one
+  entry per command instead of one paragraph.
 - **4.6.1**: **every command is offered at a moment.** `/portal` and `/check` were only named in the guides' tables, so
   nobody was ever steered to them. `/setup` now ends with the docs portal ("see everything that was written in one place"),
   `/next` offers it when the owner asks where things are written down and offers `/check` when the checks fail or something

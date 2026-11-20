@@ -5,6 +5,7 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { commitIn, git, makeRepo, PORTS, roots, run, type Repo, ran } from './session-repo';
 
@@ -77,6 +78,21 @@ describe('serving a session for the owner to try', () => {
     assert.ok(f.ok, f.out);
     assert.match(f.out, /Stopped the dev server/);
     assert.equal(existsSync(copy), false, 'the copy went with the server');
+  });
+
+  const onNetwork = Object.values(networkInterfaces()).flat().some((a) => a && a.family === 'IPv4' && !a.internal);
+  it('--lan: the server listens on every address and the address for a phone is printed once it answers there', { skip: !onNetwork && 'this computer has no network address' }, async () => {
+    const r = await withDev(true);
+    // (as an app does: it listens where HOST says, on this computer alone without it)
+    writeFileSync(join(r.wt('a'), 'server.cjs'), SERVER.replace(".listen(port,'127.0.0.1')", ".listen(port,process.env.HOST||'127.0.0.1')"));
+    const out = run(r, '--serve', 'a', '--lan');
+    assert.ok(out.ok, out.out);
+    assert.match(out.out, new RegExp(`Wi-Fi: +http://[0-9.]+:${portOf(r)} `), out.out);
+    // an app that does not read HOST: said, with the setting to name, instead of an address that does not open
+    writeFileSync(join(r.wt('a'), 'server.cjs'), SERVER);
+    const deaf = run(r, '--serve', 'a', '--lan');
+    assert.ok(deaf.ok, deaf.out);
+    assert.match(deaf.out, /does not answer: the app does not listen on every address with HOST=0\.0\.0\.0/);
   });
 
   it('without a dev script it says a change without a screen is tried with a command', async () => {

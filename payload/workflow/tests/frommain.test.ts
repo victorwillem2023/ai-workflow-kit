@@ -2,16 +2,17 @@
 // session script from the main folder, so a kit fix reaches every open session at once; in every other case its own copy runs.
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { appendFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { newer } from '../../workflow/tools/lib/frommain.mjs';
+import { newer, sameLine } from '../../workflow/tools/lib/frommain.mjs';
 import { ENV, commitIn, makeRepo, roots, ran } from './session-repo';
 
 after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true }); });
+// (what it printed and what it said beside it: the line about the kit's version goes to the error stream)
 const list = (dir: string) => {
-  try { return execFileSync('node', [join(dir, 'workflow', 'scripts', 'session.mjs'), '--list'], { cwd: dir, env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
-  catch (e) { const x = e as { stdout?: string; stderr?: string }; return `${x.stdout ?? ''}${x.stderr ?? ''}`; }
+  const r = spawnSync('node', [join(dir, 'workflow', 'scripts', 'session.mjs'), '--list'], { cwd: dir, env: ENV, encoding: 'utf8' });
+  return `${r.stdout ?? ''}${r.stderr ?? ''}`;
 };
 
 describe('the kit\'s tools in a session folder', () => {
@@ -19,6 +20,8 @@ describe('the kit\'s tools in a session folder', () => {
     assert.equal(newer('4.10.0', '4.9.3'), true);
     assert.equal(newer('4.4.1', '4.4.1'), false);
     assert.equal(newer('4.4.0', '4.4.1'), false);
+    assert.equal(sameLine('4.6.0', '4.6.2'), true);
+    assert.equal(sameLine('4.6.2', '4.7.0'), false);
   });
   it('run from the main folder once its kit is newer, and from the session itself otherwise', () => {
     const r = makeRepo();
@@ -32,6 +35,11 @@ describe('the kit\'s tools in a session folder', () => {
     const out = list(wt);
     assert.doesNotMatch(out, /the session copy ran/);
     assert.match(out, /Ports in use by sessions/, 'the main folder\'s copy did the work');
+    // a bigger step may have changed the settings: the session's own copy runs, and says to bring main in
+    writeFileSync(join(r.main, 'workflow', 'record'), 'version=4.5.0\n');
+    const big = list(wt);
+    assert.match(big, /the session copy ran/);
+    assert.match(big, /the main folder has kit 4\.5\.0, this session folder 4\.4\.0: bring main in/);
     // a session that holds the newer kit (the kit update itself) keeps its own
     writeFileSync(join(wt, 'workflow', 'record'), 'version=4.5.0\n');
     assert.match(list(wt), /the session copy ran/);

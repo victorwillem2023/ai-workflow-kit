@@ -8,7 +8,7 @@ import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkPackages, checkShortcuts, describeMissing } from './packages.mjs';
-import { dataCopyOf, stopMessage, stopSessionServer } from './session-stop.mjs'; import { SIGNOFFS } from '../tools/lib/signoff.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { dataCopyOf, stopMessage, stopSessionServer } from './session-stop.mjs'; import { SIGNOFFS } from '../tools/lib/signoff.mjs'; import { folderEnv } from '../tools/lib/folderenv.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 import { ghRun } from '../tools/lib/gh.mjs'; import { changedSince, shipPassOf } from '../tools/lib/shippass.mjs';
 
 export const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -144,17 +144,8 @@ export const stopServer = (dir) => {
 /** The first word of a checkpoint commit's subject: work saved by --on or --catch-up on the session's own branch, never a feature's subject (--finish squashes it away). */
 export const CHECKPOINT = 'checkpoint:';
 
-/** The names a folder's .env sets. */
-const envNames = (dir) => { const f = join(dir, '.env'); return existsSync(f) ? readFileSync(f, 'utf8').split(/\r?\n/).map((l) => /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(l)?.[1]).filter(Boolean) : []; };
-/**
- * The environment a folder's commands start with: this shell's, without the names the folder's own .env sets, so the .env
- * decides (a PORT, HOST or data folder left set in the owner's shell sent a session's server to the main folder's port and its
- * real data: an app reads .env only for what the environment does not name). `extra` is set on top.
- */
-export function folderEnv(dir, extra = {}) {
-  const names = new Set(envNames(dir).map((n) => n.toUpperCase()));
-  return { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !names.has(k.toUpperCase()))), ...extra };
-}
+/** The environment a folder's commands start with: the folder's .env decides, never a name left set in the shell (lib/folderenv.mjs). */
+export { folderEnv };
 
 /** The file map is written by a script (`map` in package.json); its path comes from the config. */
 export const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts?.map);
