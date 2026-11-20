@@ -2,6 +2,25 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.9.0**: **GitHub's gate sees what a push changed, and a big project stops running the kit's tests with its own.** From
+  the first update of a real project to 4.7.
+  **A push to main was compared with itself on GitHub**: the gate there looked for the change since where the branch left
+  main, which on main is nothing, so a push straight to main was never asked for a sign-off and its new lines were never
+  read for a secret; only a pull request was. `gate.yml` now passes the commit before the push (`--base`), and a base git
+  does not have (a first push, a forced one) falls back with a line saying so. **A project that changed its own
+  `.github/workflows/gate.yml` adds this by hand.**
+  **The kit's own tests ran with every whole-suite run of a project with more than 300 test files**: an old limit on one
+  command line sent such a project to `npm test`, the kit's tests included, though the files have gone in batches for a
+  long time. They run only the project's own now. **And no longer on every push on GitHub**: the kit's tests run there as
+  they do on your computer, when the kit's machinery changed (the kit's own self-test runs them on every release).
+  `--kit` still runs them.
+  **Unused code only advises while prototyping and in a pilot** (`unused`): a prototype tries things, and `gate:all` failed on
+  every export left from one. It fails in production.
+  **The scope check leaves main alone**: a spec waiting in the main folder is for its session's build, so a kit update or
+  the owner's notes on main are no longer listed as "not named in the spec".
+  **`npm run signoff -- --list`** only reads: the entries of `sensitive.paths` with how many files each covers, the
+  sensitive files this change touches, and whether this version is signed. An agent may run it; signing still needs a
+  person at a terminal.
 - **4.8.0**: **the kit watches what it costs to read.** Between 4.0 and 4.7 the skills grew by 23% and the tools README by
   25%, a paragraph per release, and nothing said so.
   **The kit's own texts have a recorded size** (`scripts/text-sizes.mjs`, `scripts/text-sizes.json`): every skill, the

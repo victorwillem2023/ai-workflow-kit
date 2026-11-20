@@ -30,7 +30,7 @@ export const QUALITY = ['layers', 'size', 'functions', 'ratchets', 'nesting', 'c
   'copies', 'settings', 'versions', 'spikes', 'covers', 'together', 'scope', 'map', 'requests', 'harness', 'surfaces', 'docs', 'spec', 'errors', 'waits', 'quality'];
 
 const PROTOTYPE_ADVISE = ['size', 'functions', 'ratchets', 'nesting', 'circles', 'untested', 'budget', 'naming', 'copies', 'covers',
-  'docs', 'errors', 'spikes', 'quality', 'map', 'harness', 'waits'];
+  'docs', 'errors', 'spikes', 'quality', 'map', 'harness', 'waits', 'unused'];
 
 // what a pilot holds to again: real people meet its errors, its docs and its untested code, and a flaky test hides a real failure
 const PILOT_FAIL = ['untested', 'covers', 'docs', 'errors', 'waits'];

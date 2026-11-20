@@ -7,6 +7,8 @@
 //                                      docs/company/SIGNERS.md (commit it on main on its own, before the first sign-off:
 //                                      node workflow/scripts/session.mjs --commit-notes "Sign-offs: the first signer"; no push needed)
 //   npm run signoff -- --show-key      your public key, to send to a signer who adds you
+//   npm run signoff -- --list          read only, signs nothing (an agent may run it): the entries of sensitive.paths, the sensitive
+//                                      files this change touches, whether this version is signed, and an entry that covers no file
 //   npm run signoff -- --add-signer "<name>" <public key>   a signer adds another person (or your own second computer's key)
 //   --base <ref>                       compare with this commit instead of where the branch left main
 // The private key is ~/.config/ai-workflow-kit/signoff-key.pem (WORKFLOW_SIGNOFF_KEY: another path), encrypted with the passphrase. Every
@@ -40,6 +42,26 @@ if (args.includes('--show-key')) {
     : `signoff: no key yet (${keyFile}): npm run signoff -- --init makes one`));
   process.exit(0);
 }
+
+/** --list: what a sign-off would cover, and whether this version has one. Reads only: no key, no passphrase, nothing written. */
+function listOnly() {
+  const paths = config.sensitive?.paths ?? [];
+  if (!paths.length) { console.log('signoff: no sensitive.paths in workflow/config.json, so nothing needs a sign-off'); process.exit(0); }
+  const from = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', ORIGIN_MAIN) ?? git('merge-base', 'HEAD', MAIN) ?? 'HEAD';
+  const changed = [...(git('diff', '--name-only', from) ?? '').split('\n'), ...(git('ls-files', '--others', '--exclude-standard') ?? '').split('\n')].filter(Boolean);
+  const all = [...(git('ls-files', '--cached', '--others', '--exclude-standard') ?? '').split('\n'), ...changed].filter(Boolean);
+  const dead = deadPaths(paths, all, matchesAny);
+  const files = sensitiveFiles(changed, paths, matchesAny);
+  const onMain = [git('show', `${from}:${SIGNERS}`), git('show', `${MAIN}:${SIGNERS}`)].filter(Boolean).join('\n');
+  const signed = files.length && signoffVerdict({ changed: files, paths, matches: matchesAny, read, signoffs: read(SIGNOFFS), baseSigners: onMain, signers: read(SIGNERS) }).ok;
+  console.log([
+    `sensitive.paths (${paths.length}): ${paths.map((p) => `${p}${dead.includes(p) ? ' (covers no file)' : ` (${sensitiveFiles(all, [p], matchesAny).length} files)`}`).join(', ')}`,
+    files.length ? `This change touches ${files.length}: ${files.join(', ')}` : 'This change touches no sensitive file.',
+    files.length ? (signed ? `This version is signed (${fingerprint(files, read)}).` : 'This version is not signed: the owner runs npm run signoff in their own terminal.') : '',
+  ].filter(Boolean).join('\n'));
+  process.exit(0);
+}
+if (args.includes('--list')) listOnly();
 
 if (!process.stdin.isTTY || !process.stdout.isTTY || process.env.CI) {
   console.log('signoff: refused. A sign-off is a person checking the change, so it runs only in a terminal with someone typing (not from an agent, a pipe or CI).');

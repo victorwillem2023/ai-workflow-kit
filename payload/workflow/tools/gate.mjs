@@ -5,7 +5,7 @@
 //   node workflow/tools/gate.mjs --all      the same, with the whole test suite
 //   node workflow/tools/gate.mjs --ship     what /ship runs: the whole suite in the pilot and production phases, the tests the
 //                                           change reaches in a prototype (workflow/levels.json; npm run phase)
-//   --kit                     also the kit's own tests (workflow/tests/**), which otherwise run only when the machinery changed or on GitHub
+//   --kit                     also the kit's own tests (workflow/tests/**), which otherwise run only when the machinery changed
 //   node workflow/tools/gate.mjs --list     only print which tests the change reaches
 //   --fresh       run the picked tests even when they passed before with the same code (lib/testcache.mjs: skipped otherwise)
 //   node workflow/tools/gate.mjs --update-baseline   accept today's exceptions (rules and sizes) as the baseline
@@ -56,7 +56,11 @@ if (!process.env.CI) useFolderEnv(root);
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
-const baseArg = args.includes('--base') ? args[args.indexOf('--base') + 1] : null;
+// (a --base git does not have, such as the commit before a forced push on GitHub, is left out and said: the usual base is used)
+const baseAsked = args.includes('--base') ? args[args.indexOf('--base') + 1] : null;
+const baseKnown = !baseAsked || (() => { try { execFileSync('git', ['cat-file', '-e', `${baseAsked}^{commit}`], { stdio: 'ignore' }); return true; } catch { return false; } })();
+if (!baseKnown) console.log(`note: --base ${baseAsked} is not a commit here, so the change is compared with where the branch left main`);
+const baseArg = baseKnown ? baseAsked : null;
 // the levels in force (workflow/levels.json); --ship is /ship's run: the whole suite in pilot and production, the tests the change
 // reaches in a prototype (lib/levels.mjs, the phase's `ship`)
 const levels = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
@@ -242,9 +246,9 @@ const changed = changedFiles();
 const reach = affectedTests(graph, changed, { isTest, ignore: config.ignoreChanged, isCode, naming: config.testsNaming, depth: levels.reach === 'direct' && !wholeSuite ? 1 : Infinity });
 // a language whose tests the gate cannot pick by file (`testPicking: false`): the whole suite, unless only docs changed
 if (config.testPicking === false) { reach.all = changed.some((f) => !matchesAny(f, config.ignoreChanged)); reach.tests = []; }
-// which tests run (lib/testplan.mjs): the kit's own only when the machinery changed, on GitHub, with --kit or WORKFLOW_KIT_TESTS
+// which tests run (lib/testplan.mjs): the kit's own only when the machinery changed (on GitHub too), with --kit or WORKFLOW_KIT_TESTS
 const plan = testPlan({ whole: wholeSuite, unknown: reach.all, reached: reach.tests, allTests: [...graph.files.keys()].filter(isTest), changed,
-  forced: Boolean(process.env.CI || (process.env.WORKFLOW_KIT_TESTS && process.env.WORKFLOW_KIT_TESTS !== '0')) || flag('--kit') || config.testPicking === false, matches: matchesAny,
+  forced: Boolean(process.env.WORKFLOW_KIT_TESTS && process.env.WORKFLOW_KIT_TESTS !== '0') || flag('--kit') || config.testPicking === false, matches: matchesAny,
   kitTests: config.kitTests, kitMachinery: config.kitMachinery, skipKit: process.env.WORKFLOW_KIT_TESTS === '0' });
 
 /** The specs in workflow/specs/ as [name, text] pairs (none when the folder is not there). */
@@ -264,6 +268,9 @@ function scopeLines() {
   if (config.scope === 'off' || !existsSync('workflow/specs')) return [];
   const specs = readdirSync('workflow/specs').filter((f) => f.endsWith('.md'));
   if (specs.length !== 1) return [];
+  // a spec waits in the main folder for its build in a session folder: what changes on main meanwhile (a kit update, the owner's
+  // notes) is not that spec's change, so it is not held to it
+  if ((gitOk('branch', '--show-current') ?? '') === MAIN && specs[0] !== `${MAIN}.md`) return [];
   // never the change's own choice: what a script writes (the map's pages, the docs index, the baseline, the lock files) and the owner's sign-off row
   const ignore = ['workflow/specs/**', config.map?.out ?? 'docs/MAP.md', 'docs/README.md', config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', 'docs/company/SIGNOFFS.md', ...(config.scopeIgnore ?? [])].filter(Boolean);
   const spec = readFileSync(`workflow/specs/${specs[0]}`, 'utf8');

@@ -19,7 +19,7 @@ describe('which tests the gate runs', () => {
     for (const changed of [['workflow/tools/gate.mjs'], ['workflow/record'], ['package-lock.json'], ['workflow/scripts/session.mjs']]) {
       assert.equal(testPlan({ ...base, whole: true, changed }).mode, 'suite', changed[0]);
     }
-    assert.equal(testPlan({ ...base, whole: true, forced: true }).mode, 'suite', 'GitHub, --kit, the kit\'s self-test');
+    assert.equal(testPlan({ ...base, whole: true, forced: true }).mode, 'suite', '--kit, the kit\'s self-test');
   });
   it('the owner\'s settings under workflow/ are not machinery: the kit\'s tests stay skipped', () => {
     for (const changed of [['workflow/levels.json'], ['workflow/tools/baseline.json'], ['workflow/specs/x.md']]) {
@@ -37,8 +37,10 @@ describe('which tests the gate runs', () => {
     assert.deepEqual(testPlan({ ...base, reached, changed: ['workflow/tools/lib/board.mjs'] }).files, reached);
     assert.equal(testPlan({ ...base }).mode, 'none');
   });
-  it('a project with too many test files for one command line takes the whole suite', () => {
-    const many = Array.from({ length: 5 }, (_, i) => `tests/t${i}.test.ts`);
-    assert.equal(testPlan({ ...base, whole: true, allTests: many, maxFiles: 3 }).mode, 'suite');
+  it('a project with hundreds of test files of its own still runs only its own (in batches), not the kit\'s with them', () => {
+    const many = [...Array.from({ length: 400 }, (_, i) => `tests/t${i}.test.ts`), 'workflow/tests/gate.test.ts'];
+    const p = testPlan({ ...base, whole: true, allTests: many });
+    assert.equal(p.mode, 'files');
+    assert.equal(p.files.length, 400);
   });
 });

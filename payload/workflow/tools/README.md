@@ -100,7 +100,7 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   or CI, asks the checklist (`sensitive.checklist` replaces the kit's four questions) and a typed-back code, and agents are
   denied the command and the files. Each row is signed with the signer's private key (encrypted with their passphrase, on their
   computer) and checked with the public keys in `docs/company/SIGNERS.md` as they are on main, the same on every computer and on
-  CI; `npm run signoff -- --init` makes a person's key, `--add-signer` endorses another. Any later edit needs a new sign-off.
+  CI; `npm run signoff -- --list` only reads (the entries, the sensitive files this change touches, whether it is signed); `npm run signoff -- --init` makes a person's key, `--add-signer` endorses another. Any later edit needs a new sign-off.
   Why: `workflow/guides/SENSITIVE.md`.
 - **migrations** (when `data.migrations` lists where they are): a migration file that was there before the change and is edited,
   renamed or deleted fails; it has run somewhere, so a mistake is a new migration (`workflow/guides/DATA.md`). A new one passes.
@@ -117,7 +117,7 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **dependencies** (advice, when `docs/STACK.md` exists): a library a change adds to `package.json`, `Cargo.toml`, `pyproject.toml`
   or `go.mod` that `docs/STACK.md` does not name gets an `advice:` line.
 - **scope**: with one spec in `workflow/specs/`, a changed file the spec never names is printed as a `scope:` line (`"scope": "fail"` makes
-  it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out). Counted as named without being listed: a test
+  it stop the gate, `"off"` silences it; `scopeIgnore` lists globs to leave out). Not on main: a spec waiting there is for its session's build. Counted as named without being listed: a test
   that reaches a file the spec names and a file only such tests import, the pages a script writes (the file map, the docs
   index, the baseline, the lock files) and the owner's sign-off row.
 - **rule rows** (advice, when the change touches `docs/ARCHITECTURE.md`): a cell of *Rules and where each lives* past 200

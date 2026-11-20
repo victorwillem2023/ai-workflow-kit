@@ -19,4 +19,6 @@ jobs:
           node-version-file: .tool-versions
       # another language: add its toolchain here (for Rust: dtolnay/rust-toolchain@stable with clippy)
       - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
-      - run: node workflow/tools/gate.mjs --all
+      # on a push the change is everything since the commit before it (else the gate would compare main with itself and see no
+      # change: no sign-off asked, no secret found in the new lines); a pull request is compared with where it left main
+      - run: node workflow/tools/gate.mjs --all ${{ github.event_name == 'push' && format('--base {0}', github.event.before) || '' }}
