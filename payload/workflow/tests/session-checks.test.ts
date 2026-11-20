@@ -5,7 +5,7 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { commitIn, git, makeRepo, roots, run, type Repo } from './session-repo';
+import { commitIn, git, makeRepo, roots, run, type Repo, ran } from './session-repo';
 
 // a stand-in for the project's gate: it writes down how it was called, and fails when GATE_FAIL is set
 const GATE = `import fs from 'node:fs';
@@ -20,7 +20,7 @@ function gateRepo(): Repo {
 }
 /** A feature started on main, then a commit on main under it: the rebase brings something in. Returns where the feature sat. */
 function featureWithMainMoved(r: Repo, topic: string) {
-  assert.ok(run(r, topic).ok);
+  ran(r, topic);
   const sat = git(r.main, 'rev-parse', 'main');
   commitIn(r.wt(topic), `${topic}.txt`, 'new\n', `add ${topic}`);
   commitIn(r.main, 'other.txt', 'from main\n', 'another feature on main');

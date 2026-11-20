@@ -1,5 +1,6 @@
 // The throwaway repos the session-script tests run in: a bare "origin" and a clone in the shape of the project (the
 // session scripts, a tiny map and check script, a fake `gh` that records its calls), so no test touches the real folders.
+import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -66,6 +67,8 @@ export const run = (r: Repo, ...args: string[]) => {
   try { return { ok: true, out: execFileSync('node', [join(r.main, 'workflow', 'scripts', 'session.mjs'), ...args], { cwd: r.main, env: { ...ENV, ...r.env }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) }; }
   catch (e) { const x = e as { stdout?: string; stderr?: string }; return { ok: false, out: `${x.stdout ?? ''}${x.stderr ?? ''}` }; }
 };
+/** The same, for a step that must work: a failure fails the test with what the script said (a bare "not ok" told nothing). */
+export const ran = (r: Repo, ...args: string[]) => { const x = run(r, ...args); assert.ok(x.ok, x.out || '(the script printed nothing)'); return x; };
 export const commitIn = (dir: string, file: string, text: string, msg: string) => { writeFileSync(join(dir, file), text); git(dir, 'add', file); git(dir, 'commit', '-m', msg); };
 /** A session's new file, with the file map brought up to date as the project's own gate would. */
 export const addFile = (dir: string, file: string, msg: string) => { writeFileSync(join(dir, file), `${file}\n`); execFileSync('node', ['map.cjs'], { cwd: dir }); git(dir, 'add', '-A'); git(dir, 'commit', '-m', msg); };

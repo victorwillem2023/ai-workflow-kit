@@ -6,16 +6,16 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { commitIn, git, makeRepo, roots, run } from './session-repo';
+import { commitIn, git, makeRepo, roots, run, ran } from './session-repo';
 
 describe('a session built on top of another one', () => {
   after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); });
 
   it('uncommitted work in the stacked session keeps it where it is, and --restack moves it later', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'rules').ok);
+    ran(r, 'rules');
     commitIn(r.wt('rules'), 'rules.txt', 'rules\n', 'Plan: rules');
-    assert.ok(run(r, 'screen', '--on', 'rules').ok);
+    ran(r, 'screen', '--on', 'rules');
     commitIn(r.wt('screen'), 'screen.txt', 'screen\n', 'Screen: see the plan');
     writeFileSync(join(r.wt('screen'), 'draft.txt'), 'half done\n');
     const base = run(r, '--finish', 'rules');
@@ -26,12 +26,12 @@ describe('a session built on top of another one', () => {
     const moved = run(r, '--restack', 'screen');
     assert.ok(moved.ok, moved.out);
     assert.equal(git(r.wt('screen'), 'rev-list', '--count', 'main..HEAD'), '2');
-    assert.ok(run(r, '--finish', 'screen').ok);
+    ran(r, '--finish', 'screen');
   });
 
   it('a base whose built work is not committed is saved as a checkpoint on its own branch, and its finish needs the approved subject', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'rules').ok);
+    ran(r, 'rules');
     writeFileSync(join(r.wt('rules'), 'rules.txt'), 'built, not committed\n');
     const made = run(r, 'screen', '--on', 'rules');
     assert.ok(made.ok, made.out);
@@ -42,15 +42,15 @@ describe('a session built on top of another one', () => {
     const bare = run(r, '--finish', 'rules', '--no-checks');
     assert.equal(bare.ok, false);
     assert.match(bare.out, /is a checkpoint[\s\S]*--subject/);
-    assert.ok(run(r, '--finish', 'rules', '--no-checks', '--subject', 'Plan: the rules', '--body', 'Why it is there.').ok);
+    ran(r, '--finish', 'rules', '--no-checks', '--subject', 'Plan: the rules', '--body', 'Why it is there.');
     assert.equal(git(r.main, 'log', '-1', '--format=%s%n%b', 'main').trim(), 'Plan: the rules\nWhy it is there.');
   });
 
   it('a base that is on main already is not stacked on', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'rules').ok);
+    ran(r, 'rules');
     commitIn(r.wt('rules'), 'rules.txt', 'rules\n', 'Plan: rules');
-    assert.ok(run(r, '--finish', 'rules', '--no-checks').ok);
+    ran(r, '--finish', 'rules', '--no-checks');
     const made = run(r, 'screen', '--on', 'rules');
     assert.ok(made.ok, made.out);
     assert.match(made.out, /on main already, so this session starts from main/);

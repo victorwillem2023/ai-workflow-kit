@@ -5,7 +5,7 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ghCalls, git, makeRepo, OPTION, roots, run, type Repo } from './session-repo';
+import { git, makeRepo, roots, run, type Repo, ran } from './session-repo';
 
 /** A repo whose quick gate passes or fails, committed so package.json itself is not left over. */
 function repo(gatePasses: boolean): Repo {
@@ -46,7 +46,7 @@ describe('docs and settings left in the main folder', () => {
     assert.equal(count(r), before + 1, 'one commit');
     assert.equal(git(r.main, 'log', '-1', '--format=%s'), 'Product: the problem and the first users');
     assert.equal(git(r.main, 'status', '--porcelain'), '');
-    assert.ok(run(r, '--check-main').ok);
+    ran(r, '--check-main');
   });
 
   it('a quick gate that fails commits nothing', () => {
@@ -74,7 +74,7 @@ describe('docs and settings left in the main folder', () => {
   it('a repo without origin/HEAD (remote added after git init) gets it, so tools comparing with the default branch work', () => {
     const r = repo(true);
     try { git(r.main, 'remote', 'set-head', 'origin', '-d'); } catch { /* it had none */ }
-    assert.ok(run(r, '--check-main').ok);
+    ran(r, '--check-main');
     assert.equal(git(r.main, 'symbolic-ref', 'refs/remotes/origin/HEAD'), 'refs/remotes/origin/main');
   });
 

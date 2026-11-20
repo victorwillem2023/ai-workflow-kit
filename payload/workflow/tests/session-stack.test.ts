@@ -5,14 +5,14 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { commitIn, git, makeRepo, roots, run } from './session-repo';
+import { commitIn, git, makeRepo, roots, run, ran } from './session-repo';
 
 describe('a session built on top of another one', () => {
   after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); });
 
   it('starts from the other session\'s branch, waits for it, and moves onto main by itself when it is finished', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'rules').ok);
+    ran(r, 'rules');
     commitIn(r.wt('rules'), 'rules.txt', 'rules\n', 'Plan: rules');
     const made = run(r, 'screen', '--on', 'rules');
     assert.ok(made.ok, made.out);

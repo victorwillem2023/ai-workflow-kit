@@ -5,7 +5,7 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { commitIn, git, makeRepo, roots, run, type Repo } from './session-repo';
+import { commitIn, git, makeRepo, roots, run, type Repo, ran } from './session-repo';
 
 const read = (dir: string, f: string) => readFileSync(join(dir, f), 'utf8');
 /** A fix on main after the session started (as another session's finish would put it there). */
@@ -16,7 +16,7 @@ after(() => { for (const r of roots) rmSync(r, { recursive: true, force: true })
 describe('--catch-up', () => {
   it('no commit of its own: main comes in as a fast-forward, the loose work and a git add -N file as they were', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'a').ok);
+    ran(r, 'a');
     const wt = r.wt('a');
     writeFileSync(join(wt, 'a.txt'), 'one\nbeing built\n');
     writeFileSync(join(wt, 'new.txt'), 'new\n');
@@ -34,7 +34,7 @@ describe('--catch-up', () => {
   });
   it('commits of its own: main is merged in, and --finish still lands one commit', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'b').ok);
+    ran(r, 'b');
     const wt = r.wt('b');
     commitIn(wt, 'b.txt', 'b\n', 'add b');
     fixOnMain(r);
@@ -53,7 +53,7 @@ describe('--catch-up', () => {
   });
   it('the same lines changed on both sides: stops with nothing changed', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'c').ok);
+    ran(r, 'c');
     const wt = r.wt('c');
     commitIn(wt, 'a.txt', 'session\n', 'session edit');
     fixOnMain(r, 'a.txt', 'main\n');

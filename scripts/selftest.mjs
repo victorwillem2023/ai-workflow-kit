@@ -23,7 +23,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CORRECTIONS, MOVES, movePaths, movePathsBack, oldPaths } from '../doc-layout.mjs';
 import { FILE_MOVES, FOLDER_MOVES, moveKitPaths, moveKitPathsBack, oldKitPaths } from '../kit-layout.mjs';
-import { newConfigText } from '../migrations/3.0.0-workflow-folder.mjs';
+import { newConfigText } from '../migrations/3.0.0-workflow-folder.mjs'; import { guarded } from '../migrations/4.2.0-tests-offline.mjs';
 import { lines } from '../payload/workflow/tools/lib/text.mjs';
 
 const kit = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -132,6 +132,7 @@ function configLost(before, after, path = '') {
   if (before && typeof before === 'object') return Object.entries(before).flatMap(([k, v]) => (after && typeof after === 'object' && k in after ? configLost(v, after[k], path ? `${path}.${k}` : k) : [`${path ? `${path}.` : ''}${k}: gone`]));
   // a budget may only grow (the update raises CLAUDE.md's by the bytes its own doc paths added)
   if (path.startsWith('budget.') && typeof before === 'number' && after >= before) return [];
+  if (path === 'commands.testFiles' && typeof before === 'string' && after === guarded(before)) return []; // the kit's own test command gets the network guard (4.2.0)
   return before === after ? [] : [`${path}: ${JSON.stringify(before)} became ${JSON.stringify(after)}`];
 }
 

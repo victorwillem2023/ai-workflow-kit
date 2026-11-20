@@ -6,7 +6,7 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ghCalls, git, makeRepo, OPTION, roots, run, type Repo } from './session-repo';
+import { ghCalls, git, makeRepo, OPTION, roots, run, type Repo, ran } from './session-repo';
 
 /** A repo whose quick gate passes or fails, committed so package.json itself is not left over. */
 function repo(gatePasses: boolean): Repo {
@@ -65,7 +65,7 @@ describe('docs and settings left in the main folder', () => {
 
   it('--carry-notes moves the notes into the session (a project whose notes go in with the feature) and leaves main as it was', () => {
     const r = repo(true);
-    assert.ok(run(r, 'a').ok);
+    ran(r, 'a');
     ownerNotes(r);
     const carried = run(r, '--carry-notes', 'a');
     assert.ok(carried.ok, carried.out);
@@ -77,7 +77,7 @@ describe('docs and settings left in the main folder', () => {
 
   it('--carry-notes refuses a note the session changed too, instead of overwriting it', () => {
     const r = repo(true);
-    assert.ok(run(r, 'a').ok);
+    ran(r, 'a');
     writeFileSync(join(r.wt('a'), 'workflow/config.json'), '{"the":"session\'s own"}');
     ownerNotes(r);
     const refused = run(r, '--carry-notes', 'a');

@@ -206,7 +206,8 @@ function updateKitBlocks({ target, kit, fill, text }) {
     if (!current || !before || current === block) continue;
     // a generated block inside a part (CLAUDE.md's phase line, filled by npm run map) is the project's own facts, not an edit
     const plain = (t) => t.replace(/^<!-- kit:[\w-]+ -->\n|\n<!-- \/kit:[\w-]+ -->$/g, '').replace(/(<!--\s*generated:\s*[a-z-]+\s*-->)[\s\S]*?(<!--\s*\/generated\s*-->)/g, '$1$2');
-    if (plain(current) === plain(block)) continue;
+    // the same words already: a section from before the markers still gets them, so the next update knows it is the kit's
+    if (plain(current) === plain(block)) { if (!mine) now = now.replace(current, block); continue; }
     if ([plain(before), movePaths(plain(before)), moveKitPaths(plain(before)), moveKitPaths(movePaths(plain(before)))].includes(plain(current))) now = now.replace(current, block);
     else theirs.push(heading.replace(/^## /, ''));
   }
@@ -244,10 +245,13 @@ export function mergeKitBlocks({ target, kit, fill }) {
 }
 
 // (`rules: false`: only the kit's marked parts; the old sentences are a migration, migrations/2.9.8-notes-rule.mjs, run once)
-export function rewriteChangedRules({ target, kit, fill, rules = true }) {
+// (`grew(bytes)`: told how much longer the kit's own changes made the file, so its size budget can grow by exactly that: the
+// kit's text must never fail the project's gate)
+export function rewriteChangedRules({ target, kit, fill, rules = true, grew = () => {} }) {
   const claude = join(target, 'CLAUDE.md');
   if (!existsSync(claude)) return [];
   let text = readFileSync(claude, 'utf8');
+  const bytesWas = Buffer.byteLength(text);
   const blocks = kit && fill ? updateKitBlocks({ target, kit, fill, text }) : { text, said: [] };
   text = blocks.text;
   const configAt = join(target, 'workflow/config.json');
@@ -270,6 +274,7 @@ export function rewriteChangedRules({ target, kit, fill, rules = true }) {
     text = text.replace(old, now); changed.push(what);
   }
   if (text !== readFileSync(claude, 'utf8')) writeFileSync(claude, text);
+  grew(Math.max(0, Buffer.byteLength(text) - bytesWas));
   return [...blocks.said, ...changed];
 }
 

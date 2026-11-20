@@ -187,7 +187,7 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
     const claudeSize = existsSync(join(target, 'CLAUDE.md')) ? Buffer.byteLength(readFileSync(join(target, 'CLAUDE.md'), 'utf8')) : 0;
     if (claudeGrowth > 0 && typeof budget === 'number' && claudeSize > budget && claudeSize - claudeGrowth <= budget) {
       mine.budget['CLAUDE.md'] = budget + claudeGrowth;
-      added.push(`budget.CLAUDE.md ${budget} -> ${budget + claudeGrowth} (the ${claudeGrowth} bytes the longer doc paths of kit 2.9 added)`);
+      added.push(`budget.CLAUDE.md ${budget} -> ${budget + claudeGrowth} (the ${claudeGrowth} bytes the kit's own text added)`);
     }
     if (added.length) writeJson(cfgPath, mine);
   }

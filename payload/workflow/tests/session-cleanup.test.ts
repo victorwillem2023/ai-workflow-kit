@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
 import { pathToFileURL } from 'node:url';
-import { commitIn, git, makeRepo, PORTS, roots, run, type Repo } from './session-repo';
+import { commitIn, git, makeRepo, PORTS, roots, run, type Repo, ran } from './session-repo';
 
 const PARENT = `const {spawn}=require('child_process');const c=spawn(process.execPath,[__dirname+'/child.cjs',process.argv[2]],{stdio:'ignore'});
 require('fs').writeFileSync(__dirname+'/parent.pid',String(process.pid));setInterval(()=>{},1000);c.on('exit',()=>process.exit(0));`;
@@ -57,7 +57,7 @@ async function startServer(r: Repo, topic: string) {
 }
 /** A session with one commit, ready to finish. */
 const session = (r: Repo, topic: string) => {
-  assert.ok(run(r, topic).ok);
+  ran(r, topic);
   commitIn(r.wt(topic), `${topic}.txt`, 'x\n', `add ${topic}`);
 };
 

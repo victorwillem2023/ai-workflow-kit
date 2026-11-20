@@ -167,7 +167,7 @@ const untouched = (key, text) => written.has(key) && [text, moveKitPathsBack(tex
   .some((t) => written.get(key) === hash(t));
 // --update: an older project's docs move into their folders, and old doc paths are rewritten, before anything is copied
 // (install-docs.mjs)
-let claudeGrowth = 0; // bytes the longer doc paths added to CLAUDE.md (its budget grows by exactly that, below)
+let claudeGrowth = 0; // bytes the kit itself added to CLAUDE.md (longer doc paths, its own parts brought up to date): its budget grows by exactly that, below
 // what changed in the kit since the project's version, one step per version (migrations/): run once, each looking before it acts
 const migrated = [];
 const migrate = (phase) => { if (update) migrated.push(runMigrations(phase, { from: before, target, kit, fill, written, stamp })); return migrated.at(-1) ?? {}; };
@@ -249,7 +249,8 @@ if (update) pruneStageCopies({ target, stageSkipped, untouched, hash, stamp, don
 if (stageSkipped.size) keepNamedStageDocs({ target, stageSkipped, hash, stamp, done });
 nameHelpersInCodeDocs({ target, done });
 unmarkEnteredStages({ target, stages });
-const rulesRewritten = update ? rewriteChangedRules({ target, kit, fill, rules: false }) : [];
+// (grew: the kit's own parts of CLAUDE.md brought up to date may make it longer; its budget grows by that too, below)
+const rulesRewritten = update ? rewriteChangedRules({ target, kit, fill, rules: false, grew: (n) => { claudeGrowth += n; } }) : [];
 migrate('claude');
 
 // each module's own section of CLAUDE.md, added once (install-steps.mjs)

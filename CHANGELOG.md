@@ -45,6 +45,14 @@ What changed in each version of the kit, newest first. Build on the latest tag (
   process has no console, so cmd, npm and the server each opened a visible window (measured). It now starts through a small
   hidden launcher (`lib/hidden.mjs`) whose console has no window, shared by everything below it; the launcher sits in the temp
   folder, so it never holds the session folder open.
+- **4.4.3**: **an update of an old project is whole again, and a failing session test says why** (the self-test on GitHub was
+  red for both). **A section of CLAUDE.md from before the markers gets them even when its words are already the kit's**: the
+  update skipped it as "nothing to change", so it stayed unmarked and no later update could keep it current. **The kit's own
+  text never fails the project's size budget**: when bringing the kit's parts of CLAUDE.md up to date makes the file longer,
+  its budget grows by exactly those bytes (as it already did for the longer doc paths). The self-test's old project no longer
+  counts the network guard on the kit's own test command (4.2.0) as a lost setting. **Session tests**: every step that must
+  work (`ran(...)` in `session-repo.ts`) fails with what the script printed; a start or finish that failed once under load
+  on Windows said only "not ok", so its cause could not be found.
 - **4.4.2**: **a sign-off works in a session folder made before the signer was on main.** `npm run signoff` looked for your
   key only in the folder's own `docs/company/SIGNERS.md`; a session started before the first signer was committed on main has
   an older copy, so it refused a signer the gate itself trusts ("your key is not in SIGNERS.md"), and the copy had to be
