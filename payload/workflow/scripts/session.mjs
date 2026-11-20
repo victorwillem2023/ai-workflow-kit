@@ -44,7 +44,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkS
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
 import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, bringSpec, dropSpecs, gh } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, serve, catchUpSession, onOf, branchExists, stackedOn, restack } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { sync, checkMain, commitNotes, carryNotes, serve, catchUpSession, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 async function make(topic, card, on) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
@@ -184,6 +184,7 @@ async function finish(topic, o) {
   if (!o.noChecks) finishChecks(dir, base);
   const card = cardOf(topic);
   const subject = git(dir, 'log', '-1', '--format=%s');
+  recordShip(topic, dir, card, subject); // what it took, kept for the retro and the ranking (workflow/tools/shipped.mjs)
   if (FLOW === 'pr') return openPullRequest(topic, dir, card, subject, o);
   if (git(main, 'branch', '--show-current') === MAIN) git(main, 'merge', '--ff-only', topic);
   else git(main, 'fetch', '.', `${topic}:main`); // only the ref moves: the branch checked out in the main folder is left alone

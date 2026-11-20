@@ -15,9 +15,9 @@ export interface Upkeep { due: boolean; shipped: number; open: number; never?: b
 export interface FocusState { theme: string; since: string | null; total: number; done: number; doing: Card[]; check: Card[]; left: Ranked[]; held: Card[]; finished: boolean }
 export const HEALTH: string;
 export function themeOf(card: Card, areas?: string[]): string;
-export function proposeBlocks(cards: Card[], options?: { areas?: string[]; firstVersion?: string; size?: number }): Block[];
+export function proposeBlocks(cards: Card[], options?: { areas?: string[]; firstVersion?: string; size?: number; measured?: any }): Block[];
 export function upkeepDue(cards: Card[], options?: { health?: string; every?: number }): Upkeep;
-export function focusState(cards: Card[], focus: Focus, options?: { firstVersion?: string }): FocusState;
+export function focusState(cards: Card[], focus: Focus, options?: { firstVersion?: string; measured?: any }): FocusState;
 export interface SweepGroup { theme: string; cards: { number: number; title: string; column: string; missing: string[]; days: number }[] }
 export function sweepGroups(cards: Card[], options?: { areas?: string[]; types?: string[]; now?: Date }): SweepGroup[];
 export function renderSweep(groups: SweepGroup[], theme?: string | null, from?: number, size?: number): string;

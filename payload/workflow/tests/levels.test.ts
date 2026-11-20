@@ -51,6 +51,8 @@ describe('the levels', () => {
     const prod = readLevels(null).process, proto = readLevels('{ "preset": "prototype" }').process;
     assert.deepEqual([needs(prod.spec, 'small'), needs(prod.spec, 'medium'), needs(proto.spec, 'medium'), needs(proto.spec, 'large')], [false, true, false, true]);
     assert.deepEqual([needs(prod.pitch, 'large'), needs(proto.pitch, 'large')], [true, false]);
+    // two designs drafted apart before /spec chooses: large cards once people use it, none in a prototype
+    assert.deepEqual([needs(prod.designs, 'large'), needs(prod.designs, 'medium'), needs(proto.designs, 'large')], [true, false, false]);
     assert.equal(needs(readLevels('{ "process": { "spec": "always" } }').process.spec, 'small'), true);
   });
 });

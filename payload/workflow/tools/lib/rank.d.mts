@@ -3,8 +3,9 @@ type Ranked = Card & { score: number; v1: boolean; why: string; unlocks?: number
 export const STARTABLE: string[];
 export const BUILT: string[];
 export const TO_SORT: string;
-export function scoreCard(card: Card, firstVersion?: string): Ranked;
-export function rankCards(cards: Card[], o?: { firstVersion?: string; columns?: string[]; built?: string[] }): Ranked[];
+type Measured = { cost?: { small: number; medium: number; large: number; measured: string[] } | null; areas?: Record<string, number> } | null;
+export function scoreCard(card: Card, firstVersion?: string, measured?: Measured): Ranked;
+export function rankCards(cards: Card[], o?: { firstVersion?: string; columns?: string[]; built?: string[]; measured?: Measured }): Ranked[];
 export function topTie(ranked: Ranked[]): Ranked[];
 export function waitingCards(cards: Card[], o?: { columns?: string[]; built?: string[] }): { waiting: { number: number; title: string; waitsFor: number[] }[]; loops: number[][]; unknown: Map<number, number[]> };
 export const TOOL_ISSUES: string[];

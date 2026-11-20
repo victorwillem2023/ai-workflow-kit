@@ -8,9 +8,11 @@
 //   --check                      which columns from the config the project lacks, open cards with no type label, and config labels the repo lacks
 //   --add "<title>" --label <type> [--label <name>]... [--body-file <file>] [--column "<column>"]   a new card (Backlog by default)
 //   --move <number> "<column>"   move a card          --block <number> "<reason>"   to Blocked, the reason as a comment
-//   --show <number>              a card's title, column, labels and text
+//   --show <number>              a card's title, column, labels and text; a "code:" line when it is likely to change a file the code's state points at (lib/cardcode.mjs)
 //   --search "<words>"           cards (open and closed) whose title or text has the words: number, title, column
-//   --next [n]                   the n (5) startable cards to build next: first-version cards first, then value for the effort (lib/rank.mjs)
+//   --next [n]                   the n (5) startable cards to build next: first-version cards first, then value for the effort (lib/rank.mjs),
+//                                the effort counted as what such cards really took here once enough shipped (lib/shipped.mjs); under a card a
+//                                "code:" line when it is likely to change a file to clean up first (lib/cardcode.mjs)
 //   --next [n] --json            the same as fields: the tie, the next cards, the waiting ones, the triage (lib/boardview.mjs)
 //   --focus [--all]              the focus block: where the picked one stands, or the best blocks to pick from (one theme each, lib/focus.mjs)
 //   --focus "<theme>" [n,m]      picks a block (its proposed cards, or the ones named); --focus --add <n> puts one more card in it;
@@ -43,7 +45,9 @@ import { inbox, rankCards, STARTABLE, TO_SORT, TOOL_ISSUES, topTie, waitingCards
 import { renderTree } from './lib/cardgraph.mjs';
 import { boardView } from './lib/boardview.mjs';
 import { ghRun } from './lib/gh.mjs';
-import { codeHotspots } from './lib/codestate.mjs';
+import { codeHotspots, shippedRecords } from './lib/codestate.mjs';
+import { calibrate } from './lib/shipped.mjs';
+import { codeAdvice } from './lib/cardcode.mjs';
 import { together, togetherLines } from './lib/together.mjs';
 import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
@@ -73,7 +77,16 @@ function readFocus() {
   const f = readJson(focusFile());
   return f?.theme && Array.isArray(f.cards) ? f : null;
 }
-const focusOptions = (board) => ({ areas: board.labels?.areas ?? [], firstVersion: board.labels?.milestone?.[0], size: board.focusSize ?? 5 });
+// what the effort labels really cost here, once enough cards shipped (lib/shipped.mjs calibrate); read once per run
+let measuredNow;
+const measured = () => (measuredNow ??= (() => { const m = calibrate(shippedRecords(root)); return m.cost || Object.keys(m.areas).length ? m : null; })());
+const focusOptions = (board) => ({ areas: board.labels?.areas ?? [], firstVersion: board.labels?.milestone?.[0], size: board.focusSize ?? 5, measured: measured() });
+/** For each card given, its "code:" line (lib/cardcode.mjs) or nothing: a Map of card number -> line. */
+function codeLines(config, cards, open) {
+  const spots = codeHotspots(root, config, { n: 12 });
+  const o = { spots, records: shippedRecords(root), areas: config.board.labels?.areas ?? [], open, health: config.board.health ?? HEALTH };
+  return new Map(cards.map((c) => [c.number, codeAdvice(c, o)?.line]).filter(([, l]) => l));
+}
 const upkeepOf = (board, all) => upkeepDue(all, { health: board.health ?? HEALTH, every: board.upkeepEvery ?? 8 });
 
 /** Today's health numbers, from the gate's baseline and the flaky list: what a code health goal brings down. */
@@ -322,12 +335,15 @@ async function main() {
     console.log(`board: #${number} moved to Blocked, the reason added as a comment`);
   } else if (argv.includes('--show')) {
     const c = readCard(board, run, cardNumber(value('--show')));
+    // the code's state, when this card is likely to change a file it points at; the open cards are read only then (is one that work already?)
+    let code = codeLines(config, [c], []).get(c.number);
+    if (code) { try { code = codeLines(config, [c], listCards(board, run, { wholeText: true })).get(c.number) ?? code; } catch { /* the line without the card that does it */ } }
     console.log(`#${c.number} ${c.title}\nColumn: ${c.column ?? 'not on the board'} (${c.state.toLowerCase()})\n` +
-      `Labels: ${c.labels.join(', ') || 'none'}\n${c.url}\n\n${c.body}`);
+      `Labels: ${c.labels.join(', ') || 'none'}\n${c.url}${code ? `\n${code}` : ''}\n\n${c.body}`);
   } else if (argv.includes('--next')) {
     // what to build next, by the owner's labels and a fixed sum (lib/rank.mjs), never by a model's taste
     const all = listCards(board, run);
-    const everyRanked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)) });
+    const everyRanked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)), measured: measured() });
     // a picked focus block keeps the offer to its own cards (lib/focus.mjs); what the owner was on is said first
     const focus = await withinFocus(config, all, everyRanked);
     const ranked = focus.ranked;
@@ -344,7 +360,10 @@ async function main() {
     const tie = topTie(ranked);
     if (tie.length) console.log(`board: ${tie.map((c) => `#${c.number}`).join(', ')} are equal: nothing in the graph or the labels puts one first, so which comes first is yours to say (the board tidy-up, /tidy, asks once and keeps it as value labels)`);
     const tied = new Set(tie.map((c) => c.number));
-    for (const c of ranked.slice(0, Math.max(n, tie.length))) console.log(`${tied.has(c.number) ? '= ' : ''}#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})`);
+    // under a card, the file it is likely to change that the code's state points at (lib/cardcode.mjs): from its title and its area's shipped cards
+    const shown = ranked.slice(0, Math.max(n, tie.length));
+    const code = codeLines(config, shown, all);
+    for (const c of shown) console.log(`${tied.has(c.number) ? '= ' : ''}#${c.number} ${c.title} | ${c.column} | ${c.why} (score ${c.score})${code.has(c.number) ? `\n  ${code.get(c.number)}` : ''}`);
     // the graph first: cards that wait for an open card are not offered, but said, with what they wait for
     const { waiting: held, loops } = waitingCards(all, { columns: board.columns.filter((c) => STARTABLE.includes(c)) });
     if (held.length) console.log(`(waiting for other cards: ${held.map((c) => `#${c.number} for ${c.waitsFor.map((d) => `#${d}`).join(', ')}`).join('; ')}; the tree: npm run board -- --graph)`);
@@ -384,7 +403,7 @@ async function main() {
     // the cards named, or the ones to start (the picked goal's, else the best twelve): which go together, and how
     const all = listCards(board, run);
     const named = String(value('--together') ?? '').split(/[\s,]+/).filter((x) => x && !x.startsWith('--')).map(cardNumber);
-    const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)) });
+    const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)), measured: measured() });
     const candidates = named.length ? named.map((n) => all.find((c) => c.number === n)).filter(Boolean) : (await withinFocus(config, all, ranked)).ranked.slice(0, 12);
     const lines = await togetherFor(board, all, candidates);
     console.log(lines.length ? lines.join('\n') : 'board: nothing says these go together: one card at a time, best first');

@@ -139,6 +139,18 @@ In plain language, with an example wherever a term is technical: what changed, a
   line names the `--add` to run; add `--label "area: Code health"` when the board has it).
 - Anything still open is a question with your recommendation, or a card made now (`.claude/skills/build/try-it.md`, *Open
   points become cards*, made with `--unsorted`), never a bare "unsure".
+- **What it took**: `--finish` kept the size of the change by itself. Add what only this chat knows, once, never asking the
+  owner:
+
+      npm run shipped -- --note <topic> --rounds <n> --review "<kind>=<n>, ..." --hard "<file>: <what got in the way>"
+
+  - `--rounds`: how often the owner tried it and sent it back before saying done (0 when the first version was it).
+  - `--review`: what step 2's review found, counted by kind: `missing`, `extra`, `tests`, `two-ways`, `messier`,
+    `rule-copied`, `safety`, `data`, `other`; `--review none` for a review that found nothing. No review ran: leave it out.
+  - `--hard`, at most three, only when true: a file that made this card harder than it had to be, and why in a few words
+    ("src/core/plan.ts: every caller builds its own week"). A file named on two cards becomes a suggestion in
+    `npm run health` and under the next card that will change it, so name the cause, never a complaint. Nothing got in the
+    way: leave it out.
 - **Where it leaves off**: one line for the next session, `npm run board -- --stopped "<what shipped; what comes next>"`, for
   example "Shipped #380, rides to a top; next in the goal: #379". The next `/next` starts with it.
 

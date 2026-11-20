@@ -2,6 +2,9 @@
 // cards that are built and wait for the owner's check: those it starts on top of),
 // first-version cards first, then by worth (its value for the effort plus that of every card it unlocks), a low feasibility counting against. The labels come from `board.labels` (value, effort, feasibility,
 // milestone); the owner sets them, the script only does the sum, so the order is the same every time and easy to argue with.
+// What an effort label costs is 1, 2 and 4 until the project has shipped enough cards to measure it (`measured`, from
+// lib/shipped.mjs calibrate): then a medium and a large card count as what they really were here, and a card in an area whose
+// cards run bigger than their label counts as that much more. The reason says so, so the sum can still be argued with.
 
 import { cardGraph } from './cardgraph.mjs';
 
@@ -28,15 +31,19 @@ function split(cards, built) {
 /** The word after "<group>: " on a card ("value: high" -> "high"). */
 const word = (labels, group) => labels.map((l) => new RegExp(`^${group}:\\s*(.+)$`, 'i').exec(l)?.[1]?.trim().toLowerCase()).find(Boolean);
 
-/** One card's score and the reason in words. */
-export function scoreCard(card, firstVersion) {
+/** One card's score and the reason in words. `measured`: what the labels cost here ({ cost, areas } of lib/shipped.mjs calibrate), when known. */
+export function scoreCard(card, firstVersion, measured = null) {
   const value = word(card.labels, 'value');
   const effort = word(card.labels, 'effort') ?? 'unknown';
   const feasible = word(card.labels, 'feasibility');
   const worth = WORTH[value] ?? 1.5;
-  const score = (worth / (COST[effort] ?? 3)) * (ODDS[feasible] ?? 0.85) + (card.labels.includes('bug') ? 0.5 : 0);
+  // the area's factor only for a card with an effort label: with none there is no label to be bigger than
+  const area = effort === 'unknown' ? null : Object.keys(measured?.areas ?? {}).find((a) => card.labels.includes(a));
+  const cost = (measured?.cost?.[effort] ?? COST[effort] ?? 3) * (area ? measured.areas[area] : 1);
+  const score = (worth / cost) * (ODDS[feasible] ?? 0.85) + (card.labels.includes('bug') ? 0.5 : 0);
   const v1 = Boolean(firstVersion && card.labels.includes(firstVersion));
-  const why = [v1 ? 'first version' : '', `value ${value ?? 'not set'}`, `effort ${effort}`, feasible ? `feasibility ${feasible}` : '', card.labels.includes('bug') ? 'a bug' : ''].filter(Boolean).join(', ');
+  const sized = [measured?.cost?.measured?.includes(effort) && effort !== 'small' ? `measured: ${measured.cost[effort]} small ones` : '', area ? `${area.replace(/^area:\s*/i, '')} cards run ${measured.areas[area]} times their label` : ''].filter(Boolean).join('; ');
+  const why = [v1 ? 'first version' : '', `value ${value ?? 'not set'}`, `effort ${effort}${sized ? ` (${sized})` : ''}`, feasible ? `feasibility ${feasible}` : '', card.labels.includes('bug') ? 'a bug' : ''].filter(Boolean).join(', ');
   return { ...card, score: Math.round(score * 100) / 100, v1, why };
 }
 
@@ -44,15 +51,15 @@ export function scoreCard(card, firstVersion) {
  *  first (lib/cardgraph.mjs): a card that waits for an open card is left out (`waitingCards` lists those), and among the rest
  *  first-version cards, then by worth: a card's own value for its effort plus that of every card it unlocks (unlocking a card of
  *  little value is worth little; unlocking a valuable one is worth as much as doing it). Ties: Ready, then older. */
-export function rankCards(cards, { firstVersion, columns = STARTABLE, built = BUILT } = {}) {
+export function rankCards(cards, { firstVersion, columns = STARTABLE, built = BUILT, measured = null } = {}) {
   const { parts, unlocks, unlocked } = split(cards, built);
   const byNo = new Map(cards.map((c) => [c.number, c]));
   return cards.filter((c) => c.state === 'open' && columns.includes(c.column) && !c.labels.includes(TO_SORT) && !(parts.get(c.number)?.waits ?? []).length)
     .map((c) => {
-      const s = scoreCard(c, firstVersion);
+      const s = scoreCard(c, firstVersion, measured);
       const u = unlocks.get(c.number) ?? 0;
       // what it opens is worth what those cards are worth
-      const opens = [...(unlocked.get(c.number) ?? [])].map((n) => byNo.get(n)).filter(Boolean).reduce((t, d) => t + scoreCard(d, firstVersion).score, 0);
+      const opens = [...(unlocked.get(c.number) ?? [])].map((n) => byNo.get(n)).filter(Boolean).reduce((t, d) => t + scoreCard(d, firstVersion, measured).score, 0);
       const on = parts.get(c.number)?.on ?? [];
       const top = on.length ? `starts on top of ${on.map((n) => `#${n}`).join(' and ')} (built, waiting for your check)` : '';
       return { ...s, unlocks: u, worth: Math.round((s.score + opens) * 100) / 100, on, why: [top, u ? `unlocks ${u} card${u === 1 ? '' : 's'}` : '', s.why].filter(Boolean).join(', ') };

@@ -53,6 +53,13 @@ then stop.
    - **Cards made along the way wait for your yes** (the script's line): one next step, "Let in or drop the <n> cards made
      while building (2 minutes) (/tidy)".
    - A card that "starts on top of #m" does not wait for #m's check: say so.
+   - **A `code:` line under a card**: the card is likely to change a file that is already costly (changed often and too
+     big, changed often with no test, in the way of earlier cards). Say it with the card, in plain words, as part of the same
+     choice: "Build #42, the filter on the route page. It will change the page's main file, which is 600 lines and changed
+     every few days: I plan the split first, about one more session, and the next cards on that page get cheaper. (/work 42)".
+     When the line names a card that is that work ("#77 is that work"), offer #77 first instead, with that reason.
+   - **"measured" in a card's reason** ("effort medium (measured: 3.2 small ones)"): the order uses what cards of that size
+     really took in this project. Say it only when the owner asks why a card is where it is.
    - **A tie** ("#a, #b are equal"): never present the card numbers as an order. Deciding it is a next step of its own: the
      board tidy-up asks it once and keeps the answer.
 4. **The board's notes**: with the app map, `npm run board -- --gaps`, together with the board's notes (cards with no value,

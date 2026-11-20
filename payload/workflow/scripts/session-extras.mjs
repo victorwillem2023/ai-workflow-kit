@@ -24,6 +24,18 @@ export const notesMessage = (files) => `The main folder has docs and settings th
   'Commit them as their own commit first: node workflow/scripts/session.mjs --commit-notes "<Area: what changed>" (it runs the quick gate on them).';
 
 /**
+ * Keeps what the feature took (workflow/tools/shipped.mjs --record: the size of the change against main, the days, the cards'
+ * labels), while the session folder and its branch are still there. A record is never a reason to stop a finish: any failure is silent.
+ */
+export function recordShip(topic, dir, card, subject) {
+  try {
+    const said = execFileSync(process.execPath, [join(main, 'workflow', 'tools', 'shipped.mjs'), '--record', topic, '--dir', dir, ...(card ? ['--card', card] : []), '--subject', subject],
+      { cwd: main, encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (said) console.log(said);
+  } catch { /* no record this time */ }
+}
+
+/**
  * Brings the main folder level with origin when nothing is in the way (/next and /work run it first), so what merged on GitHub
  * (an update Renovate merged by itself, a feature from elsewhere) is here without a command; then the packages it brought. Only a
  * fast-forward: uncommitted files or unpushed features with new commits on origin leave it as it is, said in one line.

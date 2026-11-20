@@ -2,6 +2,30 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.5.0**: **the kit learns from what shipped: cards measured against their labels, a clean-up offered right before the card
+  that needs it, two designs for a large card.** Until now every suggestion came from one look at the owner's labels and at
+  the code; nothing looked back at what a card turned out to be.
+  **What each card took** (`npm run shipped`, `lib/shipped.mjs`): `session.mjs --finish` keeps a record per feature by
+  itself: the lines and files of the change, the days, the cards' effort, area and type, the tokens used in its session
+  folder. `/ship` adds what only the builder knows (`--note`): how often the owner sent it back, what the fresh review found
+  by kind, and at most three files that made the card harder than it had to be, with why. The records are a line each in
+  git's common folder (no commit; they stay on this computer). **The ranking measures effort**: once small and one other
+  label have five shipped cards each, a medium and a large card count as what they really were here instead of 2 and 4, and
+  a card in an area whose cards run 1.4 times their label counts as that much more; the card's reason says "measured".
+  **The retro reads the records** instead of asking the owner to remember: the usual size per label, the cards two and a
+  half times their label, an area that runs big, a kind of finding the review made on three of the last eight reviewed cards
+  ("the plan is not catching it"), the files in the way of two cards. `/review` ends each finding with its kind so they add up.
+  **A card joined to the code** (`lib/cardcode.mjs`): `npm run board -- --next` and `--show` print a `code:` line when a card
+  is likely to change a file the code's state already points at: a path the card names, or a file half of the last eight
+  shipped cards of its area changed, that is changed often and too big, changed often with no test, in an import circle, or
+  in the way of earlier cards. It says what to do first, or names the open code health card that is that work; `/next`,
+  `/work` and `/spec` pass it on, so a refactor is offered at the moment it pays. A file that got in the way of two shipped
+  cards is also one of the things `npm run health` and the code health goal say to work on. **Two designs, drafted apart**
+  (`/spec` step 2): for a card that `npm run levels -- --needs designs <effort>` says yes to (the new process level
+  `designs`: large cards in a pilot and in production, none in a prototype) or a change that is hard to undo, two subagents
+  draft a design each without seeing the other's, one the smallest change and one the end state; they are compared on the
+  same five lines, and the one not taken goes on the spec's new "Design not taken:" line, which `/review` checks the build
+  against.
 - **4.4.0**: **one goal at a time, with a finish line; the product on the portal's first page; no terminal window from the dev
   server.** From a real board: 333 open cards in 16 areas, 8 in progress, 254 without a value, and `/next` offering the three
   best of all of them, so every day was a bit of everything and work got lost.

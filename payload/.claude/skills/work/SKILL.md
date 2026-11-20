@@ -40,6 +40,10 @@ outside the UI block you picked") and go on; the owner chose it. Never add it to
   recommendation. After the owner's yes, add it: `gh issue edit <n> --repo <board.repo> --add-label <type>`.
 - **It changes old code that has no tests** (the gate's *untested* list): the plan starts with tests that pin down what the
   code does today (`workflow/guides/TAKEOVER.md`, *2. A test before the first change*).
+- **A `code:` line in the card** (`--show` prints it under the address): this card is likely to change a file that is
+  already costly. Say it to the owner in one plain sentence with the plan, and what the plan does about it: the split or
+  the test first when it fits the card's size, else a card of its own that this one depends on (`/spec` step 2). When the
+  line names a card that is that work, offer that card first.
 - **What it needs first**: `npm run board -- --graph` shows the tree built from the cards' "Depends on:" lines. For each open
   card this one waits for, pick the earliest way that keeps the owner's work flowing (the rules: `.claude/skills/work/together.md`):
   - That card is **built** (in *Waiting for your check*, or its session is done): start this one on top of it

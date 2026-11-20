@@ -38,6 +38,8 @@ Each answer that is no comes with the file and line.
   what one way would look like.
 - The same for infra and docs: a second stack or module for what one already does; a doc that repeats another, or lists what
   a folder or a pattern would name.
+- **The design not taken**: when the spec has a "Design not taken:" line, did the build drift into that design after all (its
+  seam, its files)? And is the reason it lost still true now that the code is written? Either one is a finding.
 - **Code that grew messier to fit the change** (a file past its size, a function doing two jobs) is a finding, with the split
   or refactor that would clean it. Follow the phase line in CLAUDE.md (*Code structure*): where it says the size rules are
   advice (a prototype), a baselined file that grew is not a finding to fix now; name its split as a *Later* item instead.
@@ -74,5 +76,10 @@ Each answer that is no comes with the file and line.
 
 A short list, worst first, in plain words, with one example each. Say "nothing found" when that is true. Do not suggest extra
 features or clean-ups.
+
+End each finding with its kind in brackets, one of: `missing` (the spec asked for it), `extra` (built, never asked for),
+`tests` (bent, or would not catch its mistake), `two-ways` (a second way of doing one job, the design not taken),
+`messier`, `rule-copied` (or a rule with no row), `safety`, `data`, `other`. `/ship` counts them per card
+(`npm run shipped`), so a kind that keeps coming back is seen and caught earlier, in the plan.
 
 **This project's own**: when `.claude/project/review.md` exists, read it before you start: it holds this project's own steps and rules for /review, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

@@ -53,7 +53,7 @@ come when a stage needs them; past the gate, every one is optional (`project.aud
 | Run | `npm run drill`, `npm run costs` | The restore drill; the monthly bill, and paid against self-hosted (`-- --compare <file>`). |
 | Run | `/secops` | The weekly security report explained, with a fix or a card for each finding. |
 | Grow | `/market [part]` | Positioning, pricing, the page, converting, ads, the launch; `npm run launch-check -- <address>` checks the page. |
-| Every week | `/retro`, `/lesson` | What the week taught, turned into checks; a correction made to last. |
+| Every week | `/retro`, `/lesson` | What the week taught, turned into checks; a correction made to last. `npm run shipped`: what each shipped card took against its effort label, which the retro reads. |
 
 Three cheap helpers, run on a small/free model (Haiku in Claude Code; in OpenCode the `cheapModel` of `harness.opencode` in `workflow/config.json`), for jobs you start
 yourself and can simply run again:

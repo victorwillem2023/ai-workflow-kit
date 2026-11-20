@@ -42,6 +42,8 @@
       "Bash(node workflow/tools/costs.mjs:*)",
       "Bash(npm run cost:*)",
       "Bash(node workflow/tools/sessioncost.mjs:*)",
+      "Bash(npm run shipped:*)",
+      "Bash(node workflow/tools/shipped.mjs:*)",
       "Bash(npm run coverage:*)",
       "Bash(node workflow/tools/coverage.mjs:*)"
     ],

@@ -3,8 +3,9 @@
 //   safety stops     commit and push wait for the owner's word, the sign-off, secrets, migrations, the AI wrapper, the image, the
 //                    network, the packages, typecheck and the tests: no level. They are on, or their part is not installed.
 //   quality checks   layers, untested code, sizes, docs...: each `fail` (the gate fails), `advise` (it says so and passes) or `off`
-//   process weight   from which size of card a spec, a pitch (/shape), a UI board and a fresh review are needed, and the user
-//                    guide and app map are kept up in the card itself (below it they wait for one /docs catch-up pass)
+//   process weight   from which size of card a spec, a pitch (/shape), a UI board and a fresh review are needed, the user
+//                    guide and app map are kept up in the card itself (below it they wait for one /docs catch-up pass), and
+//                    /spec has two designs drafted apart before it chooses one (designs)
 // The phase fills them in (`phase`, called `preset` before kit 3.4): `prototype` while nothing outside depends on the product (the
 // structure checks advise, specs only for large cards, /ship runs the tests the change reaches), `pilot` once a few real people use
 // it or it keeps their data (structure still advises; untested code, docs and errors fail; /ship runs the whole suite), `production`
@@ -38,13 +39,13 @@ const advise = (names) => Object.fromEntries(names.map((c) => [c, 'advise']));
 /** The phases, lightest first; `ship` is what /ship's gate runs (`gate.mjs --ship`): the tests the change reaches, or all of them. */
 export const PHASES = ['prototype', 'pilot', 'production'];
 export const PRESETS = {
-  prototype: { checks: advise(PROTOTYPE_ADVISE), process: { spec: 'large', pitch: 'never', uiBoard: 'large', review: 'large', upkeep: 'never' }, ship: 'reached' },
-  pilot: { checks: advise(PROTOTYPE_ADVISE.filter((c) => !PILOT_FAIL.includes(c))), process: { spec: 'large', pitch: 'never', uiBoard: 'medium', review: 'medium', upkeep: 'always' }, ship: 'all' },
-  production: { checks: {}, process: { spec: 'medium', pitch: 'large', uiBoard: 'small', review: 'medium', upkeep: 'always' }, ship: 'all' },
+  prototype: { checks: advise(PROTOTYPE_ADVISE), process: { spec: 'large', pitch: 'never', uiBoard: 'large', review: 'large', upkeep: 'never', designs: 'never' }, ship: 'reached' },
+  pilot: { checks: advise(PROTOTYPE_ADVISE.filter((c) => !PILOT_FAIL.includes(c))), process: { spec: 'large', pitch: 'never', uiBoard: 'medium', review: 'medium', upkeep: 'always', designs: 'large' }, ship: 'all' },
+  production: { checks: {}, process: { spec: 'medium', pitch: 'large', uiBoard: 'small', review: 'medium', upkeep: 'always', designs: 'large' }, ship: 'all' },
 };
 
 /**
- * The levels in force: { phase, preset (the same, its old name), checks: { name: level }, process: { spec, pitch, uiBoard, review, upkeep },
+ * The levels in force: { phase, preset (the same, its old name), checks: { name: level }, process: { spec, pitch, uiBoard, review, upkeep, designs },
  * ship: 'reached' | 'all', reach: 'chain' | 'direct', cache: 'picked' | 'all', loosened: [line], problems: [line] }.
  * `text` is workflow/levels.json (null when there is none: production); `projectChecks` the names of the config's own checks.
  */

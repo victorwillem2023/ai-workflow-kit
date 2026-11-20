@@ -3,7 +3,7 @@
 // a spec, a pitch, a UI board and a fresh review are needed, and the guide and app map kept up in the card itself. The skills
 // ask here (/work, /spec, /ui, /ship); the owner changes the file, never an agent.
 //   npm run levels                 the levels, and what is loosened
-//   npm run levels -- --needs spec medium   yes or no: does a medium card need a spec? (spec, pitch, uiBoard, review, upkeep; small, medium, large)
+//   npm run levels -- --needs spec medium   yes or no: does a medium card need a spec? (spec, pitch, uiBoard, review, upkeep, designs; small, medium, large)
 import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

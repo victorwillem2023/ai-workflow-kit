@@ -24,6 +24,9 @@ the vision becomes cards for later, not this spec.
 ## 1. Read the card and what is there now
 
 - `npm run board -- --show <n>`: its title, column, labels and text. Never read the whole board.
+  - A `code:` line in it names a file this card is likely to change that is already costly (changed often and too big, no
+    test, in the way of earlier cards). Open that file before you choose a design: it is the first candidate for *When the
+    end state needs a split or a refactor first* in step 2, and the plan says what it does about it.
 - Its type label (`ui`, `feature`, `bug` or `workflow`) goes on the spec's "Card:" line. A card with none: ask which. A
   `spike` card goes to `/spike`, not a spec.
 - What the feature does today: `docs/GUIDE.md` lists the guide's parts; open only the part for it in `docs/guide/`.
@@ -46,6 +49,28 @@ Then ask the owner the open questions (AskUserQuestion): only real decisions, ea
 - An option that adds a special case beside the general rule (an `if` for one kind of input, or a second way of doing a job
   the code already does) is always a step, never the end state: extend the rule's home instead. The same holds for infra (a
   second stack, module or pipeline) and for docs (a doc that grew into a list, two docs saying one thing).
+
+**Two designs, drafted apart, for a card that is worth it.** One author writes one design and then defends it. So when
+`npm run levels -- --needs designs <its effort>` says yes (large cards once people use the app, none in a prototype), or
+the change is hard to undo whatever its size, do this before the owner's questions:
+
+1. Start two subagents at the same time (the Task tool, on the strong model), each with the card's text, the End state line,
+   the files step 1 found, and one of these two briefs. Neither sees this chat or the other's draft.
+   - **The smallest change**: "The design that changes the fewest files and adds the least. Take away or reuse before you
+     add. Say what it cannot do that the end state asks for."
+   - **The end state**: "The design nobody would want to redo, as if the code were written today. Say what has to move or be
+     split first, and what it costs."
+
+   Each answers in at most thirty lines: the seam (where the new code meets the old), the files that change, what it moves
+   or deletes, the tests it needs, and its one biggest risk.
+2. Put them side by side on the same five lines each: files touched, rules that move or gain a second home, code deleted
+   against code added, what is hard to undo, what the next card on this part of the app would have to redo.
+3. Choose, or join the best of both. The choice is one of the owner's questions when the two differ in what the person
+   using the app gets or in more than a session of work; otherwise decide, and say why in one line.
+4. The one not taken goes on the spec's "Design not taken:" line with the reason, so `/review` can tell whether the build
+   drifted into it and whether the reason still held.
+
+A card below that size gets one design: the comparison costs two drafts, and a small card does not pay them back.
 
 **When the end state needs a split or a refactor first** (a file past its size, a rule living in two places, a stack shaped
 for one server, a module that knows too much): plan it, never build around it.

@@ -10,7 +10,8 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
 
 ## 1. The numbers
 
-- `npm run retro`: what shipped each week for 8 weeks and the streak, the health moves since a week ago, the next cards.
+- `npm run retro`: what shipped each week for 8 weeks and the streak, the health moves since a week ago, what the shipped
+  cards took against their effort labels, the next cards.
 - `npm run health`: the code-health numbers.
 - `npm run cost`: the week's AI use, by command. Give one line of it: the total, and the command that used most.
 - **Once a month** also `npm run coverage` (a minute): how much of the code the tests run, and the files with the most lines
@@ -19,6 +20,17 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
 Say what they show in four lines at most: the trend, anything that got worse, anything that got better. No praise, no blame:
 what happened.
 
+**What the cards took** (the lines under that heading in `npm run retro`; "no record yet" is nothing to say). Each line
+that names something is one thing to pass on, in plain words, with what to do about it:
+- *bigger than they looked*: name the card and ask, in step 2, what made it bigger. The answer is a lesson (step 3).
+- *an area's cards run about n times their label*: the next cards there get a size up, or are split
+  (`npm run board -- --rate <n> effort <size>`, on the owner's yes). The ranking already counts them that way.
+- *the review found ... on n of the last m reviewed cards*: the plan is not catching it. Propose where it gets caught
+  earlier: a line in the spec's template or in this project's own spec rules (`.claude/project/spec.md`), or a check
+  (step 3, through `/lesson`).
+- *got in the way more than once*: offer one card to clean that file up, with the builders' words as its text
+  (`npm run board -- --add ... --label "area: Code health" --unsorted`), unless `npm run board -- --search "<file>"` finds one.
+
 A project that started with debt (an older codebase): say how the baseline moved, and offer one card for the riskiest untested
 file when the baseline has not shrunk for a month (`workflow/guides/TAKEOVER.md`, *3. Work the baseline down*).
 
@@ -26,7 +38,8 @@ file when the baseline has not shrunk for a month (`workflow/guides/TAKEOVER.md`
 
 In one AskUserQuestion:
 - what went well;
-- what got in the way: a check that failed for no reason, a rework, a slow step, a card that was bigger than it looked;
+- what got in the way: a check that failed for no reason, a rework, a slow step, a card that was bigger than it looked (name
+  the ones the numbers showed);
 - for each card on the script's *Did it work, due a look* line: what they saw for its sign.
 
 For each of those signs:

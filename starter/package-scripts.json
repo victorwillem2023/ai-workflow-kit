@@ -25,6 +25,7 @@
   "launch-check": "node workflow/tools/launchcheck.mjs",
   "costs": "node workflow/tools/costs.mjs",
   "cost": "node workflow/tools/sessioncost.mjs",
+  "shipped": "node workflow/tools/shipped.mjs",
   "coverage": "node workflow/tools/coverage.mjs",
   "library": "node workflow/tools/library.mjs",
   "levels": "node workflow/tools/levels.mjs",

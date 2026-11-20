@@ -7,6 +7,8 @@
 //   bug-cluster      an area with several open bugs: stabilise it before building more on it (stop the line).
 //   flaky            tests that fail now and then: a check nobody trusts is a check nobody reads. Fix them first.
 //   circles          files that import each other in a circle: nothing in it can change alone. Untangle the circle.
+//   in-the-way       a file the builders of several shipped cards said got in their way (lib/shipped.mjs, noted at /ship): the
+//                    people who just changed it said so, which no count of lines can.
 
 /** How often each file changed: a Map from `git log --name-only --format=` output (one file per line, blank lines between). */
 export function churn(log) {
@@ -18,9 +20,9 @@ export function churn(log) {
 /**
  * The suggestions, best first: [{ kind, principle, what, files, score }]. `changes`: churn(); `baseline`: the gate's
  * (sizes { file: lines }, functions { "file|name": lines } or [..], untested [file], cycles [[file]]); `bugs`: open bug cards
- * with their area; `flaky`: the flaky list's files. At most `n`.
+ * with their area; `flaky`: the flaky list's files; `hard`: lib/shipped.mjs hardFiles(). At most `n`.
  */
-export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky = [], days = 90, n = 6 } = {}) {
+export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky = [], hard = [], days = 90, n = 6 } = {}) {
   const out = [];
   const sizes = baseline.sizes ?? {};
   const fnFiles = new Map();
@@ -48,10 +50,12 @@ export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky 
   const cycles = baseline.cycles ?? [];
   if (cycles.length) out.push({ kind: 'circles', principle: 'parts that import each other cannot change alone: untangle the circle', score: cycles.length * 3,
     what: `${cycles.length} import circle${cycles.length === 1 ? '' : 's'}, the first: ${[].concat(cycles[0]).slice(0, 4).join(' -> ')}`, files: [].concat(cycles[0]) });
+  for (const h of hard.slice(0, 2)) out.push({ kind: 'in-the-way', principle: 'ask who just changed it: a file that got in the way of several cards will get in the way of the next', score: h.cards.length * 6,
+    what: `${h.file} got in the way of ${h.cards.length} shipped cards (${h.cards.slice(0, 4).join(', ')}): ${h.whys.at(-1)}`, files: [h.file] });
   return out.sort((a, b) => b.score - a.score).slice(0, n);
 }
 
 /** The suggestions as text, one per line with its principle under it. */
 export const hotspotLines = (list) => (list.length
   ? ['what the code says to work on, best first:', ...list.flatMap((h, i) => [`${i + 1}. ${h.what}`, `   why: ${h.principle}`])]
-  : ['nothing stands out: no file is both changed often and too big, no bug cluster, no flaky test']).join('\n');
+  : ['nothing stands out: no file is both changed often and too big, no bug cluster, no flaky test, no file that got in the way twice']).join('\n');

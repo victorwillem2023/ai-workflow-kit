@@ -2,6 +2,7 @@
 
 Card: #<n> (`npm run board -- --show <n>`; cards combined into one commit: #<n>, #<m>), type <ui | feature | bug | workflow>
 End state: <the best version, in one sentence>. This spec: <is it | a step toward it, because <reason>; the rest is card #<n>>
+Design not taken: <none: one design was drafted | the other design in one line, and why it lost (`/spec` step 2, two designs)>
 Starts on: <main | <topic> of a built, unfinished card it needs (`.claude/skills/work/together.md`)>
 Card stays open after this spec: <no | yes, what is left>
 Owner approval: <not yet | approved on YYYY-MM-DD>

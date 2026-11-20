@@ -20,9 +20,9 @@ export const themeOf = (card, areas = []) => areas.find((a) => card.labels.inclu
  * cards of one theme; `more`: how many of that theme are left for a later block; `days`: a rough length from the effort labels
  * (small 1, medium 2, large 4 sessions; none counts as medium). First-version cards first, then the worth of the block.
  */
-export function proposeBlocks(cards, { areas = [], firstVersion, size = 5 } = {}) {
+export function proposeBlocks(cards, { areas = [], firstVersion, size = 5, measured = null } = {}) {
   const groups = new Map();
-  for (const c of rankCards(cards, { firstVersion })) {
+  for (const c of rankCards(cards, { firstVersion, measured })) {
     const theme = themeOf(c, areas);
     groups.set(theme, [...(groups.get(theme) ?? []), c]);
   }
@@ -52,11 +52,11 @@ export function upkeepDue(cards, { health = HEALTH, every = 8 } = {}) {
  * best first; `held`: its cards that wait (blocked, or for another card); `check`: built, waiting for the owner. Finished when
  * nothing is left to start, in progress or held. A card number the board no longer has counts as done.
  */
-export function focusState(cards, focus, { firstVersion } = {}) {
+export function focusState(cards, focus, { firstVersion, measured = null } = {}) {
   const mine = new Set(focus.cards);
   const got = cards.filter((c) => mine.has(c.number));
   const open = got.filter((c) => c.state === 'open');
-  const left = rankCards(cards, { firstVersion }).filter((c) => mine.has(c.number));
+  const left = rankCards(cards, { firstVersion, measured }).filter((c) => mine.has(c.number));
   const doing = open.filter((c) => c.column === DOING);
   const check = open.filter((c) => BUILT.includes(c.column));
   const held = open.filter((c) => !doing.includes(c) && !check.includes(c) && !left.some((l) => l.number === c.number));
