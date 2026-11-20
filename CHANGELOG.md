@@ -45,6 +45,11 @@ What changed in each version of the kit, newest first. Build on the latest tag (
   process has no console, so cmd, npm and the server each opened a visible window (measured). It now starts through a small
   hidden launcher (`lib/hidden.mjs`) whose console has no window, shared by everything below it; the launcher sits in the temp
   folder, so it never holds the session folder open.
+- **4.4.2**: **a sign-off works in a session folder made before the signer was on main.** `npm run signoff` looked for your
+  key only in the folder's own `docs/company/SIGNERS.md`; a session started before the first signer was committed on main has
+  an older copy, so it refused a signer the gate itself trusts ("your key is not in SIGNERS.md"), and the copy had to be
+  brought over by hand. The tool now reads the list where the gate reads it: where the branch left main, the local main
+  itself, and the folder's own copy.
 - **4.4.1**: **`npm run signoff -- --init` no longer crashes after making the key.** It read the public half back out of the
   key it had just written, which is encrypted, so OpenSSL asked for the passphrase itself and failed ("interrupted or
   cancelled"); every later sign-off would have failed the same way. The public half is now written beside the key

@@ -91,7 +91,13 @@ if (args.includes('--init')) {
 const privateKey = existsSync(keyFile) ? readFileSync(keyFile, 'utf8') : null;
 if (!privateKey) stop(`you have no key yet: npm run signoff -- --init`);
 await recordPublicKey();
-if (!parseSigners(read(SIGNERS)).some((s) => s.key === myKey())) stop(`your key is not in ${SIGNERS}: a signer adds you with --add-signer (npm run signoff -- --show-key prints it)`);
+// who may sign is read where the gate reads it (lib/policy.mjs): the list on main (where the branch left it, and the local main
+// itself), and this folder's own copy. A session folder made before the signer went onto main has an older copy, and going by
+// that one alone refused a signer the gate would trust.
+const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', ORIGIN_MAIN) ?? git('merge-base', 'HEAD', MAIN) ?? 'HEAD';
+const onMain = [git('show', `${base}:${SIGNERS}`), git('show', `${MAIN}:${SIGNERS}`)].filter(Boolean).join('\n');
+const isSigner = (key) => [onMain, read(SIGNERS)].some((text) => parseSigners(text).some((s) => s.key === key));
+if (!isSigner(myKey())) stop(`your key is not in ${SIGNERS}, here or on ${MAIN}: a signer adds you with --add-signer (npm run signoff -- --show-key prints it)`);
 
 /** --add-signer "<name>" <public key>: a signer endorses another person's key with their own. */
 async function addSigner() {
@@ -109,14 +115,13 @@ async function addSigner() {
 }
 if (args.includes('--add-signer')) await addSigner();
 
-const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', ORIGIN_MAIN) ?? git('merge-base', 'HEAD', MAIN) ?? 'HEAD';
 const paths = config.sensitive?.paths ?? [];
 if (!paths.length) { rl.close(); console.log('signoff: no sensitive.paths in workflow/config.json, so nothing needs a sign-off'); process.exit(0); }
 const changed = [...(git('diff', '--name-only', base) ?? '').split('\n'), ...(git('ls-files', '--others', '--exclude-standard') ?? '').split('\n')].filter(Boolean);
 const files = sensitiveFiles(changed, paths, matchesAny);
 if (!files.length) { rl.close(); console.log('signoff: this change touches no sensitive file'); process.exit(0); }
 const print = fingerprint(files, read);
-const verdict = signoffVerdict({ changed: files, paths, matches: matchesAny, read, signoffs: read(SIGNOFFS), baseSigners: git('show', `${base}:${SIGNERS}`), signers: read(SIGNERS) });
+const verdict = signoffVerdict({ changed: files, paths, matches: matchesAny, read, signoffs: read(SIGNOFFS), baseSigners: onMain, signers: read(SIGNERS) });
 if (verdict.ok) { rl.close(); console.log(`signoff: this version is already signed (${print})`); process.exit(0); }
 
 console.log(`These sensitive files changed since ${base.slice(0, 12)}:\n${files.map((f) => `  ${f}`).join('\n')}\n`);
@@ -135,4 +140,4 @@ try { row = signoffRow({ date: today, who, print, files, privateKey, passphrase 
 if (!existsSync(SIGNOFFS)) writeFileSync(SIGNOFFS, '# Sign-offs\n\nOne row per checked version of the sensitive files (`sensitive.paths`), written by `npm run signoff`, never by hand or by an agent: each row is signed with a signer\'s key (docs/company/SIGNERS.md). Read workflow/guides/SENSITIVE.md for what is checked.\n\n| Date | Who | Fingerprint | Files | Signature |\n|---|---|---|---|---|\n');
 appendFileSync(SIGNOFFS, `${row}\n`);
 console.log(`signoff: signed ${files.length} file${files.length === 1 ? '' : 's'} (${print}) in ${SIGNOFFS}; it goes in the same commit as the change`);
-if (!verdict.line?.includes('no signer yet') && !parseSigners(git('show', `${base}:${SIGNERS}`)).some((s) => s.key === myKey())) console.log(`  (your key is not on main yet: the gate counts this once ${SIGNERS} with you in it is there)`);
+if (!verdict.line?.includes('no signer yet') && !parseSigners(onMain).some((s) => s.key === myKey())) console.log(`  (your key is not on main yet: the gate counts this once ${SIGNERS} with you in it is there)`);
