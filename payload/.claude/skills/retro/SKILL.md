@@ -14,6 +14,7 @@ Once a week, in a fresh chat in the main folder. The numbers come from scripts; 
   cards took against their effort labels, the next cards.
 - `npm run health`: the code-health numbers.
 - `npm run cost`: the week's AI use, by command. Give one line of it: the total, and the command that used most.
+- `npm run cost -- --by-kit`: pass on a line only when it ends in "% more" or "% less" (a kit update changed a command's cost).
 - **Once a month** also `npm run coverage` (a minute): how much of the code the tests run, and the files with the most lines
   no test runs. Give the figure, and offer a card for the top file when it holds a rule.
 

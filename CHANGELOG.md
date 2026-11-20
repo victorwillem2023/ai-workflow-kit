@@ -2,6 +2,17 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.8.0**: **the kit watches what it costs to read.** Between 4.0 and 4.7 the skills grew by 23% and the tools README by
+  25%, a paragraph per release, and nothing said so.
+  **The kit's own texts have a recorded size** (`scripts/text-sizes.mjs`, `scripts/text-sizes.json`): every skill, the
+  rules a project starts with, the tools README and the guides (60 texts, 401 KB). A text may shrink freely and grows past
+  its recorded size only with a reason written down (`--accept <file> "<why>"`; a few words more pass). `npm run
+  test:quick` checks it, so no release goes out with a text that grew unseen.
+  **What a command costs, by kit version** (`npm run cost -- --by-kit`): from Claude Code's own records and the dates the
+  project got each kit version, what one use of each command took under each (the middle one of its uses; three uses under
+  each of two versions), with "18% more since 4.6" when it moved. `/retro` passes that line on.
+  **What a card costs, by kit version**: each shipped card's record now names the kit the project had, and `npm run
+  shipped` and the retro say what a card's session used under each version, once two versions have three cards of one size.
 - **4.7.0**: **the .env decides for the gate too, a mistyped sensitive folder fails once people depend on the product, a
   faster gate for a docs change, and the session script's own tests are in the kit.**
   **The `.env` decides, not the shell, everywhere** (`lib/folderenv.mjs`): 4.6.0 did this for `--serve` and `--finish`; now

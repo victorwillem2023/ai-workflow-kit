@@ -5,4 +5,6 @@ export function answerUse(line: unknown): Answer | null;
 export function money(use: Use | Answer, price: Price | undefined | null): number | null;
 export function sumUse(answers: Answer[], since?: Date | null): { total: Use; byModel: Map<string, Use>; bySkill: Map<string, Use>; byDay: Map<string, Use>; bySession: Map<string, Use> };
 export function tokens(n: number): string;
+export function useByKit(answers: Answer[], periods: { from: string; version: string }[], o?: { min?: number }): { skill: string; rows: { kit: string; uses: number; median: number }[] }[];
+export function kitLines(byKit: ReturnType<typeof useByKit>, o?: { min?: number; label?: string }): string[];
 export function costLines(sum: ReturnType<typeof sumUse>, o?: { prices?: Record<string, Price> | null; checked?: string | null; label?: string }): string[];

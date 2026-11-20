@@ -58,3 +58,6 @@ skill that answered) and by day, for the last 7 days (`-- --days 30` for longer)
 (`"2026-11"`): the kit holds no prices, they change. `/retro` shows the week's line. A command that keeps topping the list, or
 an answer count far above the card's size, is where the next rule here comes from; for one chat, the agent's own cost view
 (`/explain-usage` where it has one) says which reads dominated. OpenCode's sessions are not in these records.
+
+**Did a kit update make things cost more?** `npm run cost -- --by-kit` compares one use of each command across the kit
+versions the project has had, and `npm run shipped` does it per card; both need three uses under each of two versions.

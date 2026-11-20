@@ -106,3 +106,17 @@ describe('what the records say together', () => {
     assert.ok(lines.some((l) => /bigger than they looked: #41 \(small: 400 lines, 4 rounds\)/.test(l)), lines.join('\n'));
   });
 });
+
+describe('what a card cost under each kit version', async () => {
+  const { kitLine } = await import('../../workflow/tools/lib/shipped.mjs');
+  it('keeps the kit version on the record', () => {
+    assert.equal(shipRecord({ topic: 'a', kit: '4.7.0' }).kit, '4.7.0');
+    assert.equal(shipRecord({ topic: 'a' }).kit, null);
+  });
+  it('says nothing until two kit versions have three cards of one size with a token count, then one line', () => {
+    const on = (kit: string, tokens: number[]) => tokens.map((t, i) => rec(`${kit}-${i}`, 'small', 40, { kit, tokens: t }));
+    assert.equal(kitLine([...on('4.6.0', [300_000, 310_000, 320_000]), ...on('4.7.0', [200_000, 210_000])]), null);
+    assert.equal(kitLine([...on('4.6.0', [300_000, 310_000, 320_000]), ...on('4.6.1', [100_000]), ...on('4.7.0', [200_000, 210_000, 260_000])]),
+      "  what a small card's session used, by kit version: kit 4.6: 305 k tokens (4 cards); kit 4.7: 210 k tokens (3 cards)");
+  });
+});

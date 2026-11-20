@@ -36,6 +36,42 @@ export function sumUse(answers, since = null) {
   return out;
 }
 
+/**
+ * What one use of each command took under each kit version. `periods`: [{ from: ISO date, version }], when the project got each
+ * kit version (oldest first); a use is one chat's answers under one command. Versions count by their first two numbers (4.6,
+ * 4.7). Returns [{ skill, rows: [{ kit, uses, median }] }] for the commands with `min` uses under at least two versions, the
+ * most used first: a kit update that made a command cost more, or less, shows here from real use.
+ */
+export function useByKit(answers, periods, { min = 3 } = {}) {
+  const sorted = [...periods].sort((a, b) => new Date(a.from) - new Date(b.from));
+  const kitAt = (at) => { let v = null; for (const p of sorted) { if (new Date(p.from) <= new Date(at)) v = p.version; else break; } return v ? String(v).split('.').slice(0, 2).join('.') : null; };
+  const uses = new Map(); // "<skill>|<session>" -> { skill, kit, tokens }
+  for (const a of answers) {
+    if (!a.skill || !a.at) continue;
+    const kit = kitAt(a.at);
+    if (!kit) continue;
+    const key = `${a.skill}|${a.session ?? 'unknown'}`;
+    const u = uses.get(key) ?? { skill: `/${a.skill}`, kit, tokens: 0 };
+    u.tokens += a.input + a.output + a.cacheWrite + a.cacheRead;
+    uses.set(key, u);
+  }
+  const mid = (list) => { const s = [...list].sort((x, y) => x - y); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
+  const bySkill = new Map();
+  for (const u of uses.values()) { const m = bySkill.get(u.skill) ?? new Map(); m.set(u.kit, [...(m.get(u.kit) ?? []), u.tokens]); bySkill.set(u.skill, m); }
+  return [...bySkill].map(([skill, m]) => ({ skill, rows: [...m].filter(([, t]) => t.length >= min).sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([kit, t]) => ({ kit, uses: t.length, median: Math.round(mid(t)) })) }))
+    .filter((s) => s.rows.length >= 2).sort((a, b) => b.rows.reduce((n, r) => n + r.uses, 0) - a.rows.reduce((n, r) => n + r.uses, 0));
+}
+
+/** The lines of that comparison; with nothing to compare yet, one line saying what it needs. */
+export function kitLines(byKit, { min = 3, label = 'the last 60 days' } = {}) {
+  if (!byKit.length) return [`By kit version: nothing to compare in ${label} yet (a command needs ${min} uses under each of two kit versions).`];
+  return [`What one use of a command took, by kit version (${label}; the middle one of its uses):`, ...byKit.slice(0, 8).map((s) => {
+    const [first, last] = [s.rows[0], s.rows.at(-1)];
+    const change = first.median ? Math.round(((last.median - first.median) / first.median) * 100) : 0;
+    return `  ${s.skill}: ${s.rows.map((r) => `kit ${r.kit}: ${tokens(r.median)} (${r.uses} uses)`).join('; ')}${Math.abs(change) >= 10 ? `: ${change > 0 ? `${change}% more` : `${-change}% less`} since ${first.kit}` : ''}`;
+  })];
+}
+
 /** "1.2 M" for a token count. */
 export const tokens = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} M` : n >= 1e3 ? `${Math.round(n / 1e3)} k` : String(n));
 

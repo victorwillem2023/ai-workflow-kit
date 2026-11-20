@@ -65,6 +65,8 @@ if (argv.includes('--record')) {
     topic, cards, subject: value('--subject') ?? '', started, numstat: git(dir, 'diff', '--numstat', '--no-renames', MAIN, 'HEAD'),
     labels: await labelsOf(cards, config.board), areas: config.board?.labels?.areas ?? [], types: config.board?.types ?? [],
     tokens: tokensIn(dir, started ? new Date(started) : new Date(Date.now() - 30 * 86_400_000)),
+    // the kit the project had when it shipped: what cards cost is compared across kit updates (lib/shipped.mjs, kitLine)
+    kit: (() => { try { return /^version=(\S+)/m.exec(readFileSync(join(main, 'workflow', 'record'), 'utf8'))?.[1] ?? null; } catch { return null; } })(),
   });
   save(addRecord(shippedRecords(main), record));
   console.log(`Kept what it took: ${record.lines} lines changed in ${record.files.length} file${record.files.length === 1 ? '' : 's'}${record.days != null ? ` over ${record.days} day${record.days === 1 ? '' : 's'}` : ''}${record.effort ? `, for a card labelled effort ${record.effort}` : ''} (npm run shipped).`);

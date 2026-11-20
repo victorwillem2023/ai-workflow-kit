@@ -33,10 +33,11 @@ export function parseNumstat(text) {
 }
 
 /**
- * One record, from what the finish knows: { at, topic, cards, subject, started, days, files, lines, effort, areas, type, tokens }.
+ * One record, from what the finish knows: { at, topic, cards, subject, started, days, files, lines, effort, areas, type, tokens, kit }.
+ * `kit`: the kit version the project had then (workflow/record), so what cards cost can be compared across kit updates.
  * `labels`: the labels of its cards together; the effort is the biggest of them (cards built as one are as big as the biggest).
  */
-export function shipRecord({ topic, cards = [], subject = '', at = new Date(), started = null, numstat = '', labels = [], areas = [], types = [], tokens = null }) {
+export function shipRecord({ topic, cards = [], subject = '', at = new Date(), started = null, numstat = '', labels = [], areas = [], types = [], tokens = null, kit = null }) {
   const changed = parseNumstat(numstat);
   const efforts = labels.map((l) => /^effort:\s*(\w+)/i.exec(l)?.[1]?.toLowerCase()).filter((e) => EFFORTS.includes(e));
   const begun = started ? new Date(started) : null;
@@ -46,7 +47,7 @@ export function shipRecord({ topic, cards = [], subject = '', at = new Date(), s
     days: begun && !Number.isNaN(begun.getTime()) ? Math.max(0, Math.round((new Date(at) - begun) / 86_400_000)) : null,
     files: changed.map((f) => f.file), lines: changed.reduce((t, f) => t + f.lines, 0),
     effort: EFFORTS.findLast((e) => efforts.includes(e)) ?? null, areas: areas.filter((a) => labels.includes(a)), type: types.find((t) => labels.includes(t)) ?? null,
-    tokens: tokens || null, rounds: null, review: null, hard: [],
+    tokens: tokens || null, kit: kit || null, rounds: null, review: null, hard: [],
   };
 }
 
@@ -153,6 +154,21 @@ export function reviewPatterns(records, { last = 8 } = {}) {
 
 const name = (a) => String(a).replace(/^area:\s*/i, '');
 
+/**
+ * What a card's session used under each kit version, for the effort label with the most records: one line, or none while fewer
+ * than two versions (counted by their first two numbers, 4.6 and 4.7) have `min` cards with a token count. A kit update that
+ * made the skills longer shows here as a card costing more, from real use.
+ */
+export function kitLine(records, { min = 3 } = {}) {
+  const line = (v) => String(v).split('.').slice(0, 2).join('.');
+  const known = records.filter((r) => r.kit && r.tokens && r.effort);
+  const groups = (e) => { const m = new Map(); for (const r of known.filter((x) => x.effort === e)) m.set(line(r.kit), [...(m.get(line(r.kit)) ?? []), r.tokens]); return [...m].filter(([, t]) => t.length >= min); };
+  const best = EFFORTS.map((e) => [e, groups(e)]).filter(([, g]) => g.length >= 2).sort((a, b) => b[1].reduce((n, [, t]) => n + t.length, 0) - a[1].reduce((n, [, t]) => n + t.length, 0))[0];
+  if (!best) return null;
+  const rows = best[1].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([v, t]) => `kit ${v}: ${Math.round(median(t) / 1000)} k tokens (${plural(t.length, 'card')})`);
+  return `  what a ${best[0]} card's session used, by kit version: ${rows.join('; ')}`;
+}
+
 /** What the shipped cards took, as lines (npm run shipped, the retro). `all`: every record (what the labels mean is measured
  *  over all of them); `since`: only cards shipped after it are named one by one. */
 export function tookLines(all, { since = null, min = 5 } = {}) {
@@ -171,6 +187,8 @@ export function tookLines(all, { since = null, min = 5 } = {}) {
   const big = c.outliers.filter((r) => recent.includes(r)).slice(0, 4);
   if (big.length) out.push(`  bigger than they looked: ${big.map((r) => `${tag(r)} (${r.effort}: ${r.lines} lines${r.rounds != null ? `, ${plural(r.rounds, 'round')}` : ''})`).join('; ')}`);
   for (const p of reviewPatterns(all)) out.push(`  the review found ${p.say} on ${p.cards} of the last ${p.of} reviewed cards: the plan is not catching it (a line in the spec's template or a check, through /lesson)`);
+  const byKit = kitLine(all);
+  if (byKit) out.push(byKit);
   const hard = hardFiles(all).slice(0, 3);
   if (hard.length) out.push(`  got in the way more than once: ${hard.map((h) => `${h.file} (${h.cards.join(', ')}: ${h.whys.at(-1)})`).join('; ')}`);
   return out;
