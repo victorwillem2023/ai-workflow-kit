@@ -7,7 +7,7 @@
 // one, and any computer (a second one, GitHub's runners) can check one with the committed public keys.
 // Which signers count: the ones on the branch the change left (main), plus a new one that one of them endorsed; a key added in
 // the change itself counts for nothing until then. The first signer of a project goes in on its own (`--init`), before a sign-off.
-import { createHash, generateKeyPairSync, sign, verify } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign, verify, createPrivateKey, createPublicKey } from 'node:crypto';
 
 /** The questions a person answers with "yes" before signing; `sensitive.checklist` in the config replaces them. */
 export const CHECKLIST = [
@@ -37,6 +37,11 @@ export function makeKey(passphrase) {
     privateKeyEncoding: { type: 'pkcs8', format: 'pem', cipher: 'aes-256-cbc', passphrase },
   });
   return { publicKey: publicKey.toString('base64'), privateKey };
+}
+
+/** The public key of an encrypted private key, as makeKey gives it; throws when the passphrase is wrong. */
+export function publicOf(privateKey, passphrase) {
+  return createPublicKey(createPrivateKey({ key: privateKey, passphrase })).export({ type: 'spki', format: 'der' }).toString('base64');
 }
 
 const B64 = /^[A-Za-z0-9+/]+={0,2}$/;

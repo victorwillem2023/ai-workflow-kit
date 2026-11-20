@@ -41,10 +41,12 @@ describe('a session built on top of another one', () => {
 
   it('a session with an earlier commit finishes under the subject the owner approved, not the first commit\'s', () => {
     const r = makeRepo();
-    assert.ok(run(r, 'goal').ok);
+    const made = run(r, 'goal');
+    assert.ok(made.ok, made.out);
     commitIn(r.wt('goal'), 'a.txt', 'a\n', 'wip');
     commitIn(r.wt('goal'), 'b.txt', 'b\n', 'Goals: set a goal and see it on the plan');
-    assert.ok(run(r, '--finish', 'goal', '--no-checks', '--subject', 'Goals: set a goal and see it on the plan').ok);
+    const done = run(r, '--finish', 'goal', '--no-checks', '--subject', 'Goals: set a goal and see it on the plan');
+    assert.ok(done.ok, done.out);
     assert.equal(git(r.main, 'log', '-1', '--format=%s', 'main'), 'Goals: set a goal and see it on the plan');
   });
 

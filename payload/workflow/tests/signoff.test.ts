@@ -3,7 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { matchesAny } from '../../workflow/tools/lib/glob.mjs';
-import { fingerprint, makeKey, parseSignoffs, parseSigners, sensitiveFiles, signerRow, signoffRow, signoffVerdict, trustedKeys } from '../../workflow/tools/lib/signoff.mjs';
+import { fingerprint, makeKey, publicOf, parseSignoffs, parseSigners, sensitiveFiles, signerRow, signoffRow, signoffVerdict, trustedKeys } from '../../workflow/tools/lib/signoff.mjs';
 
 const paths = ['src/core/billing/**', 'docs/company/PRIVACY.md'];
 const disk: Record<string, string> = { 'src/core/billing/vat.ts': 'export const VAT = 0.21;\n', 'docs/company/PRIVACY.md': '# Privacy\n' };
@@ -43,6 +43,13 @@ describe('the sign-off for sensitive files', () => {
   });
   it('a wrong passphrase cannot sign', () => {
     assert.throws(() => signed(owner, 'not the passphrase'));
+  });
+});
+
+describe('the public half of a key', () => {
+  it('comes out of the encrypted key only with its passphrase', () => {
+    assert.equal(publicOf(owner.privateKey, 'owner passphrase long'), owner.publicKey);
+    assert.throws(() => publicOf(owner.privateKey, 'not the passphrase'));
   });
 });
 

@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { randomInt, createPublicKey } from 'node:crypto';
 import { matchesAny } from './lib/glob.mjs';
-import { CHECKLIST, SIGNERS, SIGNOFFS, fingerprint, makeKey, parseSigners, sensitiveFiles, signerRow, signoffRow, signoffVerdict } from './lib/signoff.mjs';
+import { CHECKLIST, SIGNERS, SIGNOFFS, fingerprint, makeKey, publicOf, parseSigners, sensitiveFiles, signerRow, signoffRow, signoffVerdict } from './lib/signoff.mjs';
 import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
@@ -29,10 +29,14 @@ const args = process.argv.slice(2);
 const today = new Date().toISOString().slice(0, 10);
 const keyFile = process.env.WORKFLOW_SIGNOFF_KEY || join(homedir(), '.config', 'ai-workflow-kit', 'signoff-key.pem');
 const read = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : undefined);
-const myKey = () => (existsSync(keyFile) ? createPublicKey(readFileSync(keyFile, 'utf8')).export({ type: 'spki', format: 'der' }).toString('base64') : null);
+// the public half is kept beside the key (<key>.pub): the key itself is encrypted, so reading the public half out of it needs
+// the passphrase (reading it without one made OpenSSL ask for it itself and crash: "interrupted or cancelled")
+const pubFile = `${keyFile}.pub`;
+const myKey = () => (existsSync(keyFile) && existsSync(pubFile) ? readFileSync(pubFile, 'utf8').trim() : null);
 
 if (args.includes('--show-key')) {
-  console.log(myKey() ?? `signoff: no key yet (${keyFile}): npm run signoff -- --init makes one`);
+  console.log(myKey() ?? (existsSync(keyFile) ? `signoff: your key (${keyFile}) has no public half written beside it yet: npm run signoff -- --init asks your passphrase once and writes it`
+    : `signoff: no key yet (${keyFile}): npm run signoff -- --init makes one`));
   process.exit(0);
 }
 
@@ -50,14 +54,23 @@ async function secret(q) {
 }
 const signersText = () => read(SIGNERS) ?? `# Signers\n\nWho may sign off a change to the sensitive files (\`sensitive.paths\`): each person's public key, written by \`npm run signoff -- --init\` or \`--add-signer\`, never by hand. A signer added after the first is endorsed by an existing one; the gate trusts only the signers on main. Read workflow/guides/SENSITIVE.md.\n\n| Who | Public key | Added | Endorsed by |\n|---|---|---|---|\n`;
 
+/** A key made before the public half was kept beside it (or copied from another computer without it): ask the passphrase once. */
+async function recordPublicKey() {
+  if (!existsSync(keyFile) || existsSync(pubFile)) return;
+  const pass = await secret('Your passphrase (once, to write the public half of your key beside it): ');
+  try { writeFileSync(pubFile, `${publicOf(readFileSync(keyFile, 'utf8'), pass)}\n`); } catch { stop('the passphrase is wrong'); }
+}
+
 if (args.includes('--init')) {
-  if (!myKey()) {
+  await recordPublicKey();
+  if (!existsSync(keyFile)) {
     const pass = await secret('A passphrase for your signing key (at least 12 characters; only you know it): ');
     if (pass.length < 12) stop('the passphrase is shorter than 12 characters');
     if ((await secret('The same again: ')) !== pass) stop('the two did not match');
-    const { privateKey } = makeKey(pass);
+    const { privateKey, publicKey } = makeKey(pass);
     mkdirSync(dirname(keyFile), { recursive: true });
     writeFileSync(keyFile, privateKey, { mode: 0o600 });
+    writeFileSync(pubFile, `${publicKey}\n`);
     console.log(`signoff: your key is ${keyFile} (encrypted with your passphrase; to sign on another computer, copy it there or have it added with --add-signer)`);
   }
   const key = myKey();
@@ -77,9 +90,11 @@ if (args.includes('--init')) {
 
 const privateKey = existsSync(keyFile) ? readFileSync(keyFile, 'utf8') : null;
 if (!privateKey) stop(`you have no key yet: npm run signoff -- --init`);
+await recordPublicKey();
 if (!parseSigners(read(SIGNERS)).some((s) => s.key === myKey())) stop(`your key is not in ${SIGNERS}: a signer adds you with --add-signer (npm run signoff -- --show-key prints it)`);
 
-if (args.includes('--add-signer')) {
+/** --add-signer "<name>" <public key>: a signer endorses another person's key with their own. */
+async function addSigner() {
   const at = args.indexOf('--add-signer');
   const [who, key] = [args[at + 1], args[at + 2]];
   if (!who || !key || who.startsWith('--')) stop('say who and their key: --add-signer "<name>" <public key>');
@@ -92,6 +107,7 @@ if (args.includes('--add-signer')) {
   console.log(`signoff: ${who} added to ${SIGNERS}, endorsed by you. Their sign-offs count once this is on main.`);
   process.exit(0);
 }
+if (args.includes('--add-signer')) await addSigner();
 
 const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : git('merge-base', 'HEAD', ORIGIN_MAIN) ?? git('merge-base', 'HEAD', MAIN) ?? 'HEAD';
 const paths = config.sensitive?.paths ?? [];

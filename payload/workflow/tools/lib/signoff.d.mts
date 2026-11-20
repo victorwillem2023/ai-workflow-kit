@@ -5,6 +5,7 @@ type Row = { date: string; who: string; fingerprint: string; files: string[]; si
 type Signer = { who: string; key: string; added: string; endorsed: string };
 export function sensitiveFiles(changed: string[], paths: string[], matches: (f: string, globs: string[]) => boolean): string[];
 export function fingerprint(files: string[], read: (f: string) => string | null | undefined): string;
+export function publicOf(privateKey: string, passphrase: string): string;
 export function makeKey(passphrase: string): { publicKey: string; privateKey: string };
 export function parseSignoffs(md: string | null | undefined): Row[];
 export function parseSigners(md: string | null | undefined): Signer[];

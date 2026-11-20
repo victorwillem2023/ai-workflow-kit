@@ -45,6 +45,11 @@ What changed in each version of the kit, newest first. Build on the latest tag (
   process has no console, so cmd, npm and the server each opened a visible window (measured). It now starts through a small
   hidden launcher (`lib/hidden.mjs`) whose console has no window, shared by everything below it; the launcher sits in the temp
   folder, so it never holds the session folder open.
+- **4.4.1**: **`npm run signoff -- --init` no longer crashes after making the key.** It read the public half back out of the
+  key it had just written, which is encrypted, so OpenSSL asked for the passphrase itself and failed ("interrupted or
+  cancelled"); every later sign-off would have failed the same way. The public half is now written beside the key
+  (`signoff-key.pem.pub`) when it is made; a key that has none yet (made by 4.4.0 or earlier, or copied from another computer)
+  gets it on the next `--init` or sign-off, after the passphrase is asked once. `--show-key` says so instead of crashing.
 - **4.3.2**: **a code comment no longer looks like a write to the owner's files**. The stop-points hook read a lone `*` or
   `**` as a glob of every file, and those stand in every doc comment (`/** … */`), CSS rule and sum: any command that wrote
   one source file and had a comment in it was refused as writing `workflow/levels.json` (eight times in one real project's
