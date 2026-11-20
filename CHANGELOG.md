@@ -2,6 +2,11 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.6.1**: **every command is offered at a moment.** `/portal` and `/check` were only named in the guides' tables, so
+  nobody was ever steered to them. `/setup` now ends with the docs portal ("see everything that was written in one place"),
+  `/next` offers it when the owner asks where things are written down and offers `/check` when the checks fail or something
+  is refused, and `/ship` offers `/check` when a hand edit breaks the quick gate. A new quick test
+  (`tests/skills-offered.test.mjs`) fails when a command is named by no other skill, no tool's output and no rules file.
 - **4.6.0**: **a session mid-build: a clash with main comes out early and is settled once, the dev server starts on the
   session's own settings, a kit fix reaches open sessions at once; a sensitive folder covers its files.** From one real
   session, where a sign-off covered one file of a folder, signing took four tries and a finish needed a rebase by hand.

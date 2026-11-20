@@ -124,6 +124,10 @@ how long. The command goes after it in brackets, never as the choice itself:
 - `/work <n>`: "Build #n, <its title in plain words> (<its effort>): it is planned, you say yes, it is built, you try it. (/work n)"
 - `/launch`: "Decide where the app runs online and set it up (an hour or two, over a few sittings). (/launch)"
 - `/market`: "Work out who it is for and how they will find it (a few short sessions). (/market)"
+- the owner says the checks fail, or asks why something is refused: "See what fails and where, in plain words; nothing is
+  changed (a minute). (/check)"
+- the owner asks where things are written down, or what the project looks like now: "Open every doc in one page in the
+  browser, with the phase, the board and the latest decisions at the top. (/portal)"
 - a security alert: "A package the app uses has a known security hole: update it first (minutes). (npm run updates)"
 - an update to look at: "An update needs you: helm 3.16 to 3.22, a tool the checks never run. Try it once, then take it
   (minutes). (npm run updates)"

@@ -164,6 +164,7 @@ npm run gate
 Show what was written (the files, one line each) and what you guessed rather than were told, and ask for a yes. On yes, one
 commit: "Workflow: set up the AI workflow (CLAUDE.md, config, board, agent commands, guide and architecture docs)". Then say the
 next step: "From here, type `/next` whenever you are not sure: it tells you which command." (The first time, it will offer
-`/idea` for the first thing to build, then `/work <n>`.)
+`/idea` for the first thing to build, then `/work <n>`.) And: "To see everything that was written in one place, with where the
+project is at the top, open the docs in the browser (/portal)."
 
 **This project's own**: when `.claude/project/setup.md` exists, read it before you start: it holds this project's own steps and rules for /setup, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

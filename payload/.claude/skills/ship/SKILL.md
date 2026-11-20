@@ -26,7 +26,8 @@ In the main folder, run `node workflow/scripts/session.mjs --check-main`. It fas
   - `"own"` (the default): they are the owner's, never folded into this feature. Run
     `node workflow/scripts/session.mjs --commit-notes "<Area: what changed>"`, with a subject from their diff (e.g. "Product:
     the problem and the first users"). Say in one line that they went in first as their own commit, run `--check-main` again,
-    and go on. When its quick gate fails, stop and show the owner the failure: a hand edit broke a check.
+    and go on. When its quick gate fails, stop and show the owner the failure: a hand edit broke a check. Say they can have it
+    explained in plain words, with nothing changed (/check).
   - `"with-feature"` (a project that allows no commit of docs alone): `node workflow/scripts/session.mjs --carry-notes <topic>`
     moves them into the session folder, so they go in with this feature's one commit. Say so in one line, add them to the
     spec's files, and go on.
