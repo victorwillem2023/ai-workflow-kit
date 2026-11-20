@@ -77,7 +77,9 @@ tool, named `build-<topic>`.
 > - Update the spec's `## Status`.
 > - Do NOT commit, push or run `--finish`: the owner says when it is done.
 > - A failure main has fixed since, or a fix the spec needs from main: `cd <folder> && node workflow/scripts/session.mjs --catch-up <topic>`
->   brings main in and leaves your work as it is. Never `git stash`, `git merge` or `git rebase` yourself.
+>   brings main in and keeps your work (work in a file main also changed is saved as a checkpoint on the session's branch). When
+>   it names files that clash, settle them in place (keep what both sides need, take the `<<<<<<<` lines out) and run the same
+>   command again. Never `git stash`, `git merge` or `git rebase` yourself.
 > - Start no dev server. When the change has no screen, write the try command `workflow/specs/<topic>.try.<ext>`
 >   (`.claude/skills/build/try-it.md`, step 1) and run it once.
 >

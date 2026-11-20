@@ -2,12 +2,13 @@
 // the board, the packages, rebasing and the checks. session-extras.mjs and session.mjs build on it; it runs nothing by itself.
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkPackages, checkShortcuts, describeMissing } from './packages.mjs';
-import { stopMessage, stopSessionServer } from './session-stop.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { dataCopyOf, stopMessage, stopSessionServer } from './session-stop.mjs'; import { SIGNOFFS } from '../tools/lib/signoff.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 import { ghRun } from '../tools/lib/gh.mjs'; import { changedSince, shipPassOf } from '../tools/lib/shippass.mjs';
 
 export const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -134,7 +135,26 @@ export const looseWork = (dir) => git(dir, 'status', '--porcelain').split('\n').
 export const looseFiles = (dir) => execFileSync('git', ['status', '--porcelain', '-z'], { cwd: dir, encoding: 'utf8' }).split('\0')
   .filter((l) => l.length > 3 && /^[ MADRCU?!]{2} /.test(l)).map((l) => l.slice(3)).filter((f) => !/^node_modules\/?$/.test(f));
 
-export const stopServer = (dir) => { const said = stopMessage(stopSessionServer(dir, { mainPort: MAIN_PORT, firstPort: FIRST_PORT })); if (said) console.log(said); };
+/** Stops the session's dev server (the one --serve recorded, and whatever listens on its port) and takes away the copy of the data --serve --copy-data made for it. */
+export const stopServer = (dir) => {
+  const said = stopMessage(stopSessionServer(dir, { mainPort: MAIN_PORT, firstPort: FIRST_PORT })); if (said) console.log(said);
+  try { rmSync(dataCopyOf(dir), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { /* still held: the temp folder is cleared by the system */ }
+};
+
+/** The first word of a checkpoint commit's subject: work saved by --on or --catch-up on the session's own branch, never a feature's subject (--finish squashes it away). */
+export const CHECKPOINT = 'checkpoint:';
+
+/** The names a folder's .env sets. */
+const envNames = (dir) => { const f = join(dir, '.env'); return existsSync(f) ? readFileSync(f, 'utf8').split(/\r?\n/).map((l) => /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(l)?.[1]).filter(Boolean) : []; };
+/**
+ * The environment a folder's commands start with: this shell's, without the names the folder's own .env sets, so the .env
+ * decides (a PORT, HOST or data folder left set in the owner's shell sent a session's server to the main folder's port and its
+ * real data: an app reads .env only for what the environment does not name). `extra` is set on top.
+ */
+export function folderEnv(dir, extra = {}) {
+  const names = new Set(envNames(dir).map((n) => n.toUpperCase()));
+  return { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !names.has(k.toUpperCase()))), ...extra };
+}
 
 /** The file map is written by a script (`map` in package.json); its path comes from the config. */
 export const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts?.map);
@@ -173,24 +193,59 @@ export function ensureShortcuts() {
 
 // a shell only on Windows, where npm is a .cmd file; the arguments are fixed script names, never outside input
 // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true
-export const npmRun = (dir, step, quiet) => spawnSync('npm', ['run', step], { cwd: dir, stdio: quiet ? 'ignore' : 'inherit', shell: process.platform === 'win32' }).status === 0;
+export const npmRun = (dir, step, quiet) => spawnSync('npm', ['run', step], { cwd: dir, env: folderEnv(dir), stdio: quiet ? 'ignore' : 'inherit', shell: process.platform === 'win32' }).status === 0;
 
-/** Rebases the checked-out branch of `dir` on `upstream`. A conflict only in the pages the map writes (file map, docs index, infra map) is solved by writing them again; any other stops it, with the rebase put back. */
-export function rebaseOn(dir, upstream, what, { mapConflicts, from }) {
+/** Files where a clash is never a choice: both sides only added rows (each sign-off is a row of its own), so both are kept. */
+const ROWS = [SIGNOFFS];
+
+/** The files git holds in conflict in `dir`, each with git's two letters (UU and AA: both sides changed the text; a D: one side deleted it). */
+export const conflictsIn = (dir) => execFileSync('git', ['status', '--porcelain', '-z'], { cwd: dir, encoding: 'utf8' }).split('\0')
+  .filter((l) => /^(DD|AU|UD|UA|DU|AA|UU) /.test(l)).map((l) => ({ code: l.slice(0, 2), file: l.slice(3) }));
+
+/** A clash's files by who settles them: `pages` the map writes again, `rows` keep both sides, `rest` is a person's or the builder's choice. */
+export function splitConflicts(dir, files, map = true) {
+  const pages = map && mapScript(dir) ? mapPages(dir) : [];
+  return { pages: files.filter((f) => pages.includes(f)), rows: files.filter((f) => ROWS.includes(f) && !pages.includes(f)), rest: files.filter((f) => !pages.includes(f) && !ROWS.includes(f)) };
+}
+
+/** Settles a clash in a file of rows: the lines of both sides, staged (git merge-file --union on the three versions git holds). */
+export function keepBoth(dir, f) {
+  const tmp = mkdtempSync(join(tmpdir(), 'kit-rows-'));
+  try {
+    const part = (n) => {
+      let text = '';
+      try { text = execFileSync('git', ['show', `:${n}:${f}`], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { /* that side has no such file */ }
+      writeFileSync(join(tmp, String(n)), text);
+      return join(tmp, String(n));
+    };
+    const [base, ours, theirs] = [1, 2, 3].map(part);
+    try { execFileSync('git', ['merge-file', '--union', ours, base, theirs], { cwd: dir, stdio: 'ignore' }); } catch { /* its exit code counts clashes; with --union there are none left */ }
+    copyFileSync(ours, join(dir, f));
+    git(dir, 'add', '--', f);
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+}
+
+/**
+ * Rebases the checked-out branch of `dir` on `upstream`. A conflict only in what a script writes is settled here: the pages the
+ * map writes (file map, docs index, infra map) are written again, the sign-off rows of both sides are kept. Any other stops it,
+ * with the rebase put back; `hint` then says what to do instead of a rebase by hand.
+ */
+export function rebaseOn(dir, upstream, what, { mapConflicts, from, hint }) {
   const env = { ...process.env, GIT_EDITOR: 'true' };
   const step = (...args) => execFileSync('git', args, { cwd: dir, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   // with `from`: only the commits after it move (a stacked session leaves its base's old commits behind)
   const how = from ? ['--onto', upstream, from] : [upstream];
   try { step('rebase', ...how); return; } catch { /* a conflict, or something else: look at it */ }
-  const pages = mapPages(dir);
   for (let i = 0; i < 100; i++) { // bounded: one round per commit that conflicts
     const files = gitQuiet(dir, 'diff', '--name-only', '--diff-filter=U').split('\n').filter(Boolean);
-    if (!(mapConflicts && mapScript(dir) && files.length && files.every((f) => pages.includes(f)))) {
+    const clash = splitConflicts(dir, files, mapConflicts);
+    if (!files.length || clash.rest.length) {
       const commit = gitQuiet(dir, 'log', '-1', '--format=%s', 'REBASE_HEAD');
       try { step('rebase', '--abort'); } catch { /* nothing to abort */ }
-      throw new Error(`${what} hit a conflict${commit ? ` in "${commit}"` : ''}${files.length ? ` (${files.join(', ')})` : ''}. Nothing was changed. Resolve it in ${dir} (git rebase ${how.join(' ')}), then run it again.`);
+      throw new Error(`${what} hit a conflict${commit ? ` in "${commit}"` : ''}${files.length ? ` (${(clash.rest.length ? clash.rest : files).join(', ')})` : ''}. Nothing was changed. ${hint ?? `Resolve it in ${dir} (git rebase ${how.join(' ')}), then run it again.`}`);
     }
-    stageMap(dir);
+    for (const f of clash.rows) keepBoth(dir, f);
+    if (clash.pages.length) stageMap(dir);
     try { step('rebase', '--continue'); return; } catch { /* the next commit conflicts too */ }
   }
   try { step('rebase', '--abort'); } catch { /* nothing to abort */ }
@@ -223,7 +278,7 @@ export function runChecks(dir, again, since) {
   const gate = join(dir, 'workflow', 'tools', 'gate.mjs');
   if (since && existsSync(gate)) {
     console.log(`the quick gate on what changed since ${since.slice(0, 7)} (the whole suite ran at /ship) …`);
-    const r = spawnSync(process.execPath, [gate, '--base', since], { cwd: dir, stdio: 'inherit' });
+    const r = spawnSync(process.execPath, [gate, '--base', since], { cwd: dir, env: folderEnv(dir), stdio: 'inherit' });
     if (r.status !== 0) throw new Error(`The quick gate fails after the rebase. Fix it in ${dir} and run ${again} again. Nothing was pushed.`);
     return;
   }

@@ -17,6 +17,21 @@ const signed = (key = owner, pass = 'owner passphrase long', who = 'Owner') => s
 const verdict = (signoffs: string, o: { base?: string | null; now?: string | null; readWith?: (f: string) => string | undefined } = {}) =>
   signoffVerdict({ changed: files, paths, matches: matchesAny, read: o.readWith ?? read, signoffs, baseSigners: o.base === undefined ? signers : o.base, signers: o.now === undefined ? signers : o.now });
 
+describe('what sensitive.paths covers', async () => {
+  const { coversFile, deadPaths } = await import('../../workflow/tools/lib/signoff.mjs');
+  it('a folder covers every file under it, written with or without the last slash; a glob stays a glob', () => {
+    for (const p of ['src/server/accounts/', 'src/server/accounts', './src/server/accounts/', 'src/server/accounts/**']) {
+      assert.deepEqual(sensitiveFiles(['src/server/accounts/login.ts', 'src/server/accounts/db/reset.ts', 'src/server/accounts-old.ts'], [p], matchesAny),
+        ['src/server/accounts/db/reset.ts', 'src/server/accounts/login.ts'], p);
+    }
+    assert.equal(coversFile('src/core/billing/vat.ts', 'src/core/*.ts', matchesAny), false);
+    assert.equal(coversFile('docs/company/PRIVACY.md', 'docs/company/PRIVACY.md', matchesAny), true);
+  });
+  it('names an entry that covers no file of the project, so a mistyped folder is seen', () => {
+    assert.deepEqual(deadPaths(['src/server/accounts/', 'src/server/acounts/', 'src/**/*.sql'], ['src/server/accounts/login.ts'], matchesAny), ['src/server/acounts/', 'src/**/*.sql']);
+  });
+});
+
 describe('the sign-off for sensitive files', () => {
   it('only asks for one when a sensitive file changed', () => {
     assert.deepEqual(sensitiveFiles(['src/web/App.tsx', 'src/core/billing/vat.ts', 'src/core/billing/vat.ts'], paths, matchesAny), ['src/core/billing/vat.ts']);

@@ -2,6 +2,34 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.6.0**: **a session mid-build: a clash with main comes out early and is settled once, the dev server starts on the
+  session's own settings, a kit fix reaches open sessions at once; a sensitive folder covers its files.** From one real
+  session, where a sign-off covered one file of a folder, signing took four tries and a finish needed a rebase by hand.
+  **A sensitive folder covers its files** (`lib/signoff.mjs`): `src/server/accounts/` in `sensitive.paths` was read as a
+  glob and matched none of the folder's files, so the gate passed changes to them with no sign-off. A plain name now also
+  covers every file under it, with or without the last slash; an entry that covers no file is named on the gate's *signoff*
+  line on every run and by `npm run signoff`. **Check your own list after this update.**
+  **`--catch-up` no longer gives up** (`scripts/session-live.mjs`): loose work in a file main also changed stopped it with
+  nothing changed, so the clash only came out at `--finish`. That work is now saved as a `checkpoint:` commit on the session's
+  own branch and main is merged in. A clash in what a script writes is settled by itself (the map's pages made again, the
+  sign-off rows of both sides kept); a clash in other files is left open in the folder and named, the builder settles it
+  there, and the same command goes on. `--finish` settles the same generated files in its rebase; for any other clash it
+  changes nothing and points to `--catch-up` instead of a rebase by hand.
+  **The dev server starts on the folder's own settings**: `--serve` (and the checks `--finish` runs) take every name the
+  folder's `.env` sets out of the shell's environment first, so a `PORT`, `HOST` or data folder left set in the owner's
+  terminal no longer sends a session's server to the main folder's port or its real data. **`--serve <topic> --lan
+  --copy-data`**: on the Wi-Fi for a phone (the address is checked and printed, with the one firewall line Windows needs) and
+  on a copy of the real data kept outside the folder; nothing is written into the session's `.env`, and both end when the
+  server stops (`"serve"` under `session` names other settings than `HOST` and `DATA_DIR`). **The server `--serve`
+  started is recorded**, so `--finish`, `--remove` and `--drop` stop it whatever port it took and the folder can go.
+  **The kit's tools from the main folder** (`lib/frommain.mjs`): a session folder whose kit is older than the main folder's
+  runs the gate, the sign-off and the session script from the main folder (one line says so), so a kit fix no longer waits
+  for main to be brought in. **The scope check counts what belongs to the change**: a test that reaches a file the spec
+  names, a file only such tests import, the docs index and the owner's sign-off row need no line in the spec. **Quieter
+  gate**: git's own warnings ("LF will be replaced by CRLF", once per file on Windows) stay out of its output.
+  **Pictures as a phone** (ui module, `shots.mjs --phone`): the page is shown as on a touch phone (a mobile screen with
+  touch), so an app that picks its phone layout by the device, not by the width alone, shows that layout; `/ui`'s phone
+  pictures use it.
 - **4.5.0**: **the kit learns from what shipped: cards measured against their labels, a clean-up offered right before the card
   that needs it, two designs for a large card.** Until now every suggestion came from one look at the owner's labels and at
   the code; nothing looked back at what a card turned out to be.

@@ -1,7 +1,9 @@
 // Takes a picture of a page (a board file or the live app) at a chosen width and theme, with an installed Chrome or Edge
 // driven over its DevTools protocol (Node's built-in WebSocket, no packages). It can click a selector or press keys first.
-// Usage: node workflow/scripts/shots.mjs <url or file> [--width 1280] [--height 800] [--theme light|dark] [--click <selector>]...
+// Usage: node workflow/scripts/shots.mjs <url or file> [--width 1280] [--height 800] [--theme light|dark] [--phone] [--click <selector>]...
 //        [--press <key>]... [--wait <ms>] [--full] [--out shot.png]
+// --phone: the page is shown as on a touch phone (a mobile screen with touch), not only as a narrow window: an app that picks its
+// phone layout by the device (pointer: coarse, touch events, the mobile viewport) shows that layout. Give it a phone's --width too.
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -13,7 +15,7 @@ const TIMEOUT_MS = 30000;
 
 /** Reads the command line into options; throws an Error with a plain sentence when something is wrong. */
 export function parseShotArgs(argv) {
-  const o = { page: '', width: 1280, height: 800, theme: 'light', click: [], press: [], wait: 300, full: false, out: 'shot.png' };
+  const o = { page: '', width: 1280, height: 800, theme: 'light', click: [], press: [], wait: 300, full: false, phone: false, out: 'shot.png' };
   const value = (i, name) => {
     const v = argv[i + 1];
     if (v === undefined || v.startsWith('--')) throw new Error(`--${name} needs a value`);
@@ -33,6 +35,7 @@ export function parseShotArgs(argv) {
     }
     const name = a.slice(2);
     if (name === 'full') { o.full = true; continue; }
+    if (name === 'phone') { o.phone = true; continue; } // a touch phone, for an app that picks its layout by the device
     if (!['width', 'height', 'theme', 'click', 'press', 'wait', 'out'].includes(name)) throw new Error(`Unknown option ${a}`);
     const v = value(i, name);
     i++;
@@ -134,7 +137,8 @@ async function run(o) {
     cdp = connect(target.webSocketDebuggerUrl);
     await cdp.opened;
     await cdp.send('Page.enable');
-    await cdp.send('Emulation.setDeviceMetricsOverride', { width: o.width, height: o.height, deviceScaleFactor: 1, mobile: false });
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: o.width, height: o.height, deviceScaleFactor: 1, mobile: o.phone });
+    if (o.phone) await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: o.theme }] });
     // The pages and the app also read data-theme on the root element.
     await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `document.documentElement.setAttribute('data-theme', ${JSON.stringify(o.theme)});` });
@@ -158,14 +162,14 @@ async function run(o) {
     if (o.full) {
       const m = await cdp.send('Page.getLayoutMetrics');
       const w = Math.ceil(m.cssContentSize.width), h = Math.min(Math.ceil(m.cssContentSize.height), 16000);
-      await cdp.send('Emulation.setDeviceMetricsOverride', { width: o.width, height: h, deviceScaleFactor: 1, mobile: false });
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: o.width, height: h, deviceScaleFactor: 1, mobile: o.phone });
       await sleep(100);
       shot.clip = { x: 0, y: 0, width: Math.max(w, o.width), height: h, scale: 1 };
     }
     const { data } = await cdp.send('Page.captureScreenshot', shot);
     mkdirSync(dirname(resolve(o.out)), { recursive: true });
     writeFileSync(o.out, Buffer.from(data, 'base64'));
-    console.log(`Saved ${o.out} (${o.width} wide, ${o.theme})`);
+    console.log(`Saved ${o.out} (${o.width} wide, ${o.theme}${o.phone ? ', as a phone' : ''})`);
   } finally {
     try { cdp?.close(); } catch { /* already closed */ }
     child.kill();

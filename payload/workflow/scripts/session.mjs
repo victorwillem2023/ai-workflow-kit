@@ -32,19 +32,23 @@
 //                                               its packages: what merged on GitHub (an update Renovate merged by itself) is here
 //   node workflow/scripts/session.mjs --commit-notes "<subject>"  the docs and settings left in the main folder (any .md, workflow/config.json,
 //                                               renovate.json, .claude/, .opencode/) as one commit of their own, after the quick gate passes; refuses code
-//   node workflow/scripts/session.mjs --serve <topic>    start the session's dev server in the background and wait until its link answers (for the owner's check)
-//   node workflow/scripts/session.mjs --catch-up <topic> bring a session onto main mid-build (main's fixes come in; nothing of the session's own work is committed)
+//   node workflow/scripts/session.mjs --serve <topic> [--lan] [--copy-data]  start the session's dev server in the background and wait until its link answers (for
+//                                               the owner's check); it starts with the folder's .env deciding, never a PORT left set in the shell. --lan: also
+//                                               on the Wi-Fi, for a phone (prints the address); --copy-data: on a copy of the real data. Both end when it is stopped
+//   node workflow/scripts/session.mjs --catch-up <topic> bring main into a session mid-build (main's fixes come in). Work main also changed is saved first as a checkpoint
+//                                               on the session's own branch; a clash is left open in the folder, named, and the same command goes on once it is settled
 //   node workflow/scripts/session.mjs --list             the sessions, their ports and cards, and how many finished features are not pushed
 // node_modules is linked to the main folder's; .env is copied and given its own PORT plus the lines of "session.env" in
 // workflow/config.json ({main} in a value is the main folder: use it to share a big data folder instead of copying it).
 // The board is reached through workflow/tools/lib/board.mjs; a board that cannot be reached is one warning line, never a stop.
 // WORKFLOW_GH (tests): a node script that stands in for the gh command.
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
+import '../tools/lib/frommain.mjs'; // a session folder with an older kit than the main folder's: the main folder's copy runs instead (lib/frommain.mjs)
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
-import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, bringSpec, dropSpecs, gh } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, serve, catchUpSession, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, bringSpec, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
+import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 async function make(topic, card, on) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
@@ -135,9 +139,6 @@ function drop(topic) {
  * (the quick gate on what the rebase can have broken, unless --no-checks: /ship ran the whole suite) and main moves forward. The main folder is never switched to another branch and
  * another session's branch or files in it are never touched: when it is on another branch, only the main ref moves.
  */
-/** The first word of a checkpoint commit's subject: work saved by --on, waiting for the owner's check, never a feature's subject. */
-const CHECKPOINT = 'checkpoint:';
-
 /** The finished commit's message: the approved --subject (and --body), else the first commit's; never a checkpoint's. */
 function finishMessage(dir, base, o) {
   if (o.subject !== undefined && !o.subject.trim()) throw new Error('--subject needs the approved subject, for example --subject "Plans: a rest week every fourth week".');
@@ -175,7 +176,8 @@ async function finish(topic, o) {
       try { git(dir, 'reset', '--soft', base); git(dir, 'commit', '-q', '-F', msgFile); } finally { rmSync(msgFile, { force: true }); }
       console.log(own > 1 ? `Squashed ${own} commits into one: ${git(dir, 'log', '-1', '--format=%s')}` : `Committed as: ${git(dir, 'log', '-1', '--format=%s')}`);
     }
-    rebaseOn(dir, MAIN, `Rebasing "${topic}" on main`, { mapConflicts: !o.keepCommits });
+    // a clash in the feature's own files is not settled in a rebase by hand: --catch-up brings main in as one merge, settled once
+    rebaseOn(dir, MAIN, `Rebasing "${topic}" on main`, { mapConflicts: !o.keepCommits, hint: `Bring main into the session first: node workflow/scripts/session.mjs --catch-up ${topic} (it leaves the clash open in ${dir} to settle where the work is), then run --finish again.` });
     remakeMap(dir);
   } catch (e) {
     if (git(dir, 'rev-parse', 'HEAD') !== original) git(dir, 'reset', '--hard', original);
@@ -366,7 +368,7 @@ try {
   else if (a === '--sync') sync();
   else if (a === '--commit-notes') commitNotes(textOf('--commit-notes'));
   else if (a === '--carry-notes' && b) carryNotes(b);
-  else if (a === '--serve' && b) await serve(b);
+  else if (a === '--serve' && b) await serve(b, { lan: has('--lan'), copyData: has('--copy-data') });
   else if (a === '--catch-up' && b) catchUpSession(b);
   else if (a === '--push') push({ noChecks: has('--no-checks') });
   else if (a === '--merge' && b) await merge(b);
@@ -375,7 +377,7 @@ try {
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> | --catch-up <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] | --catch-up <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

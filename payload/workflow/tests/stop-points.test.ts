@@ -137,7 +137,7 @@ describe('commands that get around the plain spelling', () => {
     for (const c of ['git cherry-pick abc', 'git revert HEAD', 'git am x.patch', 'git rebase main']) assert.equal(needsWord(c), 'commit', c);
     assert.equal(needsWord('git rebase --abort'), null);
     assert.equal(needsWord('gh pr merge 12 --squash'), 'push');
-    // bringing main into a session mid-build commits nothing of the session's own: no word needed (session.mjs --catch-up)
+    // bringing main into a session mid-build puts nothing on main (at most a checkpoint on the session's own branch): no word needed (session.mjs --catch-up)
     assert.equal(needsWord('cd ../app-a && node workflow/scripts/session.mjs --catch-up a'), null);
   });
 });

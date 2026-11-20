@@ -8,8 +8,10 @@
 // git forgets the worktree, the empty folder stays and git says "Permission denied").
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmdirSync, unlinkSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 
 // how many ports a project's sessions may use, counted from its first session port (`session.firstPort` in the config)
 const PORT_SPAN = 212;
@@ -20,6 +22,14 @@ const isWindows = process.platform === 'win32';
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, maxBuffer: 32 << 20 });
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 const pidOf = (s) => (/^\d+$/.test(String(s).trim()) ? Number(String(s).trim()) : undefined);
+
+// What --serve keeps about a session folder, outside it (a file inside would be uncommitted work): named after the folder, with a
+// mark of its whole path, so two projects with the same folder names never read each other's.
+const kept = (dir, what) => join(tmpdir(), `${basename(dir)}-${createHash('sha1').update(resolve(dir).toLowerCase()).digest('hex').slice(0, 8)}-${what}`);
+/** Where --serve records the process it started for the session in `dir`. */
+export const pidFileOf = (dir) => kept(dir, 'dev.pid');
+/** Where --serve --copy-data puts the session's copy of the data. */
+export const dataCopyOf = (dir) => kept(dir, 'data');
 
 /** The PORT line of a session folder's .env, or undefined. */
 export function sessionPort(dir) {
@@ -152,6 +162,34 @@ function waitUntilStopped(port, look, pids) {
  * the project's ports (`mainPort`, `firstPort`).
  */
 export function stopSessionServer(dir, deps = {}) {
+  const recorded = stopRecorded(dir, deps);
+  const r = stopByPort(dir, deps);
+  return recorded ? { ...r, stopped: r.stopped + recorded, recorded } : r;
+}
+
+/**
+ * Stops the process --serve recorded for this folder, whatever port it listens on (a server that came up on another port than the
+ * .env names was never found by its port, and kept the folder busy). The number may be another program's by now, so it is only
+ * stopped when it is still a node or npm process that names this folder (on Windows: the kit's own launcher, lib/hidden.mjs).
+ */
+function stopRecorded(dir, deps) {
+  const file = pidFileOf(dir);
+  if (!existsSync(file)) return 0;
+  const pid = pidOf(readFileSync(file, 'utf8'));
+  try { unlinkSync(file); } catch { /* read once is enough */ }
+  if (!pid) return 0;
+  const { table = processTable, stop = stopTree, cwd = cwdOf } = deps;
+  const all = table();
+  const p = all.find((x) => x.pid === pid);
+  if (!p || !SERVER_NAMES.test(p.name) || ownLine(all).has(pid)) return 0;
+  const names = norm(p.cmd).replace(/\/+/g, '/').includes(norm(dir));
+  if (isWindows ? !(names && /hidden\.mjs/.test(p.cmd)) : !(names || norm(cwd(pid)) === norm(dir))) return 0;
+  const tree = treeOf(pid, all);
+  stop(pid, tree);
+  return tree.length;
+}
+
+function stopByPort(dir, deps) {
   const port = sessionPort(dir);
   if (port === undefined) return { port, stopped: 0 };
   if (!stoppablePort(port, deps)) return { port, refused: true, stopped: 0 };
@@ -177,6 +215,8 @@ export function stopSessionServer(dir, deps = {}) {
 
 /** The line the session script prints for what stopSessionServer did ('' when there was nothing to say). */
 export function stopMessage(r) {
+  // only the recorded one was stopped (its port was not the session's, or nothing listened there)
+  if (r.recorded && (r.refused || r.stopped === r.recorded)) return `Stopped the dev server --serve started (${r.recorded} process${r.recorded === 1 ? '' : 'es'}).`;
   if (r.refused) return `Port ${r.port} in the session's .env is not a session port, so nothing was stopped.`;
   const left = r.others?.length ? `Port ${r.port} is used by a server that runs from another folder (process ${r.others.join(', ')}), so it was left running.` : '';
   if (!r.stopped) return left;

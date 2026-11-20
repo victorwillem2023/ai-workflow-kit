@@ -12,7 +12,9 @@ it is the try command alone.
 - **It shows something new on a screen** (the spec's "What the user sees" names a screen this change adds or changes): run
   `node workflow/scripts/session.mjs --serve <topic>` in the main folder. It starts the session's dev server in the background,
   waits until the link answers, and prints it. When the server does not come up, it stops with the server's last lines: fix
-  that first, and never hand over a link that does not open.
+  that first, and never hand over a link that does not open. For a check on the owner's phone add `--lan` (it prints the
+  address on the Wi-Fi), and for a check that needs their real data add `--copy-data` (it runs on a copy; the real data is
+  never opened). Never edit the session's `.env` for either: both end by themselves when the server is stopped.
 - **It has no screen** (rules, a calculation, an API, an import): the builder writes a small try command,
   `workflow/specs/<topic>.try.<ext>`, in the session folder, in the project's language (`npx tsx workflow/specs/<topic>.try.ts ...`,
   `python workflow/specs/<topic>.try.py ...`). `workflow/specs/` is ignored, so it is never committed, and it goes with the spec

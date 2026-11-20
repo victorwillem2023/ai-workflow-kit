@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { staleDocs, parseNameStatus } from './doccovers.mjs';
 import { imageProblems } from './dockercheck.mjs';
 import { ipRuleProblems, unlistedEgress } from './network.mjs';
-import { SIGNERS, SIGNOFFS, signoffVerdict } from './signoff.mjs';
+import { SIGNERS, SIGNOFFS, deadPaths, signoffVerdict } from './signoff.mjs';
 import { MAIN } from './branch.mjs';
 import { aiProblems } from './aicheck.mjs';
 import { editedMigrations } from './datacheck.mjs';
@@ -49,7 +49,11 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
     // the local main is trusted for convenience; GitHub checks against what is pushed, so say when only the local one signs it
     const pushed = gitOk('show', `${base}:${SIGNERS}`);
     const localOnly = v.files.length && !verdictWith(pushed).ok;
-    return { ok: true, note: v.files.length ? `${v.files.length} signed${localOnly ? ` (by a signer only on the local main: push ${SIGNERS} first, or GitHub's check refuses it)` : ''}` : '' };
+    // an entry that covers no file guards nothing (a typing mistake, or code that is not written yet): said on every run, never silent
+    const dead = deadPaths(config.sensitive.paths, [...git('ls-files', '--cached', '--others', '--exclude-standard').split('\n'), ...all].filter(Boolean), matchesAny);
+    const deadNote = dead.length ? `sensitive.paths: ${dead.join(', ')} cover${dead.length === 1 ? 's' : ''} no file, so nothing there is guarded (a folder is written as src/accounts/; fix it or take it out of workflow/config.json)` : '';
+    const signedNote = v.files.length ? `${v.files.length} signed${localOnly ? ` (by a signer only on the local main: push ${SIGNERS} first, or GitHub's check refuses it)` : ''}` : '';
+    return { ok: true, note: [signedNote, deadNote].filter(Boolean).join('; ') };
   }],
   config.data?.migrations?.length && ['migrations', () => {
     // a migration that was there before this change has run somewhere: it is never edited, renamed or deleted (workflow/guides/DATA.md)

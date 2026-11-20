@@ -3,12 +3,13 @@
 // instead. Runs in throwaway repos (workflow/tests/session-repo.ts), on a port picked free here.
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
-import { commitIn, makeRepo, PORTS, roots, run, type Repo, ran } from './session-repo';
+import { commitIn, git, makeRepo, PORTS, roots, run, type Repo, ran } from './session-repo';
 
-const SERVER = `const fs=require('fs');const port=Number(/^PORT=(\\d+)\\s*$/m.exec(fs.readFileSync('.env','utf8'))[1]);
+// (as an app does: the environment's PORT first, the folder's .env only when it names none)
+const SERVER = `const fs=require('fs');const port=Number(process.env.PORT||/^PORT=(\\d+)\\s*$/m.exec(fs.readFileSync('.env','utf8'))[1]);
 fs.writeFileSync(process.argv[2],String(process.pid));require('http').createServer((q,s)=>s.end('ok')).listen(port,'127.0.0.1');`;
 const pids: string[] = [];
 
@@ -46,6 +47,8 @@ describe('serving a session for the owner to try', () => {
   it('starts the dev server in the background and prints the link once it answers; a second run leaves it alone', async () => {
     const r = await withDev(true);
     const url = `http://127.0.0.1:${portOf(r)}`;
+    // a PORT left set in the owner's shell must not send the session's server to another port: the folder's .env decides
+    r.env.PORT = '1';
     const out = run(r, '--serve', 'a');
     assert.ok(out.ok, out.out);
     assert.match(out.out, new RegExp(`The dev server runs: ${url}`));
@@ -54,6 +57,26 @@ describe('serving a session for the owner to try', () => {
     const again = run(r, '--serve', 'a');
     assert.ok(again.ok, again.out);
     assert.match(again.out, /runs already/);
+  });
+
+  it('--copy-data: the server runs on a copy of the main folder\'s data, which goes when the session is removed', async () => {
+    const r = await withDev(true);
+    mkdirSync(join(r.main, 'data'));
+    writeFileSync(join(r.main, 'data', 'real.txt'), 'real\n'); // (not committed: .gitignore has no line for it here, so it is removed again below)
+    // the server answers with the data folder it was given
+    writeFileSync(join(r.wt('a'), 'server.cjs'), SERVER.replace("s.end('ok')", "s.end(process.env.DATA_DIR||'none')"));
+    const out = run(r, '--serve', 'a', '--copy-data');
+    rmSync(join(r.main, 'data'), { recursive: true });
+    assert.ok(out.ok, out.out);
+    assert.match(out.out, /data: +a copy of .*DATA_DIR=/);
+    const copy = await (await fetch(`http://127.0.0.1:${portOf(r)}`)).text();
+    assert.equal(readFileSync(join(copy, 'real.txt'), 'utf8'), 'real\n');
+    assert.ok(!copy.startsWith(r.root), 'the copy is outside the session folder');
+    git(r.wt('a'), 'add', '-A'); git(r.wt('a'), 'commit', '-qm', 'the server');
+    const f = run(r, '--finish', 'a', '--no-checks');
+    assert.ok(f.ok, f.out);
+    assert.match(f.out, /Stopped the dev server/);
+    assert.equal(existsSync(copy), false, 'the copy went with the server');
   });
 
   it('without a dev script it says a change without a screen is tried with a command', async () => {

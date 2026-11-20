@@ -3,6 +3,8 @@ export const SIGNOFFS: string;
 export const SIGNERS: string;
 type Row = { date: string; who: string; fingerprint: string; files: string[]; signature: string };
 type Signer = { who: string; key: string; added: string; endorsed: string };
+export function coversFile(f: string, path: string, matches: (f: string, globs: string[]) => boolean): boolean;
+export function deadPaths(paths: string[], files: string[], matches: (f: string, globs: string[]) => boolean): string[];
 export function sensitiveFiles(changed: string[], paths: string[], matches: (f: string, globs: string[]) => boolean): string[];
 export function fingerprint(files: string[], read: (f: string) => string | null | undefined): string;
 export function publicOf(privateKey: string, passphrase: string): string;

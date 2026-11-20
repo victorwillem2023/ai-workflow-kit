@@ -20,8 +20,21 @@ export const CHECKLIST = [
 export const SIGNOFFS = 'docs/company/SIGNOFFS.md';
 export const SIGNERS = 'docs/company/SIGNERS.md';
 
+/**
+ * True when `path` (one entry of sensitive.paths) covers the file `f`: a glob as it is written; a plain name also as a folder, so
+ * "src/accounts/" and "src/accounts" cover every file under it (as a glob alone, a folder's name matched none of its files, and
+ * the gate passed a change to them with no sign-off).
+ */
+export function coversFile(f, path, matches) {
+  const p = String(path).replace(/\\/g, '/').replace(/^\.\//, '');
+  return matches(f, [p]) || (!/[*?{}]/.test(p) && f.startsWith(`${p.replace(/\/+$/, '')}/`));
+}
+
 /** The changed files that are sensitive (`changed` may hold deleted files: deleting a rule is a change too). */
-export const sensitiveFiles = (changed, paths, matches) => [...new Set(changed)].filter((f) => matches(f, paths)).sort();
+export const sensitiveFiles = (changed, paths, matches) => [...new Set(changed)].filter((f) => paths.some((p) => coversFile(f, p, matches))).sort();
+
+/** The entries of sensitive.paths that cover none of `files` (the project's files): a typing mistake, or code that is not written yet. */
+export const deadPaths = (paths, files, matches) => paths.filter((p) => !files.some((f) => coversFile(f, p, matches)));
 
 /** One short fingerprint of the files' content as they are now (a deleted file counts as empty). Line endings do not count. */
 export function fingerprint(files, read) {

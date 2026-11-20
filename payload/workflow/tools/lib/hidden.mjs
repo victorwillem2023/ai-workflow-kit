@@ -15,17 +15,20 @@ const self = fileURLToPath(import.meta.url);
 /**
  * Starts `command args` in `cwd` in the background, its output going to `log` (created anew). It outlives this process.
  * `shell`: through a shell (npm is a .cmd file on Windows). The launcher's own folder is the temp folder, so it never holds the
- * session folder open.
+ * session folder open. Returns the number of the process it started (the launcher's on Windows), which stopping takes down with what it started.
  */
 export function startHidden(command, args, { cwd, log, shell = false, env = process.env }) {
   openSync(log, 'w');
   if (process.platform !== 'win32') {
     const out = openSync(log, 'a');
-    spawn(command, args, { cwd, env, shell, detached: true, stdio: ['ignore', out, out] }).unref();
-    return;
+    const child = spawn(command, args, { cwd, env, shell, detached: true, stdio: ['ignore', out, out] });
+    child.unref();
+    return child.pid;
   }
   const spec = JSON.stringify({ command, args, cwd, log, shell });
-  spawn(process.execPath, [self, spec], { cwd: tmpdir(), env, detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  const launcher = spawn(process.execPath, [self, spec], { cwd: tmpdir(), env, detached: true, stdio: 'ignore', windowsHide: true });
+  launcher.unref();
+  return launcher.pid;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === self) {

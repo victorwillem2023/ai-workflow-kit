@@ -1,12 +1,10 @@
 // What workflow/scripts/session.mjs gained after its first version: the main folder's own notes (--check-main, --commit-notes, --sync),
-// a session's dev server (--serve), and sessions built on another one (--on, --restack). Built on session-core.mjs.
+// and sessions built on another one (--on, --restack). Built on session-core.mjs. (--serve and --catch-up: session-live.mjs)
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
-import { startHidden } from '../tools/lib/hidden.mjs';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { git, gitQuiet, here, main, PREFIX, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, mapPages, ensurePackages, npmRun, rebaseOn, gh } from './session-core.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { git, gitQuiet, main, folderOf, mainState, waiting, looseMessage, catchUp, isAncestor, looseWork, mapScript, ensurePackages, npmRun, rebaseOn } from './session-core.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
 
 /**
  * Docs and settings left in the main folder (by /docs, /lesson, /shape or the owner's own edits): any .md file, everything under
@@ -75,77 +73,6 @@ export function commitNotes(subject) {
   git(main, 'add', '-A', '--', ...looseFiles());
   git(main, 'commit', '-q', '-m', subject);
   console.log(`Committed ${files.length} file${files.length === 1 ? '' : 's'} on main: ${subject} (not pushed: --push sends it with the next feature).`);
-}
-
-/**
- * Starts the session's dev server in the background (unless its port answers already) and waits until the link answers, so the
- * owner only opens it. Its output goes to a file outside the folder (a file inside would be uncommitted work); --finish stops it.
- */
-export async function serve(topic) {
-  const dir = folderOf(topic);
-  if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
-  const env = join(dir, '.env');
-  const port = existsSync(env) ? /^PORT=(\d+)\s*$/m.exec(readFileSync(env, 'utf8'))?.[1] : undefined;
-  if (!port) throw new Error(`${env} names no PORT.`);
-  const url = `http://127.0.0.1:${port}`;
-  const answers = async () => { try { await fetch(url, { signal: AbortSignal.timeout(2000) }); return true; } catch { return false; } };
-  // how to watch it while trying it: one readable line per request (workflow/scripts/logs.mjs); --ref <reference> for one request
-  const watch = `  logs:   node workflow/scripts/logs.mjs ${topic} --follow   (one line per request; --ref <reference> shows one request)`;
-  // asked again a few seconds later before "runs": a server that answers once and is gone (stopped by another session's finish,
-  // crashed after start) is not said to run
-  const stillAnswers = async () => { await new Promise((r) => setTimeout(r, Number(process.env.WORKFLOW_SERVE_RECHECK_MS ?? 3000))); return answers(); };
-  if (await answers() && await stillAnswers()) { console.log(`The dev server runs already: ${url}\n${watch}`); return; }
-  ensurePackages('before the dev server starts');
-  const scripts = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts ?? {};
-  if (!scripts.dev) throw new Error(`${dir} has no "dev" script, so there is nothing to open: a change without a screen is tried with a command (.claude/skills/build/try-it.md).`);
-  const log = join(tmpdir(), `${PREFIX}-${topic}-dev.log`);
-  // a shell only on Windows, where npm is a .cmd file; the arguments are fixed, never outside input. Started through
-  // lib/hidden.mjs: a plain detached start opened a console window on Windows for the server and for each of its restarts
-  startHidden('npm', ['run', 'dev'], { cwd: dir, log, shell: process.platform === 'win32' });
-  for (let i = 0; i < 120; i++) {
-    if (await answers()) {
-      if (await stillAnswers()) { console.log(`The dev server runs: ${url} (--finish stops it)\n${watch}`); return; }
-      const last = readFileSync(log, 'utf8').trim().split('\n').slice(-15).join('\n');
-      throw new Error(`The dev server answered at ${url} and then stopped. Its last lines (${log}):\n${last}`);
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  const last = readFileSync(log, 'utf8').trim().split('\n').slice(-15).join('\n');
-  throw new Error(`The dev server did not answer at ${url} within 60 seconds. Its last lines (${log}):\n${last}`);
-}
-
-/**
- * --catch-up <topic>: brings a session onto main while it is being built (main has a fix the build or its review needs), without
- * the owner's "done": nothing of the session's own work is committed. Its loose work stays as it is (no stash: that breaks after
- * a `git add -N`). No commit of its own yet: a fast-forward. Commits of its own: main is merged in (one merge commit, which
- * --finish squashes away with the rest). A conflict only in the map's pages is settled by making the map again (only those pages
- * are staged); any other conflict, or loose work main would overwrite, stops it with nothing changed.
- */
-export function catchUpSession(topic) {
-  const dir = folderOf(topic);
-  if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
-  if (gitQuiet(dir, 'branch', '--show-current') !== topic) throw new Error(`${dir} is not on branch "${topic}".`);
-  catchUp(mainState(false));
-  const behind = Number(git(dir, 'rev-list', '--count', `HEAD..${MAIN}`));
-  if (!behind) { console.log(`Session "${topic}" is on main already.`); return; }
-  const own = Number(git(dir, 'rev-list', '--count', `${MAIN}..HEAD`));
-  const step = (...args) => execFileSync('git', args, { cwd: dir, env: { ...process.env, GIT_EDITOR: 'true' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  const why = (e) => (e.stderr?.toString() ?? '').trim().split('\n').filter(Boolean).slice(0, 4).join(' | ');
-  try {
-    step('merge', own ? '--no-edit' : '--ff-only', MAIN);
-  } catch (e) {
-    const files = gitQuiet(dir, 'diff', '--name-only', '--diff-filter=U').split('\n').filter(Boolean);
-    const pages = mapPages(dir);
-    if (!files.length) throw new Error(`Main could not come into "${topic}" (${why(e)}). Nothing was changed.`);
-    if (!(mapScript(dir) && files.every((f) => pages.includes(f)))) {
-      try { step('merge', '--abort'); } catch { /* nothing to abort */ }
-      throw new Error(`Main and "${topic}" change the same lines (${files.join(', ')}). Nothing was changed: it is settled at --finish, or by hand in ${dir}.`);
-    }
-    npmRun(dir, 'map', true);
-    step('add', '--', ...pages.filter((p) => existsSync(join(dir, p))));
-    step('commit', '-q', '--no-edit');
-  }
-  console.log(`Session "${topic}" is on main again: ${behind} commit${behind === 1 ? '' : 's'} from main came in${own ? ' (as one merge, which --finish squashes away)' : ''}. Work in progress is as it was.`);
 }
 
 /**

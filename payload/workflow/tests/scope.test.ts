@@ -15,6 +15,25 @@ describe('scope guard', () => {
   });
 });
 
+describe('files that are the change\'s own without being named', async () => {
+  const { ownTestFiles } = await import('../../workflow/tools/lib/scope.mjs');
+  const { buildGraph } = await import('../../workflow/tools/lib/graph.mjs');
+  const graph = buildGraph(new Map([
+    ['src/core/total.ts', 'export const total = 1;'],
+    ['src/web/menu.ts', 'export const menu = 1;'],
+    ['tests/sums.test.ts', "import { total } from '../src/core/total';\nimport { rows } from './rows';"],
+    ['tests/rows.ts', 'export const rows = [];'],
+    ['tests/menu.test.ts', "import { menu } from '../src/web/menu';"],
+    ['tests/shared.ts', 'export const shared = 1;'],
+    ['src/web/uses-shared.ts', "import { shared } from '../../tests/shared';"],
+  ]));
+  const isTest = (f: string) => f.endsWith('.test.ts');
+  it('a test that reaches a named file and a helper only such tests import count; another file\'s test and a helper the app imports do not', () => {
+    const outside = ['tests/sums.test.ts', 'tests/rows.ts', 'tests/menu.test.ts', 'tests/shared.ts', 'src/web/menu.ts'];
+    assert.deepEqual(ownTestFiles(outside, ['src/core/total.ts'], graph, isTest), ['tests/rows.ts', 'tests/sums.test.ts']);
+  });
+});
+
 describe("a kit update's spec", async () => {
   const { kitFilesIn, namesKitFiles } = await import('../../workflow/tools/lib/scope.mjs');
   it('says "the kit\'s files" once, and every file the record lists counts as named', () => {

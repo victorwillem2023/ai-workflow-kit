@@ -19,6 +19,7 @@
 //   --ship        what /ship runs (the phase says how much); a pass is recorded, and a second --ship on the same files stops at once
 // Project settings live in workflow/config.json; nothing here knows about the project.
 import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
+import './lib/frommain.mjs'; // a session folder with an older kit than the main folder's: the main folder's copy runs instead (lib/frommain.mjs)
 import { checkPackages, describeMissing, packagesFix } from '../../workflow/scripts/packages.mjs';
 import { testPlan } from './lib/testplan.mjs';
 import { errorRuleFindings, notRead } from './lib/errorrules.mjs';
@@ -35,7 +36,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { kitFilesIn, namesKitFiles, specPaths, outsideSpec } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { recordShipPass, shipPassOf, treeOf } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { recordShipPass, shipPassOf, treeOf } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -59,7 +60,8 @@ const baseArg = args.includes('--base') ? args[args.indexOf('--base') + 1] : nul
 const levels = readLevels(existsSync(LEVELS_FILE) ? readFileSync(LEVELS_FILE, 'utf8') : null, (config.checks ?? []).map((c) => c.name));
 const wholeSuite = flag('--all') || (flag('--ship') && levels.ship === 'all');
 
-const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim();
+// (git's warnings stay out of the output: on Windows "LF will be replaced by CRLF" came once per file and hid the failure; an error still carries what git said)
+const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 // a git call that may fail (no origin yet, say): no output on stderr, null instead
 const gitOk = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
 
@@ -260,11 +262,16 @@ function scopeLines() {
   if (config.scope === 'off' || !existsSync('workflow/specs')) return [];
   const specs = readdirSync('workflow/specs').filter((f) => f.endsWith('.md'));
   if (specs.length !== 1) return [];
-  const ignore = ['workflow/specs/**', config.map?.out, config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', ...(config.scopeIgnore ?? [])].filter(Boolean);
+  // never the change's own choice: what a script writes (the map's pages, the docs index, the baseline, the lock files) and the owner's sign-off row
+  const ignore = ['workflow/specs/**', config.map?.out ?? 'docs/MAP.md', 'docs/README.md', config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', 'docs/company/SIGNOFFS.md', ...(config.scopeIgnore ?? [])].filter(Boolean);
   const spec = readFileSync(`workflow/specs/${specs[0]}`, 'utf8');
   // a kit update's spec says "the kit's files" once: every file the kit wrote (workflow/record) is named by it
   const kitFiles = namesKitFiles(spec) && existsSync('workflow/record') ? kitFilesIn(readFileSync('workflow/record', 'utf8')) : [];
-  return outsideSpec(changed, [...specPaths(spec), ...kitFiles, ...(kitFiles.length ? ['workflow/record'] : [])], ignore)
+  const named = [...specPaths(spec), ...kitFiles, ...(kitFiles.length ? ['workflow/record'] : [])];
+  const outside = outsideSpec(changed, named, ignore);
+  // a test of a file the spec names, and what only such tests import, belong to that file's change (lib/scope.mjs)
+  const own = new Set(ownTestFiles(outside, named, graph, isTest));
+  return outside.filter((f) => !own.has(f))
     .map((f) => `scope: ${f} changed, but workflow/specs/${specs[0]} does not name it (add it to the spec or take the change out)`);
 }
 if (flag('--list')) {

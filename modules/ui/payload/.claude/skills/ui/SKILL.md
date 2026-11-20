@@ -60,8 +60,8 @@ The style rules and the done checklist still apply. When it grows into a new par
    ```sh
    node workflow/scripts/shots.mjs docs/design/<Name>.html --width 1320 --theme light --full --out docs/design/png/<n>-<Name>.png
    node workflow/scripts/shots.mjs docs/design/<Name>.html --width 1320 --theme dark --full --out docs/design/png/<n>-<Name>-dark.png
-   node workflow/scripts/shots.mjs docs/design/<Name>.html --width 400 --theme light --full --out docs/design/png/<n>-<Name>-phone.png
-   node workflow/scripts/shots.mjs docs/design/<Name>.html --width 400 --theme dark --full --out docs/design/png/<n>-<Name>-phone-dark.png
+   node workflow/scripts/shots.mjs docs/design/<Name>.html --width 400 --phone --theme light --full --out docs/design/png/<n>-<Name>-phone.png
+   node workflow/scripts/shots.mjs docs/design/<Name>.html --width 400 --phone --theme dark --full --out docs/design/png/<n>-<Name>-phone-dark.png
    ```
    Look at each picture (Read the png) before showing it: text cut off, overlaps, a variant that reads wrong in dark.
 4. **The record**:

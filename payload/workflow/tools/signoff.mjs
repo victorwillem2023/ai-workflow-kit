@@ -12,6 +12,7 @@
 // The private key is ~/.config/ai-workflow-kit/signoff-key.pem (WORKFLOW_SIGNOFF_KEY: another path), encrypted with the passphrase. Every
 // part that signs asks for it in a terminal with a person typing (no pipe, no CI), so an agent cannot sign.
 import './lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
+import './lib/frommain.mjs'; // a session folder with an older kit than the main folder's: the main folder's copy runs instead (lib/frommain.mjs)
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -19,7 +20,7 @@ import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { randomInt, createPublicKey } from 'node:crypto';
 import { matchesAny } from './lib/glob.mjs';
-import { CHECKLIST, SIGNERS, SIGNOFFS, fingerprint, makeKey, publicOf, parseSigners, sensitiveFiles, signerRow, signoffRow, signoffVerdict } from './lib/signoff.mjs';
+import { CHECKLIST, SIGNERS, SIGNOFFS, deadPaths, fingerprint, makeKey, publicOf, parseSigners, sensitiveFiles, signerRow, signoffRow, signoffVerdict } from './lib/signoff.mjs';
 import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 
 const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
@@ -119,6 +120,9 @@ const paths = config.sensitive?.paths ?? [];
 if (!paths.length) { rl.close(); console.log('signoff: no sensitive.paths in workflow/config.json, so nothing needs a sign-off'); process.exit(0); }
 const changed = [...(git('diff', '--name-only', base) ?? '').split('\n'), ...(git('ls-files', '--others', '--exclude-standard') ?? '').split('\n')].filter(Boolean);
 const files = sensitiveFiles(changed, paths, matchesAny);
+// an entry that covers no file guards nothing: said before anything is signed, so a mistyped folder is seen here
+const dead = deadPaths(paths, [...(git('ls-files', '--cached', '--others', '--exclude-standard') ?? '').split('\n'), ...changed].filter(Boolean), matchesAny);
+if (dead.length) console.log(`signoff: sensitive.paths names ${dead.join(', ')}, which cover${dead.length === 1 ? 's' : ''} no file: nothing there is guarded (a folder is written as src/accounts/). Fix it in workflow/config.json.`);
 if (!files.length) { rl.close(); console.log('signoff: this change touches no sensitive file'); process.exit(0); }
 const print = fingerprint(files, read);
 const verdict = signoffVerdict({ changed: files, paths, matches: matchesAny, read, signoffs: read(SIGNOFFS), baseSigners: onMain, signers: read(SIGNERS) });

@@ -6,7 +6,9 @@ just as sure either way. So for this work the kit trusts sources, scripts and a 
 section.
 
 ## What counts
-The folders and files listed under `sensitive.paths` in `workflow/config.json`, chosen at `/setup` and grown with the app:
+The folders and files listed under `sensitive.paths` in `workflow/config.json`, chosen at `/setup` and grown with the app (a
+folder is written with its last slash, `src/server/accounts/`, and covers every file under it; the gate's *signoff* line names
+an entry that covers no file, so a mistyped one is seen):
 - **Money**: prices, totals, VAT and other taxes, discounts, invoices, refunds, payouts, currency and rounding.
 - **Health and safety**: doses, limits, heart-rate zones, load advice, anything a person may act on with their body.
 - **Legal texts and rules**: terms, privacy notice, consent, retention periods, age limits, cancellation rights.
