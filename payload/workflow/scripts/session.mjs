@@ -48,7 +48,7 @@ import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkS
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
 import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, bringSpec, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs';
+import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs'; import { markPushed, STOPPED_FILE } from '../tools/lib/stopped.mjs';
 
 async function make(topic, card, on) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
@@ -256,6 +256,7 @@ function push(o) {
   if (!s.behind) {
     try { git(main, 'push', 'origin', 'main:main'); } catch (e) { throw refused(e); }
     console.log(`Pushed ${waiting(s.ahead.length)} to origin/main.`);
+    notePushed();
     return;
   }
   const tmp = join(dirname(main), `${PREFIX}-pushing`);
@@ -274,6 +275,7 @@ function push(o) {
     if (git(main, 'branch', '--show-current') === MAIN) git(main, 'reset', '--keep', now);
     else git(main, 'update-ref', 'refs/heads/main', now, old);
     console.log(`Pushed ${waiting(s.ahead.length)} to origin/main.`);
+    notePushed();
   } finally {
     unlinkModules(tmp);
     gitQuiet(main, 'worktree', 'remove', '--force', tmp);
@@ -281,6 +283,11 @@ function push(o) {
     gitQuiet(main, 'worktree', 'prune');
     ensureShortcuts();
   }
+}
+
+/** The stopping note, written before this push, is stamped as pushed, so nothing reads it as still waiting (lib/stopped.mjs). */
+function notePushed() {
+  try { markPushed(join(resolve(main, git(main, 'rev-parse', '--git-common-dir')), STOPPED_FILE)); } catch { /* a note is never a reason to fail a push */ }
 }
 
 const sameDir = (x, y) => resolve(x).toLowerCase() === resolve(y).toLowerCase();

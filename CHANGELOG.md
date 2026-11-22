@@ -2,6 +2,19 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.9.1**: **the limit on work in progress counts work, not cards.** A session that builds eight cards together is one
+  piece of work, yet `board --room` counted eight and stopped every new start (7 of 5 in a real project, where 2 of 5 was true).
+  **`npm run board -- --room` counts once per session**: the cards one session carries (`branch.<topic>.card`, already kept
+  by the session script) count once, with a line per piece of work. A card in progress that no session holds still counts,
+  named "no session". A session started without a card counts once, named "no card", until its work is on main. A session
+  whose cards are all closed is not counted and is named as left over, to clean with `session.mjs --clean`; one whose cards
+  wait for your check is neither.
+  **`--triage` and `--next` use the same count**, so `/tidy` and `/next` say what `/work` says.
+  **The stopping note no longer says whether a feature is pushed; git does, each time.** A note written by `/ship` ("Shipped
+  #543 (on local main, not pushed)") was still repeated by `/next` after the push. Now `board --next` counts
+  `origin/main..main` when it prints and adds "N features on local main, not pushed" only when that is true (`lib/stopped.mjs`);
+  `/ship` keeps push state out of the line; `session.mjs --push` stamps the note "pushed since"; and `/next` checks with git
+  any fact in the note that git can tell before it repeats it.
 - **4.9.0**: **GitHub's gate sees what a push changed, and a big project stops running the kit's tests with its own.** From
   the first update of a real project to 4.7.
   **A push to main was compared with itself on GitHub**: the gate there looked for the change since where the branch left

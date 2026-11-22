@@ -87,8 +87,8 @@ On the owner's yes, move the card to *Ready* (`/spec` does this itself).
 
 ## 3. Build in a session folder, tests first
 
-**Room to start**: `npm run board -- --room`. When it prints STOP (more cards in progress than `board.wip`), stop here: name
-the cards in progress in one line each and ask which to finish or park first (park: `--move <n> "Ready"`). A card that is
+**Room to start**: `npm run board -- --room`. When it prints STOP (more work in progress than `board.wip`; a session's cards count once), stop here: name
+the work in progress in one line each and ask which to finish or park first (park: `--move <n> "Ready"`). A card that is
 already *In progress* (picked up again) needs no room.
 
 Move the card to *In progress*: `npm run board -- --move <n> "In progress"`.

@@ -35,8 +35,9 @@ then stop.
    Switching the phase is the owner's job, in `workflow/levels.json`: never offer to make the switch, and never bring the
    phase up again when no such line is printed.
 3. **`npm run board -- --next 3`**: the cards to start, best first (the dependency graph first, then the owner's labels).
-   - **`where you stopped:`**: the line the last session left. Say it first, as it is.
-   - **`STOP:`**: more cards in progress than the limit. The next step is finishing or parking one (the board tidy-up), never
+   - **`where you stopped:`**: the line the last session left. Say it first; a fact in it git can tell (pushed, committed, a
+     folder or branch) is checked with git first, and git wins.
+   - **`STOP:`**: more work in progress than the limit. The next step is finishing or parking one (the board tidy-up), never
      a new card; say which are in progress.
    - **`you were on:`**: start your answer with it, in one line of plain words ("You were building #12 and #9 waits for you
      to try"). A card that waits to be tried is the first next step: trying it is quicker than starting another. More in

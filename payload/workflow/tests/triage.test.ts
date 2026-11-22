@@ -2,6 +2,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { likelyDuplicates, renderTriage, triage, triageLine } from '../../workflow/tools/lib/triage.mjs';
+import { roomToStart } from '../../workflow/tools/lib/focus.mjs';
 
 const now = new Date('2026-11-15T12:00:00Z');
 const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -31,6 +32,16 @@ describe('the board triage', () => {
     assert.equal(t.focus.start[0].number, 5);
     assert.match(renderTriage(t), /^board: 8 open, 3 in progress, 2 in the backlog, 1 in the inbox\nfocus: finish #1, #2, #3; then start #5/);
     assert.match(triageLine(t), /the board needs 7 decisions: .*\/tidy/);
+  });
+  it("triage's too-much-started gives the same count as --room", () => {
+    const sessions = [{ topic: 'export', cards: [1, 2] }];
+    const grouped = triage(cards, { now, wip: 2, sessions });
+    assert.equal(grouped.counts.work, roomToStart(cards, 2, sessions).count);
+    assert.ok(!grouped.findings.some((f) => f.kind === 'too-much-started'), 'three cards in two pieces of work fit a limit of two');
+    assert.match(renderTriage(grouped), /^board: 8 open, 3 cards in progress in 2 pieces of work, /);
+    const over = triage(cards, { now, wip: 1, sessions });
+    assert.equal(over.findings[0].what, '2 pieces of work in progress, 3 cards (the limit is 1)');
+    assert.equal(t.counts.work, 3);
   });
   it('is quiet on a tidy board, and offers old low-value cards for pruning when the backlog grows', () => {
     const tidy = triage([card(5, 'Strava import', 'Ready', ['value: high'])], { now });

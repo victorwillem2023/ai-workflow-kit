@@ -114,10 +114,34 @@ export function expired(cards, { now = new Date(), days = 56, firstVersion } = {
     .map((c) => ({ number: c.number, title: c.title, days: age(c) })).sort((a, b) => b.days - a.days);
 }
 
-/** Whether one more card may be started: { doing: [card], limit, room }. Cards built and waiting for the owner do not count. */
-export function roomToStart(cards, limit = 2) {
+/**
+ * Whether one more piece of work may be started: { doing: [card], limit, room, count, work: [{ topic, cards }], leftover: [topic] }.
+ * Cards built and waiting for the owner do not count. With `sessions` ([{ topic, cards: [number], finished }], the cards each
+ * session folder carries) the limit is on work, not cards: the cards in progress one session carries count once, a card in
+ * progress no session holds counts on its own (topic null), and a session started without a card counts once until its work is
+ * on main (`finished`). A session whose cards are all closed or gone is a leftover; one whose cards wait (for the owner, for
+ * another card) is neither. Without `sessions` every card in progress counts.
+ */
+export function roomToStart(cards, limit = 2, sessions = null) {
   const doing = cards.filter((c) => c.state === 'open' && c.column === DOING);
-  return { doing, limit, room: Math.max(0, limit - doing.length) };
+  const held = new Set();
+  const work = [];
+  const leftover = [];
+  for (const s of sessions ?? []) {
+    const mine = doing.filter((c) => s.cards.includes(c.number) && !held.has(c.number));
+    for (const c of mine) held.add(c.number);
+    if (mine.length || (!s.cards.length && !s.finished)) work.push({ topic: s.topic, cards: mine });
+    else if (!s.cards.some((n) => cards.some((c) => c.number === n && c.state === 'open'))) leftover.push(s.topic);
+  }
+  for (const c of doing) if (!held.has(c.number)) work.push({ topic: null, cards: [c] });
+  return { doing, limit, room: Math.max(0, limit - work.length), count: work.length, work, leftover };
+}
+
+/** The work in progress as lines, one per session (or per card no session holds), then the leftover sessions to clean. */
+export function roomLines({ work, leftover }) {
+  const said = ({ cards: [first, ...rest] }) => (!first ? 'no card' : `#${first.number} ${first.title}${rest.length ? ` and ${rest.length} more (${list(rest)})` : ''}`);
+  return [...work.map((w) => `  ${w.topic ?? 'no session'}: ${said(w)}`),
+    ...(leftover.length ? [`left over: ${leftover.join(', ')}: clean ${leftover.length === 1 ? 'it' : 'them'} with node workflow/scripts/session.mjs --clean`] : [])];
 }
 
 /**

@@ -17,7 +17,7 @@ the rules the agent follows are in `CLAUDE.md`.
 ## The idea in one minute
 - **The board is the only backlog.** Every idea, bug and wish is one card on the GitHub board.
 - **One goal at a time, few cards at once.** You pick a goal with a finish line (`/tidy focus`), and `/next` shows how far it
-  is. No more than `board.wip` cards are in progress: `/work` and `/build` stop and ask before one more starts. Cards the AI
+  is. No more than `board.wip` pieces of work are in progress (the cards one session builds together count once): `/work` and `/build` stop and ask before one more starts. Cards the AI
   makes along the way wait for your yes before they are offered, and the last session's "where I stopped" line opens the next.
 - **You steer, the agent builds.** The agent plans and stops for your yes, builds and stops for you to try it,
   and commits only when you say it is done. (`CLAUDE.md` calls the person steering "the owner".)

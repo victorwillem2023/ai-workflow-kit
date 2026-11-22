@@ -1,7 +1,7 @@
 // The focus block (lib/focus.mjs): blocks of one theme to pick from, where the picked one stands, and when code health is due.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { expired, focusLine, focusState, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from '../../workflow/tools/lib/focus.mjs';
+import { expired, focusLine, focusState, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from '../../workflow/tools/lib/focus.mjs';
 
 const card = (number: number, title: string, column: string | null, labels: string[] = [], extra: object = {}) => ({ number, title, state: 'open', labels, column, createdAt: null, updatedAt: null, body: '', ...extra });
 const areas = ['area: UI', 'area: Backend', HEALTH];
@@ -15,6 +15,33 @@ const cards = [
   card(7, 'Sign-in crashes', 'Backlog', ['bug', 'area: Backend', 'value: high', 'effort: small']),
   card(8, 'Icons', 'Backlog', ['ui', 'area: UI'], { body: 'Depends on: #2' }),
 ];
+
+describe('the limit on work in progress', () => {
+  const doing = [card(507, 'React finish', 'In progress'), card(529, 'Old list view', 'In progress'), card(514, 'Old form', 'In progress'), card(543, 'Split the app', 'In progress'),
+    card(600, 'Loose end', 'In progress'), card(610, 'Built', 'Waiting for your check'), card(620, 'Shipped', 'Done', [], { state: 'closed' })];
+  const session = (topic: string, cards: number[], finished = false) => ({ topic, cards, finished });
+  it('cards one session carries count as one piece of work in progress', () => {
+    const r = roomToStart(doing.slice(0, 4), 5, [session('react-finish', [507, 529, 514]), session('app-split', [543])]);
+    assert.deepEqual([r.count, r.room, r.doing.length], [2, 3, 4]);
+    assert.deepEqual(roomLines(r), ['  react-finish: #507 React finish and 2 more (#529, #514)', '  app-split: #543 Split the app']);
+    assert.deepEqual([roomToStart(doing.slice(0, 4), 5).count, roomToStart(doing.slice(0, 4), 5).room], [4, 1], 'without the sessions every card counts, as before');
+  });
+  it('a card in progress that no session holds still counts', () => {
+    const r = roomToStart(doing, 5, [session('app-split', [543])]);
+    assert.equal(r.count, 5);
+    assert.equal(roomLines(r).at(-1), '  no session: #600 Loose end');
+  });
+  it('a session with no card in progress does not count, and is named as a leftover', () => {
+    const r = roomToStart(doing, 5, [session('app-split', [543]), session('shipped', [620]), session('gone', [999]), session('built', [610])]);
+    assert.deepEqual([r.work.map((w) => w.topic).filter(Boolean), r.leftover], [['app-split'], ['shipped', 'gone']], 'a session waiting for the owner is neither');
+    assert.equal(roomLines(r).at(-1), 'left over: shipped, gone: clean them with node workflow/scripts/session.mjs --clean');
+  });
+  it('a session started without a card counts once, until its work is on main', () => {
+    const r = roomToStart(doing.slice(3, 4), 5, [session('app-split', [543]), session('try-out', []), session('old-try', [], true)]);
+    assert.deepEqual([r.count, r.leftover], [2, ['old-try']]);
+    assert.equal(roomLines(r)[1], '  try-out: no card');
+  });
+});
 
 describe('the focus block', () => {
   it('proposes one block per theme from the startable cards, best first, with a rough length', () => {

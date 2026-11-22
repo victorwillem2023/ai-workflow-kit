@@ -22,7 +22,7 @@
 //   --add ... --unsorted         a card the agent made on its own: it waits for the owner's yes; --unsorted lists those, --accept <n,m|all> lets them in
 //   --expire [--yes]             cards untouched for eight weeks, not of high value: listed, and closed with --yes
 //   --together [n,m]             which of the cards to start (or the ones named) go together: in one session, one after another, or side by side
-//   --room                       whether one more card may be started (the limit board.wip): exit code 3 when not
+//   --room                       whether one more piece of work may be started (the limit board.wip; a session's cards count once): exit code 3 when not
 //   --stopped "<line>"           where this session stopped and what comes next: the next --next starts with it
 //   --sweep ["<theme>" [--from n]]   every open card for a full clean-up (/sweep): the count per theme, or one theme's cards, 25 at a
 //                                time, each with what it lacks (area, type, value, effort) and how long it is untouched
@@ -45,14 +45,34 @@ import { inbox, rankCards, STARTABLE, TO_SORT, TOOL_ISSUES, topTie, waitingCards
 import { renderTree } from './lib/cardgraph.mjs';
 import { boardView } from './lib/boardview.mjs';
 import { ghRun } from './lib/gh.mjs';
+import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
+import { STOPPED_FILE, stoppedLines } from './lib/stopped.mjs';
 import { codeHotspots, shippedRecords } from './lib/codestate.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
 import { together, togetherLines } from './lib/together.mjs';
-import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
+import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const run = (args, input) => ghRun(args, input); // lib/gh.mjs
+
+// The cards each session folder carries (branch.<topic>.card, kept by workflow/scripts/session.mjs), for the limit on work in
+// progress (lib/focus.mjs roomToStart): [{ topic, cards, finished }]. Read once per run; no git, no sessions: every card counts.
+let sessionsNow;
+const sessionCards = () => (sessionsNow ??= (() => {
+  const git = (cwd, ...args) => { try { return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim(); } catch { return null; } };
+  // the first worktree git lists is the main folder
+  return (git(root, 'worktree', 'list', '--porcelain') ?? '').split(/\r?\n\r?\n/).filter((b) => b.trim()).slice(1).flatMap((block) => {
+    const dir = /^worktree (.+)$/m.exec(block)?.[1]?.trim();
+    const topic = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim();
+    if (!dir || !topic || !existsSync(dir)) return [];
+    const cards = (git(root, 'config', '--get', `branch.${topic}.card`) ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    // without a card only the folder can say: finished when nothing is loose and its commits are on main (what session.mjs --clean takes away)
+    const finished = !cards.length && git(dir, 'status', '--porcelain') === '' && git(root, 'merge-base', '--is-ancestor', topic, MAIN) !== null
+      && (git(root, 'reflog', 'show', '--format=%H', `refs/heads/${topic}`) ?? '').split('\n').filter(Boolean).length > 1;
+    return [{ topic, cards, finished }];
+  });
+})());
 
 const argv = process.argv.slice(2);
 const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
@@ -227,20 +247,20 @@ async function togetherFor(board, all, candidates) {
   return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], room: Math.max(2, Math.min(3, board.wip ?? 3)) })).slice(0, 4);
 }
 
-/** The stopping note (board --stopped "<text>"): where the last session stopped and what comes next, said by the next --next. */
+/** The stopping note (board --stopped "<text>") and, asked of git now, the finished features not pushed (lib/stopped.mjs). */
 function stoppedLine() {
-  const s = readJson(commonFile('workflow-stopped.json'));
-  if (!s?.text || Date.now() - Date.parse(s.at) > 21 * 86_400_000) return [];
-  return [`where you stopped (${String(s.at).slice(0, 10)}): ${s.text}`];
+  let ahead = 0;
+  try { ahead = Number(execFileSync('git', ['rev-list', '--count', `${ORIGIN_MAIN}..${MAIN}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim()) || 0; } catch { /* no origin: nothing to say */ }
+  return stoppedLines(readJson(commonFile(STOPPED_FILE)), { ahead });
 }
 
 /** For --next: the ranking kept to the picked focus while it is not finished, and the lines to say around it. */
 async function withinFocus(config, all, ranked) {
   const board = config.board;
   const was = whereYouWere(all);
-  const room = roomToStart(all, board.wip ?? 2);
+  const room = roomToStart(all, board.wip ?? 2, sessionCards());
   const before = [...stoppedLine(), ...(was ? [`you were on: ${was}`] : []),
-    ...(room.room ? [] : [`STOP: ${room.doing.length} cards are in progress and the limit is ${room.limit}: finish or park one before starting another (park: npm run board -- --move <n> "Ready")`])];
+    ...(room.room ? [] : [`STOP: ${room.count} pieces of work are in progress and the limit is ${room.limit}: finish or park one before starting another (park: npm run board -- --move <n> "Ready")`])];
   const waiting = toSort(all, TO_SORT).length;
   const sort = waiting ? [`(${waiting} card${waiting === 1 ? '' : 's'} made along the way wait${waiting === 1 ? 's' : ''} for your yes before ${waiting === 1 ? 'it is' : 'they are'} offered: npm run board -- --unsorted)`] : [];
   const goals = await gatherGoals(config, all);
@@ -271,7 +291,7 @@ async function main() {
   let renovateTitle;
   try { renovateTitle = JSON.parse(readFileSync(join(root, 'renovate.json'), 'utf8')).dependencyDashboardTitle; } catch {}
   const toolIssues = [...TOOL_ISSUES, ...(renovateTitle ? [renovateTitle] : [])];
-  const triageOptions = () => ({ wip: board.wip ?? 2, backlogMax: board.backlogMax ?? 30, firstVersion: board.labels?.milestone?.[0], columns: board.columns, toolIssues });
+  const triageOptions = () => ({ wip: board.wip ?? 2, backlogMax: board.backlogMax ?? 30, firstVersion: board.labels?.milestone?.[0], columns: board.columns, toolIssues, sessions: sessionCards() });
   if (argv.includes('--init')) {
     const r = initBoard(board, run, undefined, { title: config.name });
     if (r.created) {
@@ -409,14 +429,15 @@ async function main() {
     console.log(lines.length ? lines.join('\n') : 'board: nothing says these go together: one card at a time, best first');
   } else if (argv.includes('--room')) {
     // the limit on work in progress, as an exit code: /work and /build ask before they start one more
-    const r = roomToStart(listCards(board, run), board.wip ?? 2);
-    if (r.room) { console.log(`board: ${r.doing.length} in progress, the limit is ${r.limit}: room for ${r.room} more`); return; }
-    console.log(`board: STOP, ${r.doing.length} cards are in progress and the limit is ${r.limit}:\n${r.doing.map((c) => `  #${c.number} ${c.title}`).join('\n')}\nFinish one, or park one (npm run board -- --move <n> "Ready"), before starting another.`);
+    // work, not cards: the cards one session carries count once (lib/focus.mjs roomToStart)
+    const r = roomToStart(listCards(board, run), board.wip ?? 2, sessionCards());
+    if (r.room) { console.log([`board: ${r.count} in progress, the limit is ${r.limit}: room for ${r.room} more`, ...roomLines(r)].join('\n')); return; }
+    console.log(`board: STOP, ${r.count} pieces of work are in progress and the limit is ${r.limit}:\n${roomLines(r).join('\n')}\nFinish one, or park one (npm run board -- --move <n> "Ready"), before starting another.`);
     process.exitCode = 3;
   } else if (argv.includes('--stopped')) {
     const text = String(value('--stopped') ?? '').trim();
     if (!text || text.startsWith('--')) throw new BoardError('--stopped needs one line: where you stopped and what comes next.');
-    writeFileSync(commonFile('workflow-stopped.json'), JSON.stringify({ at: new Date().toISOString(), text: text.slice(0, 400) }, null, 2) + '\n');
+    writeFileSync(commonFile(STOPPED_FILE), JSON.stringify({ at: new Date().toISOString(), text: text.slice(0, 400) }, null, 2) + '\n');
     console.log('board: kept; the next "what now" starts with it');
   } else if (argv.includes('--sweep')) {
     // every open card for a full clean-up (/sweep): the themes with their counts, or one theme's cards, 25 at a time

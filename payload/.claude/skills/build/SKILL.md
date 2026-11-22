@@ -26,7 +26,7 @@ Read `workflow/specs/<topic>.md` in the main folder. **The owner typing `/build`
 
 The folder is `../{{PREFIX}}-<topic>`, next to the main folder.
 
-- **Missing**: first `npm run board -- --room`. STOP there (more cards in progress than `board.wip`): ask the owner which to
+- **Missing**: first `npm run board -- --room`. STOP there (more work in progress than `board.wip`): ask the owner which to
   finish or park before this one starts; their answer that this one goes ahead anyway is enough. Then run
   `node workflow/scripts/session.mjs <topic> --card <n>` in the main folder, and note the port it prints.
   - `n` is the spec's "Card: #n" line; `--card 12,14` for combined cards; leave `--card` out when there is none.

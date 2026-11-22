@@ -3,7 +3,7 @@
 // Run in throwaway git repos: a bare "origin" and a clone in the shape of the project (workflow/tests/session-repo.ts).
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { addFile, commitIn, fileMap, git, makeRepo, originHas, originMain, roots, run } from './session-repo';
 
@@ -22,6 +22,20 @@ describe('pushing the finished features', () => {
     assert.equal(originMain(r), git(r.main, 'rev-parse', 'main'));
     assert.equal(git(r.origin, 'rev-list', '--count', 'main'), '4', 'start and three features, a straight line');
     assert.match(run(r, '--push').out, /nothing/i);
+  });
+
+  it('--push stamps the stopping note as pushed, so a note written before it never reads as still waiting', () => {
+    const r = setup();
+    assert.ok(run(r, 'a').ok);
+    commitIn(r.wt('a'), 'a.txt', 'x\n', 'feature a');
+    assert.ok(run(r, '--finish', 'a', '--no-checks').ok);
+    const note = join(r.main, git(r.main, 'rev-parse', '--git-common-dir'), 'workflow-stopped.json');
+    writeFileSync(note, JSON.stringify({ at: new Date().toISOString(), text: 'Shipped a, not pushed; next: b' }));
+    const pushed = run(r, '--push');
+    assert.ok(pushed.ok, pushed.out);
+    const after = JSON.parse(readFileSync(note, 'utf8'));
+    assert.equal(after.text, 'Shipped a, not pushed; next: b', 'what comes next is kept');
+    assert.ok(Date.parse(after.pushedAt) >= Date.parse(after.at), 'stamped as pushed after it was written');
   });
 
   it('--push replays unpushed features on top of what someone else pushed, then pushes', () => {

@@ -153,6 +153,7 @@ In plain language, with an example wherever a term is technical: what changed, a
     `npm run health` and under the next card that will change it, so name the cause, never a complaint. Nothing got in the
     way: leave it out.
 - **Where it leaves off**: one line for the next session, `npm run board -- --stopped "<what shipped; what comes next>"`, for
-  example "Shipped #380, rides to a top; next in the goal: #379". The next `/next` starts with it.
+  example "Shipped #380, rides to a top; next in the goal: #379". The next `/next` starts with it. Never put in it what git
+  can say (pushed or not, committed, which folders): `--next` asks git that each time it shows the line, so it cannot go stale.
 
 **This project's own**: when `.claude/project/ship.md` exists, read it before you start: it holds this project's own steps and rules for /ship, each saying where it goes ("after step 3", "instead of step 5", "always"). Follow it there. It never replaces the owner's yes or "done", the gate, or a sign-off; where it seems to, ask the owner. The kit's updates never write that file (`.claude/project/README.md`).

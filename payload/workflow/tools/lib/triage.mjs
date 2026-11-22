@@ -2,6 +2,7 @@
 // Too much started at once, cards waiting for the owner, work that stopped moving, blocks that may be over, the inbox, cards
 // that cannot be ranked, likely duplicates, and an old backlog to prune; then the focus: the few cards to do next.
 import { rankCards, inbox, STARTABLE } from './rank.mjs';
+import { roomToStart } from './focus.mjs';
 
 const DAY = 86_400_000;
 const STOP = new Set('the a an and or of to in on for with from by at is be add make new when can not no it its as this that'.split(' '));
@@ -23,15 +24,19 @@ export function likelyDuplicates(cards, threshold = 0.6) {
   return out;
 }
 
-/** The triage: { focus, findings, counts }. Each finding: { kind, what, cards, suggest }. */
-export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitDays = 3, backlogMax = 30, firstVersion, columns = [], toolIssues } = {}) {
+/**
+ * The triage: { focus, findings, counts }. Each finding: { kind, what, cards, suggest }. `sessions`: the cards each session
+ * folder carries, so "too much started" counts work in progress as board --room does (lib/focus.mjs roomToStart).
+ */
+export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitDays = 3, backlogMax = 30, firstVersion, columns = [], toolIssues, sessions = null } = {}) {
   const open = cards.filter((c) => c.state === 'open');
   const inCol = (name) => open.filter((c) => c.column === name);
   const findings = [];
   const add = (kind, what, found, suggest) => { if (found.length) findings.push({ kind, what, cards: found, suggest }); };
 
   const doing = inCol('In progress');
-  if (doing.length > wip) add('too-much-started', `${doing.length} cards in progress (the limit is ${wip})`, doing, 'finish or move back the ones not touched this week before starting another');
+  const work = roomToStart(cards, wip, sessions).count;
+  if (work > wip) add('too-much-started', work === doing.length ? `${doing.length} cards in progress (the limit is ${wip})` : `${work} pieces of work in progress, ${doing.length} cards (the limit is ${wip})`, doing, 'finish or move back the ones not touched this week before starting another');
   add('waiting-for-you', `waiting for your check for more than ${waitDays} days`, inCol('Waiting for your check').filter((c) => daysSince(c.updatedAt, now) > waitDays), 'try each and say done, or what is wrong: they block the next start');
   add('stalled', `in progress, unchanged for more than ${staleDays} days`, doing.filter((c) => daysSince(c.updatedAt, now) > staleDays), 'still wanted? move it back to Ready with a note, or split what is left into a smaller card');
   add('blocked-long', `blocked for more than ${staleDays} days`, inCol('Blocked').filter((c) => daysSince(c.updatedAt, now) > staleDays), 'is the reason still true? unblock, or close it with why');
@@ -46,14 +51,14 @@ export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitD
     add('prune', `${backlog.length} cards in the backlog (more than ${backlogMax} is more than anyone reads)`, old, 'close these untouched, not high-value cards; a good idea comes back');
   }
   const ranked = rankCards(cards, { firstVersion, columns: STARTABLE });
-  const room = Math.max(0, wip - doing.length);
+  const room = Math.max(0, wip - work);
   const focus = { finish: doing, start: ranked.slice(0, Math.max(1, room)) };
-  return { focus, findings, counts: { open: open.length, doing: doing.length, inbox: waiting.length, backlog: backlog.length } };
+  return { focus, findings, counts: { open: open.length, doing: doing.length, work, inbox: waiting.length, backlog: backlog.length } };
 }
 
 /** The triage as text: one line for the board's state, the focus, then each finding with its cards and what to do. */
 export function renderTriage({ focus, findings, counts }) {
-  const out = [`board: ${counts.open} open, ${counts.doing} in progress, ${counts.backlog} in the backlog, ${counts.inbox} in the inbox`];
+  const out = [`board: ${counts.open} open, ${counts.work === counts.doing ? `${counts.doing} in progress` : `${counts.doing} cards in progress in ${counts.work} pieces of work`}, ${counts.backlog} in the backlog, ${counts.inbox} in the inbox`];
   out.push(`focus: ${focus.finish.length ? `finish ${list(focus.finish)}` : 'nothing in progress'}${focus.start.length ? `; then start #${focus.start[0].number} ${focus.start[0].title} (${focus.start[0].why})` : ''}`);
   if (!findings.length) out.push('nothing piles up: the board is in order');
   for (const f of findings) out.push(`- ${f.what}: ${list(f.cards)}. ${f.suggest}`);

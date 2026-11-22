@@ -23,7 +23,10 @@ export function sweepGroups(cards: Card[], options?: { areas?: string[]; types?:
 export function renderSweep(groups: SweepGroup[], theme?: string | null, from?: number, size?: number): string;
 export function toSort(cards: Card[], label: string): Card[];
 export function expired(cards: Card[], options?: { now?: Date; days?: number; firstVersion?: string }): { number: number; title: string; days: number }[];
-export function roomToStart(cards: Card[], limit?: number): { doing: Card[]; limit: number; room: number };
+export interface SessionCards { topic: string; cards: number[]; finished?: boolean }
+export interface Room { doing: Card[]; limit: number; room: number; count: number; work: { topic: string | null; cards: Card[] }[]; leftover: string[] }
+export function roomToStart(cards: Card[], limit?: number, sessions?: SessionCards[] | null): Room;
+export function roomLines(room: Pick<Room, 'work' | 'leftover'>): string[];
 export function whereYouWere(cards: Card[]): string;
 export function urgentOutside(cards: Card[], focus: Focus): Card[];
 export function focusLine(state: FocusState): string;
