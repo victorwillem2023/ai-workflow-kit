@@ -96,7 +96,7 @@ describe('pushing the finished features', () => {
     assert.match(fileMap(r.main), /new-file\.txt/);
   });
 
-  it('a conflict in a file other than the map still stops the finish with nothing changed', () => {
+  it('a conflict in a file other than the map stops the finish with the clash left open in the folder and main untouched', () => {
     const r = setup();
     assert.ok(run(r, 'a').ok); assert.ok(run(r, 'b').ok);
     addFile(r.wt('a'), 'a-file.txt', 'feature a');
@@ -106,9 +106,10 @@ describe('pushing the finished features', () => {
     const mainBefore = git(r.main, 'rev-parse', 'main'); const sha = git(r.wt('b'), 'rev-parse', 'HEAD');
     const done = run(r, '--finish', 'b', '--no-checks');
     assert.equal(done.ok, false);
-    assert.match(done.out, /conflict/i);
+    assert.match(done.out, /change the same lines \(a\.txt\)/);
+    assert.match(done.out, /then run --finish b again/);
     assert.equal(git(r.main, 'rev-parse', 'main'), mainBefore);
-    assert.equal(git(r.wt('b'), 'rev-parse', 'HEAD'), sha, 'the branch is as it was');
-    assert.equal(git(r.wt('b'), 'status', '--porcelain').replace(/\?\? node_modules\/?\n?/, ''), '', 'no rebase left half done');
+    assert.equal(git(r.wt('b'), 'rev-parse', 'HEAD'), sha, 'nothing committed: the merge waits to be settled');
+    assert.match(git(r.wt('b'), 'status', '--porcelain'), /^UU a\.txt/m, 'the clash is open in the folder');
   });
 });

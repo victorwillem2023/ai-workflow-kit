@@ -250,7 +250,8 @@ export function listCards(board, run, { wholeText = false } = {}) {
     .map((c) => ({ number: c.number, title: c.title, state: String(c.state).toLowerCase(), labels: (c.labels ?? []).map((l) => l.name),
       column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null,
       // otherwise only the "Depends on: #n" lines are kept from the text (lib/cardgraph.mjs), not the whole body
-      body: wholeText ? (c.body ?? '') : dependsOnLines(c.body) }));
+      // (and its "Touches" line: what it changes, for today's plan, lib/today.mjs)
+      body: wholeText ? (c.body ?? '') : [dependsOnLines(c.body), /^\W*touches\W*[:.].*$/im.exec(String(c.body ?? ''))?.[0] ?? ''].filter(Boolean).join('\n') }));
 }
 
 /** Closes card #number with the reason as its last comment (a duplicate, out of date, won't do: the owner said so). */

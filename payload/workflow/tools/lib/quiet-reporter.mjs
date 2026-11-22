@@ -1,7 +1,9 @@
 // A test reporter for `node --test` that prints only what failed and one line of totals, so a passing
 // run costs a few tokens instead of a line per test (the default prints one line per test).
 //   node --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs
-// `npm run test:full` keeps the default, line-per-test output.
+// `npm run test:full` keeps the default, line-per-test output; `npm run test:one -- <file>` runs one file through this one.
+// React's act() warnings (a test that lets a state update happen outside act) are counted in the totals line, never printed:
+// the default output prints each in full, dozens of lines a run, and a count still shows that a change added one.
 // With WORKFLOW_TEST_RESULTS set (the gate sets it) it also writes there which files failed, { failed: [file] }, so the gate keeps
 // the passes of a failed run and sees a flaky file (lib/testcache.mjs).
 import { writeFileSync } from 'node:fs';
@@ -43,7 +45,11 @@ export function fileFailureText(data, stderr = '') {
   return `${failureText(data).trimEnd()}${code != null ? ` (exit code ${code})` : ''}${tail ? `\n    its stderr:\n    ${tail}` : ''}\n`;
 }
 
+/** How many of React's act() warnings a piece of a test file's stderr holds. */
+export const actWarnings = (text) => (String(text).match(/not wrapped in act\(|not configured to support act\(/g) ?? []).length;
+
 export default async function* quietReporter(source) {
+  let acts = 0;
   const totals = {};
   const stderr = new Map(); // file -> what it wrote to stderr, for a file that fails as a whole
   // (its stderr names the file as it was given, its failure by the full path: one key for both)
@@ -52,6 +58,7 @@ export default async function* quietReporter(source) {
   const failedFiles = new Set();
   for await (const event of source) {
     const data = event.data ?? {};
+    if (event.type === 'test:stderr') acts += actWarnings(data.message);
     if (event.type === 'test:stderr' && data.file) stderr.set(key(data.file), `${stderr.get(key(data.file)) ?? ''}${data.message ?? ''}`.slice(-8000));
     if (event.type === 'test:fail') {
       if (data.file) failedFiles.add(data.file);
@@ -71,5 +78,6 @@ export default async function* quietReporter(source) {
   if (failures > MAX_FAILURES) yield `... and ${failures - MAX_FAILURES} more failures (npm run test:full shows all)\n`;
   const seconds = totals.duration_ms ? ` in ${Math.round(Number(totals.duration_ms) / 1000)} s` : '';
   const extra = ['cancelled', 'skipped', 'todo'].filter((k) => Number(totals[k]) > 0).map((k) => `, ${totals[k]} ${k}`).join('');
-  yield `tests: ${totals.pass ?? '?'} passed, ${totals.fail ?? failures} failed${extra}${seconds}\n`;
+  const react = acts ? `, ${acts} React act() warning${acts === 1 ? '' : 's'} (npm run test:full shows them)` : '';
+  yield `tests: ${totals.pass ?? '?'} passed, ${totals.fail ?? failures} failed${extra}${react}${seconds}\n`;
 }

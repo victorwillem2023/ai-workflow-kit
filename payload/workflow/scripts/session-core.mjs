@@ -262,6 +262,14 @@ export function remakeMap(dir) {
   if (mapScript(dir) && stageMap(dir)) git(dir, 'commit', '-q', '--amend', '--no-edit');
 }
 
+/**
+ * A new session folder gets TypeScript's notes from the main folder's last typecheck (--incremental): its first typecheck starts
+ * warm (about 40 s less in a real project); tsc checks them against the files, so a stale one only costs its time.
+ */
+export function warmTypecheck(dir) {
+  for (const f of readdirSync(main).filter((n) => n.endsWith('.tsbuildinfo'))) { try { copyFileSync(join(main, f), join(dir, f)); } catch { /* a cold start */ } }
+}
+
 /** typecheck and test of the project in `dir`, if it has them. */
 export function runChecks(dir, again, since) {
   // after a rebase: /ship's gate:ship ran what the phase asks already, so only what the rebase can have broken runs again, the quick gate

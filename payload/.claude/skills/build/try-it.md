@@ -51,7 +51,8 @@ week over 15 km"). Short sentences, one idea each. In this order:
 8. **Questions for you**: the builder's *Questions*, each asked as a choice with the recommendation first, and what each answer
    would change, with an example. None: leave the part out.
 
-End with: "Say **done** when it works, or tell me what is wrong." Move the card to *Waiting for your check*.
+End with: "Say **done** when it works, or tell me what is wrong." Before you send it: `node workflow/scripts/session.mjs --handover <topic>`
+(main comes in, so a clash shows now, while the work is fresh: settle it and run it again; the card moves to *Waiting for your check*).
 
 ### Open points become cards
 
@@ -63,7 +64,8 @@ without asking: the owner should never have to ask for them. They wait for the o
 2. Otherwise make it as `.claude/skills/idea/SKILL.md` steps 2 to 4 say: your best guess for the labels, no question, a short
    body, and `Depends on: #<this card>` when it builds on this one; add `--unsorted` to its `npm run board -- --add`.
 
-An item that is really a decision is not a card: it goes under *Questions for you*. The message lists the new card numbers
+An item that is really a decision is not a card: it goes under *Questions for you*. One inside the card goes back to the
+builder, done before the hand-over. The message lists the new card numbers
 under *Not in this card*.
 
 ## 3. After the check

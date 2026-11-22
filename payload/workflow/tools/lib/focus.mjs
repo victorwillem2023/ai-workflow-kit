@@ -214,11 +214,38 @@ export function renderGoals(shown, all = shown) {
   return out.join('\n');
 }
 
-/** A picked goal in one line, from the goal as it stands now and its cards' state (focusState). */
-export function goalLine(g, s) {
-  const cards = [s.doing.length ? `${list(s.doing)} in progress` : '', s.check.length ? `${list(s.check)} waiting for you to try` : '', s.left.length ? `${s.left.length} to start` : '', s.held.length ? `${list(s.held)} held up` : ''].filter(Boolean).join(', ');
+/**
+ * The cards in progress, said by the work they belong to: with `sessions` (as roomToStart takes them) "#a, #b, #c in progress
+ * (2 sessions)", and a card no session holds as "#d in progress with no session"; without them, the cards.
+ */
+export function doingWords(doing, sessions = null) {
+  if (!doing.length) return '';
+  if (!sessions) return `${list(doing)} in progress`;
+  const { work } = roomToStart(doing, 0, sessions);
+  const held = work.filter((w) => w.topic && w.cards.length);
+  const loose = work.filter((w) => !w.topic).flatMap((w) => w.cards);
+  return [held.length ? `${held.map((w) => list(w.cards)).join(', ')} in progress (${held.length} session${held.length === 1 ? '' : 's'})` : '',
+    loose.length ? `${list(loose)} in progress with no session` : ''].filter(Boolean).join(', ');
+}
+
+/** How long ago a focus was picked (`since`: its date, YYYY-MM-DD), in a few words, or '' without one. */
+export function pickedWords(since, now = new Date()) {
+  const at = Date.parse(since ?? '');
+  if (!Number.isFinite(at)) return '';
+  const days = Math.max(0, Math.floor((Date.parse(now.toISOString().slice(0, 10)) - at) / 86_400_000));
+  return `picked ${days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`}`;
+}
+
+/**
+ * A picked goal in one line, from the goal as it stands now and its cards' state (focusState). A kind of request or a part of the
+ * app counts what it measures (14 of 26 cases); any other goal counts its picked cards (5 of 11 done), so the line moves as
+ * they ship. `sessions`: the work in progress by session folder; `now`: for how long ago it was picked.
+ */
+export function goalLine(g, s, { sessions = null, now = new Date() } = {}) {
+  const cards = [pickedWords(s.since, now), doingWords(s.doing, sessions), s.check.length ? `${list(s.check)} waiting for you to try` : '', s.left.length ? `${s.left.length} to start` : '', s.held.length ? `${list(s.held)} held up` : ''].filter(Boolean).join(', ');
   const noCard = g.uncarded ? `${g.uncarded} thing${g.uncarded === 1 ? '' : 's'} left with no card yet` : '';
-  return `goal: ${g.name}: ${g.left === 0 ? 'done' : goalCount(g)}${[cards, noCard].filter(Boolean).length ? ` (${[cards, noCard].filter(Boolean).join('; ')})` : ''}`;
+  const count = g.kind === 'request' || g.kind === 'part' ? goalCount(g) : `${s.done} of ${s.total} done`;
+  return `goal: ${g.name}: ${g.left === 0 ? 'done' : count}${[cards, noCard].filter(Boolean).length ? ` (${[cards, noCard].filter(Boolean).join('; ')})` : ''}`;
 }
 
 /** The cards the owner was on, whatever their theme: in progress and built-waiting-for-a-check. One line, or ''. */
@@ -232,9 +259,9 @@ export function whereYouWere(cards) {
 /** Urgent cards outside the block: startable bugs of high value. They are said, never hidden by a focus. */
 export const urgentOutside = (cards, focus) => cards.filter((c) => c.state === 'open' && STARTABLE.includes(c.column) && !focus.cards.includes(c.number) && c.labels.includes('bug') && c.labels.some((l) => /^value:\s*high/i.test(l)));
 
-/** The picked block in one line. */
-export function focusLine(s) {
-  const parts = [`${s.done} of ${s.total} done`, s.doing.length ? `${list(s.doing)} in progress` : '', s.check.length ? `${list(s.check)} waiting for you to try` : '', s.left.length ? `${s.left.length} to start` : '', s.held.length ? `${list(s.held)} held up` : ''];
+/** The picked block in one line (`sessions` and `now` as goalLine takes them). */
+export function focusLine(s, { sessions = null, now = new Date() } = {}) {
+  const parts = [`${s.done} of ${s.total} done`, pickedWords(s.since, now), doingWords(s.doing, sessions), s.check.length ? `${list(s.check)} waiting for you to try` : '', s.left.length ? `${s.left.length} to start` : '', s.held.length ? `${list(s.held)} held up` : ''];
   return `focus: ${name(s.theme)} (${parts.filter(Boolean).join(', ')})`;
 }
 

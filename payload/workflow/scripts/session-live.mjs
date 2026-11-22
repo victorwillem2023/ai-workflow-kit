@@ -1,5 +1,5 @@
 // A session while it is being built: its dev server for the owner to try (--serve, also on the Wi-Fi and on a copy of the data),
-// and main brought into it mid-build (--catch-up). Built on session-core.mjs; used by workflow/scripts/session.mjs.
+// main brought into it mid-build (--catch-up), and the hand-over before the owner tries it (--handover). Built on session-core.mjs; used by workflow/scripts/session.mjs.
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { networkInterfaces, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { startHidden } from '../tools/lib/hidden.mjs';
 import { dataCopyOf, pidFileOf } from './session-stop.mjs'; import { MAIN } from '../tools/lib/branch.mjs';
-import { CHECKPOINT, FIRST_PORT, PREFIX, catchUp, conflictsIn, ensurePackages, folderEnv, folderOf, git, gitQuiet, keepBoth, looseFiles, looseWork, main, mainState, mapPages, mapScript, npmRun, sessionCfg, splitConflicts, stopServer } from './session-core.mjs';
+import { CHECKPOINT, FIRST_PORT, PREFIX, cardOf, moveAndSay, catchUp, conflictsIn, ensurePackages, folderEnv, folderOf, git, gitQuiet, keepBoth, looseFiles, looseWork, main, mainState, mapPages, mapScript, npmRun, sessionCfg, splitConflicts, stopServer } from './session-core.mjs';
 
 // "serve" under "session" in workflow/config.json: `lan` is what makes the app listen on every address (its own setting names),
 // `data` the setting that names the data folder and where the real one is (from the main folder).
@@ -113,7 +113,7 @@ const MARKS = /^(<<<<<<<|>>>>>>>)( |$)/m;
  * again, sign-off rows of both sides are kept. A clash in other files is left open in the folder, named, to settle where the
  * work is; the same command then goes on. So a clash comes out mid-build, not at --finish.
  */
-export function catchUpSession(topic) {
+export function catchUpSession(topic, { again } = {}) {
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   if (gitQuiet(dir, 'branch', '--show-current') !== topic) throw new Error(`${dir} is not on branch "${topic}".`);
@@ -147,7 +147,7 @@ export function catchUpSession(topic) {
     const open = found.filter((c) => clash.rest.includes(c.file) && (!/^(UU|AA)$/.test(c.code) || !existsSync(join(dir, c.file)) || MARKS.test(readFileSync(join(dir, c.file), 'utf8'))));
     if (open.length) {
       const gone = open.filter((c) => !/^(UU|AA)$/.test(c.code)).map((c) => c.file);
-      throw new Error(`Main and "${topic}" change the same lines (${open.map((c) => c.file).join(', ')}).${saved ? ' The work in progress is saved as a checkpoint on the session\'s own branch.' : ''} The merge is left open in ${dir}: settle ${open.length === 1 ? 'that file' : 'those files'} there (keep what both sides need, take out the <<<<<<< ======= >>>>>>> lines${gone.length ? `; ${gone.join(', ')} was deleted on one side: git add it to keep it, git rm it to drop it` : ''}), then run --catch-up ${topic} again: it goes on from there. To go back instead: cd "${dir}" && git merge --abort`);
+      throw new Error(`Main and "${topic}" change the same lines (${open.map((c) => c.file).join(', ')}).${saved ? ' The work in progress is saved as a checkpoint on the session\'s own branch.' : ''} The merge is left open in ${dir}: settle ${open.length === 1 ? 'that file' : 'those files'} there (keep what both sides need, take out the <<<<<<< ======= >>>>>>> lines${gone.length ? `; ${gone.join(', ')} was deleted on one side: git add it to keep it, git rm it to drop it` : ''}), then run ${again ?? `--catch-up ${topic}`} again: it goes on from there. To go back instead: cd "${dir}" && git merge --abort`);
     }
     for (const f of clash.rows) keepBoth(dir, f);
     if (clash.rest.length) step('add', '--', ...clash.rest);
@@ -155,4 +155,13 @@ export function catchUpSession(topic) {
     step('commit', '-q', '--no-edit');
   }
   console.log(`Session "${topic}" is on main again: ${came}${merged ? ' (as one merge, which --finish squashes away)' : ''}. ${saved ? 'Its work in progress is saved as a checkpoint commit on its own branch (not on main; --finish puts it under the approved subject).' : 'Work in progress is as it was.'}`);
+}
+
+/** Before the owner tries it: main comes in (a clash is left open to settle, then the same command goes on), and the cards wait for the check. */
+export async function handover(topic) {
+  if (!existsSync(folderOf(topic))) throw new Error(`${folderOf(topic)} is not there.`);
+  catchUpSession(topic, { again: `--handover ${topic}` });
+  const card = cardOf(topic);
+  if (card) await moveAndSay(card, 'Waiting for your check', `Built in session "${topic}": ready for your check`);
+  else console.log(`No card is kept with "${topic}" (started without --card): move it to "Waiting for your check" by hand.`);
 }

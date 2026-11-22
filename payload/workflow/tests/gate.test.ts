@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { importsOf, resolveImport, buildGraph, affectedTests } from '../../workflow/tools/lib/graph.mjs';
 import { globToRegExp, matchesAny } from '../../workflow/tools/lib/glob.mjs';
 import { findViolations, newViolations } from '../../workflow/tools/lib/boundaries.mjs';
-import { oversize, sizeVerdict, updateSizes, sizeNote } from '../../workflow/tools/lib/size.mjs';
+import { allowanceUsed, isPlumbing, limitOf, measureOf, oversize, sizeVerdict, takeAllowance, updateSizes, sizeNote, workLineCount } from '../../workflow/tools/lib/size.mjs';
 import { securityAdvice } from '../../workflow/tools/lib/securityscan.mjs';
 import { hostileAdvice } from '../../workflow/tools/lib/hostilecheck.mjs';
 import { spawnSync } from 'node:child_process';
@@ -175,6 +175,28 @@ describe('file size', () => {
     assert.deepEqual(r.nextReasons, { 'src/a.ts': 'keep' });
     const none = updateSizes({ 'src/a.ts': 450 }, { 'src/a.ts': 500, 'src/gone.ts': 900 }, null, { 'src/gone.ts': 'old reason' });
     assert.deepEqual(none.nextReasons, {});
+  });
+  it('counts the lines that hold work: plumbing (imports, fields, new X(ctx), one-line pass-throughs) is not counted', () => {
+    const switchboard = ["import { Refining } from './refining';", '', 'export class Controller {', '  private refining: Refining;', '  // one line per action', '  constructor(ctx: Ctx) {', '    this.refining = new Refining(ctx);', '  }', '  another() { return this.refining.another(); }', '  undo = () => this.refining.undo();', '  plan(goal: Goal) {', '    const weeks = goal.weeks * 2;', '    return weeks > 10 ? this.long(weeks) : this.short(weeks);', '  }', '}', ''].join('\n');
+    assert.equal(workLineCount(switchboard), 5, 'the class and constructor lines, and the three lines of plan');
+    assert.equal(isPlumbing('  another() { this.count++; return this.refining.another(); }'), false, 'a pass-through that also does something is work');
+    assert.notEqual(measureOf({ sizes: { 'src/a.ts': 500 } }), workLineCount, 'an older baseline keeps counting every line');
+    assert.equal(measureOf(null), workLineCount, 'a first baseline counts work lines');
+    assert.equal(limitOf({ maxLines: 400 }), 240, 'work lines have a lower limit: a 400-line file holds about 240');
+    assert.equal(limitOf({ maxLines: 400, maxWorkLines: 300 }), 300);
+    assert.equal(limitOf({ maxLines: 400 }, measureOf({ sizes: { 'a.ts': 1 } })), 400, 'counting every line keeps maxLines');
+    assert.equal(measureOf({ sizeMeasure: 'work', sizes: { 'src/a.ts': 500 } }), workLineCount);
+  });
+  it('a big file may grow by its allowance a card, tracked with the card, until the total says it needs its split', () => {
+    const base = { sizes: { 'src/c.ts': 600 } };
+    const v = sizeVerdict({ 'src/c.ts': 604 }, base.sizes, {}, { allowance: 5, total: 25, used: {} });
+    assert.deepEqual([v.failing.length, v.allowed.map((a) => a.by)], [0, [4]]);
+    const after = takeAllowance(base, v.allowed, '547');
+    assert.deepEqual(after, { sizes: { 'src/c.ts': 604 }, allowed: { 'src/c.ts': [{ card: '547', lines: 4 }] } });
+    assert.equal(sizeVerdict({ 'src/c.ts': 611 }, after.sizes, {}, { allowance: 5, total: 25, used: allowanceUsed(after.allowed) }).failing.length, 1, 'more than the allowance a card');
+    const full = sizeVerdict({ 'src/c.ts': 608 }, after.sizes, {}, { allowance: 5, total: 25, used: { 'src/c.ts': 22 } });
+    assert.equal(full.failing[0].capped, true, 'the total is used: it needs its split card');
+    assert.equal(sizeVerdict({ 'src/c.ts': 601 }, base.sizes).failing.length, 1, 'no allowance set: growth fails as before');
   });
   it('a reason for a file that is not in the size list fails the size check', () => {
     const v = sizeVerdict({ 'src/a.ts': 500 }, { 'src/a.ts': 500 }, { 'src/a.ts': 'ok', 'src/small.ts': 'stale' });

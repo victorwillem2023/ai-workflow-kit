@@ -109,7 +109,7 @@ stage 1. It is a brief, not the design: redraw it on the project's tokens and pa
 1. **Read and set up**: read the spec, and copy it into `../{{PREFIX}}-<topic>/workflow/specs/` (as `/build` step 3). Then read
    only `src/web/CLAUDE.md`, the core of `docs/STYLE.md`, the board's notes file and its pictures. Open the board's HTML only
    with `grep -n` for the part you are building, never whole. Work only in the session folder, with absolute paths, every Bash
-   command starting `cd <folder> &&`. Move the card to *In progress*.
+   command starting `cd <folder> &&`. (The session moved the card to *In progress*.)
 2. **Before, then build**: take the **before** pictures of the live app at the session's port (only for a part that exists):
    ```sh
    node workflow/scripts/shots.mjs http://127.0.0.1:<port> --width 1400 --theme dark --click "<selector>" --out <scratchpad>/before-1.png
@@ -122,8 +122,8 @@ stage 1. It is a brief, not the design: redraw it on the project's tokens and pa
    answers). Never tell the owner to start or rebuild anything.
 3. **After, then stop**: take the **after** pictures with the same command (same width, theme and clicks), and look at them.
    Then stop and hand it over as `.claude/skills/build/try-it.md` says: the link, what to click with example values, and edge
-   cases such as an empty list or a long name; the before and after paths; what differs from the board, and why. Move the card
-   to *Waiting for your check*.
+   cases such as an empty list or a long name; the before and after paths; what differs from the board, and why. The hand-over
+   starts with `--handover <topic>` (try-it.md): main comes in and the card moves to *Waiting for your check*.
 4. **Feedback rounds**: ask for feedback as one numbered list per round ("1. the chip is too tall 2. ..."). One pass per round:
    - answer every number: done, or why not;
    - change only `src/web`. A number that needs core logic is said out loud and becomes its own card (`/idea`);

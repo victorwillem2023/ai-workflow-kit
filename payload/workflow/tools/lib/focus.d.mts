@@ -9,7 +9,9 @@ export function healthGoal(cards: Card[], numbers?: Record<string, number>, seen
 export function suggestGoals(goals: Goal[], n?: number): Goal[];
 export function goalCount(goal: Goal): string;
 export function renderGoals(shown: Goal[], all?: Goal[]): string;
-export function goalLine(goal: Goal, state: FocusState): string;
+export function goalLine(goal: Goal, state: FocusState, options?: { sessions?: { topic: string; cards: number[]; finished?: boolean }[] | null; now?: Date }): string;
+export function doingWords(doing: Card[], sessions?: { topic: string; cards: number[]; finished?: boolean }[] | null): string;
+export function pickedWords(since: string | null | undefined, now?: Date): string;
 export interface Block { theme: string; cards: Ranked[]; more: number; days: number; v1: number; worth: number }
 export interface Upkeep { due: boolean; shipped: number; open: number; never?: boolean }
 export interface FocusState { theme: string; since: string | null; total: number; done: number; doing: Card[]; check: Card[]; left: Ranked[]; held: Card[]; finished: boolean }
@@ -29,6 +31,6 @@ export function roomToStart(cards: Card[], limit?: number, sessions?: SessionCar
 export function roomLines(room: Pick<Room, 'work' | 'leftover'>): string[];
 export function whereYouWere(cards: Card[]): string;
 export function urgentOutside(cards: Card[], focus: Focus): Card[];
-export function focusLine(state: FocusState): string;
+export function focusLine(state: FocusState, options?: { sessions?: { topic: string; cards: number[]; finished?: boolean }[] | null; now?: Date }): string;
 export function renderBlocks(blocks: Block[], upkeep?: Upkeep, options?: { health?: string; show?: number }): string;
 export function upkeepLine(upkeep: Upkeep, health?: string): string;

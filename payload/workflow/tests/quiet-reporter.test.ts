@@ -1,7 +1,7 @@
 // The quiet test reporter: a passing run prints one line, a failing one only the failures.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import quietReporter, { failureText } from '../../workflow/tools/lib/quiet-reporter.mjs';
+import quietReporter, { actWarnings, failureText } from '../../workflow/tools/lib/quiet-reporter.mjs';
 
 async function run(events: { type: string; data?: unknown }[]): Promise<string> {
   async function* source() { yield* events; }
@@ -24,6 +24,19 @@ test('a passing test run prints one line of totals and no line per test', async 
     ...totals(2, 0),
   ]);
   assert.equal(out, 'tests: 2 passed, 0 failed in 44 s\n');
+});
+
+test('React act() warnings are counted in the totals line, never printed', async () => {
+  const warn = 'Warning: An update to Panel inside a test was not wrapped in act(...).\nWhen testing, code that causes React state updates should be wrapped into act(...)';
+  const out = await run([
+    { type: 'test:stderr', data: { file: 'tests/a.test.ts', message: warn } },
+    { type: 'test:stderr', data: { file: 'tests/a.test.ts', message: `${warn}\n${warn}` } },
+    { type: 'test:pass', data: { name: 'a', nesting: 0 } },
+    ...totals(1, 0),
+  ]);
+  assert.equal(out, 'tests: 1 passed, 0 failed, 3 React act() warnings (npm run test:full shows them) in 44 s\n');
+  assert.equal(actWarnings('The current testing environment is not configured to support act(...)'), 1);
+  assert.equal(actWarnings('an ordinary line'), 0);
 });
 
 test('a failing test is printed with its name, file, line and the head of its message', async () => {

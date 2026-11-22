@@ -28,7 +28,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import { buildGraph, affectedTests, projectAliases } from './lib/graph.mjs';
 import { bare } from './lib/docblocks.mjs'; import { flakyNow, recordPaths, runTests } from './lib/testrun.mjs'; import { addedLineNumbers, fixedWaits } from './lib/waits.mjs';
 import { findViolations, newViolations } from './lib/boundaries.mjs';
-import { oversize, sizeVerdict, updateSizes, sizeNote } from './lib/size.mjs';
+import { isPlumbing, limitOf, oversize, sizeSetup, sizeVerdict, takeAllowance, updateSizes, sizeNote, workLineCount } from './lib/size.mjs';
 import { globToRegExp, matchesAny } from './lib/glob.mjs';
 import { securityAdvice, addedLines } from './lib/securityscan.mjs';
 import { hostileAdvice } from './lib/hostilecheck.mjs';
@@ -36,7 +36,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { recordShipPass, shipPassOf, treeOf } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { gatePassOf, recordGatePass, recordShipPass, shipPassOf, treeOf } from './lib/shippass.mjs'; import { createHash } from 'node:crypto'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -79,6 +79,15 @@ if (shipTree && !flag('--fresh') && shipPassOf('.') === shipTree) {
   process.exit(0);
 }
 const base = baseArg ?? gitOk('merge-base', 'HEAD', ORIGIN_MAIN) ?? gitOk('merge-base', 'HEAD', MAIN) ?? (gitOk('rev-parse', '--verify', 'HEAD') ? 'HEAD' : '4b825dc642cb6eb9a060e54bf8d69288fbee4904');
+// the plain gate on exactly the files, base, flags and .env it passed on before tells nothing new either; nor after gate:ship passed
+// on those files (it runs more). Said, and not run again: a session ran it six times, the same files four of them
+const quickKey = !flag('--ship') && !process.env.CI ? (() => {
+  try { return [treeOf('.'), base, args.filter((a) => a !== '--fresh').join(' '), createHash('sha1').update(existsSync('.env') ? readFileSync('.env') : '').digest('hex')].join(' '); } catch { return null; }
+})() : null;
+if (quickKey && !flag('--fresh')) {
+  if (gatePassOf('.') === quickKey) { console.log('gate passed on exactly these files already: not run again (a change, or --fresh, runs it)'); process.exit(0); }
+  if (!args.length && shipPassOf('.') === quickKey.split(' ')[0]) { console.log('gate:ship passed on exactly these files: not run again (a change, or --fresh, runs it)'); process.exit(0); }
+}
 
 function listFiles() {
   const all = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean);
@@ -104,7 +113,7 @@ const isTest = (f) => globToRegExp(config.tests).test(f);
 
 const baselineFile = config.baseline;
 const baseline = existsSync(baselineFile) ? JSON.parse(readFileSync(baselineFile, 'utf8')) : { boundaries: [], sizes: {}, docs: [] };
-const sizes = oversize(new Map([...files].filter(([f]) => matchesAny(f, config.size.include))), config.size.maxLines);
+const { sizeFiles, sizes, limit: SIZE_LIMIT, allow: ALLOW } = sizeSetup(files, config.size, baseline, matchesAny); // work lines and the allowance (lib/size.mjs)
 // long functions (only when `functions` is set in the config): name -> lines, kept by the same ratchet as the file sizes
 const funcs = config.functions ? longFunctions(new Map([...files].filter(([f]) => matchesAny(f, config.functions.include))), config.functions.maxLines) : null;
 const counts = countPatterns(files, config.ratchets);
@@ -144,7 +153,8 @@ if (flag('--update-baseline')) {
   // (not CLAUDE.md's budget: a rules file every agent reads in every chat starts within it, or with a reason the owner gives)
   const owned = reason;
   if (!reason && !('cycles' in baseline)) reason = 'the first baseline';
-  const upd = updateSizes(sizes, baseline.sizes ?? {}, reason, baseline.reasons ?? {});
+  // counted as work lines from now on: a number only drops with the switch, so it needs no reason
+  const upd = updateSizes(oversize(sizeFiles, limitOf(config.size), workLineCount), baseline.sizes ?? {}, reason, baseline.reasons ?? {});
   if (!upd.ok) {
     console.log('baseline not written: these would grow (put the new code in its own file, or --allow-growth "<reason>" for a pure refactor):');
     for (const x of upd.raised) console.log(`  ${x.file} ${x.was ?? 'new'} -> ${x.now}`);
@@ -162,7 +172,7 @@ if (flag('--update-baseline')) {
     for (const n of newNames) console.log(`  ${n.line}`);
     process.exit(1);
   }
-  const next = { boundaries: violations.map((v) => v.key).sort(), sizes: upd.next, docs: staleRefs.map(staleKey).sort() };
+  const next = { boundaries: violations.map((v) => v.key).sort(), sizeMeasure: 'work', sizes: upd.next, ...(baseline.allowed ? { allowed: Object.fromEntries(Object.entries(baseline.allowed).filter(([f]) => f in upd.next)) } : {}), docs: staleRefs.map(staleKey).sort() };
   if (naming) next.naming = naming.map((n) => n.key).sort();
   if (funcs) {
     const fu = updateSizes(funcs, baseline.functions ?? {}, reason);
@@ -206,6 +216,18 @@ if (flag('--update-baseline')) {
   writeFileSync(baselineFile, JSON.stringify(next, null, 2) + '\n');
   console.log(`baseline written: ${next.boundaries.length} layer exceptions, ${Object.keys(next.sizes).length} big files, ${next.docs.length} stale doc references`);
   process.exit(0);
+}
+
+/** A size failure in words: the file, what its new lines are (work or plumbing), and the next step. */
+function sizeProblem(x) {
+  if (x.was == null) return `${x.file} is ${x.lines} lines (limit ${SIZE_LIMIT}${SIZE_LIMIT === config.size.maxLines ? '' : ' that hold work'}): split it along what changes together (one responsibility per file), not only to get under the number`;
+  const added = (gitOk('diff', '-U0', base, '--', x.file) ?? '').split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1));
+  const plumbing = added.filter(isPlumbing).length;
+  const why = x.capped ? `it has used its allowance (${ALLOW.used[x.file] ?? 0} of ${ALLOW.total} lines over its cards): it needs its split card now`
+    : ALLOW.allowance ? `more than its allowance of ${ALLOW.allowance} a card` : 'a big file may not grow';
+  const name = x.file.split('/').pop();
+  return [`${x.file} grew ${x.was} -> ${x.lines} lines that hold work: ${why}. Of the lines this change adds, ${added.length - plumbing} hold work and ${plumbing} are plumbing (imports, fields, one-line pass-throughs; not counted).`,
+    `  next: its split card, if there is one (npm run board -- --search "${name}"); none: make it (/idea split ${x.file} along what changes together) and do it first, or move the new work into a file of its own. A pure refactor: --update-baseline --allow-growth "<reason>".`].join('\n');
 }
 
 function adviceLines() {
@@ -305,8 +327,8 @@ const steps = [
     return { ok: true, note: `${violations.length} known exceptions` };
   }],
   ['size', () => {
-    const v = sizeVerdict(sizes, baseline.sizes, baseline.reasons ?? {});
-    if (v.failing.length) return { ok: false, out: v.failing.map((x) => `${x.file} is ${x.lines} lines (limit ${config.size.maxLines}): split it along what changes together (one responsibility per file), not only to get under the number`).join('\n') };
+    const v = ALLOW.verdict = sizeVerdict(sizes, baseline.sizes, baseline.reasons ?? {}, ALLOW);
+    if (v.failing.length) return { ok: false, out: v.failing.map(sizeProblem).join('\n') };
     if (v.stale.length) return { ok: false, out: v.stale.map((f) => `${f} has a reason in baseline.json but is not in the size list (stale reason): remove it`).join('\n') };
     return { ok: true, note: sizeNote(sizes, v, baseline.reasons ?? {}) };
   }],
@@ -478,6 +500,7 @@ const slowLines = () => (config.testSeconds && suiteSeconds > config.testSeconds
 function runSteps(steps) {
   if (levels.problems.length) { console.log(`FAIL levels\n${levels.problems.join('\n')}`); process.exit(1); }
   const advised = [];
+  let notMine = 0; // advice about files this change did not touch, left out while prototyping
   for (const [name, fn] of steps) {
     const level = levelOf(levels, name);
     if (level === 'off') { console.log(`off  ${name} (${LEVELS_FILE})`); continue; }
@@ -485,7 +508,11 @@ function runSteps(steps) {
     const r = fn();
     const secs = ((Date.now() - t) / 1000).toFixed(1);
     if (!r.ok && level === 'advise') {
-      console.log(`adv  ${name} (${secs}s) - would fail; advise in ${LEVELS_FILE}`);
+      // whose it is: the changed files its output names, or none (then it was there before this change)
+      const touched = changed.filter((f) => (r.out ?? '').includes(f));
+      const whose = touched.length ? `in this change: ${touched.slice(0, 3).join(', ')}${touched.length > 3 ? ', ...' : ''}` : 'not your change (none of its files)';
+      console.log(`adv  ${name} (${secs}s) - would fail, ${whose}; advise in ${LEVELS_FILE}`);
+      if (!touched.length && levels.phase === 'prototype') { notMine++; continue; }
       advised.push(`advice: ${name} (set to advise): ${tail(r.out ?? '').split('\n').filter(Boolean).slice(0, 3).join(' | ')}`);
       continue;
     }
@@ -493,6 +520,7 @@ function runSteps(steps) {
     console.log(`ok   ${name} (${secs}s)${r.note ? ' - ' + r.note : ''}`);
   }
   for (const line of advised) console.log(line);
+  if (notMine) console.log(`(${notMine} advice line${notMine === 1 ? '' : 's'} about files this change did not touch left out while prototyping: npm run gate:all says ${notMine === 1 ? 'it' : 'them'})`);
   console.log(loosenedLine(levels));
   if (flag('--ship')) console.log(`ship: phase ${levels.phase}, so ${wholeSuite ? 'the whole suite ran' : 'the tests this change reaches ran (the whole suite runs on GitHub after the push)'}`);
 }
@@ -500,6 +528,14 @@ const started = Date.now();
 runSteps(steps);
 // green: --finish and the next gate:ship know these files passed (a write that fails only costs a run)
 if (shipTree) { try { recordShipPass('.', shipTree); } catch { /* not recorded */ } }
+if (quickKey) { try { recordGatePass('.', quickKey); } catch { /* not recorded */ } }
+if (flag('--ship') && !process.env.CI && ALLOW.verdict?.allowed.length) recordAllowance();
+/** gate:ship passed with a big file inside its allowance: the baseline takes the new size, with the card that used it (lib/size.mjs). */
+function recordAllowance() {
+  const card = gitOk('config', '--get', `branch.${gitOk('branch', '--show-current')}.card`) || null;
+  writeFileSync(baselineFile, JSON.stringify(takeAllowance(baseline, ALLOW.verdict.allowed, card), null, 2) + '\n');
+  for (const a of ALLOW.verdict.allowed) console.log(`size: ${a.file} took ${a.by} line${a.by === 1 ? '' : 's'} of its allowance${card ? ` for #${card}` : ''} (${a.used + a.by} of ${ALLOW.total} used); ${baselineFile} records it, in this commit`);
+}
 // the app map (map module): code the map names changed while the map did not (lib/worksheet.mjs)
 const mapLines = existsSync('docs/flow/map.js') && existsSync('workflow/tools/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
 // a rule row that grew into a list of files (lib/rulerows.mjs): said when the change touches the doc

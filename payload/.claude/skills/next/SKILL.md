@@ -35,6 +35,8 @@ then stop.
    Switching the phase is the owner's job, in `workflow/levels.json`: never offer to make the switch, and never bring the
    phase up again when no such line is printed.
 3. **`npm run board -- --next 3`**: the cards to start, best first (the dependency graph first, then the owner's labels).
+   - **`today:`**: the free room filled in the goal's order. Offer it first, as one choice in plain words ("Start three things
+     side by side today: ... (/work 561 131 383)"), with its `after:` line; one card at a time is one of the other choices.
    - **`where you stopped:`**: the line the last session left. Say it first; a fact in it git can tell (pushed, committed, a
      folder or branch) is checked with git first, and git wins.
    - **`STOP:`**: more work in progress than the limit. The next step is finishing or parking one (the board tidy-up), never

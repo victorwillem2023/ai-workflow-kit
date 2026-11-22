@@ -21,7 +21,9 @@
 //                                code health with its numbers (--focus "<goal id>" picks one; --all every goal; --areas the blocks by area)
 //   --add ... --unsorted         a card the agent made on its own: it waits for the owner's yes; --unsorted lists those, --accept <n,m|all> lets them in
 //   --expire [--yes]             cards untouched for eight weeks, not of high value: listed, and closed with --yes
-//   --together [n,m]             which of the cards to start (or the ones named) go together: in one session, one after another, or side by side
+//   --together [n,m]             which of the cards to start (or the ones named) go together: in one session, one after another, or side by side;
+//                                one card: whether it fits beside the work running
+//   --today                      the free room filled (lib/today.mjs): one /work command for today, and what waits after it
 //   --room                       whether one more piece of work may be started (the limit board.wip; a session's cards count once): exit code 3 when not
 //   --stopped "<line>"           where this session stopped and what comes next: the next --next starts with it
 //   --sweep ["<theme>" [--from n]]   every open card for a full clean-up (/sweep): the count per theme, or one theme's cards, 25 at a
@@ -50,7 +52,7 @@ import { STOPPED_FILE, stoppedLines } from './lib/stopped.mjs';
 import { codeHotspots, shippedRecords } from './lib/codestate.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
-import { together, togetherLines } from './lib/together.mjs';
+import { together, togetherLines } from './lib/together.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
 import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -184,7 +186,13 @@ async function focusCommand(config, all) {
     console.log(f.line);
     for (const c of f.state.left) console.log(`  #${c.number} ${c.title} (${c.why})`);
     for (const l of f.extra) console.log(l);
-    console.log('(another one: npm run board -- --focus "<goal or theme>"; none: --focus --clear)');
+    // what comes after it, without dropping it: --all lists the other goals (or blocks) to pick from next
+    const others = goals.filter((g) => g.left > 0 && g.id !== now.goal);
+    if (argv.includes('--all')) {
+      if (others.length && !argv.includes('--areas')) console.log(`after this one:\n${renderGoals(suggestGoals(others), others).split('\n').filter((l) => !l.startsWith('(')).join('\n')}`);
+      else console.log(`after this one:\n${renderBlocks(blocks.filter((b) => b.theme !== now.theme), upkeepOf(board, all), { health: board.health ?? HEALTH, show: 4 })}`);
+    }
+    console.log(`(${argv.includes('--all') ? '' : 'what comes after it: --focus --all; '}another one now: npm run board -- --focus "<goal or theme>"; none: --focus --clear)`);
     return;
   }
   if (f) console.log(`focus: "${now.theme}" is done${f.state.check.length ? ` (#${f.state.check.map((c) => c.number).join(', #')} still wait for you to try)` : ''}. Pick the next one:`);
@@ -200,10 +208,11 @@ function focusNow(board, all, goals) {
   const g = now.goal ? goals.find((x) => x.id === now.goal) : null;
   const cards = [...new Set([...now.cards, ...(g?.cards ?? [])])];
   const state = focusState(all, { ...now, cards }, focusOptions(board));
-  if (!g) return { state, cards, line: focusLine(state), finished: state.finished, extra: [] };
+  const say = { sessions: sessionCards() }; // the work in progress by session folder, as --room counts it
+  if (!g) return { state, cards, line: focusLine(state, say), finished: state.finished, extra: [] };
   const stuck = state.finished && g.left > 0;
   const extra = stuck ? [`(nothing of this goal can be started: ${g.uncarded || g.left} thing${(g.uncarded || g.left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}; /tidy focus makes the cards, ${g.notes[0] ?? ''})`] : [];
-  return { state, cards, line: goalLine(g, state), finished: state.finished && g.left === 0, extra };
+  return { state, cards, line: goalLine(g, state, say), finished: state.finished && g.left === 0, extra };
 }
 
 /** Picks a goal (by its id or name) or an area's block: the cards named, else the goal's or the block's own. */
@@ -242,9 +251,13 @@ async function cardPlaces() {
   return places;
 }
 
-/** The cards that go together among `candidates` (lib/together.mjs), as lines. */
+/** The cards that go together among `candidates` (lib/together.mjs), as lines; side by side fills the free room, not a fixed three. */
 async function togetherFor(board, all, candidates) {
-  return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], room: Math.max(2, Math.min(3, board.wip ?? 3)) })).slice(0, 4);
+  return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], room: Math.max(2, roomToStart(all, board.wip ?? 2, sessionCards()).room) })).slice(0, 4);
+}
+/** Today's plan among the cards to start (lib/today.mjs): the free room filled, in the goal's order. */
+async function todayFor(board, all, ranked) {
+  return today(ranked, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], limit: board.wip ?? 2, sessions: sessionCards() });
 }
 
 /** The stopping note (board --stopped "<text>") and, asked of git now, the finished features not pushed (lib/stopped.mjs). */
@@ -394,11 +407,16 @@ async function main() {
     if (unvalued) console.log(`(${unvalued} startable card${unvalued === 1 ? ' has' : 's have'} no value label: set one, the order is only as good as the labels)`);
     const waiting = inbox(all, undefined, toolIssues).length;
     if (waiting) console.log(`(${waiting} open issue${waiting === 1 ? ' is' : 's are'} not on the board yet: npm run board -- --inbox)`);
-    // which of the cards to start go together: one session, one after another, or side by side (lib/together.mjs)
+    // today's plan first (lib/today.mjs), then which of the cards to start go together (lib/together.mjs)
+    if (ranked.length) for (const l of todayLines(await todayFor(board, all, ranked))) console.log(l);
     for (const l of await togetherFor(board, all, ranked.slice(0, 12))) console.log(l);
     for (const l of focus.after) console.log(l);
     const line = triageLine(triage(all, triageOptions()));
     if (line) console.log(line);
+  } else if (argv.includes('--today')) {
+    const all = listCards(board, run);
+    const ranked = (await withinFocus(config, all, rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)), measured: measured() }))).ranked;
+    console.log(todayLines(await todayFor(board, all, ranked)).join('\n'));
   } else if (argv.includes('--unsorted')) {
     const waiting = toSort(listCards(board, run), TO_SORT);
     if (!waiting.length) console.log('board: no card waits for your yes');
@@ -425,6 +443,8 @@ async function main() {
     const named = String(value('--together') ?? '').split(/[\s,]+/).filter((x) => x && !x.startsWith('--')).map(cardNumber);
     const ranked = rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)), measured: measured() });
     const candidates = named.length ? named.map((n) => all.find((c) => c.number === n)).filter(Boolean) : (await withinFocus(config, all, ranked)).ranked.slice(0, 12);
+    // one card: whether it fits beside the work already running, not "nothing goes with it"
+    if (named.length === 1 && candidates.length) { console.log(besideLine(await todayFor(board, all, candidates), named[0])); return; }
     const lines = await togetherFor(board, all, candidates);
     console.log(lines.length ? lines.join('\n') : 'board: nothing says these go together: one card at a time, best first');
   } else if (argv.includes('--room')) {
@@ -488,7 +508,7 @@ async function main() {
 }
 
 // the commands that only read: when GitHub cannot be reached they warn in one line and let the flow around them go on
-const READS = ['--labels', '--check', '--map', '--gaps', '--show', '--search', '--next', '--triage', '--inbox', '--graph', '--focus', '--sweep', '--unsorted', '--room', '--together'];
+const READS = ['--labels', '--check', '--map', '--gaps', '--show', '--search', '--next', '--triage', '--inbox', '--graph', '--focus', '--sweep', '--unsorted', '--room', '--together', '--today'];
 try { await main(); } catch (e) {
   if (e instanceof BoardError && e.gh && READS.some((r) => argv.includes(r))) {
     console.log(`board (warning): ${e.message} Carrying on without the board.`);

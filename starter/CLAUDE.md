@@ -31,8 +31,11 @@ The owner wants to understand and steer the project, not just receive features. 
   extend the rule's home, and split or refactor first when that is what it takes (`/spec` step 2).
 - **Advice fits the project** (`project.audience`: `me`, `team`, `customers`). For `me`, never bring up launch, market, access
   reviews, privacy texts or "this already exists"; such a remark is made once, when it matters. All beyond the gate is optional.
-- After a change, report in plain language: what changed, what the test checks, and each open point as a question with your
-  recommendation or a card made for it, never a bare "not sure".
+- **Settle what you can yourself**: an open point a test, a run or the code can answer is answered before you report (say what
+  it showed). One left for the owner comes with the step ready and how sure you are ("the cause is shown: shall I apply the fix?").
+- After a change, report in plain language: what changed, what the test checks, then only what needs the owner: a decision as
+  a question with your recommendation, work outside the card as a proposed card. Work inside the card is finished first; what
+  is decided or changes nothing is not written. Never a bare "not sure".
 - **Talk to the owner in plain words.** What it means for the person using the app before how it works; a technical word gets a
   few words of explanation the first time ("the gate, the checks that run before a commit"). Short sentences.
 <!-- /kit:how-we-work -->
@@ -44,6 +47,7 @@ npm run typecheck    # must be clean
 npm run gate         # the checks and only the tests your change reaches; run it while building (a test that passed with the same code is skipped)
 npm run gate:ship    # what /ship runs before --finish: the phase in workflow/levels.json says how much (workflow/tools/README.md, *What it checks*)
 npm run gate:all     # the whole suite, only when asked for
+npm run test:one -- <file>  # one test file, as quiet as npm test (never npx tsx --test)
 <dev command>        # <the dev server; say what restarts by itself, so the agent never tells the owner to rebuild>
 <build command>      # <what it makes>
 ```
@@ -63,7 +67,8 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
 <!-- generated: phase -->
 <!-- /generated -->
 
-1. A new feature gets its own file, named after it. Never add a feature to a file in `workflow/tools/baseline.json`: the gate says so if one grows (whether it stops you: the phase line above).
+1. A new feature gets its own file, named after it. Never add a feature's logic to a file in `workflow/tools/baseline.json`
+   (pass-through lines are not counted; `size.allowance` gives a few a card): the gate says so if one grows.
 2. Split by responsibility, not to hit a number: 300 lines is a sign to look, 400 the gate's limit for a new file.
 3. A function over about 60 lines is split into named steps. A file opens with a comment saying what it does (the file map is built from it).
 4. A file takes what it needs as arguments or a small context; it does not import the big class or the whole store.

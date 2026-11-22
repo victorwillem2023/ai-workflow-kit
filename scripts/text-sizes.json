@@ -13,8 +13,8 @@
     "payload/.claude/skills/advise/SKILL.md": 5729,
     "payload/.claude/skills/arch/SKILL.md": 1479,
     "payload/.claude/skills/build/several.md": 3697,
-    "payload/.claude/skills/build/SKILL.md": 7579,
-    "payload/.claude/skills/build/try-it.md": 5733,
+    "payload/.claude/skills/build/SKILL.md": 7902,
+    "payload/.claude/skills/build/try-it.md": 5974,
     "payload/.claude/skills/check/SKILL.md": 1697,
     "payload/.claude/skills/debug/SKILL.md": 4052,
     "payload/.claude/skills/docs/SKILL.md": 3683,
@@ -24,7 +24,7 @@
     "payload/.claude/skills/launch/SKILL.md": 6577,
     "payload/.claude/skills/lesson/SKILL.md": 2295,
     "payload/.claude/skills/market/SKILL.md": 5563,
-    "payload/.claude/skills/next/SKILL.md": 11651,
+    "payload/.claude/skills/next/SKILL.md": 12003,
     "payload/.claude/skills/portal/SKILL.md": 1639,
     "payload/.claude/skills/retro/SKILL.md": 4609,
     "payload/.claude/skills/review/SKILL.md": 6476,
@@ -39,7 +39,7 @@
     "payload/.claude/skills/spike/SKILL.md": 3190,
     "payload/.claude/skills/sweep/SKILL.md": 4695,
     "payload/.claude/skills/tidy/SKILL.md": 7470,
-    "payload/.claude/skills/work/SKILL.md": 11384,
+    "payload/.claude/skills/work/SKILL.md": 11786,
     "payload/.claude/skills/work/together.md": 3696,
     "payload/workflow/guides/A2A.md": 1248,
     "payload/workflow/guides/AI-AGENTS.md": 7318,
@@ -58,11 +58,17 @@
     "payload/workflow/guides/TOKENS.md": 6792,
     "payload/workflow/guides/TOOLS.md": 10725,
     "payload/workflow/guides/WORKFLOW.md": 14944,
-    "payload/workflow/tools/README.md": 67047,
-    "starter/CLAUDE.md": 13457,
+    "payload/workflow/tools/README.md": 68510,
+    "starter/CLAUDE.md": 13981,
     "starter/src/core/CLAUDE.md": 625
   },
   "reasons": {
-    "payload/workflow/guides/TOKENS.md": "4.8.0: two lines on comparing what a command and a card cost across kit versions (npm run cost -- --by-kit)"
+    "payload/.claude/skills/build/SKILL.md": "4.9.2: the builder's report sorts what it noticed: inside the card is done first, only decisions reach the owner, a changed test is one fixed line (4.9.2)",
+    "payload/.claude/skills/build/try-it.md": "4.9.2: the hand-over runs session.mjs --handover (main comes in, the card moves), and an item inside the card goes back to the builder (4.9.2)",
+    "payload/.claude/skills/next/SKILL.md": "4.9.2: the today: line (the free room filled, npm run board -- --today) is offered first, one card at a time is one of the other choices (4.9.2)",
+    "payload/.claude/skills/work/SKILL.md": "4.9.2: every plan, the light route and a bug's too, names the other way and recommends one; the card's own how is a first thought; the session moves the card and --handover hands over (4.9.2)",
+    "payload/workflow/guides/TOKENS.md": "4.8.0: two lines on comparing what a command and a card cost across kit versions (npm run cost -- --by-kit)",
+    "payload/workflow/tools/README.md": "4.9.2: 4.9.2's new commands and behaviour: session.mjs --handover and --finish bringing main in, test:one, the gate's pass memory and whose a warning is, the goal line (read by the section)",
+    "starter/CLAUDE.md": "4.9.2: 4.9.2: settle what a test or a run can answer before asking, with the step ready; the report says only what needs the owner; test:one; the size rule's plumbing and allowance"
   }
 }

@@ -6,7 +6,7 @@
 //   one after another  a card that needs another one first (its "Depends on:" line), or two bigger cards on the same place:
 //                      side by side they would change the same files, so the second starts on top of the first.
 //   side by side       cards in different places with nothing shared: each in its own session at the same time, as many as
-//                      may be in progress at once.
+//                      there is free room for (a small card with nothing to share takes a place of its own).
 // A guess from labels and the map, never from the code: /work still reads the cards and may sort them again.
 import { cardGraph } from './cardgraph.mjs';
 
@@ -52,7 +52,6 @@ export function together(cards, { all = cards, places = new Map(), areas = [], r
   const apart = [];
   for (const c of rest()) {
     if (apart.length >= room) break;
-    if (small(c)) continue; // a small card is not worth a session of its own beside others
     if (apart.every((x) => !shared(x, c) && (area(x) ?? x.number) !== (area(c) ?? c.number))) apart.push(c);
   }
   if (apart.length >= 2) take('side by side', apart, `different parts (${apart.map((c) => short(at(c)[0] ?? area(c) ?? 'no area')).join(', ')}) with nothing shared: about as long as the longest, and ${apart.length} things to try at the end`);

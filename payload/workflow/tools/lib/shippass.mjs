@@ -32,5 +32,15 @@ export function shipPassOf(dir) {
   return existsSync(f) ? readFileSync(f, 'utf8').trim() || null : null;
 }
 
+// the plain gate's pass: the same files, the same base, the same flags and .env passed before (gate.mjs); kept beside the ship pass
+const gatePassFile = (dir) => resolve(dir, git(dir, ['rev-parse', '--git-path', 'workflow-gate-pass']));
+/** Records that the gate passed for `key` (the tree, the base, the flags and the .env together). */
+export const recordGatePass = (dir, key) => writeFileSync(gatePassFile(dir), `${key}\n`);
+/** The key the gate last passed for in `dir`, or null. */
+export function gatePassOf(dir) {
+  const f = gatePassFile(dir);
+  return existsSync(f) ? readFileSync(f, 'utf8').trim() || null : null;
+}
+
 /** The files that differ between that tree and the folder's last commit (after --finish's squash, rebase and map). */
 export const changedSince = (dir, tree) => git(dir, ['diff', '--name-only', tree, 'HEAD']).split('\n').filter(Boolean);

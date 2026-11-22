@@ -2,13 +2,13 @@
 // only from prices the project wrote down.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { answerUse, costLines, money, sumUse } from '../../workflow/tools/lib/sessioncost.mjs';
+import { answerUse, costLines, money, onePerAnswer, sumUse } from '../../workflow/tools/lib/sessioncost.mjs';
 
 const line = (o: Record<string, unknown>) => ({ type: 'assistant', timestamp: '2026-11-16T10:00:00Z', sessionId: 's1', message: { model: 'opus', usage: { input_tokens: 10, output_tokens: 100, cache_creation_input_tokens: 1000, cache_read_input_tokens: 10000 } }, ...o });
 
 describe('what the AI sessions used', () => {
   it('reads an answer\'s tokens, model and command, and skips what is not an answer', () => {
-    assert.deepEqual(answerUse(line({ attributionSkill: 'spec' })), { at: '2026-11-16T10:00:00Z', model: 'opus', skill: 'spec', session: 's1', side: false, input: 10, output: 100, cacheWrite: 1000, cacheRead: 10000 });
+    assert.deepEqual(answerUse(line({ attributionSkill: 'spec' })), { id: null, at: '2026-11-16T10:00:00Z', model: 'opus', skill: 'spec', session: 's1', side: false, input: 10, output: 100, cacheWrite: 1000, cacheRead: 10000 });
     assert.equal(answerUse({ type: 'user', message: { content: 'hi' } }), null);
   });
   it('sums by model, command and day, leaving out what came before the window', () => {
@@ -17,6 +17,16 @@ describe('what the AI sessions used', () => {
     assert.equal(sum.total.answers, 2);
     assert.deepEqual([...sum.byModel.keys()].sort(), ['haiku', 'opus']);
     assert.deepEqual([...sum.bySkill.keys()].sort(), ['(no command)', '/build']);
+  });
+  it('counts an answer once though Claude Code writes it as several lines, each with its whole usage', () => {
+    // one answer: its thinking, a tool call and its text, three lines with the same id and usage; a second answer on one line
+    const one = (id: string) => answerUse(line({ attributionSkill: 'work', message: { id, model: 'opus', usage: { input_tokens: 10, output_tokens: 100, cache_creation_input_tokens: 1000, cache_read_input_tokens: 10000 } } }));
+    const answers = [one('m1'), one('m1'), one('m1'), one('m2')].filter((a) => a !== null);
+    assert.equal(onePerAnswer(answers).length, 2);
+    const sum = sumUse(answers);
+    assert.equal(sum.total.answers, 2);
+    assert.equal(sum.total.cacheRead, 20000);
+    assert.equal(sumUse([answerUse(line({})), answerUse(line({}))].filter((a) => a !== null)).total.answers, 2, 'lines without an id are not merged');
   });
   it('turns tokens into money only with prices, per million tokens', () => {
     const use = { input: 1e6, output: 1e6, cacheWrite: 0, cacheRead: 2e6, answers: 1 };
@@ -40,6 +50,10 @@ describe('what the AI sessions used', () => {
     const by = useByKit(answers, periods);
     assert.deepEqual(by, [{ skill: '/work', rows: [{ kit: '4.6', uses: 3, median: 1_000_000 }, { kit: '4.7', uses: 3, median: 1_500_000 }] }]);
     assert.match(kitLines(by).join('\n'), /\/work: kit 4\.6: 1\.0 M \(3 uses\); kit 4\.7: 1\.5 M \(3 uses\): 50% more since 4\.6/);
+    assert.match(kitLines(by)[0], /up to the owner's first reply/);
     assert.match(kitLines([])[0], /nothing to compare/);
+    // the same answer on several lines counts once in a use
+    const twice = [...['p', 'q', 'r'].flatMap((s) => [{ ...use('ship', s, '2026-10-05T10:00:00Z', 100), id: s }, { ...use('ship', s, '2026-10-05T10:00:01Z', 100), id: s }]), ...['t', 'u', 'v'].map((s) => use('ship', s, '2026-11-05T10:00:00Z', 100))];
+    assert.deepEqual(useByKit(twice, periods)[0].rows.map((r) => r.median), [100, 100]);
   });
 });

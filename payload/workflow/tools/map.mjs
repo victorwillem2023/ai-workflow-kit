@@ -77,6 +77,8 @@ if (process.argv.includes('--check')) {
   console.log('map: up to date');
 } else {
   // (its folder too: the infra map goes into docs/run/, which a project making infrastructure before its run stage does not have yet)
-  for (const [f, want] of pages) if (read(f).replace(/\r\n/g, '\n') !== want) { mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, want); }
-  console.log(`map: ${config.map.out} written (${text.split('\n').length} lines)${pages.length > 1 ? `, and ${pages.slice(1).map(([f]) => f).join(', ')}` : ''}`);
+  // only a page whose text changed is written, and only those are named: the rest were already up to date
+  const written = pages.filter(([f, want]) => read(f).replace(/\r\n/g, '\n') !== want);
+  for (const [f, want] of written) { mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, want); }
+  console.log(written.length ? `map: written: ${written.map(([f]) => f).join(', ')} (the file map has ${text.split('\n').length} lines; the other pages were up to date)` : 'map: up to date, nothing written');
 }

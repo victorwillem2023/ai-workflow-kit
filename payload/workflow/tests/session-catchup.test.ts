@@ -110,16 +110,48 @@ describe('--catch-up', () => {
     assert.match(read(wt, rows), /\| main row \|/);
     assert.doesNotMatch(read(wt, rows), /<<<<<<<|=======/);
   });
-  it('--finish with a clash in the feature\'s own file changes nothing and points to --catch-up', () => {
+  it('--finish brings main in by itself: a clash stops it once, left open in the folder, and the same --finish goes on', () => {
     const r = makeRepo();
     ran(r, 'f');
     const wt = r.wt('f');
     commitIn(wt, 'a.txt', 'session\n', 'session edit');
     fixOnMain(r, 'a.txt', 'main\n');
-    const head = git(wt, 'rev-parse', 'HEAD');
-    const f = run(r, '--finish', 'f');
+    const f = run(r, '--finish', 'f', '--no-checks');
     assert.ok(!f.ok, f.out);
-    assert.match(f.out, /Nothing was changed\. Bring main into the session first: node workflow\/scripts\/session\.mjs --catch-up f/);
-    assert.equal(git(wt, 'rev-parse', 'HEAD'), head);
+    assert.match(f.out, /change the same lines \(a\.txt\)/);
+    assert.match(f.out, /then run --finish f again/);
+    assert.equal(git(r.main, 'log', '-1', '--format=%s', 'main'), 'fix a.txt', 'main is untouched');
+    writeFileSync(join(wt, 'a.txt'), 'main and session\n');
+    const again = run(r, '--finish', 'f', '--no-checks');
+    assert.ok(again.ok, again.out);
+    assert.equal(git(r.main, 'show', 'main:a.txt'), 'main and session');
+    assert.equal(git(r.main, 'log', '-1', '--format=%s', 'main'), 'session edit', 'one commit, the merge squashed away');
+  });
+  it('--finish with main moved and no clash goes through in one call', () => {
+    const r = makeRepo();
+    ran(r, 'g');
+    commitIn(r.wt('g'), 'g.txt', 'g\n', 'Hills: g');
+    fixOnMain(r);
+    const f = run(r, '--finish', 'g', '--no-checks');
+    assert.ok(f.ok, f.out);
+    assert.equal(git(r.main, 'show', 'main:fix.txt'), 'fixed');
+    assert.equal(git(r.main, 'log', '-1', '--format=%s', 'main'), 'Hills: g');
+  });
+  it('--handover brings main in before the owner tries it', () => {
+    const r = makeRepo();
+    ran(r, 'h');
+    writeFileSync(join(r.wt('h'), 'h.txt'), 'being built\n');
+    fixOnMain(r);
+    const h = run(r, '--handover', 'h');
+    assert.ok(h.ok, h.out);
+    assert.equal(read(r.wt('h'), 'fix.txt'), 'fixed\n');
+    assert.equal(read(r.wt('h'), 'h.txt'), 'being built\n', 'the work in progress as it was');
+    assert.match(h.out, /started without --card/);
+  });
+  it('a new session starts with the main folder\'s TypeScript notes, so its first typecheck is warm', () => {
+    const r = makeRepo();
+    writeFileSync(join(r.main, '.tsbuildinfo'), '{"notes":1}');
+    ran(r, 'w');
+    assert.equal(read(r.wt('w'), '.tsbuildinfo'), '{"notes":1}');
   });
 });

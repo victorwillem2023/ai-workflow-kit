@@ -110,9 +110,9 @@ the feature; written after step 7, it would be left behind.
 
     node workflow/scripts/session.mjs --finish <topic> --subject "<approved subject>" --body "<body, with the Co-Authored-By line>"
 
-It commits what is left, squashes under that message, rebases on the local `main`, and checks only what changed since
-`gate:ship` passed (nothing, when main did not move). The feature is then on the local `main`, NOT pushed, and its card moves
-to *Waiting for your check*.
+It commits what is left, brings main in when it moved (a clash is left open in the folder: settle it, run the same command
+again), squashes under that message, and checks only what changed since `gate:ship` passed (nothing, when main did not move).
+The feature is then on the local `main`, NOT pushed, and its card moves to *Done*.
 
 - The spec's "Card stays open after this spec" line says yes: add `--partial "<what is left>"`. The card stays in
   *In progress*, and its comment says what is left.

@@ -179,7 +179,7 @@ export function settleConfig({ target, kit, fill, langConfig, framework, modules
       if (k === 'docs' && Array.isArray(mine.docs?.include)) for (const g of v.include.filter((x) => /^docs\/[a-z]+\/\*\.md$/.test(x))) {
         if (!mine.docs.include.includes(g)) { mine.docs.include.push(g); added.push(`docs.include: ${g}`); }
       }
-      if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session'].includes(k)) { mine[k][kk] = vv; added.push(`${k}.${kk}`); }
+      if (v && typeof v === 'object' && !Array.isArray(v) && typeof mine[k] === 'object') for (const [kk, vv] of Object.entries(v)) if (!(kk in mine[k]) && ['functions', 'copies', 'session', 'size'].includes(k)) { mine[k][kk] = vv; added.push(`${k}.${kk}`); }
     }
     // the kit's own doc move made CLAUDE.md longer (its paths): when that takes it over its budget, the budget grows by exactly that
     // much, so the gate fails a project for what it wrote, never for the kit's move

@@ -3,15 +3,31 @@
 // Money only from prices the project wrote down (`session.prices` in workflow/config.json, per million tokens, with the date
 // they were checked): prices change, so the kit never holds them.
 
-/** One answer's use from a record line (a JSON object), or null when the line is not an answer. */
+/**
+ * One answer's use from a record line (a JSON object), or null when the line is not an answer. Claude Code writes one answer
+ * as several lines (its thinking, each tool call, its text), each with the whole answer's usage: `id` names the answer, so the
+ * sums count it once (onePerAnswer).
+ */
 export function answerUse(line) {
   if (line?.type !== 'assistant' || !line.message?.usage) return null;
   const u = line.message.usage;
   return {
-    at: line.timestamp ?? null, model: line.message.model ?? 'unknown', skill: line.attributionSkill ?? null, session: line.sessionId ?? null,
+    id: line.message.id ?? line.requestId ?? null, at: line.timestamp ?? null, model: line.message.model ?? 'unknown', skill: line.attributionSkill ?? null, session: line.sessionId ?? null,
     side: Boolean(line.isSidechain), // a subagent's answer (a builder, a reviewer)
     input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0,
   };
+}
+
+/** The answers with each one once (the last of its lines); a line without an id stays as it is. */
+export function onePerAnswer(answers) {
+  const byId = new Map();
+  const out = [];
+  for (const a of answers) {
+    if (!a.id) { out.push(a); continue; }
+    if (byId.has(a.id)) out[byId.get(a.id)] = a;
+    else { byId.set(a.id, out.length); out.push(a); }
+  }
+  return out;
 }
 
 const add = (a, b) => ({ input: a.input + b.input, output: a.output + b.output, cacheWrite: a.cacheWrite + b.cacheWrite, cacheRead: a.cacheRead + b.cacheRead, answers: a.answers + 1 });
@@ -26,7 +42,7 @@ export function money(use, price) {
 /** The answers since `since` (a Date) summed: { total, byModel, bySkill, byDay, bySession } (each a Map of key -> use). */
 export function sumUse(answers, since = null) {
   const out = { total: { ...ZERO }, byModel: new Map(), bySkill: new Map(), byDay: new Map(), bySession: new Map() };
-  for (const a of answers) {
+  for (const a of onePerAnswer(answers)) {
     if (since && a.at && new Date(a.at) < since) continue;
     out.total = add(out.total, a);
     for (const [map, key] of [[out.byModel, a.model], [out.bySkill, a.skill ? `/${a.skill}` : '(no command)'], [out.byDay, (a.at ?? '').slice(0, 10) || 'unknown'], [out.bySession, a.session ?? 'unknown']]) {
@@ -40,13 +56,14 @@ export function sumUse(answers, since = null) {
  * What one use of each command took under each kit version. `periods`: [{ from: ISO date, version }], when the project got each
  * kit version (oldest first); a use is one chat's answers under one command. Versions count by their first two numbers (4.6,
  * 4.7). Returns [{ skill, rows: [{ kit, uses, median }] }] for the commands with `min` uses under at least two versions, the
- * most used first: a kit update that made a command cost more, or less, shows here from real use.
+ * most used first: a kit update that made a command cost more, or less, shows here from real use. Claude Code names the command
+ * only until the owner's first reply, so a use is a command's opening (for /work: reading the cards and the plan), not the card.
  */
 export function useByKit(answers, periods, { min = 3 } = {}) {
   const sorted = [...periods].sort((a, b) => new Date(a.from) - new Date(b.from));
   const kitAt = (at) => { let v = null; for (const p of sorted) { if (new Date(p.from) <= new Date(at)) v = p.version; else break; } return v ? String(v).split('.').slice(0, 2).join('.') : null; };
   const uses = new Map(); // "<skill>|<session>" -> { skill, kit, tokens }
-  for (const a of answers) {
+  for (const a of onePerAnswer(answers)) {
     if (!a.skill || !a.at) continue;
     const kit = kitAt(a.at);
     if (!kit) continue;
@@ -65,7 +82,7 @@ export function useByKit(answers, periods, { min = 3 } = {}) {
 /** The lines of that comparison; with nothing to compare yet, one line saying what it needs. */
 export function kitLines(byKit, { min = 3, label = 'the last 60 days' } = {}) {
   if (!byKit.length) return [`By kit version: nothing to compare in ${label} yet (a command needs ${min} uses under each of two kit versions).`];
-  return [`What one use of a command took, by kit version (${label}; the middle one of its uses):`, ...byKit.slice(0, 8).map((s) => {
+  return [`What one use of a command took, by kit version (${label}; the middle one of its uses; up to the owner's first reply):`, ...byKit.slice(0, 8).map((s) => {
     const [first, last] = [s.rows[0], s.rows.at(-1)];
     const change = first.median ? Math.round(((last.median - first.median) / first.median) * 100) : 0;
     return `  ${s.skill}: ${s.rows.map((r) => `kit ${r.kit}: ${tokens(r.median)} (${r.uses} uses)`).join('; ')}${Math.abs(change) >= 10 ? `: ${change > 0 ? `${change}% more` : `${-change}% less`} since ${first.kit}` : ''}`;

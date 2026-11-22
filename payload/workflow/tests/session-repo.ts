@@ -33,7 +33,7 @@ else if(cmd==='project view')out({id:'P'});
 else if(cmd==='api graphql')out({data:{repository:{issue:{projectItems:{nodes:[{id:'I42',project:{number:1}}]}}}}});
 else if(cmd==='issue view')out({number:42,projectItems:[{status:{name:process.env.CARD_COLUMN||'In progress'}}]});
 else out({});`;
-export const OPTION = { 'In progress': 'o3', 'Waiting for your check': 'o4' };
+export const OPTION = { 'In progress': 'o3', 'Waiting for your check': 'o4', Done: 'o5' };
 /** A throwaway project with its origin; `prefix` names the session folders (<prefix>-<topic>), as `session.prefix` does in a project. */
 export function makeRepo({ prefix = 'app' }: { prefix?: string } = {}): Repo {
   // a space and a "~" in the path, as in C:\Users\John Smith or a Windows short name (RUNNER~1): paths must survive both

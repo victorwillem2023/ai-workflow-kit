@@ -1,7 +1,7 @@
 // The focus block (lib/focus.mjs): blocks of one theme to pick from, where the picked one stands, and when code health is due.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { expired, focusLine, focusState, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from '../../workflow/tools/lib/focus.mjs';
+import { doingWords, expired, focusLine, focusState, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from '../../workflow/tools/lib/focus.mjs';
 
 const card = (number: number, title: string, column: string | null, labels: string[] = [], extra: object = {}) => ({ number, title, state: 'open', labels, column, createdAt: null, updatedAt: null, body: '', ...extra });
 const areas = ['area: UI', 'area: Backend', HEALTH];
@@ -95,6 +95,17 @@ describe('the focus block', () => {
     assert.equal(healthGoal(cards, { 'long functions': 9 }, { 'long functions': 9 }).due, false);
     const s = focusState(cards, { theme: 'x', cards: [1, 5] });
     assert.equal(goalLine({ id: 'request:a', name: 'Hikes to a top', kind: 'request', done: 14, left: 12, total: 26, cards: [1, 5], uncarded: 3, notes: [] }, s), 'goal: Hikes to a top: 14 of 26 done (#5 in progress, 1 to start; 3 things left with no card yet)');
+  });
+  it('a goal of cards counts its picked cards, says how long ago it was picked, and the work by session', () => {
+    const c = (number: number, column: string, state = 'open') => ({ number, title: `card ${number}`, labels: ['area: Code health'], column, state });
+    const cards = [c(1, 'Done', 'closed'), c(2, 'Done', 'closed'), c(3, 'In progress'), c(4, 'In progress'), c(5, 'In progress'), c(6, 'In progress'), c(7, 'Ready')];
+    const s = focusState(cards, { theme: 'Code health', cards: [1, 2, 3, 4, 5, 6, 7], since: '2026-11-20' });
+    const health = { id: 'health', name: 'Code health', kind: 'health', done: 0, left: 5, total: 5, cards: [3, 4, 5, 6, 7], uncarded: 0, notes: [] };
+    const sessions = [{ topic: 'wait', cards: [3, 4], finished: false }, { topic: 'panels', cards: [5], finished: false }];
+    assert.equal(goalLine(health, s, { sessions, now: new Date('2026-11-22T15:00:00Z') }), 'goal: Code health: 2 of 7 done (picked 2 days ago, #3, #4, #5 in progress (2 sessions), #6 in progress with no session, 1 to start)');
+    assert.equal(doingWords(s.doing), '#3, #4, #5, #6 in progress', 'without the sessions: the cards');
+    assert.match(focusLine(s, { now: new Date('2026-11-20T09:00:00Z') }), /picked today/);
+    assert.equal(goalLine(health, { ...s, since: null }).includes('picked'), false, 'an old pick with no date says nothing');
   });
   it('finds code health due after enough shipped cards since the last such card', () => {
     const closed = (n: number, labels: string[], at: string) => card(n, 'x', 'Done', labels, { state: 'closed', updatedAt: at });

@@ -44,10 +44,11 @@ async function labelsOf(cards, board) {
 function tokensIn(dir, since) {
   const same = (p) => resolve(String(p ?? '')).toLowerCase() === resolve(dir).toLowerCase();
   let total = 0;
+  const seen = new Set(); // one answer is several lines, each with its whole usage (lib/sessioncost.mjs, answerUse)
   for (const f of recordFiles(main, since)) {
     for (const text of readFileSync(f, 'utf8').split('\n')) {
       if (!text.includes('"usage"')) continue;
-      try { const line = JSON.parse(text); const a = line.cwd && same(line.cwd) ? answerUse(line) : null; if (a) total += a.input + a.output + a.cacheWrite + a.cacheRead; } catch { /* a line being written */ }
+      try { const line = JSON.parse(text); const a = line.cwd && same(line.cwd) ? answerUse(line) : null; if (a && !(a.id && seen.has(a.id))) { if (a.id) seen.add(a.id); total += a.input + a.output + a.cacheWrite + a.cacheRead; } } catch { /* a line being written */ }
     }
   }
   return total;

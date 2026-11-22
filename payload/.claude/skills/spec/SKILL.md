@@ -39,7 +39,8 @@ this before choosing anything. It goes on the spec's "End state:" line; the gate
 
 Then ask the owner the open questions (AskUserQuestion): only real decisions, each with your recommendation.
 
-**Every choice between designs** labels each option *end state* or *a step*, and recommends the end state.
+**Every choice between designs** labels each option *end state* or *a step*, and recommends the end state. A card that says how
+to build it is the owner's first thought: a better way is named and recommended beside it, and the owner picks.
 
 - A step is recommended only for a named reason: it needs another card first, it is far bigger than the card's effort, or
   no test covers the code it changes yet.

@@ -13,7 +13,7 @@
 //                                               --subject the owner approved, else the first commit's message; --keep-commits for a big rework that is several), rebase it on main (a
 //                                               conflict only in the file map is solved by making the map again), re-make the map into the same
 //                                               commit, typecheck and test, move main forward, take the session away, move the card to
-//                                               "Waiting for your check" (with --no-checks the folder and branch stay until --clean --yes); with --partial the card is only partly done: it stays in "In progress"
+//                                               "Done" (the owner said done; with --no-checks the folder and branch stay until --clean --yes); with --partial the card is only partly done: it stays in "In progress"
 //                                               (moved there if it was elsewhere) and the comment adds "Still open: <what is left>"
 //   "flow": "pr" under "session" in workflow/config.json: --finish pushes the branch and opens a pull request instead (GitHub runs the
 //                                               checks on it, the session folder stays for fixes), and
@@ -37,6 +37,7 @@
 //                                               on the Wi-Fi, for a phone (prints the address); --copy-data: on a copy of the real data. Both end when it is stopped
 //   node workflow/scripts/session.mjs --catch-up <topic> bring main into a session mid-build (main's fixes come in). Work main also changed is saved first as a checkpoint
 //                                               on the session's own branch; a clash is left open in the folder, named, and the same command goes on once it is settled
+//   node workflow/scripts/session.mjs --handover <topic> before the owner tries it: main comes in (as --catch-up) and the cards wait for the check
 //   node workflow/scripts/session.mjs --list             the sessions, their ports and cards, and how many finished features are not pushed
 // node_modules is linked to the main folder's; .env is copied and given its own PORT plus the lines of "session.env" in
 // workflow/config.json ({main} in a value is the main folder: use it to share a big data folder instead of copying it).
@@ -47,8 +48,8 @@ import '../tools/lib/frommain.mjs'; // a session folder with an older kit than t
 import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
-import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, bringSpec, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs'; import { markPushed, STOPPED_FILE } from '../tools/lib/stopped.mjs';
+import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, warmTypecheck, finishChecks, bringSpec, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
+import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession, handover } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs'; import { markPushed, STOPPED_FILE } from '../tools/lib/stopped.mjs';
 
 async function make(topic, card, on) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
@@ -81,6 +82,7 @@ async function make(topic, card, on) {
   git(main, 'worktree', 'add', '-b', topic, dir, from);
   if (from !== MAIN) git(main, 'config', `branch.${topic}.kitOn`, from);
   symlinkSync(join(main, 'node_modules'), join(dir, 'node_modules'), 'junction');
+  warmTypecheck(dir);
   bringSpec(dir, topic);
   const env = join(dir, '.env');
   // the copy keeps the keys but not main's own PORT or the session.env names: a second line would be ambiguous
@@ -154,13 +156,17 @@ async function finish(topic, o) {
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   if (git(dir, 'branch', '--show-current') !== topic) throw new Error(`${dir} is not on branch "${topic}".`);
+  const again = { again: `--finish ${topic}` }; // a clash an earlier --finish left open, settled since: its merge is concluded first
+  if (gitQuiet(dir, 'rev-parse', '--verify', '--quiet', 'MERGE_HEAD')) catchUpSession(topic, again);
   if (looseWork(dir) && !o.subject) throw new Error(`${dir} has uncommitted work. Finish with --subject "<the approved subject>" (it goes into the feature's one commit), or ask the owner.`);
-  // with the approved subject, what is left goes in too: it is squashed under that subject below anyway (never the node_modules link)
-  if (looseWork(dir)) { git(dir, 'add', '-A', '--', ...looseFiles(dir)); git(dir, 'commit', '-q', '-m', 'the work left at --finish'); }
+  if (looseWork(dir)) { git(dir, 'add', '-A', '--', ...looseFiles(dir)); git(dir, 'commit', '-q', '-m', 'the work left at --finish'); } // squashed under the subject below
   const on = onOf(topic);
   // built on another session: that one is finished first (its check comes first), which moves this one onto main
   if (on && branchExists(on) && !isAncestor(main, on, MAIN)) throw new Error(`"${topic}" is built on top of "${on}", which is not finished yet. Finish "${on}" first (that moves "${topic}" onto main by itself), then this one.`);
   if (on && !restack(topic)) throw new Error(`"${topic}" could not move onto main yet (see above). Nothing was finished.`);
+  // main moved meanwhile: it comes in as one merge (squashed below); a clash stops here once, open in the folder, and --finish goes on
+  const sat = git(dir, 'merge-base', MAIN, 'HEAD'); // where it sat before: the quick gate checks what came in under it
+  if (!o.keepCommits && Number(git(dir, 'rev-list', '--count', `HEAD..${MAIN}`)) > 0) catchUpSession(topic, again);
   catchUp(mainState(false));
   const base = git(dir, 'merge-base', MAIN, 'HEAD');
   const own = Number(git(dir, 'rev-list', '--count', 'main..HEAD'));
@@ -183,7 +189,7 @@ async function finish(topic, o) {
     if (git(dir, 'rev-parse', 'HEAD') !== original) git(dir, 'reset', '--hard', original);
     throw e;
   }
-  if (!o.noChecks) finishChecks(dir, base);
+  if (!o.noChecks) finishChecks(dir, sat);
   const card = cardOf(topic);
   const subject = git(dir, 'log', '-1', '--format=%s');
   recordShip(topic, dir, card, subject); // what it took, kept for the retro and the ranking (workflow/tools/shipped.mjs)
@@ -202,7 +208,8 @@ async function finish(topic, o) {
     console.log(`The checks were skipped (--no-checks), so ../${basename(dir)} is kept. After npm run gate:ship passes on main, remove it with: node workflow/scripts/session.mjs --clean --yes`);
   }
   if (card && o.partial !== undefined) await sayPartial(card, `Finished on the local main: ${subject}. Still open: ${o.partial.trim()}`);
-  else if (card) await moveAndSay(card, 'Waiting for your check', `Finished on the local main: ${subject}`);
+  // the owner said done before /ship, so the card is done: it is not offered to try again
+  else if (card) await moveAndSay(card, 'Done', `Finished on the local main: ${subject}`);
   const n = Number(git(main, 'rev-list', '--count', 'origin/main..main'));
   console.log(`On local main, not pushed (${n} feature${n === 1 ? '' : 's'} waiting). Push with: node workflow/scripts/session.mjs --push`);
 }
@@ -238,7 +245,7 @@ async function merge(topic) {
     gitQuiet(main, 'branch', '-D', topic);
   }
   dropSpecs(topic, [main]);
-  for (const c of eachCard(card)) await onBoard(`Say on card #${c} that it is merged`, (lib, board, run) => lib.commentCard(board, run, Number(c), 'Merged into main.'));
+  await moveAndSay(card, 'Done', 'Merged into main.');
   console.log(`Merged "${topic}" into main; the local main is up to date.`);
 }
 
@@ -377,6 +384,7 @@ try {
   else if (a === '--carry-notes' && b) carryNotes(b);
   else if (a === '--serve' && b) await serve(b, { lan: has('--lan'), copyData: has('--copy-data') });
   else if (a === '--catch-up' && b) catchUpSession(b);
+  else if (a === '--handover' && b) await handover(b);
   else if (a === '--push') push({ noChecks: has('--no-checks') });
   else if (a === '--merge' && b) await merge(b);
   else if (a === '--remove' && b) remove(b);
@@ -384,7 +392,7 @@ try {
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] | --catch-up <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

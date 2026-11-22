@@ -18,8 +18,8 @@ owner says done.
    - An update that **needs the owner** (its "to look at" part): name it in one line and go on.
    - Updates that merge by themselves: say nothing about them.
 
-**No card number given**: run `npm run board -- --next 3` and offer those three cards, one line each with its reason; the
-owner picks. The order comes from the cards' dependencies first (only cards nothing open holds back, first-version cards
+**No card number given**: run `npm run board -- --next 3`. Offer its `today:` line first (the free room filled: one
+`/work a b c`, with what waits after it), then the three cards one line each with its reason; the owner picks. The order comes from the cards' dependencies first (only cards nothing open holds back, first-version cards
 first), then from their worth (value for the effort, plus the value of the cards they unlock). Pass on its notes about cards
 with no value label, or issues waiting off the board (`npm run board -- --inbox`), in one line. Never read the whole board.
 While a goal or focus is picked (its `goal:` or `focus:` line), those three are its cards: say the line. A `together, ...`
@@ -63,6 +63,10 @@ outside the UI block you picked") and go on; the owner chose it. Never add it to
 The type label picks the route; area labels do not. How deep the plan goes follows the card's size: a spike, the light
 route, or a spec.
 
+Every plan, light or not, names the other way it could be built and recommends one (the end state over a step, as `/spec`
+says). A card that says how to build it is the owner's first thought, not the decision: a better way you see is said and
+recommended, and the owner picks.
+
 - **`feature` or `workflow`**: run `/spec <n>`, the plan with its tests named. A `workflow` card changes nothing in the app,
   so its spec says "none" under what the user sees and names the workflow files and docs instead. The spec's "Card stays open
   after this spec" line says whether the card is only partly done (then `/ship` finishes with `--partial`).
@@ -91,10 +95,8 @@ On the owner's yes, move the card to *Ready* (`/spec` does this itself).
 the work in progress in one line each and ask which to finish or park first (park: `--move <n> "Ready"`). A card that is
 already *In progress* (picked up again) needs no room.
 
-Move the card to *In progress*: `npm run board -- --move <n> "In progress"`.
-
 - **With a spec**: `/build <topic>`, in the new chat. Steps 3 to 5 then happen there.
-- **A small bug**: `node workflow/scripts/session.mjs <topic>`. In that folder, write the failing test, run it and see it
+- **A small bug**: `node workflow/scripts/session.mjs <topic> --card <n>` (it moves the card to *In progress*). In that folder, write the failing test, run it and see it
   fail, make the fix, and run `npm run gate`, fixing what it names, until it passes. A test that fails with nothing changed
   under it is flaky: report it with its output, and never run the gate again hoping it turns green.
 - **Several bugs at once**: `/work bugs` (the open `bug` cards, from `gh issue list --repo <board.repo> --label bug --state open
@@ -108,13 +110,14 @@ Move the card to *In progress*: `npm run board -- --move <n> "In progress"`.
 ## 4. Stop while the owner tries it
 
 Hand it over as `.claude/skills/build/try-it.md` says: the server already running and its link, or a try command for a
-change without a screen, in plain words, with examples, the owner's own numbers and the edge cases. Move the card to
-*Waiting for your check*. Feedback goes to whoever built it (`/build` step 6). "continue" or "ok" is not "done": ask.
+change without a screen, in plain words, with examples, the owner's own numbers and the edge cases. First
+`node workflow/scripts/session.mjs --handover <topic>`: main comes in (a clash shows now; settle it, run it again) and the card
+moves to *Waiting for your check*. Feedback goes to whoever built it (`/build` step 6). "continue" or "ok" is not "done": ask.
 
 ## 5. Finish only when the owner says done
 
 "commit and push" or "finish it" is done. Then `/ship <topic>`. A small bug without a spec takes the same steps by hand:
-`npm run gate:ship`, one commit, `node workflow/scripts/session.mjs --finish <topic>`. Then move the card to *Done*.
+`npm run gate:ship`, one commit, `node workflow/scripts/session.mjs --finish <topic>` (it moves the card to *Done*).
 
 ## When a card cannot go on
 

@@ -86,11 +86,15 @@ tool, named `build-<topic>`.
 > End with a short report in plain words, exactly these four parts and nothing before them:
 > - **Done**: what a person can now do; two or three examples with their real inputs and what each gives; the edge cases
 >   with what they give.
-> - **Tests**: one line per test, saying what it checks.
-> - **Questions**: each a choice for the owner, with your recommendation and what each answer changes, with an example; or "none".
-> - **Later**: work noticed and left out (outside the spec, or outside your files), a title and one line of why for each; or "none".
+> - **Tests**: one line per test, saying what it checks; an existing test you changed (rule 9): one line,
+>   `Existing tests changed: <file>: <what>`.
+> - **Questions**: only what needs the owner's decision (what the person sees, a design choice, a trade-off, a blocker outside
+>   the card), each a choice with your recommendation, how sure you are and the step ready ("shall I apply it?"); or "none".
+>   What a test or a run can settle is settled first, never asked. Unsure if it is in the card: ask.
+> - **Later**: outside the card, no decision needed (a cleanup, a copied rule, a slow test): a title and why; or "none".
 >
-> Never a bare "not sure about X": make it a question or a later item.
+> Work inside the card (its *Touches*, or needed for what it says) is done before this report, never listed; what is decided
+> or changes nothing is not written. Never a bare "not sure".
 
 ## 5. Hand it over
 

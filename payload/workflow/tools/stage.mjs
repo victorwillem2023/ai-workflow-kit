@@ -61,7 +61,10 @@ const weeks = shipping(commits, new Date()).weeks;
 const roadmapAt = 'docs/company/ROADMAP.md';
 const roadmapChanged = existsSync(roadmapAt) ? git('log', '-1', '--format=%ct', '--', roadmapAt) : null;
 const roadmap = existsSync(roadmapAt) ? { ...readRoadmap(readFileSync(roadmapAt, 'utf8')), daysSinceChange: roadmapChanged ? Math.floor((Date.now() / 1000 - Number(roadmapChanged)) / 86400) : 0 } : null;
-const lastRetro = git('log', MAIN, '-1', '--format=%ct', '--grep=retro of week', '-i');
+// the last retro: the mark `npm run retro` leaves (git config workflow.lastRetro), or a commit that names one, the newer of them
+const retroMark = Date.parse(git('config', 'workflow.lastRetro') ?? '') / 1000;
+const retroCommit = Number(git('log', MAIN, '-1', '--format=%ct', '--grep=retro of week', '-i') || NaN);
+const lastRetro = [retroMark, retroCommit].filter((t) => Number.isFinite(t)).sort((a, b) => b - a)[0] ?? null;
 
 const facts = {
   firstVersion: v1 ? { total: v1.length, open: v1.filter((c) => !done(c)).length } : null,

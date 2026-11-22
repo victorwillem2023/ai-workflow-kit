@@ -12,6 +12,8 @@ const git = (...a) => { try { return execFileSync('git', a, { encoding: 'utf8', 
 process.chdir(git('rev-parse', '--show-toplevel'));
 const config = JSON.parse(readFileSync('workflow/config.json', 'utf8'));
 const now = new Date();
+// the retro's mark for the stage nudge (workflow/tools/stage.mjs): a retro is often not committed, so its commit cannot say it ran
+git('config', 'workflow.lastRetro', now.toISOString());
 
 const log = git('log', MAIN, '--first-parent', '--since=9.weeks', '--format=%cI%x09%s') ?? '';
 const s = shipping(log.split('\n').filter(Boolean).map((l) => { const [date, ...rest] = l.split('\t'); return { date, subject: rest.join('\t') }; }), now);

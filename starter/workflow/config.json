@@ -11,7 +11,7 @@
     "testFiles": "node --disable-warning=ExperimentalWarning --import tsx --import ./workflow/tools/lib/testnet.mjs --test --test-reporter=./workflow/tools/lib/quiet-reporter.mjs"
   },
   "map": { "out": "docs/MAP.md", "folders": ["src/**"] },
-  "size": { "maxLines": 400, "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.mjs"] },
+  "size": { "maxLines": 400, "allowance": 5, "allowanceTotal": 25, "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.mjs"] },
   "functions": { "maxLines": 60, "maxDepth": 4, "include": ["src/**/*.ts", "src/**/*.tsx"] },
   "untested": { "include": ["src/**/*.ts", "src/**/*.tsx"], "ignore": ["src/**/main.ts", "src/**/index.ts", "src/**/*.d.ts", "src/variants/**"] },
   "ui": { "boards": "html", "variants": "src/variants", "tokens": "src/web/styles.css" },

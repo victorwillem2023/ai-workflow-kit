@@ -2,6 +2,68 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.9.2**: **the cost report counts each answer once.** Claude Code writes one answer as several lines of its records (its
+  thinking, each tool call, its text), and each line carries the whole answer's tokens; `npm run cost`, `--by-kit` and the
+  tokens in a shipped card's record counted every line, so a number was about two to two and a half times the real one, and
+  more so in the kit versions whose answers make more lines: `/work` looked 33% dearer on 4.9 than on 3.4 (606 k against
+  456 k) when it was about the same (246 k against 227 k), and its first answer about a fifth cheaper. The answer's id now counts it
+  once (`lib/sessioncost.mjs`, `onePerAnswer`). **Cards shipped before 4.9.2 keep their old token count**, about twice the
+  real one, in `npm run shipped`.
+  **`--by-kit` says what a use covers**: Claude Code names the command only until the owner's first reply, so a use is a
+  command's opening (for `/work`, reading the cards and the plan), not the whole card.
+  **A retro that was not committed counts as a retro.** `/next` said "no retro for ever" after a retro the owner did not
+  commit: the stage nudge looked only for a commit naming one. `npm run retro` now leaves a mark (`git config
+  workflow.lastRetro`), and the nudge takes the newer of the mark and such a commit.
+  **The goal line shows how far you are.** A goal of cards (code health, a stabilise goal, what users reported) said only
+  how many cards were open ("6 cards"), so five shipped cards looked like no progress: it now counts the picked cards ("5 of
+  12 done"), as a kind of request already counted its cases. It also says when the goal was picked ("picked 2 days ago"), and
+  the cards in progress by the sessions building them ("#551, #549, #548 in progress (1 session)", a card no session holds
+  said apart), as `--room` counts them. **`--focus --all` with a goal picked lists what to pick after it**, without dropping
+  it; before, it only repeated the goal.
+  **From a real session's notes: fewer round trips, less noise.**
+  **`--finish` brings main in by itself**: main moved meanwhile and the same file clashed took four commands (`--finish`,
+  `--catch-up`, settle, `--catch-up`, `--finish`); now `--finish` merges main in first, leaves a real clash open in the folder,
+  and the same `--finish` goes on once it is settled. **`session.mjs --handover <topic>`** does the same before the owner
+  tries it, so a clash shows while the work is fresh, and moves the card to *Waiting for your check*.
+  **The session moves the card at every step**: *In progress* at the start (already), *Waiting for your check* at
+  `--handover`, and **`--finish` now moves it to *Done*** (before: *Waiting for your check*, though the owner had said done, so
+  it was moved by hand; a pull request's card moves to *Done* at `--merge`). `/work`, `/ui` and the hand-over no longer
+  move cards by hand.
+  **A new session's first typecheck starts warm**: the main folder's `.tsbuildinfo` is copied in (42 s down to a few).
+  **`npm run test:one -- <file>`**: one test file as quietly as `npm test`; React's act() warnings are counted in the totals
+  line of both ("3 React act() warnings"), never printed in full.
+  **The gate says whose a warning is**: an advised step names the changed files it is about, or says "not your change"; in a
+  prototype the advice about untouched files is one count line. **A gate on exactly the files, base, flags and `.env` it
+  passed on is not run again** (nor after `gate:ship` passed on them); `--fresh` runs it.
+  **`npm run map` names only the pages it wrote** ("up to date, nothing written" when none changed); it already wrote only those.
+  **The builder's report says only what needs the owner**: a decision as a question, work outside the card as a later card;
+  work inside the card is finished before the hand-over, and what is decided or changes nothing is not written. A changed
+  existing test is one fixed line.
+  **Every plan names the other way to build it and recommends one**: the light route and a bug's plan asked only what
+  changes, the test and the files, so a first plan went out with no alternative; now each names it, as `/spec` already did.
+  **A card that says how is the owner's first thought, not the decision**: `/work` and `/spec` say a better way when they see
+  one and recommend it; the owner picks.
+  **The size check counts work, not lines, and has room in it.** A switchboard file (a Controller that gains one
+  `another() { return this.refining.another(); }` per action) needed a split before every card, since the count took that
+  line like 30 lines of logic. **Plumbing is not counted** (`lib/size.mjs`): blank lines, comments, imports, braces, fields,
+  `x = new X(ctx)` and one-line pass-throughs; an older baseline keeps counting every line until `--update-baseline` switches
+  it (`sizeMeasure: "work"`; numbers only drop, so no reason is needed). Work lines have their own limit, `size.maxWorkLines`,
+  by default 60% of `maxLines` (240): a real project's big files hold 45 to 65% work lines, so the old limit would have let
+  most of them off the list. **A small, tracked allowance**: `size.allowance` (5)
+  lines a card, which `gate:ship` writes into the baseline with the card number; `npm run health` adds it up per file, and
+  past `size.allowanceTotal` (25) the gate says the file needs its split card now. An update adds both settings. **A block
+  says the next step**: which file, how many of the new lines hold work and how many are plumbing, and its split card (find
+  it, or the `/idea` to make it).
+  **Today's work fills your free room, not one card at a time.** The grouping capped itself at 3 whatever `board.wip` said,
+  never subtracted the work running, left a small card out of side by side, and answered "nothing" for one card. **`npm run
+  board -- --today`** (`lib/today.mjs`): the free room (the limit minus the work running, a session's cards once) filled in the
+  goal's order, one session a place; a small card joins a small one on the same part, else takes a place of its own; what
+  waits is said on an `after:` line ("#562 after #131, both change the places"; "#11 needs #10 first"). A card's part is its
+  place on the app map, else the folders its "Touches" line names (the card list now keeps that line), else its area; a card
+  with none is named. `--next` prints it, and `/next` and `/work` with no number offer it first. **`--together <n>`** says
+  whether that card fits beside the work running. Side by side now fills the free room and takes small cards too.
+  **Agents settle what they can before asking**: an open point a test, a run or the code can answer is answered first; one
+  left for the owner comes with how sure the agent is and the step ready ("the cause is shown: shall I apply the fix?").
 - **4.9.1**: **the limit on work in progress counts work, not cards.** A session that builds eight cards together is one
   piece of work, yet `board --room` counted eight and stopped every new start (7 of 5 in a real project, where 2 of 5 was true).
   **`npm run board -- --room` counts once per session**: the cards one session carries (`branch.<topic>.card`, already kept
