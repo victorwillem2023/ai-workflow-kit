@@ -12,6 +12,14 @@ const spots = hotspots({
 });
 const shipped = (files: string[]) => ({ at: '2026-11-01T10:00:00.000Z', topic: 't', cards: [], subject: '', started: null, days: null, files, lines: 10, effort: 'small', areas: ['area: UI'], type: null, tokens: null, rounds: null, review: null, hard: [] });
 
+describe('a finished split card', () => {
+  it('in Done is not named as the work to do first', () => {
+    const split = { ...card(77, 'Split the route page', ['area: Code health'], 'src/web/page.ts in parts'), column: 'Done' };
+    const a = codeAdvice(card(42, 'A filter on the route page', [], 'It goes in src/web/page.ts.'), { spots, open: [split], health: 'area: Code health' });
+    assert.equal(a?.card, null);
+  });
+});
+
 describe('the file paths a card names', () => {
   it('finds a path with a folder and an extension, never a web address or a bare word', () => {
     assert.deepEqual(filesNamed('Split `src/web/page.ts` (see tests/web/page.test.ts, src/web/page.ts). Not https://example.com/a/b.html, v1.2/3 or page.ts'), ['src/web/page.ts', 'tests/web/page.test.ts']);

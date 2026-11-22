@@ -180,6 +180,8 @@ describe('file size', () => {
     const switchboard = ["import { Refining } from './refining';", '', 'export class Controller {', '  private refining: Refining;', '  // one line per action', '  constructor(ctx: Ctx) {', '    this.refining = new Refining(ctx);', '  }', '  another() { return this.refining.another(); }', '  undo = () => this.refining.undo();', '  plan(goal: Goal) {', '    const weeks = goal.weeks * 2;', '    return weeks > 10 ? this.long(weeks) : this.short(weeks);', '  }', '}', ''].join('\n');
     assert.equal(workLineCount(switchboard), 5, 'the class and constructor lines, and the three lines of plan');
     assert.equal(isPlumbing('  another() { this.count++; return this.refining.another(); }'), false, 'a pass-through that also does something is work');
+    for (const work of ['  timeout: 5000,', '  total: price * qty + tax,', '  default: break;', '  count: items.length,']) assert.equal(isPlumbing(work), false, `an object property or a case label is work: ${work}`);
+    for (const field of ['  cache: Map<string, Plan>;', '  mode: Mode | null;', '  items: Item[];']) assert.equal(isPlumbing(field), true, `a typed field: ${field}`);
     assert.notEqual(measureOf({ sizes: { 'src/a.ts': 500 } }), workLineCount, 'an older baseline keeps counting every line');
     assert.equal(measureOf(null), workLineCount, 'a first baseline counts work lines');
     assert.equal(limitOf({ maxLines: 400 }), 240, 'work lines have a lower limit: a 400-line file holds about 240');

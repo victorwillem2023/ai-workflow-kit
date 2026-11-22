@@ -96,6 +96,16 @@ describe('the focus block', () => {
     const s = focusState(cards, { theme: 'x', cards: [1, 5] });
     assert.equal(goalLine({ id: 'request:a', name: 'Hikes to a top', kind: 'request', done: 14, left: 12, total: 26, cards: [1, 5], uncarded: 3, notes: [] }, s), 'goal: Hikes to a top: 14 of 26 done (#5 in progress, 1 to start; 3 things left with no card yet)');
   });
+  it('a card in Done counts as done though its issue is still open (--finish moves it there and nothing closes it)', () => {
+    const c = (number: number, column: string, state = 'open') => ({ number, title: `card ${number}`, labels: ['area: Code health'], column, state });
+    const cards = [c(1, 'Done'), c(2, 'Done'), c(3, 'Done', 'closed'), c(4, 'Ready'), c(5, 'In progress')];
+    const s = focusState(cards, { theme: 'Code health', cards: [1, 2, 3, 4, 5] });
+    assert.equal(s.done, 3);
+    assert.deepEqual(s.held, [], 'a Done card is not held up');
+    assert.deepEqual(healthGoal(cards, {}, null).cards, [4, 5], 'the health goal counts only what is left');
+    assert.equal(labelGoal('feedback', 'x', [{ ...c(6, 'Done'), labels: ['feedback'] }], ['feedback']).left, 0);
+    assert.deepEqual(sweepGroups(cards, { areas: ['area: Code health'] }).flatMap((g) => g.cards.map((x) => x.number)), [4, 5], '/sweep leaves the finished ones out');
+  });
   it('a goal of cards counts its picked cards, says how long ago it was picked, and the work by session', () => {
     const c = (number: number, column: string, state = 'open') => ({ number, title: `card ${number}`, labels: ['area: Code health'], column, state });
     const cards = [c(1, 'Done', 'closed'), c(2, 'Done', 'closed'), c(3, 'In progress'), c(4, 'In progress'), c(5, 'In progress'), c(6, 'In progress'), c(7, 'Ready')];

@@ -8,6 +8,13 @@ const now = new Date('2026-11-15T12:00:00Z');
 const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
 const card = (number: number, title: string, column: string | null, labels: string[] = [], days = 1) => ({ number, title, state: 'open', labels, column, createdAt: ago(days), updatedAt: ago(days) });
 
+describe('a card in Done is finished, open issue or not', () => {
+  it('is no duplicate and no open card in the triage', () => {
+    const t = triage([card(1, 'Import activities from Strava', 'Done', ['feature', 'value: high']), card(2, 'Strava import of activities', 'Backlog', ['feature', 'value: high'])], { now, wip: 2 });
+    assert.equal(t.findings.some((f) => f.kind === 'duplicate'), false);
+  });
+});
+
 describe('the board triage', () => {
   const cards = [
     card(1, 'Export the week as a PDF', 'In progress', ['feature', 'value: high'], 20),

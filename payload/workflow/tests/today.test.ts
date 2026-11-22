@@ -39,6 +39,16 @@ describe("today's work", () => {
     const t = today([card(131, ['effort: medium'])], { areas, limit: 2 });
     assert.match(todayLines(t).join('\n'), /#131: no part on the app map, no "Touches" line and no area label/);
   });
+  it('a small card that joins a session still waits for a part in progress, and what it changes is the session\'s from then on', () => {
+    const running = [card(500, ['effort: medium'], 'In progress', 'Touches: src/core/geo.ts')];
+    const a = card(1, ['effort: small'], 'Ready', 'Touches: src/web/a.ts');
+    const b = card(2, ['effort: small'], 'Ready', 'Touches: src/web/b.ts, src/core/pace.ts');
+    const c = card(3, ['effort: small'], 'Ready', 'Touches: src/web/c.ts, src/data/store.ts');
+    const big = card(4, ['effort: medium'], 'Ready', 'Touches: src/data/load.ts');
+    const t = today([a, b, c, big], { all: [...running, a, b, c, big], areas, limit: 4 });
+    assert.deepEqual(t.sessions, [[1, 3]], '#2 would join, but src/core is in progress');
+    assert.deepEqual(t.after.map((x) => [x.card, x.by]), [[2, 500], [4, 3]], '#4 changes src/data, which the joined #3 changes');
+  });
   it('reads a card\'s Touches line for its parts when the map has none, so two cards on one folder do not run side by side', () => {
     assert.deepEqual(touchedParts('Why: x\n**Touches:** src/web/controller.ts, src/web/panels/results.ts and src/core/geo.ts'), ['src/web', 'src/web/panels', 'src/core']);
     const a = card(131, ['effort: medium'], 'Ready', 'Touches: src/core/geo.ts');

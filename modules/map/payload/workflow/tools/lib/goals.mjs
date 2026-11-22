@@ -36,7 +36,8 @@ function goal(id, name, kind, done, left, open, extra = 0, notes = []) {
  * `flow`: lib/worksheet.mjs loadFlow(); `cards`: the board's.
  */
 export function mapGoals(flow, cards) {
-  const open = new Set(cards.filter((c) => c.state === 'open').map((c) => c.number));
+  // still to do: open and not in the Done column (--finish moves a card there; GitHub may never close it)
+  const open = new Set(cards.filter((c) => c.state === 'open' && c.column !== 'Done').map((c) => c.number));
   const stages = flow.groups.flatMap((g) => g.stages.map((st) => ({ ...st, group: g.name })));
   const byId = new Map(stages.map((st) => [st.id, st]));
   // the kinds and their names: the index stage's ends carry `kind`; a page is a stage with `kind`

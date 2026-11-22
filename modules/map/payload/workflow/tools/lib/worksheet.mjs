@@ -38,7 +38,7 @@ export function mapEnds(flow) {
 
 /** The ends not built (`gap`) or built with a known problem (`weak`) that no open card is on: what nobody plans yet. */
 export function mapGaps(flow, cards) {
-  const open = new Set(cards.filter((c) => c.state === 'open').map((c) => c.number));
+  const open = new Set(cards.filter((c) => c.state === 'open' && c.column !== 'Done').map((c) => c.number));
   return mapEnds(flow).filter((e) => (e.status === 'gap' || e.status === 'weak') && !e.cards.some((n) => open.has(n)));
 }
 
@@ -85,10 +85,10 @@ function hygiene(ends, byNumber, requestPages) {
     for (const n of e.cards) {
       const c = byNumber.get(n);
       if (!c) out.push(`#${n} is on ${at} but is no card on the board.`);
-      else if (c.state !== 'open') out.push(`#${n} is closed but still on ${at}: drop it.`);
+      else if (c.state !== 'open' || c.column === 'Done') out.push(`#${n} is done but still on ${at}: drop it.`);
       else if (e.status === 'building' && !UNDER_WAY.includes(c.column)) out.push(`${at} is building, but #${n} is in ${c.column ?? 'no column'}.`);
     }
-    if (e.status === 'built' && e.cards.some((n) => byNumber.get(n)?.state === 'open')) {
+    if (e.status === 'built' && e.cards.some((n) => byNumber.get(n)?.state === 'open' && byNumber.get(n)?.column !== 'Done')) {
       out.push(`${at} is built but still carries ${e.cards.map((n) => `#${n}`).join(' ')}: drop the card, or mark what is left.`);
     }
     if (e.status === 'building' && !e.cards.length) out.push(`${at} is building with no card on it.`);
@@ -105,7 +105,7 @@ export function worksheet(flow, cards, columns, { all = false } = {}) {
   const ends = mapEnds(flow);
   const byNumber = new Map(cards.map((c) => [c.number, c]));
   const lines = [];
-  const open = cards.filter((c) => c.state === 'open' && !c.labels.some((l) => OFF_MAP_TYPES.includes(l)));
+  const open = cards.filter((c) => c.state === 'open' && c.column !== 'Done' && !c.labels.some((l) => OFF_MAP_TYPES.includes(l)));
   const order = [...columns, null];
   for (const col of order) {
     const here = open.filter((c) => (c.column ?? null) === col || (col === null && c.column && !columns.includes(c.column)));

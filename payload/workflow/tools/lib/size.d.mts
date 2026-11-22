@@ -28,6 +28,13 @@ export function takeAllowance<B extends { sizes?: Record<string, number>; allowe
   allowed: { file: string; now: number; by: number }[],
   card: number | string | null,
 ): B;
+export function switchToWork(
+  work: Record<string, number>,
+  old: { sizeMeasure?: string; sizes?: Record<string, number>; reasons?: Record<string, string> },
+  lines: Map<string, number>,
+  maxLines: number,
+  reason: string | null,
+): ReturnType<typeof updateSizes> & { joined: string[] };
 export function updateSizes(
   sizes: Record<string, number>,
   old: Record<string, number>,

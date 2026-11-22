@@ -47,7 +47,7 @@ describe('the worksheet maps board cards to the app map', () => {
 
   it('says what to fix: a closed card on an end, a card on a built end, a building end with no card, a dated note', () => {
     const { problems } = worksheet(flow, cards, COLUMNS);
-    assert.ok(problems.some((p) => /#283 is closed but still on "Old wait"/.test(p)));
+    assert.ok(problems.some((p) => /#283 is done but still on "Old wait"/.test(p)));
     assert.ok(problems.some((p) => /"Built long ago".* is built but still carries #50/.test(p)));
     assert.ok(problems.some((p) => /"Being built, nobody on it".* is building with no card/.test(p)));
     assert.ok(problems.some((p) => /"Old wait".* has a dated note/.test(p)));

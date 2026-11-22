@@ -3,6 +3,7 @@
 // that cannot be ranked, likely duplicates, and an old backlog to prune; then the focus: the few cards to do next.
 import { rankCards, inbox, STARTABLE } from './rank.mjs';
 import { roomToStart } from './focus.mjs';
+import { isDone } from './cardgraph.mjs';
 
 const DAY = 86_400_000;
 const STOP = new Set('the a an and or of to in on for with from by at is be add make new when can not no it its as this that'.split(' '));
@@ -12,7 +13,7 @@ const list = (cards) => cards.map((c) => `#${c.number}`).join(', ');
 
 /** Pairs of open cards whose titles share most of their words (all of them for short titles): [[a, b], ...]. */
 export function likelyDuplicates(cards, threshold = 0.6) {
-  const open = cards.filter((c) => c.state === 'open').map((c) => ({ c, w: words(c.title) })).filter((x) => x.w.size >= 2);
+  const open = cards.filter((c) => !isDone(c)).map((c) => ({ c, w: words(c.title) })).filter((x) => x.w.size >= 2);
   const out = [];
   for (let i = 0; i < open.length; i++) for (let j = i + 1; j < open.length; j++) {
     const a = open[i].w, b = open[j].w;
@@ -29,7 +30,7 @@ export function likelyDuplicates(cards, threshold = 0.6) {
  * folder carries, so "too much started" counts work in progress as board --room does (lib/focus.mjs roomToStart).
  */
 export function triage(cards, { now = new Date(), wip = 2, staleDays = 14, waitDays = 3, backlogMax = 30, firstVersion, columns = [], toolIssues, sessions = null } = {}) {
-  const open = cards.filter((c) => c.state === 'open');
+  const open = cards.filter((c) => !isDone(c)); // a card in Done is finished, open issue or not
   const inCol = (name) => open.filter((c) => c.column === name);
   const findings = [];
   const add = (kind, what, found, suggest) => { if (found.length) findings.push({ kind, what, cards: found, suggest }); };

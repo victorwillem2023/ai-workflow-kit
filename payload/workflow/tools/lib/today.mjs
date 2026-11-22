@@ -33,12 +33,15 @@ export function today(ranked, { all = ranked, places = new Map(), areas = [], li
   for (const c of ranked) {
     const parts = partsOf(c);
     const join = small(c) && picked.find((s) => s.small && s.cards.length < perSession && parts.some((p) => s.parts.includes(p)));
-    if (join) { join.cards.push(c.number); continue; }
-    const clash = parts.map((p) => [p, held.get(p)]).find(([, h]) => h);
+    // a part held by work outside the session it would join (running, or another picked session) makes it wait, joined or not
+    const clash = parts.map((p) => [p, held.get(p)]).find(([, h]) => h && !(join && join.cards.includes(h.by)));
     if (clash) { after.push({ card: c.number, by: clash[1].by, place: clash[0], running: clash[1].running }); continue; }
-    if (picked.length >= room.room) continue; // the room is full: it comes on a later day
-    picked.push({ cards: [c.number], small: small(c), parts });
-    for (const p of parts) held.set(p, { by: c.number, running: false });
+    const s = join || (picked.length < room.room ? { cards: [], small: small(c), parts: [] } : null);
+    if (!s) continue; // the room is full: it comes on a later day
+    if (!join) picked.push(s);
+    s.cards.push(c.number);
+    // every part a card in the session changes is the session's: a later card on one of them waits
+    for (const p of parts) { if (!s.parts.includes(p)) s.parts.push(p); if (!held.has(p)) held.set(p, { by: c.number, running: false }); }
   }
   // what needs a picked card first starts after it (its "Depends on:" line)
   const { waitsFor } = cardGraph(all);

@@ -53,8 +53,8 @@ export function renderTree(cards) {
   return lines.join('\n');
 }
 
-/** A card counts as done when it is closed or in the Done column. */
-const isDone = (c) => !c || c.state !== 'open' || c.column === 'Done';
+/** A card counts as done when it is closed or in the Done column (--finish moves it there; GitHub may never close it). */
+export const isDone = (c) => !c || c.state !== 'open' || c.column === 'Done';
 
 /** The graph of the open cards: { waitsFor: Map<n, [open deps]>, unlocks: Map<n, count>, unknown: Map<n, [missing #]>, loops: [[n...]] }. */
 export function cardGraph(cards) {

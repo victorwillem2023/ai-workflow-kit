@@ -4,6 +4,7 @@
 // its cards are done `board --next` offers only those. The pick is kept outside the repo (git's common folder), so it needs no
 // commit and every session folder sees the same one.
 import { rankCards, STARTABLE, BUILT } from './rank.mjs';
+import { isDone } from './cardgraph.mjs'; // closed, or in the Done column: --finish puts a card there and nothing closes it
 
 /** The area label performance, refactoring and test work goes under. */
 export const HEALTH = 'area: Code health';
@@ -40,10 +41,10 @@ export function proposeBlocks(cards, { areas = [], firstVersion, size = 5, measu
  * updatedAt stands for when it closed. `open`: the open code health cards there are to do.
  */
 export function upkeepDue(cards, { health = HEALTH, every = 8 } = {}) {
-  const closed = cards.filter((c) => c.state === 'closed' && c.column);
+  const closed = cards.filter((c) => isDone(c) && c.column);
   const last = Math.max(0, ...closed.filter((c) => c.labels.includes(health)).map((c) => Date.parse(c.updatedAt ?? '') || 0));
   const shipped = closed.filter((c) => !c.labels.includes(health) && (Date.parse(c.updatedAt ?? '') || 0) > last).length;
-  const open = cards.filter((c) => c.state === 'open' && c.column && c.labels.includes(health)).length;
+  const open = cards.filter((c) => !isDone(c) && c.column && c.labels.includes(health)).length;
   return { due: shipped >= every, shipped, open, never: !last };
 }
 
@@ -55,7 +56,7 @@ export function upkeepDue(cards, { health = HEALTH, every = 8 } = {}) {
 export function focusState(cards, focus, { firstVersion, measured = null } = {}) {
   const mine = new Set(focus.cards);
   const got = cards.filter((c) => mine.has(c.number));
-  const open = got.filter((c) => c.state === 'open');
+  const open = got.filter((c) => !isDone(c));
   const left = rankCards(cards, { firstVersion, measured }).filter((c) => mine.has(c.number));
   const doing = open.filter((c) => c.column === DOING);
   const check = open.filter((c) => BUILT.includes(c.column));
@@ -73,7 +74,7 @@ export function sweepGroups(cards, { areas = [], types = [], now = new Date() } 
   const lacks = (c) => [themeOf(c, areas) === 'no area' && areas.length ? 'area' : '', types.length && !types.some((t) => c.labels.includes(t)) ? 'type' : '',
     ...['value', 'effort'].map((g) => (c.labels.some((l) => new RegExp(`^${g}:`, 'i').test(l)) ? '' : g))].filter(Boolean);
   const groups = new Map();
-  for (const c of cards.filter((x) => x.state === 'open' && x.column)) {
+  for (const c of cards.filter((x) => !isDone(x) && x.column)) {
     const row = { number: c.number, title: c.title, column: c.column, missing: lacks(c), days: c.updatedAt ? Math.max(0, Math.floor((now - new Date(c.updatedAt)) / 86_400_000)) : 0 };
     const theme = themeOf(c, areas);
     groups.set(theme, [...(groups.get(theme) ?? []), row]);
@@ -131,7 +132,7 @@ export function roomToStart(cards, limit = 2, sessions = null) {
     const mine = doing.filter((c) => s.cards.includes(c.number) && !held.has(c.number));
     for (const c of mine) held.add(c.number);
     if (mine.length || (!s.cards.length && !s.finished)) work.push({ topic: s.topic, cards: mine });
-    else if (!s.cards.some((n) => cards.some((c) => c.number === n && c.state === 'open'))) leftover.push(s.topic);
+    else if (!s.cards.some((n) => cards.some((c) => c.number === n && !isDone(c)))) leftover.push(s.topic);
   }
   for (const c of doing) if (!held.has(c.number)) work.push({ topic: null, cards: [c] });
   return { doing, limit, room: Math.max(0, limit - work.length), count: work.length, work, leftover };
@@ -160,7 +161,7 @@ export const sourcesFor = (phase, own) => (Array.isArray(own) && own.length ? ow
 
 /** A goal made of the open cards on the board that carry one of `labels` (what users reported, what the running app reports). */
 export function labelGoal(id, name, cards, labels) {
-  const mine = cards.filter((c) => c.state === 'open' && c.column && c.labels.some((l) => labels.includes(l)));
+  const mine = cards.filter((c) => !isDone(c) && c.column && c.labels.some((l) => labels.includes(l)));
   return { id, name, kind: id, done: 0, left: mine.length, total: mine.length, cards: mine.map((c) => c.number), uncarded: 0, notes: [], due: mine.length > 0 };
 }
 
@@ -172,7 +173,7 @@ export function labelGoal(id, name, cards, labels) {
 export function healthGoal(cards, numbers = {}, seen = null, { health = HEALTH, every = 8 } = {}) {
   const upkeep = upkeepDue(cards, { health, every });
   const worse = seen ? Object.keys(numbers).filter((k) => numbers[k] > (seen[k] ?? Infinity)) : [];
-  const mine = cards.filter((c) => c.state === 'open' && c.column && c.labels.includes(health)).map((c) => c.number);
+  const mine = cards.filter((c) => !isDone(c) && c.column && c.labels.includes(health)).map((c) => c.number);
   const said = Object.entries(numbers).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`);
   const notes = [said.join(', '), worse.length ? `worse since this goal was last picked: ${worse.map((k) => `${k} ${seen[k]} to ${numbers[k]}`).join(', ')}` : '',
     upkeep.due ? upkeepLine(upkeep, health).replace(/^code health is due: /, '').replace(/; .*$/, '') : ''].filter(Boolean);

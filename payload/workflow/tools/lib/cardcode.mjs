@@ -6,6 +6,7 @@
 //   its area's history  the files the shipped cards of its area usually changed (lib/shipped.mjs areaFiles)
 // A guess, said as one: /spec reads the code and decides.
 import { areaFiles } from './shipped.mjs';
+import { isDone } from './cardgraph.mjs'; // a split card in Done is finished, not "that work"
 
 const name = (a) => String(a).replace(/^area:\s*/i, '');
 
@@ -39,7 +40,7 @@ export function codeAdvice(card, { spots = [], records = [], areas = [], open = 
     const u = usual.find((x) => x.file === file);
     const reason = named.includes(file) ? 'the card names it' : `${u.of} of the last ${u.total} ${name(area)} cards changed it`;
     const [wrong, first] = SAY[h.kind](h, file);
-    const has = open.find((c) => c.number !== card.number && c.state === 'open' && c.labels.includes(health) && `${c.title}\n${c.body ?? ''}`.includes(file));
+    const has = open.find((c) => c.number !== card.number && !isDone(c) && c.labels.includes(health) && `${c.title}\n${c.body ?? ''}`.includes(file));
     const then = has ? `#${has.number} is that work: do it first (npm run board -- --depends ${card.number} ${has.number})` : `${first} (${h.principle.split(':')[0]})`;
     return { file, kind: h.kind, card: has?.number ?? null, line: `code: #${card.number} is likely to change ${file} (${reason}), and ${wrong}: ${then}` };
   }

@@ -2,6 +2,28 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.9.3**: **seven gaps in 4.9.0 to 4.9.2, found by reading the releases against their notes.**
+  **A card in *Done* counts as done.** `--finish` moves the card to *Done* but nothing closes the issue, and the goal line,
+  the code health goal, the label goals and the app map counted only closed issues: a goal never finished, its shipped cards
+  "held up". They now count the *Done* column, as the ranking and the stage check already did (`lib/cardgraph.mjs`, `isDone`), and so
+  do the bug count behind a "stabilise" goal, the code hint that names a split card as "that work", `/sweep`, the triage (its
+  counts and duplicates) and the app map's worksheet.
+  **`--finish` checks only what changed since `gate:ship`**: it passes the tree `gate:ship` passed on as `--base`, which the
+  gate refused ("not a commit here") and so compared with where the branch left main; a tree is taken now.
+  **The switch to work lines needs no reason, as said**: a file under the old 400-line limit but over 240 work lines joins the
+  list as it is, instead of asking for `--allow-growth`.
+  **Today's plan checks a small card before it joins a session**: one touching a part in progress joined anyway, and what a
+  joined card changes was never the session's, so a bigger card could start beside it on the same folder.
+  **An object property is work**: `timeout: 5000,`, `total: price * qty + tax,` and `default: break;` were counted as typed
+  fields, so logic written as properties was not counted.
+  **The gate's "passed already" sees the specs**: `workflow/specs/` is ignored by git but read by the gate, so a changed spec
+  did not run it again; it does now, and a run that is not repeated says the advice of the one that passed.
+  **Taking the allowance no longer makes `--finish` check again**: `gate:ship` recorded its pass, then wrote the allowance into
+  the baseline, so the files no longer matched; the pass is recorded after the write now.
+  **Tests for what had none**: a tree as `--base`, the switch letting a file join with no reason, and a changed spec keying
+  the pass again with its advice kept (`workflow/tests/gate-pass.test.ts`).
+  **One answer, one count, everywhere**: `npm run shipped` kept the first line of an answer and `npm run cost` the last; both
+  keep the last.
 - **4.9.2**: **the cost report counts each answer once.** Claude Code writes one answer as several lines of its records (its
   thinking, each tool call, its text), and each line carries the whole answer's tokens; `npm run cost`, `--by-kit` and the
   tokens in a shipped card's record counted every line, so a number was about two to two and a half times the real one, and

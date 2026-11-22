@@ -44,7 +44,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
 import { unlabelCard, adoptCard, closeCard, createCard, dependCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 import { inbox, rankCards, STARTABLE, TO_SORT, TOOL_ISSUES, topTie, waitingCards } from './lib/rank.mjs';
-import { renderTree } from './lib/cardgraph.mjs';
+import { isDone, renderTree } from './lib/cardgraph.mjs';
 import { boardView } from './lib/boardview.mjs';
 import { ghRun } from './lib/gh.mjs';
 import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
@@ -146,7 +146,7 @@ async function gatherGoals(config, all) {
     if (s === 'health' || s === 'bugs') {
       // what the state of the code says (lib/hotspots.mjs): the first suggestions go into the code health goal's notes, and an
       // area with several open bugs is a goal of its own (stabilise it before building more on it)
-      const bugs = all.filter((c) => c.state === 'open' && c.column && c.labels.includes('bug')).map((c) => ({ number: c.number, area: (board.labels?.areas ?? []).find((a) => c.labels.includes(a)) ?? null }));
+      const bugs = all.filter((c) => !isDone(c) && c.column && c.labels.includes('bug')).map((c) => ({ number: c.number, area: (board.labels?.areas ?? []).find((a) => c.labels.includes(a)) ?? null }));
       const spots = codeHotspots(root, config, { bugs });
       if (s === 'bugs') for (const h of spots.filter((x) => x.kind === 'bug-cluster')) {
         const area = bugs.find((b) => h.what.includes(String(b.area ?? 'no area').replace(/^area:\s*/i, '')))?.area;

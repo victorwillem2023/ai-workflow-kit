@@ -66,7 +66,8 @@ export function policySteps({ config, git, gitOk, base, files, isTest, matchesAn
     // a doc that names what it covers (<!-- covers: infra/** -->) changes with it, or the spec or a commit says why not
     const changes = parseNameStatus(gitOk('diff', '--name-status', '-M', base) ?? '', git('ls-files', '--others', '--exclude-standard').split('\n'));
     const specs = existsSync('workflow/specs') ? readdirSync('workflow/specs').filter((f) => f.endsWith('.md')).map((f) => readFileSync(`workflow/specs/${f}`, 'utf8')).join('\n') : '';
-    const waivers = `${specs}\n${gitOk('log', `${base}..HEAD`, '--format=%B') ?? ''}`;
+    // (a tree as the base, the ship pass --finish passes, has no history: the commits since main then)
+    const waivers = `${specs}\n${gitOk('log', `${base}..HEAD`, '--format=%B') ?? gitOk('log', `${MAIN}..HEAD`, '--format=%B') ?? ''}`;
     const stale = staleDocs({ docs: docTexts, changes, matches: matchesAny, waivers, ignore: [config.map?.out, config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline].filter(Boolean) });
     if (stale.length) return { ok: false, out: `${stale.map((s) => `${s.doc} covers ${s.files.slice(0, 5).join(', ')}${s.files.length > 5 ? ` and ${s.files.length - 5} more` : ''}, which changed; the doc did not`).join('\n')}\nUpdate the doc in the same change. If it truly needs nothing, write in the spec (or the commit body) one line: "Docs: no change to <doc> (<why>)".` };
     return { ok: true };

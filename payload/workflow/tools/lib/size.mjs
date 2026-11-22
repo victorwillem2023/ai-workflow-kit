@@ -14,7 +14,8 @@ const PLUMBING = [
   /^\s*(\/\/|\/\*|\*|\*\/|#(?![\w$]+\s*[=:;(]))/, // a comment (a #private field is not one)
   /^\s*(import\b|export\s+(\*|type\s+\{|\{)[^;]*\bfrom\b|from\s+\S+\s+import\b|use\s+[\w:{}, *]+;)/, // imports
   /^\s*[}\])]+[;,)]*\s*$/, // braces only
-  /^\s*((private|public|protected|readonly|static|declare|override)\s+)*#?[\w$]+[?!]?\s*:\s*[^=;(){}]+;?\s*$/, // a typed field, no value
+  // a typed field, no value: its type is a name (Map<string, X>, A | B), never an object property's value or a case label
+  /^\s*((private|public|protected|readonly|static|declare|override)\s+)*(?!(default|case)\b)#?[\w$]+[?!]?\s*:\s*(?![\d'"-])[\w$.<>[\]|&?, ]*[\w$>\]?];?\s*$/,
   /^\s*((private|public|protected|readonly|static)\s+)*(this\.)?#?[\w$.]+\s*(:\s*[\w$.<>, ]+)?=\s*new\s+[\w$.]+\([^()]*\);?\s*$/, // x = new X(ctx)
   /^\s*(async\s+)?#?[\w$]+\s*\([^()]*\)\s*(:\s*[^{}]+)?\{\s*(return\s+)?(await\s+)?this\.[\w$#.]+\([^()]*\);?\s*\}\s*$/, // m(a) { return this.x.m(a); }
   /^\s*#?[\w$]+\s*=\s*(async\s*)?\([^()]*\)\s*=>\s*this\.[\w$#.]+\([^()]*\);?\s*$/, // m = (a) => this.x.m(a);
@@ -83,6 +84,19 @@ export function takeAllowance(baseline, allowed, card) {
   const rows = { ...(baseline.allowed ?? {}) };
   for (const a of allowed) { sizes[a.file] = a.now; rows[a.file] = [...(rows[a.file] ?? []), { card: card ?? null, lines: a.by }]; }
   return { ...baseline, sizes, allowed: rows };
+}
+
+/**
+ * --update-baseline's sizes in work lines (`work`: { file: work lines } over the limit). On the switch from every line
+ * (`old.sizeMeasure` not "work"), a file that joins the list only because work lines have the lower limit (its line count,
+ * `lines`: Map file -> lines, was under `maxLines`) is not growth and needs no reason; a real one still does. Adds `joined`.
+ */
+export function switchToWork(work, old, lines, maxLines, reason) {
+  const switching = old.sizeMeasure !== 'work' && Object.keys(old.sizes ?? {}).length > 0;
+  const joined = switching ? Object.keys(work).filter((f) => !(f in old.sizes) && (lines.get(f) ?? Infinity) <= maxLines) : [];
+  const upd = updateSizes(work, { ...(old.sizes ?? {}), ...Object.fromEntries(joined.map((f) => [f, work[f]])) }, reason, old.reasons ?? {});
+  const said = joined.length ? `counted as work lines now; joining the list as they are (under the old ${maxLines}-line limit): ${joined.join(', ')}` : '';
+  return { ...upd, joined, message: [upd.message, said].filter(Boolean).join('\n') };
 }
 
 // The next baseline sizes for --update-baseline: numbers may only drop or go away. A raised or new number is
