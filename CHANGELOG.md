@@ -2,6 +2,21 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.15.0**: **the kit grades what its key skills answer, and every kit change is reviewed by an agent that had no part in it.**
+  **Quality scenarios** (`npm run test:quality`, `scripts/qualitytest.mjs`): a skill answers on a small planted project with a
+  known flaw (`scripts/quality/fixtures.mjs`, never installed), and its answer is graded against points written beforehand: by a
+  script where it can tell, by a second model only where it cannot, each point a yes or no, one of them a must. Blind: a
+  scenario fails when the installed kit names its answer. Three runs, a majority passes; each run adds a line to
+  `scripts/quality-scores.jsonl` and says what the last one scored. `--local <file.json>` runs one on a real project at a commit.
+  First scores: `/anatomy` 7 of 7 on a kind spread over shared steps, `/spec` 6 of 6 on a card asking for a special case,
+  `/review` 5 of 5 on a built change with two mistakes and a test that catches neither. By hand, or the qualitytest workflow.
+  **A review of each kit change** (`npm run review`, `scripts/kitreview.mjs`): a fresh agent, reading but never writing, gets the
+  uncommitted change (`--since <ref>`, `--release`) and reports bugs only, each with the case that breaks. The kit's own `CLAUDE.md`
+  (never installed) says to run it before every commit and fix each finding or say why not. Its three runs on this release
+  found 15 problems, all fixed.
+  **`npm run anatomy`**: the flows named in `anatomy.flows` are listed beside the app map's, not instead of them (a named one
+  takes the place of the map's of the same name); naming one flow hid every other.
+  The skill scenarios can let the agent read a folder beside the project (`addDirs`): `/review` read the session folder only when asked.
 - **4.14.1**: **`npm run anatomy` after its first blind round.** A fresh agent ran `/anatomy to-a-top` on a copy of a real
   project from before its refactor was planned, with no example and no board, and reached the end state the owner's own spec
   had (one pipeline: the top found once, the ways up found once, one way to route a way up and one judge of reaching the top
