@@ -38,7 +38,7 @@
 //   --inbox                      open issues not on the board yet (feedback, error alerts); --adopt <number> --label <type>... puts one on it
 // A failure prints one plain sentence and exits 1.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
@@ -51,6 +51,9 @@ import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 import { STOPPED_FILE, stoppedLines } from './lib/stopped.mjs';
 import { codeHotspots, recentFixes, shippedRecords } from './lib/codestate.mjs';
 import { fixStreaks, streakLine } from './lib/hotspots.mjs';
+import { anatomyLine, pageStates } from './lib/anatomy.mjs';
+import { codeTest } from './lib/lang.mjs';
+import { matchesAny } from './lib/glob.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
 import { together, togetherLines } from './lib/together.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
@@ -271,6 +274,20 @@ function stoppedLine() {
 }
 
 /**
+ * For --next: "anatomy: ..." when no flow of the code has been looked at yet, or one not for `anatomy.every` (60) days
+ * (lib/anatomy.mjs anatomyLine); only where /anatomy is installed. Counting the code files is one `git ls-files`.
+ */
+function anatomyNote(config) {
+  if (!existsSync(join(root, '.claude', 'skills', 'anatomy'))) return [];
+  const dir = join(root, 'docs', 'anatomy');
+  const pages = existsSync(dir) ? pageStates(readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => ({ name: f.replace(/\.md$/, ''), text: readFileSync(join(dir, f), 'utf8') }))) : [];
+  let code = 0;
+  try { const isCode = codeTest(config); code = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8', maxBuffer: 64 << 20, windowsHide: true }).split('\n').filter((f) => f && isCode(f) && matchesAny(f, config.size?.include ?? ['src/**'])).length; } catch { /* no git: no count */ }
+  const line = anatomyLine(pages, code, { every: config.anatomy?.every ?? 60 });
+  return line ? [line] : [];
+}
+
+/**
  * For --next: "step back: ..." for an area with a streak of fixes (lib/hotspots.mjs fixStreaks: closed bug cards and shipped
  * bug records, `board.fixStreak` in the config). A fix streak is spread thin, so no file stands out; the shape does.
  */
@@ -296,15 +313,15 @@ async function withinFocus(config, all, ranked) {
   const due = dueGoals.length ? [`(due: ${dueGoals.map((g) => `${g.name} (${g.notes.at(-1) ?? goalCount(g)})`).join('; ')}; npm run board -- --focus)`] : [];
   if (!f) {
     const hint = ranked.length > 5 ? [`(no goal picked: ${ranked.length} cards can be started. One goal at a time is calmer: npm run board -- --focus shows what to pick from)`] : [];
-    return { ranked, before, after: [...sort, ...hint, ...due], line: null };
+    return { ranked, before, after: [...sort, ...hint, ...due, ...anatomyNote(config)], line: null };
   }
-  if (f.finished) return { ranked, before: [...before, `focus: "${readFocus().theme}" is done: pick the next one (npm run board -- --focus)`], after: [...sort, ...due], line: null };
+  if (f.finished) return { ranked, before: [...before, `focus: "${readFocus().theme}" is done: pick the next one (npm run board -- --focus)`], after: [...sort, ...due, ...anatomyNote(config)], line: null };
   const mine = new Set(f.cards);
   const outside = ranked.filter((c) => !mine.has(c.number)).length;
   const urgent = urgentOutside(all, { cards: f.cards });
   const after = [...f.extra,
     ...(urgent.length ? [`(outside the focus but urgent: ${urgent.map((c) => `#${c.number} ${c.title}`).join('; ')}: a bug of high value)`] : []),
-    ...(outside ? [`(${outside} other card${outside === 1 ? '' : 's'} can be started but wait${outside === 1 ? 's' : ''} for a later goal)`] : []), ...sort, ...due];
+    ...(outside ? [`(${outside} other card${outside === 1 ? '' : 's'} can be started but wait${outside === 1 ? 's' : ''} for a later goal)`] : []), ...sort, ...due, ...anatomyNote(config)];
   return { ranked: ranked.filter((c) => mine.has(c.number)), before: [...before, f.line], after, line: f.line };
 }
 

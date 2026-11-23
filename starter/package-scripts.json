@@ -10,6 +10,7 @@
   "board": "node workflow/tools/board.mjs",
   "harness": "node workflow/tools/harness.mjs",
   "health": "node workflow/tools/health.mjs",
+  "anatomy": "node workflow/tools/anatomy.mjs",
   "protect": "node workflow/tools/protect.mjs",
   "updates": "node workflow/tools/updates.mjs",
   "secops": "node workflow/tools/secops.mjs",

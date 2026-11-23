@@ -63,7 +63,7 @@ const STREAK = 'step back: a run of fixes in one place means its shape is wrong,
 const areaName = (a) => String(a).replace(/^area:\s*/i, '');
 /** "<n> fixes in <area> in <days> days (#1, #2, ...): ..." for one streak. */
 export const streakLine = (s) => `${s.fixes.length} fixes in ${areaName(s.area)} in ${s.days} days (${s.fixes.slice(0, 6).join(', ')}${s.fixes.length > 6 ? ', ...' : ''}): ` +
-  'stop patching it and draw its flow first: its jobs in order, each with one home (docs/anatomy/<flow>.md)';
+  'stop patching it and look at how its flow is built first: its jobs in order, each with one home (/anatomy)';
 
 /**
  * The areas with a streak of fixes, most first: [{ area, fixes: ['#12' | '<topic>'], days }]. `fixes`: [{ area, at, card?,

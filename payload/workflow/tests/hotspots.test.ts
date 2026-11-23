@@ -36,6 +36,6 @@ describe('what the code says to work on', () => {
     assert.equal(fixStreaks(fixes, { days: 14, count: 6 }, now)[0]?.fixes.length, 6);
     const list = hotspots({ fixes: streaks });
     assert.equal(list[0].kind, 'fix-streak');
-    assert.match(list[0].what, /^5 fixes in Hikes in 7 days \(#1, #2, #3, #4, summit-path\): stop patching it and draw its flow first/);
+    assert.match(list[0].what, /^5 fixes in Hikes in 7 days \(#1, #2, #3, #4, summit-path\): stop patching it and look at how its flow is built first/);
   });
 });

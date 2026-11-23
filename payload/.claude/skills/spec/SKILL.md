@@ -31,7 +31,7 @@ the vision becomes cards for later, not this spec.
   `spike` card goes to `/spike`, not a spec.
 - **The flow and the job**: the flow this card changes has a page, `docs/anatomy/<flow>.md` (the list: `docs/ARCHITECTURE.md`,
   *Flows and their jobs*); name the flow and the job on the spec's "Flow:" line. A flow with no page yet: write it as the code
-  is now (`docs/anatomy/README.md` has the shape), under *Docs that change*. Each job the change does goes to its home.
+  is now (`docs/anatomy/README.md` has the shape; `/anatomy <flow>` does it in full), under *Docs that change*. Each job the change does goes to its home.
 - What the feature does today: `docs/GUIDE.md` lists the guide's parts; open only the part for it in `docs/guide/`.
 - The files: search `docs/MAP.md` (never read it whole), then open only the line ranges you need.
 

@@ -43,7 +43,7 @@ export function moduleNeeds(modules, { framework = false } = {}) {
 // A part's guides and tools travel with it (a lean project without /market has no GROWTH.md either).
 const CORE_PARTS = {
   shape: ['.claude/skills/shape/'], spike: ['.claude/skills/spike/'], tidy: ['.claude/skills/tidy/', '.claude/skills/sweep/'],
-  estimate: ['.claude/skills/estimate/'],
+  estimate: ['.claude/skills/estimate/'], anatomy: ['.claude/skills/anatomy/'],
   advise: ['.claude/skills/advise/', '.claude/skills/arch/', 'docs/run/BUY-OR-HOST.md', 'docs/run/SCALING.md', 'docs/company/STAGES.md', 'docs/company/ROADMAP.md'],
   launch: ['.claude/skills/launch/', 'docs/run/CICD.md', 'docs/run/LAUNCH.md', 'docs/run/MONITORING.md', 'docs/run/RELEASES.md'],
   market: ['.claude/skills/market/', 'docs/market/GROWTH.md', 'docs/market/MARKET.md', 'workflow/tools/launchcheck.mjs', 'workflow/tools/lib/launchcheck.mjs', 'workflow/tools/lib/launchcheck.d.mts', 'workflow/tests/launchcheck.test.ts'],
@@ -62,7 +62,7 @@ export { LIBRARY };
 export const PROFILES = {
   minimal: { what: 'the gate and its checks only: no commands, no board, no sessions', lean: true, gateOnly: true },
   solo: { what: 'the build loop: /next /idea /work /spec /build /ship and the helpers, the board, sessions, the stop points', lean: true },
-  product: { what: 'solo and the stages: shape, spike, tidy, estimate, advise, launch, market, retro, secops, and every module', lean: false },
+  product: { what: 'solo and the stages: shape, spike, tidy, anatomy, estimate, advise, launch, market, retro, secops, and every module', lean: false },
   team: { what: 'product, with pull requests and a required review, and the team roles', lean: false, team: true },
 };
 

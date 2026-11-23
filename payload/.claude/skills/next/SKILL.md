@@ -40,9 +40,12 @@ then stop.
    - **`where you stopped:`**: the line the last session left. Say it first; a fact in it git can tell (pushed, committed, a
      folder or branch) is checked with git first, and git wins.
    - **`step back:`**: one area had a run of fixes in a few days, spread too thin for any file to stand out. The recommended
-     next step, before its next fix: "<Area> had <n> fixes this week: stop patching it and write down how it should work, its
-     jobs in order and where each one lives, then plan the clean version (about an hour; a card for it: /idea step back on
-     <area>)". That card's `/spec` drafts two designs whatever the phase.
+     next step, before its next fix: "<Area> had <n> fixes this week: stop patching it, look at how it is built and plan the
+     clean version, about an hour; you get the clean-up as cards for your yes (/anatomy <flow>)". Its cards' `/spec` drafts two
+     designs whatever the phase.
+   - **`anatomy:`** (no flow looked at yet, or one not for two months): one next step, never before a card in progress: "See
+     how one part of the code is built and where it repeats itself, about 30 minutes; you get a clean-up plan as cards for your
+     yes, and nothing changes until you say so (/anatomy)".
    - **`STOP:`**: more work in progress than the limit. The next step is finishing or parking one (the board tidy-up), never
      a new card; say which are in progress.
    - **`you were on:`**: start your answer with it, in one line of plain words ("You were building #12 and #9 waits for you
