@@ -2,6 +2,16 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.16.0**: **a line between a project's own scripts and the kit's, and before and after compared the same way everywhere.**
+  An agent proposing a script (a measuring run, a data check) now says which side it is on (`CLAUDE.md`, *How we work*): it
+  knows the app's words or data, so it is the project's own, kept in the project, run by hand, never by `npm test` or the
+  gate, and kit updates never touch it (they never did; now the agent says so instead of arguing it each time); or every
+  project would need it, so it is a proposed kit card. What every measuring script needs is the kit's:
+  `npm run measure -- --compare <before> <after>` (`--last <folder>`) reads two runs written as `results.json` (cases, named values,
+  options; `lib/measure.mjs`) and lists only what moved, a `true` that became `false` first; `--same` fails when anything moved,
+  for a refactor that should change nothing. `/anatomy`'s first card is such a script. `TESTING.md`, *Measuring before and
+  after*. Tests: `measure.test.ts`. The review step's two runs on this release found 11 problems (lists read as moved, a file
+  of another shape crashing it, runs in the wrong order), all fixed.
 - **4.15.0**: **the kit grades what its key skills answer, and every kit change is reviewed by an agent that had no part in it.**
   **Quality scenarios** (`npm run test:quality`, `scripts/qualitytest.mjs`): a skill answers on a small planted project with a
   known flaw (`scripts/quality/fixtures.mjs`, never installed), and its answer is graded against points written beforehand: by a
