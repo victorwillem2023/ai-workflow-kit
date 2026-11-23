@@ -38,4 +38,15 @@ describe('goals from the app map', () => {
   it('a part with something left is a goal; a finished part and the list of kinds are not', () => {
     assert.deepEqual(goals.filter((g) => g.kind === 'part').map((g) => [g.id, g.done, g.total]), [['part:places', 1, 2], ['part:make', 1, 2]]);
   });
+  it('takes in the kind\'s clean-up plan from its flow page first, in its order, refactor cards on no end counted as left', () => {
+    const withPlan = mapGoals(flow, [...cards, { number: 20, state: 'open' }, { number: 21, state: 'open' }, { number: 22, state: 'closed' }], { plans: { 'to-a-top': [21, 22, 20, 8] } });
+    const top = withPlan.find((g) => g.id === 'request:to-a-top');
+    assert.deepEqual(top?.cards, [21, 20, 8, 7], 'the plan first in its order (the closed one left out), then the cards on the ends');
+    assert.deepEqual(top?.plan, [21, 20, 8]);
+    assert.equal(top?.left, 5, 'the two refactor cards count as left: the goal is not done while the reshaping waits');
+    for (const kind of ['To_A_Top', 'ToATop']) {
+      const odd = mapGoals({ ...flow, kinds: { [kind]: ['make'] } }, [...cards, { number: 21, state: 'open' }], { plans: { 'to-a-top': [21] } });
+      assert.deepEqual(odd.find((g) => g.id === `request:${kind}`)?.plan, [21], `${kind} finds the to-a-top page`);
+    }
+  });
 });

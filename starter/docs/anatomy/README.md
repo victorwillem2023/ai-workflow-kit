@@ -14,6 +14,6 @@ second home for a job shows. The shape:
     |---|---|---|---|
     | <1. the job, in a few words> | <file, function> | <the same, or where it moves> | <none, or: two homes, a flag in a shared step, no clear home, the name says another job> |
 
-    Cards: <the move plan's cards in order, #n each, or "none">
+    Cards: <the move plan's cards in order, #n each, or "none": a goal on this kind offers them first, in this order>
 
 A home is a file and a function, never a list of files. A job several flows do once lives in one home, named on each page.

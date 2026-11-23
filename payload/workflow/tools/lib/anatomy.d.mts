@@ -11,6 +11,7 @@ export function flagsOf(flow: Flow, files: Map<string, string>): Check[];
 export function checksOf(flow: Flow, kinds: Flow[], flags?: Check[]): Check[];
 export function fixesPerFlow(flows: Flow[], fixes: { id: string; at: string | null; files: string[] }[], options?: { days?: number; now?: Date }): Map<string, string[]>;
 export function scoreFlows(flows: Flow[], kinds: Flow[], found: { flags?: Map<string, Check[]>; ratchets?: { file: string; name: string; n: number }[]; rules: Row['rules']; alikes: Row['alikes']; fixes: Map<string, string[]> }, pages?: { slug: string; lookedAt: string | null }[]): Row[];
+export function planCards(text: string | null | undefined): number[];
 export function pageStates(pages: { name: string; text: string }[]): { slug: string; lookedAt: string | null }[];
 export function anatomyLine(pages: { slug: string; lookedAt: string | null }[], codeFiles: number, options?: { every?: number; now?: Date }): string | null;
 export function anatomyTable(rows: Row[], n?: number): string;

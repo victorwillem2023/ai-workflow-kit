@@ -23,19 +23,26 @@ function endsOf(stage) {
 
 const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-/** One goal from what is left: the open cards on it, and how many things no open card is on. */
-function goal(id, name, kind, done, left, open, extra = 0, notes = []) {
-  const cards = [...new Set(left.flatMap((e) => e.cards.filter((n) => open.has(n))))].sort((a, b) => a - b);
+/**
+ * One goal from what is left: the open cards on it, and how many things no open card is on. `plan`: the open cards of the
+ * kind's clean-up plan (its flow page's "Cards:" line), in order: they come first and count as left until they are done.
+ */
+function goal(id, name, kind, done, left, open, extra = 0, notes = [], plan = []) {
+  const planned = plan.filter((n) => open.has(n));
+  const onEnds = [...new Set(left.flatMap((e) => e.cards.filter((n) => open.has(n))))].sort((a, b) => a - b);
+  const cards = [...new Set([...planned, ...onEnds])];
   const uncarded = left.filter((e) => !e.cards.some((n) => open.has(n))).length + extra;
-  return { id, name, kind, done, left: left.length + extra, total: done + left.length + extra, cards, uncarded, notes };
+  const more = planned.filter((n) => !onEnds.includes(n)).length; // a refactor card sits on no end of the map
+  return { id, name, kind, done, left: left.length + extra + more, total: done + left.length + extra + more, cards, plan: planned, uncarded, notes };
 }
 
 /**
  * The goals the map gives: [{ id, name, kind: 'request' | 'part', done, left, total, cards, uncarded, notes }], the kinds of
  * request first, then the parts; a part with nothing left is left out, a finished kind stays (it counts as finished).
- * `flow`: lib/worksheet.mjs loadFlow(); `cards`: the board's.
+ * `flow`: lib/worksheet.mjs loadFlow(); `cards`: the board's; `plans`: { kind: [card numbers] }, each kind's clean-up plan
+ * from its flow page (docs/anatomy/<kind>.md, lib/anatomy.mjs planCards).
  */
-export function mapGoals(flow, cards) {
+export function mapGoals(flow, cards, { plans = {} } = {}) {
   // still to do: open and not in the Done column (--finish moves a card there; GitHub may never close it)
   const open = new Set(cards.filter((c) => c.state === 'open' && c.column !== 'Done').map((c) => c.number));
   const stages = flow.groups.flatMap((g) => g.stages.map((st) => ({ ...st, group: g.name })));
@@ -51,7 +58,9 @@ export function mapGoals(flow, cards) {
     const open1 = cases.filter((e) => LEFT.has(e.status));
     const notes = [page ? '' : 'no page yet that says what the app does for each case: writing it comes first', open1.length ? `${count(open1.length, 'case', 'cases')} not built` : '',
       path.length ? `${count(path.filter((e) => e.status === 'weak').length, 'weak spot', 'weak spots')} and ${path.filter((e) => e.status !== 'weak').length} not built in the steps it runs through` : ''].filter(Boolean);
-    goals.push(goal(`request:${slug}`, names.get(slug) ?? slug, 'request', cases.length - open1.length, [...open1, ...path], open, page ? 0 : 1, notes));
+    // the plans are keyed by the page's name made plain (lib/anatomy.mjs slug): hill_repeats and HillRepeats find hill-repeats
+    const plain = slug.replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/([A-Z])([A-Z][a-z])/g, '$1-$2').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    goals.push(goal(`request:${slug}`, names.get(slug) ?? slug, 'request', cases.length - open1.length, [...open1, ...path], open, page ? 0 : 1, notes, plans[slug] ?? plans[plain] ?? []));
   }
   for (const st of stages.filter((x) => !x.kind && !indexStages.has(x.id))) {
     const ends = endsOf(st);

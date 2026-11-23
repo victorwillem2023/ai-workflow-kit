@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { markPushed, stoppedLines } from '../../workflow/tools/lib/stopped.mjs';
+import { markPushed, staleCards, stoppedLines } from '../../workflow/tools/lib/stopped.mjs';
 
 const now = Date.parse('2026-11-22T10:00:00Z');
 const note = { at: '2026-11-20T23:04:29Z', text: 'Shipped #543; next: pick with /work' };
@@ -33,5 +33,16 @@ describe('the stopping note', () => {
       assert.equal(markPushed(file, new Date('2026-11-21T08:00:00Z')), true);
       assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { ...note, pushedAt: '2026-11-21T08:00:00.000Z' });
     });
+  });
+});
+
+describe('a note that points at a card done already', () => {
+  it('says so when shown, so the next card comes from the board and not from the note', () => {
+    const n = { at: '2026-11-22T09:00:00Z', text: 'Shipped #607 and #606; next: #590, then #609' };
+    assert.match(stoppedLines(n, { now, done: [607, 606, 590] })[0], /\(careful: #590 is done already, so check what comes next on the board\)$/, 'what was shipped is meant to be done');
+    assert.doesNotMatch(stoppedLines(n, { now, done: [607, 606] })[0], /careful/);
+    assert.doesNotMatch(stoppedLines(n, { now, done: [] })[0], /careful/);
+    assert.deepEqual(staleCards('next: #590', [590, 1]), [590]);
+    assert.deepEqual(staleCards('Shipped #607, next: #590', [607, 590]), [590], 'a comma before what comes next');
   });
 });

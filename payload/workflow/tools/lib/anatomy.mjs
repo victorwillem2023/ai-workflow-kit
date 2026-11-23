@@ -10,7 +10,8 @@
 // Each flow gets a score from these, worst first. Pages (docs/anatomy/<flow>.md) say when a flow was last looked at.
 
 const isTestFile = (f) => /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+$|_test\.(go|py)$|(^|\/)test_[^/]+\.py$/.test(f);
-export const slug = (s) => String(s).toLowerCase().replace(/^area:\s*/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// plain words joined by dashes: "HillRepeats", "hill_repeats" and "Hill repeats" are all hill-repeats
+export const slug = (s) => String(s).replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/([A-Z])([A-Z][a-z])/g, '$1-$2').toLowerCase().replace(/^area:\s*/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /**
  * The flows the project names (`named`, anatomy.flows: { name: [file globs] } or { name: { files: [globs], values: ['summit'],
@@ -145,6 +146,15 @@ export function scoreFlows(flows, kinds, found, pages = []) {
     return { name: fl.name, from: fl.from, files: fl.files.size, fileList: [...fl.files], spread: shared.size, kindChecks: checks, ratchets, rules, alikes, fixes,
       score: shared.size * 3 + checks.length + ratchets.reduce((t, r) => t + r.n, 0) + rules.length * 2 + alikes.length * 2 + fixes.length * 2, page };
   }).sort((a, b) => b.score - a.score || b.files - a.files);
+}
+
+/**
+ * The clean-up plan on a flow page: the card numbers of its "Cards:" line, in their order ([] when it has none). A kind's goal
+ * takes them in first (board --focus), so the reshaping the owner approved is not ranked behind fixes on the old shape.
+ */
+export function planCards(text) {
+  const line = /^\s*(?:[-*]\s*)?\**Cards\**\s*:(.*)$/im.exec(String(text ?? ''))?.[1] ?? '';
+  return [...new Set([...line.matchAll(/#(\d+)/g)].map((m) => Number(m[1])))];
 }
 
 /** The flow pages (`docs/anatomy/<flow>.md`, [{ name, text }]) with the date each was last looked at: [{ slug, lookedAt }]. */

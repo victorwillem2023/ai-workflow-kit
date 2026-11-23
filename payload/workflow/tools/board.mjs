@@ -44,14 +44,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
 import { unlabelCard, adoptCard, closeCard, createCard, dependCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 import { inbox, rankCards, STARTABLE, TO_SORT, TOOL_ISSUES, topTie, waitingCards } from './lib/rank.mjs';
-import { isDone, renderTree } from './lib/cardgraph.mjs';
+import { freshlyUnlocked, isDone, renderTree } from './lib/cardgraph.mjs';
 import { boardView } from './lib/boardview.mjs';
 import { ghRun } from './lib/gh.mjs';
 import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
-import { STOPPED_FILE, stoppedLines } from './lib/stopped.mjs';
+import { STOPPED_FILE, staleCards, stoppedLines } from './lib/stopped.mjs';
 import { codeHotspots, recentFixes, shippedRecords } from './lib/codestate.mjs';
 import { fixStreaks, streakLine } from './lib/hotspots.mjs';
-import { anatomyLine, pageStates } from './lib/anatomy.mjs';
+import { anatomyLine, pageStates, planCards, slug } from './lib/anatomy.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { matchesAny } from './lib/glob.mjs';
 import { calibrate } from './lib/shipped.mjs';
@@ -139,7 +139,7 @@ async function gatherGoals(config, all) {
   if ((sources.includes('requests') || sources.includes('parts')) && existsSync(lib) && existsSync(join(root, 'docs', 'flow', 'map.js'))) {
     try {
       const { loadFlow } = await import(pathToFileURL(join(root, 'workflow', 'tools', 'lib', 'worksheet.mjs')).href);
-      mapped = (await import(pathToFileURL(lib).href)).mapGoals(loadFlow(root), all);
+      mapped = (await import(pathToFileURL(lib).href)).mapGoals(loadFlow(root), all, { plans: anatomyPlans() });
     } catch { /* a map that cannot be read gives no goals; npm run board -- --map says what is wrong with it */ }
   }
   for (const s of sources) {
@@ -215,10 +215,10 @@ function focusNow(board, all, goals) {
   const cards = [...new Set([...now.cards, ...(g?.cards ?? [])])];
   const state = focusState(all, { ...now, cards }, focusOptions(board));
   const say = { sessions: sessionCards() }; // the work in progress by session folder, as --room counts it
-  if (!g) return { state, cards, line: focusLine(state, say), finished: state.finished, extra: [] };
+  if (!g) return { state, cards, plan: [], line: focusLine(state, say), finished: state.finished, extra: [] };
   const stuck = state.finished && g.left > 0;
   const extra = stuck ? [`(nothing of this goal can be started: ${g.uncarded || g.left} thing${(g.uncarded || g.left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}; /tidy focus makes the cards, ${g.notes[0] ?? ''})`] : [];
-  return { state, cards, line: goalLine(g, state, say), finished: state.finished && g.left === 0, extra };
+  return { state, cards, plan: g.plan ?? [], line: goalLine(g, state, say), finished: state.finished && g.left === 0, extra };
 }
 
 /** Picks a goal (by its id or name) or an area's block: the cards named, else the goal's or the block's own. */
@@ -266,11 +266,28 @@ async function todayFor(board, all, ranked) {
   return today(ranked, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], limit: board.wip ?? 2, sessions: sessionCards() });
 }
 
+/** Each flow page's clean-up plan (docs/anatomy/<flow>.md, its "Cards:" line): { <flow slug>: [card numbers in order] }. */
+function anatomyPlans() {
+  const dir = join(root, 'docs', 'anatomy');
+  if (!existsSync(dir)) return {};
+  return Object.fromEntries(readdirSync(dir).filter((f) => f.endsWith('.md') && !/^readme\.md$/i.test(f))
+    .map((f) => [slug(f.replace(/\.md$/, '')), planCards(readFileSync(join(dir, f), 'utf8'))]).filter(([, cards]) => cards.length));
+}
+
+/**
+ * For --next: the cards a card finished in the last days lets start (lib/cardgraph.mjs freshlyUnlocked), first, so a planned
+ * card is not lost when its turn comes, even one that still waits for the owner's yes (to sort).
+ */
+function unlockedLines(all) {
+  const shippedAt = Object.fromEntries(shippedRecords(root).flatMap((r) => r.cards.map((n) => [n, r.at])));
+  return freshlyUnlocked(all, { startable: STARTABLE, shippedAt }).map(({ card, by }) => `unlocked: #${by.join(', #')} ${by.length === 1 ? 'is' : 'are'} done, so #${card.number} ${card.title} can start${card.labels.includes(TO_SORT) ? ` (it waits for your yes first: npm run board -- --accept ${card.number})` : ''}`);
+}
+
 /** The stopping note (board --stopped "<text>") and, asked of git now, the finished features not pushed (lib/stopped.mjs). */
-function stoppedLine() {
+function stoppedLine(all = []) {
   let ahead = 0;
   try { ahead = Number(execFileSync('git', ['rev-list', '--count', `${ORIGIN_MAIN}..${MAIN}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim()) || 0; } catch { /* no origin: nothing to say */ }
-  return stoppedLines(readJson(commonFile(STOPPED_FILE)), { ahead });
+  return stoppedLines(readJson(commonFile(STOPPED_FILE)), { ahead, done: all.filter(isDone).map((c) => c.number) });
 }
 
 /**
@@ -303,7 +320,7 @@ async function withinFocus(config, all, ranked) {
   const board = config.board;
   const was = whereYouWere(all);
   const room = roomToStart(all, board.wip ?? 2, sessionCards());
-  const before = [...stoppedLine(), ...(was ? [`you were on: ${was}`] : []), ...stepBack(config, all),
+  const before = [...stoppedLine(all), ...unlockedLines(all), ...(was ? [`you were on: ${was}`] : []), ...stepBack(config, all),
     ...(room.room ? [] : [`STOP: ${room.count} pieces of work are in progress and the limit is ${room.limit}: finish or park one before starting another (park: npm run board -- --move <n> "Ready")`])];
   const waiting = toSort(all, TO_SORT).length;
   const sort = waiting ? [`(${waiting} card${waiting === 1 ? '' : 's'} made along the way wait${waiting === 1 ? 's' : ''} for your yes before ${waiting === 1 ? 'it is' : 'they are'} offered: npm run board -- --unsorted)`] : [];
@@ -322,7 +339,10 @@ async function withinFocus(config, all, ranked) {
   const after = [...f.extra,
     ...(urgent.length ? [`(outside the focus but urgent: ${urgent.map((c) => `#${c.number} ${c.title}`).join('; ')}: a bug of high value)`] : []),
     ...(outside ? [`(${outside} other card${outside === 1 ? '' : 's'} can be started but wait${outside === 1 ? 's' : ''} for a later goal)`] : []), ...sort, ...due, ...anatomyNote(config)];
-  return { ranked: ranked.filter((c) => mine.has(c.number)), before: [...before, f.line], after, line: f.line };
+  // the goal's clean-up plan first, in its order (its flow page's "Cards:" line): the reshaping before fixes on the old shape
+  const planAt = (c) => { const i = f.plan.indexOf(c.number); return i < 0 ? Infinity : i; };
+  const kept = ranked.filter((c) => mine.has(c.number));
+  return { ranked: f.plan.length ? [...kept].sort((a, b) => (planAt(a) === planAt(b) ? 0 : planAt(a) < planAt(b) ? -1 : 1)) : kept, before: [...before, f.line], after, line: f.line };
 }
 
 async function main() {
@@ -492,7 +512,10 @@ async function main() {
     const text = String(value('--stopped') ?? '').trim();
     if (!text || text.startsWith('--')) throw new BoardError('--stopped needs one line: where you stopped and what comes next.');
     writeFileSync(commonFile(STOPPED_FILE), JSON.stringify({ at: new Date().toISOString(), text: text.slice(0, 400) }, null, 2) + '\n');
-    console.log('board: kept; the next "what now" starts with it');
+    // a card the note names that is done already: the note likely points at the wrong next card; say so while it is written
+    let stale = [];
+    if (/#\d+/.test(text)) { try { stale = staleCards(text, listCards(board, run).filter(isDone).map((c) => c.number)); } catch { /* no board: kept as it is */ } }
+    console.log(stale.length ? `board: kept, but #${stale.join(', #')} ${stale.length === 1 ? 'is' : 'are'} done already: check the next card (npm run board -- --next 3) and write the note again` : 'board: kept; the next "what now" starts with it');
   } else if (argv.includes('--sweep')) {
     // every open card for a full clean-up (/sweep): the themes with their counts, or one theme's cards, 25 at a time
     const theme = value('--sweep');

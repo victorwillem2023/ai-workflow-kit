@@ -61,13 +61,15 @@ Propose, in this order, each with a title, what it changes, and `Depends on: #<n
 3. **The behaviour cards those refactors unlock**: the fixes that were hard while a job had two homes.
 
 Show the shape, the end state and the plan, then ask (AskUserQuestion): make the cards, change something first, or stop. Only
-on yes: each card with `npm run board -- --add "<title>" --label <type> --body-file <file> --unsorted` (refactors in the code
-health area when the board has it), and the dependencies with `npm run board -- --depends <n> <m>`.
+on yes: each card with `npm run board -- --add "<title>" --label <type> --body-file <file>` (the owner just said yes, so never
+`--unsorted`; refactors in the code health area when the board has it), and the dependencies with
+`npm run board -- --depends <n> <m>`, so the order lives on the board, never only in a chat or a memory.
 
 ## 5. Write the page
 
 `docs/anatomy/<flow>.md` (the shape: `docs/anatomy/README.md`): the jobs in order, each one's home today and in the end state,
-the marks, the end state and the cards, with today's date on "Looked at". Add its row to `docs/ARCHITECTURE.md`, *Flows and
+the marks, the end state and the cards in their order on its "Cards:" line (a goal on this kind takes them in first, so the
+reshaping is offered before fixes on the old shape), with today's date on "Looked at". Add its row to `docs/ARCHITECTURE.md`, *Flows and
 their jobs*. The page is the owner's doc; commit it with `node workflow/scripts/session.mjs --commit-notes "Anatomy: <flow>"`
 when the owner says so. From then on `/spec` names the job a card changes from it, `/review` checks each job against it, and
 the next round of `/anatomy <flow>` starts from it and says what moved.

@@ -1,7 +1,7 @@
 // Which cards need which (lib/cardgraph.mjs) and the order it gives (lib/rank.mjs): the graph first, then value for the effort.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDepends, cardGraph, dependsOn, removeDepends, renderTree } from '../../workflow/tools/lib/cardgraph.mjs';
+import { addDepends, cardGraph, dependsOn, freshlyUnlocked, removeDepends, renderTree } from '../../workflow/tools/lib/cardgraph.mjs';
 import { rankCards, topTie, waitingCards } from '../../workflow/tools/lib/rank.mjs';
 
 const card = (number: number, title: string, deps = '', labels: string[] = [], column = 'Backlog', state = 'open') =>
@@ -94,5 +94,34 @@ describe('the card graph', () => {
     assert.deepEqual(topTie(rankCards(rated)), [], 'one value label and #14 stands alone at the top');
     assert.equal(rankCards(rated)[0].number, 14);
     assert.deepEqual(topTie(rankCards(board)).map((c) => c.number), [1, 5], 'two cards that unlock as much, with the same labels, are a tie too');
+  });
+});
+
+describe('what a card says it waits for, and what finishing one lets start', () => {
+  it('counts a dependency line only with its colon: a sentence that starts with "Needs" is not one', () => {
+    assert.deepEqual(dependsOn('Needs its own spec (behaviour change). Kinds: later a ride up a top (#380).'), []);
+    assert.deepEqual(dependsOn('After the trip work, #12 can go.'), []);
+    assert.deepEqual(dependsOn('Needs: #4\n**Depends on:** #5\n**After**: #6\n- Blocked by: #7'), [4, 5, 6, 7]);
+    assert.deepEqual(dependsOn('Depends on #8, #9'), [8, 9], 'written by hand without the colon, the number right after');
+    assert.match(addDepends('Depends on #8', [10]), /Depends on: #8, #10/, '--depends keeps what was there');
+  });
+  it('names the cards a card finished in the last days lets start, also one still waiting for the owner\'s yes', () => {
+    const now = Date.parse('2026-11-23T20:00:00Z');
+    const cards = [
+      { number: 607, title: 'measure', state: 'closed', labels: [], column: 'Done', body: '', closedAt: '2026-11-23T18:00:00Z' },
+      { number: 3, title: 'done weeks ago, commented today', state: 'open', labels: [], column: 'Done', body: '', updatedAt: '2026-11-23T19:00:00Z' },
+      { number: 4, title: 'waits for 3', state: 'open', labels: [], column: 'Backlog', body: 'Depends on: #3' },
+      { number: 5, title: 'shipped today, still open', state: 'open', labels: [], column: 'Done', body: '' },
+      { number: 6, title: 'waits for 5', state: 'open', labels: [], column: 'Ready', body: 'Depends on: #5' },
+      { number: 609, title: 'climb module', state: 'open', labels: ['to sort'], column: 'Backlog', body: 'Depends on: #607' },
+      { number: 610, title: 'end state', state: 'open', labels: [], column: 'Backlog', body: 'Depends on: #609' },
+      { number: 611, title: 'started already', state: 'open', labels: [], column: 'In progress', body: 'Depends on: #607' },
+      { number: 612, title: 'built, waiting for a check', state: 'open', labels: [], column: 'Waiting for your check', body: 'Depends on: #607' },
+      { number: 613, title: 'blocked', state: 'open', labels: [], column: 'Blocked', body: 'Depends on: #607' },
+      { number: 614, title: 'off the board', state: 'open', labels: [], column: null, body: 'Depends on: #607' },
+      { number: 1, title: 'old', state: 'closed', labels: [], column: 'Done', body: '', closedAt: '2026-10-01T00:00:00Z' },
+      { number: 2, title: 'freed long ago', state: 'open', labels: [], column: 'Backlog', body: 'Depends on: #1' },
+    ];
+    assert.deepEqual(freshlyUnlocked(cards, { now, shippedAt: { 5: '2026-11-23T17:00:00Z' } }).map((u) => [u.card.number, u.by]), [[6, [5]], [609, [607]]]);
   });
 });

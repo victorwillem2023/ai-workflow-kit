@@ -2,7 +2,7 @@
 // flow brings into code it does not own, rules written twice, functions that are close but not the same, and when /next says so.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { anatomyLine, codeKinds, comparisons, fixesPerFlow, flagsOf, namedFlows, pageStates, scoreFlows } from '../../workflow/tools/lib/anatomy.mjs';
+import { anatomyLine, codeKinds, comparisons, fixesPerFlow, flagsOf, namedFlows, pageStates, planCards, scoreFlows } from '../../workflow/tools/lib/anatomy.mjs';
 import { lookAlikes, repeatedRules } from '../../workflow/tools/lib/likeness.mjs';
 import { matchesAny } from '../../workflow/tools/lib/glob.mjs';
 
@@ -37,6 +37,10 @@ describe('the shape of the code', () => {
     const flows = namedFlows([...files.keys()], { named: { 'to-a-top': { files: ['src/climb/**'] } }, match: matchesAny,
       kinds: { 'to-a-top': ['plan'], 'hill-repeats': ['plan'] }, partFiles: { plan: ['src/plan/select.ts'] } });
     assert.deepEqual(flows.map((f) => `${f.name} (${f.from})`), ['to-a-top (config)', 'hill-repeats (map)']);
+  });
+  it('reads a flow page\'s clean-up plan from its "Cards:" line, in order', () => {
+    assert.deepEqual(planCards('# A hike to a top\n\n| Job | Home |\n\nCards: #607 -> #609 -> #610 -> #577\n'), [607, 609, 610, 577]);
+    assert.deepEqual(planCards('**Cards**: none'), []);
   });
   it('finds a rule written twice: one name in two files, one list of numbers under two names', () => {
     const rules = repeatedRules(files);

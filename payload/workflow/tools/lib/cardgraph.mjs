@@ -1,8 +1,10 @@
 // Which cards need which (no I/O here): a card's text says what must be done before it, one line `Depends on: #1, #3` (also
-// "After:", "Needs:", "Blocked by:"). From those lines: what each open card still waits for, how many open cards each one
+// "After:", "Needs:", "Blocked by:", the colon always: "Needs its own spec (#380 later)" is a sentence, not a dependency). From those lines: what each open card still waits for, how many open cards each one
 // unlocks (directly or further down), and the loops, so the order of work follows the graph before it follows value.
 
-const LINE = /^\s*(?:[-*]\s*)?\**(?:depends on|after|needs|blocked by)\**\s*:?\s*(.+)$/gim;
+// the colon outside or inside the bold ("Depends on: #1", "**Depends on**: #1", "**Depends on:** #1"), or the card number right
+// after the words ("Depends on #1"); never a sentence that only starts with them ("Needs its own spec ... (#380)")
+const LINE = /^\s*(?:[-*]\s*)?\**(?:depends on|after|needs|blocked by)(?:\**\s*:|\s*:\s*\**|\**\s+(?=#\d))\s*(.+)$/gim;
 
 /** The card numbers a card's text says it depends on. */
 export function dependsOn(body) {
@@ -96,4 +98,26 @@ function findLoops(waitsFor) {
   };
   for (const n of waitsFor.keys()) visit(n, []);
   return loops;
+}
+
+/**
+ * The open cards a card finished in the last `days` (3) let start: every card they wait for is done now, and one of those
+ * was done that recently. [{ card, by: [numbers] }], in number order. Only cards in a column work starts from (`startable`:
+ * not one in progress, built and waiting for a check, blocked or off the board); a card waiting for the owner's yes is kept:
+ * a planned card that was sorted aside must not drop out of view when its turn comes.
+ */
+export function freshlyUnlocked(cards, { days = 3, now = Date.now(), startable = ['Backlog', 'Ready'], shippedAt = {} } = {}) {
+  const byNo = new Map(cards.map((c) => [c.number, c]));
+  // when it was done: closed on GitHub, else shipped (the kit's record: --finish moves a card to Done and nothing closes it);
+  // never its last edit, or a comment on a card done weeks ago would unlock its followers again
+  const doneAt = (c) => Date.parse(c.closedAt ?? shippedAt[c.number] ?? '') || 0;
+  const out = [];
+  for (const c of cards) {
+    if (isDone(c) || !startable.includes(c.column)) continue;
+    const ds = dependsOn(c.body).map((n) => byNo.get(n)).filter(Boolean);
+    if (!ds.length || !ds.every(isDone)) continue;
+    const by = ds.filter((d) => now - doneAt(d) <= days * 86_400_000).map((d) => d.number);
+    if (by.length) out.push({ card: c, by });
+  }
+  return out.sort((a, b) => a.card.number - b.card.number);
 }

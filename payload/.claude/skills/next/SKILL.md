@@ -39,6 +39,10 @@ then stop.
      side by side today: ... (/work 561 131 383)"), with its `after:` line; one card at a time is one of the other choices.
    - **`where you stopped:`**: the line the last session left. Say it first; a fact in it git can tell (pushed, committed, a
      folder or branch) is checked with git first, and git wins.
+   - **`unlocked:`**: a card just finished lets another start. Say it first, in one line ("#607 is done, so the refactor #609
+     can start"); when that card waits for the owner's yes, letting it in is part of the step (`--accept <n>`).
+   - **`where you stopped`** with *careful: ... done already*: the note points at a card that is done; take the next card from
+     the board, not from the note.
    - **`step back:`**: one area had a run of fixes in a few days, spread too thin for any file to stand out. The recommended
      next step, before its next fix: "<Area> had <n> fixes this week: stop patching it, look at how it is built and plan the
      clean version, about an hour; you get the clean-up as cards for your yes (/anatomy <flow>)". Its cards' `/spec` drafts two
