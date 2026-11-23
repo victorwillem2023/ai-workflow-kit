@@ -57,12 +57,12 @@
     "payload/workflow/guides/SENSITIVE.md": 5381,
     "payload/workflow/guides/TAKEOVER.md": 4448,
     "payload/workflow/guides/TEAM.md": 4140,
-    "payload/workflow/guides/TESTING.md": 9639,
+    "payload/workflow/guides/TESTING.md": 10335,
     "payload/workflow/guides/TOKENS.md": 6792,
     "payload/workflow/guides/TOOLS.md": 10725,
     "payload/workflow/guides/WORKFLOW.md": 15345,
-    "payload/workflow/tools/README.md": 69995,
-    "starter/CLAUDE.md": 13981,
+    "payload/workflow/tools/README.md": 71959,
+    "starter/CLAUDE.md": 14553,
     "starter/src/core/CLAUDE.md": 625
   },
   "reasons": {
@@ -76,9 +76,10 @@
     "payload/.claude/skills/spec/SKILL.md": "4.13.0: the flow and the job, and two designs by shape in every phase",
     "payload/.claude/skills/work/SKILL.md": "4.10.0: with Orca the build's new chat is opened for the owner (--start)",
     "payload/workflow/guides/ORCHESTRATOR.md": "4.12.0: the /next answer opening its chat in Orca",
+    "payload/workflow/guides/TESTING.md": "4.16.0: measuring before and after with npm run measure",
     "payload/workflow/guides/TOKENS.md": "4.8.0: two lines on comparing what a command and a card cost across kit versions (npm run cost -- --by-kit)",
     "payload/workflow/guides/WORKFLOW.md": "4.14.0: the /anatomy row",
-    "payload/workflow/tools/README.md": "4.10.0: the session script's orchestrator commands, one line pointing to the guide",
-    "starter/CLAUDE.md": "4.9.2: 4.9.2: settle what a test or a run can answer before asking, with the step ready; the report says only what needs the owner; test:one; the size rule's plumbing and allowance"
+    "payload/workflow/tools/README.md": "4.16.0: the npm run measure row",
+    "starter/CLAUDE.md": "4.16.0: whose a proposed script is: the project's own or a kit card"
   }
 }

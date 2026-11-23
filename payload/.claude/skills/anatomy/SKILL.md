@@ -53,8 +53,9 @@ one place (rule 13). Name what has to move or be split first, and what it costs.
 
 Propose, in this order, each with a title, what it changes, and `Depends on: #<n>` where it needs another:
 
-1. **A before-and-after check first**, when the flow has none: a script or test that runs the flow's real cases and records
-   their results (a `measure:<flow>` script), so each refactor can show it changed nothing.
+1. **A before-and-after check first**, when the flow has none: a script that runs the flow's real cases and records their
+   results (the project's own `measure:<flow>`, writing `results.json`), so `npm run measure -- --compare` shows each refactor
+   moved nothing.
 2. **Refactor cards**, in dependency order: each moves code toward its home with no change to what anyone sees (same routes,
    same results, the same tests passing before and after; root `CLAUDE.md` rule 6).
 3. **The behaviour cards those refactors unlock**: the fixes that were hard while a job had two homes.

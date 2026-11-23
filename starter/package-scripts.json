@@ -11,6 +11,7 @@
   "harness": "node workflow/tools/harness.mjs",
   "health": "node workflow/tools/health.mjs",
   "anatomy": "node workflow/tools/anatomy.mjs",
+  "measure": "node workflow/tools/measure.mjs",
   "protect": "node workflow/tools/protect.mjs",
   "updates": "node workflow/tools/updates.mjs",
   "secops": "node workflow/tools/secops.mjs",

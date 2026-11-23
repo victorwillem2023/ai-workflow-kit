@@ -102,6 +102,14 @@ at once share the computer's cores, so a busy machine does not turn a slow wait 
 The whole suite has a time budget (`testSeconds` in `workflow/config.json`); the gate says when it is passed. A slow suite
 is run less, so it protects less. Keep rule tests free of I/O, start the database once per run, and keep browser tests few.
 
+## Measuring before and after
+Some questions no test answers: did this change move the routes, the prices, the matches the real data gives? A project
+measures them with a script of its own (its real cases, its real services), run by hand before and after a change, never by
+`npm test` or the gate. It writes `results.json`: cases, each with named values and the options it gives (the shape:
+`workflow/tools/lib/measure.mjs`). `npm run measure -- --compare <before> <after>` (or `--last <folder>`) lists only what moved:
+a value past its tolerance, an option gained or lost, a `true` that became `false` first. A refactor proves it changed nothing
+with `--same`, which fails when anything moved.
+
 ## What the gate checks, and what it does not
 - **Checked**: the tests a change can reach pass; a source file no test reaches fails (where the gate can follow imports);
   two copies of one test fail; a changed input reader with no refusal test gets an advice line.

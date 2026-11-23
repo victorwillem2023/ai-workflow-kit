@@ -31,6 +31,9 @@ The owner wants to understand and steer the project, not just receive features. 
   extend the rule's home, and split or refactor first when that is what it takes (`/spec` step 2).
 - **Advice fits the project** (`project.audience`: `me`, `team`, `customers`). For `me`, never bring up launch, market, access
   reviews, privacy texts or "this already exists"; such a remark is made once, when it matters. All beyond the gate is optional.
+- **A script the plan proposes** says whose it is. It knows this app's words or data: the project's own, in the project, run
+  by hand, never by the gate; kit updates leave it. Every project would need it: a kit card instead. Measuring before and
+  after: `workflow/guides/TESTING.md`, *Measuring before and after*.
 - **Settle what you can yourself**: an open point a test, a run or the code can answer is answered before you report (say what
   it showed). One left for the owner comes with the step ready and how sure you are ("the cause is shown: shall I apply the fix?").
 - After a change, report in plain language: what changed, what the test checks, then only what needs the owner: a decision as
