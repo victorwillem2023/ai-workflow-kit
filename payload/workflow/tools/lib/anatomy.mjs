@@ -88,14 +88,17 @@ const WORDS = /(?:\.|\?\.)([A-Za-z_$][\w$]{3,})\b(?!\s*\()/g;
  * has spread into code it does not own. A script cannot tell a flag from any other word, so the project names them.
  */
 export function flagsOf(flow, files) {
-  const flags = new Set(flow.flags ?? []);
+  const flags = new Set((flow.flags ?? []).filter((f) => !f.includes('.')));
+  // a dotted flag (`run.climb`) is matched as written, so `climb` on another object is not counted
+  const dotted = (flow.flags ?? []).filter((f) => f.includes('.')).map((f) => [f, new RegExp(`\\b${f.replace(/[.$]/g, (c) => `\\${c}`).replace(/\\\./g, '\\??\\.')}\\b(?!\\s*\\()`)]);
   const out = [];
-  if (!flags.size) return out;
+  if (!flags.size && !dotted.length) return out;
   for (const [f, text] of files) {
     if (flow.files.has(f) || isTestFile(f)) continue;
     text.split('\n').forEach((l, i) => {
       if (!COND.test(l)) return;
       for (const w of new Set([...l.matchAll(WORDS)].map((m) => m[1]))) if (flags.has(w)) out.push({ file: f, line: i + 1, field: w, value: 'flag' });
+      for (const [name, re] of dotted) if (re.test(l)) out.push({ file: f, line: i + 1, field: name, value: 'flag' });
     });
   }
   return out;
@@ -104,8 +107,9 @@ export function flagsOf(flow, files) {
 /** For a flow: the kind checks in shared steps (a kind from the code), or the flags it brings into them (`flags`: flagsOf()). */
 export function checksOf(flow, kinds, flags = []) {
   if (flow.checks) return flow.checks.filter((c) => c.shared);
-  // its values asked about in shared steps, its flags anywhere else, and in its own files the other kinds they ask about
-  return [...kinds.flatMap((k) => k.checks).filter((c) => c.shared && (flow.values?.includes(c.value) || (!flow.values?.length && flow.files.has(c.file)))), ...flags];
+  // its values asked about in shared steps and its flags anywhere else; never the other kinds its files happen to ask about
+  // (a blind round on a real flow found those were noise: a pipeline's files ask about every kind it serves)
+  return [...kinds.flatMap((k) => k.checks).filter((c) => c.shared && flow.values?.includes(c.value)), ...flags];
 }
 
 /**
@@ -174,8 +178,9 @@ function byWord(checks) {
 export function flowDetail(r) {
   const at = (p) => `${p.file}:${p.line}`;
   return [`${r.name} (${r.from}), ${r.files} files, score ${r.score}`,
-    `its files (${r.files}): ${r.fileList.slice(0, 30).join(', ') || 'none'}`,
+    `its files (${r.files}${r.files > 30 ? ', the first 30' : ''}): ${r.fileList.slice(0, 30).join(', ') || 'none'}`,
     `kind checks in shared steps (${r.kindChecks.length}):`, ...byWord(r.kindChecks),
+    ...(r.from !== 'code' && !r.kindChecks.length ? ['  (none counted: name its flags in anatomy.flows, and every shared step that branches on them is counted)'] : []),
     ...r.ratchets.map((x) => `  ${x.file}: ${x.n} of the ratchet "${x.name}"`),
     `repeated rules (${r.rules.length}):`, ...r.rules.slice(0, 20).map((x) => `  ${x.what}: ${x.value} at ${x.places.map((p) => `${at(p)}${p.name ? ` (${p.name})` : ''}`).join(', ')}`),
     `look-alike functions (${r.alikes.length}):`, ...r.alikes.slice(0, 20).map((x) => `  ${x.a.file}:${x.a.line} ${x.a.name} ~ ${x.b.file}:${x.b.line} ${x.b.name} (${Math.round(x.alike * 100)}% alike)`),

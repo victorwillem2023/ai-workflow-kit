@@ -29,6 +29,9 @@ describe('the shape of the code', () => {
   it('counts the flags a flow names wherever code it does not own branches on them', () => {
     const [climb] = namedFlows([...files.keys()], { named: { climb: { files: ['src/climb/**'], flags: ['wayUp'] } }, match: matchesAny });
     assert.deepEqual(flagsOf(climb, files).map((c) => `${c.file}:${c.line}`), ['src/plan/select.ts:4'], 'its own summit.ts is not counted');
+    const dotted = { ...climb, flags: ['run.wayUp'] };
+    const more = new Map([...files, ['src/plan/other.ts', 'if (trip.wayUp) a();\nif (run?.wayUp) b();\n']]);
+    assert.deepEqual(flagsOf(dotted, more).map((c) => `${c.file}:${c.line}`), ['src/plan/select.ts:4', 'src/plan/other.ts:2'], 'run.wayUp, not trip.wayUp');
   });
   it('finds a rule written twice: one name in two files, one list of numbers under two names', () => {
     const rules = repeatedRules(files);
