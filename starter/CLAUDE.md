@@ -154,7 +154,7 @@ style rules, the feedback rounds and the done checklist.
 ## Git and sessions
 - `main` on <remote url>. For live runs use the owner's server at `http://127.0.0.1:<main port>`.
 - No session notes in the repo (no PROGRESS.md or NEXT-SESSION.md): keep this file current.
-- **One session, one folder, one branch, one port**: `node workflow/scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>`;
+- **One session, one folder, one branch, one port**: `node workflow/scripts/session.mjs <topic> --card <n>` makes `../{{PREFIX}}-<topic>` (with an orchestrator: the folder it prints);
   work only there and say the folder and URL in your first reply (the rest: *Commits and sessions*).
 - **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted files
   in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.

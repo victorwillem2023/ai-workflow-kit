@@ -81,6 +81,7 @@
   "commits": { "notes": "own" },
   "session": {
     "prefix": "{{PREFIX}}",
+    "orchestrator": "none",
     "firstPort": 8788,
     "mainPort": 8787,
     "flow": "direct",

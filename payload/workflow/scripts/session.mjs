@@ -6,6 +6,9 @@
 //                                               (--card 12,14: cards that belong together, built and committed as one);
 //                                               --on <other topic>: start from that session's branch instead (its card is built and waits for
 //                                               the owner's check); finishing the other one moves this one onto main by itself
+//                                               --start "<prompt>": with an orchestrator, the agent starts in a terminal of its own in the new folder
+//                                               (the Claude CLI with that prompt, like --start "/build hill-repeats"); without one the line to type is printed
+//   node workflow/scripts/session.mjs --adopt | --release | --connect orca   sessions in folders an orchestrator makes: workflow/scripts/session-adopt.mjs
 //   node workflow/scripts/session.mjs --restack <topic>  move a session that was built on another one onto main, once that one is finished (what
 //                                               --finish does by itself; by hand after uncommitted work or a conflict was in the way)
 //   node workflow/scripts/session.mjs --finish <topic> [--subject "<s>"] [--body "<b>"] [--no-checks] [--keep-commits] [--partial "<what is left>"]
@@ -45,16 +48,16 @@
 // WORKFLOW_GH (tests): a node script that stands in for the gh command.
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
 import '../tools/lib/frommain.mjs'; // a session folder with an older kit than the main folder's: the main folder's copy runs instead (lib/frommain.mjs)
-import { appendFileSync, existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs';
-import { git, gitQuiet, here, main, PREFIX, folderOf, FIRST_PORT, MAIN_PORT, SESSION_ENV, FLOW, usedPorts, free, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, warmTypecheck, finishChecks, bringSpec, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
+import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs'; import { adopt, release, connect, prepare, orcaCreate, orcaNote, orcaCards, startAgent, sessionNote } from './session-adopt.mjs';
+import { git, gitQuiet, here, main, PREFIX, folderOf, sameDir, MAIN_PORT, FLOW, usedPorts, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
 import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession, handover } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs'; import { markPushed, STOPPED_FILE } from '../tools/lib/stopped.mjs';
 
-async function make(topic, card, on) {
+async function make(topic, card, on, start) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
   if (card !== undefined && !/^[1-9][0-9]*(,[1-9][0-9]*)*$/.test(card)) throw new Error('--card takes the number of a board card, like --card 42 (or --card 12,14 for cards built as one).');
-  const dir = folderOf(topic);
+  let dir = folderOf(topic);
   if (existsSync(dir)) throw new Error(`${dir} exists already.`);
   let from = MAIN;
   if (on !== undefined) {
@@ -75,21 +78,13 @@ async function make(topic, card, on) {
     else from = on;
   }
   catchUp(mainState(false));
-  const taken = usedPorts();
-  let port = FIRST_PORT;
-  while (taken.has(port) || !(await free(port))) port++;
   ensurePackages('before the new session');
-  git(main, 'worktree', 'add', '-b', topic, dir, from);
+  // with an orchestrator the folder is its own (its place, its terminal, its sidebar); when it cannot, or there is none, the kit's
+  const theirs = orcaCreate(topic, from);
+  if (theirs) dir = theirs;
+  else git(main, 'worktree', 'add', '-b', topic, dir, from);
   if (from !== MAIN) git(main, 'config', `branch.${topic}.kitOn`, from);
-  symlinkSync(join(main, 'node_modules'), join(dir, 'node_modules'), 'junction');
-  warmTypecheck(dir);
-  bringSpec(dir, topic);
-  const env = join(dir, '.env');
-  // the copy keeps the keys but not main's own PORT or the session.env names: a second line would be ambiguous
-  const own = new RegExp(`^\\s*(${['PORT', ...Object.keys(SESSION_ENV)].join('|')})\\s*=`);
-  if (existsSync(join(main, '.env'))) writeFileSync(env, readFileSync(join(main, '.env'), 'utf8').split(/\r?\n/).filter((l) => !own.test(l)).join('\n'));
-  const extra = Object.entries(SESSION_ENV).map(([k, v]) => `${k}=${String(v).split('{main}').join(main)}`).join('\n');
-  appendFileSync(env, `\n# set by workflow/scripts/session.mjs for this session\nPORT=${port}\n${extra}${extra ? '\n' : ''}`);
+  const port = await prepare(dir, topic);
   if (card !== undefined) {
     git(main, 'config', `branch.${topic}.card`, card);
     await moveAndSay(card, 'In progress', `Session "${topic}" started: folder ${dir}`);
@@ -97,6 +92,9 @@ async function make(topic, card, on) {
   const stacked = from !== MAIN ? `\n  on:     ${from} (built on top of it; when "${from}" is finished this one moves onto main by itself)` : '';
   // no link here: whether there is anything to open depends on the change (a screen, or rules with nothing to see yet)
   console.log(`Session "${topic}" is ready.\n  folder: ${dir}\n  branch: ${topic}${stacked}\n  port:   ${port} (only for a change with a screen: node workflow/scripts/session.mjs --serve ${topic} starts it)`);
+  orcaNote(dir, 'in-progress', sessionNote(card, port));
+  orcaCards(dir, card);
+  if (start) startAgent(dir, topic, start);
 }
 
 function remove(topic) {
@@ -222,6 +220,7 @@ async function openPullRequest(topic, dir, card, subject, o) {
   const url = seen.status === 0 && seen.stdout.trim() ? seen.stdout.trim() : gh('pr', 'create', '--base', MAIN, '--head', topic, '--fill');
   if (card && o.partial !== undefined) await sayPartial(card, `Pull request: ${url} (${subject}). Still open: ${o.partial.trim()}`);
   else if (card) await moveAndSay(card, 'Waiting for your check', `Pull request: ${url} (${subject})`);
+  orcaNote(dir, 'in-review', `pull request: ${url}`);
   console.log(`Pull request: ${url}\nGitHub runs the checks on it; the session folder stays for fixes (finish again to update it).\nWhen the checks are green and the owner says so: node workflow/scripts/session.mjs --merge ${topic}`);
 }
 
@@ -296,8 +295,6 @@ function push(o) {
 function notePushed() {
   try { markPushed(join(resolve(main, git(main, 'rev-parse', '--git-common-dir')), STOPPED_FILE)); } catch { /* a note is never a reason to fail a push */ }
 }
-
-const sameDir = (x, y) => resolve(x).toLowerCase() === resolve(y).toLowerCase();
 
 /**
  * What a session's folder holds: 'uncommitted' (loose files), 'merged' (its branch is on main, the very thing --remove accepts)
@@ -382,7 +379,10 @@ try {
   else if (a === '--sync') sync();
   else if (a === '--commit-notes') commitNotes(textOf('--commit-notes'));
   else if (a === '--carry-notes' && b) carryNotes(b);
-  else if (a === '--serve' && b) await serve(b, { lan: has('--lan'), copyData: has('--copy-data') });
+  else if (a === '--adopt') await adopt(valueOf('--card'));
+  else if (a === '--release') release();
+  else if (a === '--connect') connect(b);
+  else if (a === '--serve' && b) await serve(b, { lan: has('--lan'), copyData: has('--copy-data'), phone: has('--phone') });
   else if (a === '--catch-up' && b) catchUpSession(b);
   else if (a === '--handover' && b) await handover(b);
   else if (a === '--push') push({ noChecks: has('--no-checks') });
@@ -391,8 +391,8 @@ try {
   else if (a === '--drop' && b) drop(b);
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
-  else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'), textOf('--start'));
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] [--start "<prompt>"] | --adopt [--card <n>] | --release | --connect orca | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] [--phone] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

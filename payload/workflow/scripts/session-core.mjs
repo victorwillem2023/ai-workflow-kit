@@ -28,7 +28,18 @@ export const sessionCfg = (() => {
 
 export const PREFIX = sessionCfg.prefix ?? basename(main);
 
-export const folderOf = (topic) => join(dirname(main), `${PREFIX}-${topic}`);
+export const sameDir = (x, y) => resolve(x).toLowerCase() === resolve(y).toLowerCase();
+
+/** The worktrees git lists, the main folder first: { dir, branch } (the porcelain form, one field per line: a path with a space stays whole). */
+export const worktrees = () => git(main, 'worktree', 'list', '--porcelain').split(/\r?\n\r?\n/).filter((b) => b.trim()).map((block) => ({
+  dir: /^worktree (.+)$/m.exec(block)?.[1]?.trim(), branch: /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim(),
+}));
+
+/**
+ * A session's folder: where git has its branch checked out, wherever that is (an orchestrator keeps its worktrees in a folder of
+ * its own), else the place the kit makes one: ../<prefix>-<topic>, next to the main folder.
+ */
+export const folderOf = (topic) => worktrees().find((w) => w.branch === topic && !sameDir(w.dir, main))?.dir ?? join(dirname(main), `${PREFIX}-${topic}`);
 
 export const FIRST_PORT = sessionCfg.firstPort ?? 8788;
 

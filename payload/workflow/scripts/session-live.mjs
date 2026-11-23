@@ -6,12 +6,12 @@ import { cpSync, existsSync, readFileSync, rmSync, statSync, writeFileSync } fro
 import { networkInterfaces, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { startHidden } from '../tools/lib/hidden.mjs';
-import { dataCopyOf, pidFileOf } from './session-stop.mjs'; import { MAIN } from '../tools/lib/branch.mjs';
+import { dataCopyOf, pidFileOf } from './session-stop.mjs'; import { orcaNote, orcaOpen } from './session-adopt.mjs'; import { MAIN } from '../tools/lib/branch.mjs';
 import { CHECKPOINT, FIRST_PORT, PREFIX, cardOf, moveAndSay, catchUp, conflictsIn, ensurePackages, folderEnv, folderOf, git, gitQuiet, keepBoth, looseFiles, looseWork, main, mainState, mapPages, mapScript, npmRun, sessionCfg, splitConflicts, stopServer } from './session-core.mjs';
 
 // "serve" under "session" in workflow/config.json: `lan` is what makes the app listen on every address (its own setting names),
 // `data` the setting that names the data folder and where the real one is (from the main folder).
-const SERVE = { lan: sessionCfg.serve?.lan ?? { HOST: '0.0.0.0' }, data: { env: 'DATA_DIR', from: 'data', ...(sessionCfg.serve?.data ?? {}) } };
+const SERVE = { device: sessionCfg.serve?.device ?? 'iPhone 12', lan: sessionCfg.serve?.lan ?? { HOST: '0.0.0.0' }, data: { env: 'DATA_DIR', from: 'data', ...(sessionCfg.serve?.data ?? {}) } };
 
 /** This computer's address on the local network (the first private IPv4 one), or undefined. */
 function lanAddress() {
@@ -44,7 +44,7 @@ function copyData(dir) {
  * a PORT or data folder left set in the shell. `lan`: it listens on every address, for a phone on the same Wi-Fi. `copyData`: it
  * runs on a copy of the real data. Neither is written into the folder: both end when the server is stopped.
  */
-export async function serve(topic, { lan = false, copyData: withCopy = false } = {}) {
+export async function serve(topic, { lan = false, copyData: withCopy = false, phone = false } = {}) {
   const dir = folderOf(topic);
   if (!existsSync(dir)) throw new Error(`${dir} is not there.`);
   const env = join(dir, '.env');
@@ -61,7 +61,7 @@ export async function serve(topic, { lan = false, copyData: withCopy = false } =
   const special = lan || withCopy;
   // asked to run another way than a server that is up may run: that one is stopped first
   if (special) stopServer(dir);
-  else if (await answers() && await stillAnswers()) { console.log(`The dev server runs already: ${url}\n${watch}`); return; }
+  else if (await answers() && await stillAnswers()) { console.log([`The dev server runs already: ${url}`, ...(phone ? [orcaOpen(dir, url, SERVE.device)].filter(Boolean) : []), watch].join('\n')); return; }
   ensurePackages('before the dev server starts');
   const scripts = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts ?? {};
   if (!scripts.dev) throw new Error(`${dir} has no "dev" script, so there is nothing to open: a change without a screen is tried with a command (.claude/skills/build/try-it.md).`);
@@ -74,7 +74,7 @@ export async function serve(topic, { lan = false, copyData: withCopy = false } =
   }
   const address = lan ? lanAddress() : undefined;
   if (lan) Object.assign(extra, SERVE.lan);
-  const log = join(tmpdir(), `${PREFIX}-${topic}-dev.log`);
+  const log = join(tmpdir(), `${PREFIX}-${topic.replace(/[^\w.-]/g, '-')}-dev.log`);
   // a shell only on Windows, where npm is a .cmd file; the arguments are fixed, never outside input. Started through
   // lib/hidden.mjs: a plain detached start opened a console window on Windows for the server and for each of its restarts
   const pid = startHidden('npm', ['run', 'dev'], { cwd: dir, log, shell: process.platform === 'win32', env: folderEnv(dir, extra) });
@@ -84,7 +84,9 @@ export async function serve(topic, { lan = false, copyData: withCopy = false } =
     if (await answers()) {
       if (!(await stillAnswers())) throw new Error(`The dev server answered at ${url} and then stopped. Its last lines (${log}):\n${lastLines()}`);
       if (lan) said.push(await lanLines(address, port, answersAt));
-      console.log([`The dev server runs: ${url} (--finish stops it)`, ...said, watch].join('\n'));
+      // with an orchestrator the link opens where the session is: its own browser tab (--phone: as a phone)
+      const tab = orcaOpen(dir, url, phone ? SERVE.device : undefined);
+      console.log([`The dev server runs: ${url} (--finish stops it)`, ...said, ...(tab ? [tab] : []), watch].join('\n'));
       return;
     }
     await new Promise((r) => setTimeout(r, 500));
@@ -162,6 +164,7 @@ export async function handover(topic) {
   if (!existsSync(folderOf(topic))) throw new Error(`${folderOf(topic)} is not there.`);
   catchUpSession(topic, { again: `--handover ${topic}` });
   const card = cardOf(topic);
+  orcaNote(folderOf(topic), 'in-review', 'built: ready for your check');
   if (card) await moveAndSay(card, 'Waiting for your check', `Built in session "${topic}": ready for your check`);
   else console.log(`No card is kept with "${topic}" (started without --card): move it to "Waiting for your check" by hand.`);
 }

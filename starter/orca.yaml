@@ -1,0 +1,8 @@
+# Orca (https://orca.dev) runs these for each worktree it makes or deletes for this project. The kit's part is one command each:
+# setup makes the new worktree a session (its own PORT in .env, the main folder's packages, the waiting spec), archive lets it
+# go (its dev server stopped, the packages unlinked) before Orca deletes the folder. How it fits: workflow/guides/ORCHESTRATOR.md
+scripts:
+  setup: |
+    node workflow/scripts/session.mjs --adopt
+  archive: |
+    node workflow/scripts/session.mjs --release

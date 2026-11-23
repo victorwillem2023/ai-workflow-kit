@@ -2,6 +2,33 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.10.0**: **sessions in an orchestrator: Orca makes the folders and runs the Claude CLI in them, the kit keeps the port, the
+  card, the gate and the one commit.** The kit's session folders (one worktree, branch and port per card, opened by hand in an
+  editor) were an orchestrator built by hand. Orca (https://orca.dev) does that part better: every session in one sidebar with
+  its state, a terminal per session with the Claude CLI itself (so its flags and experimental modes work), a diff view, a phone app.
+  **A session is where git has its branch**, not `../<prefix>-<topic>` by name (`folderOf`, `session-core.mjs`): `--finish`,
+  `--serve`, `--catch-up`, `--handover` and `--remove` work on a worktree in any folder.
+  **`--adopt [--card <n>]`** makes a worktree someone else made into a session where it is: its own `PORT` (an `.env` copied
+  in from the main folder is written again), the main folder's packages, the waiting spec, the card moved; twice changes
+  nothing, in the main folder it does nothing. **`--release`** lets one go before it is deleted: the dev server stopped and
+  `node_modules` unlinked, so a delete on Windows never follows the link into the main folder's. `orca.yaml` (a starter file,
+  added by an update) has both as Orca's setup and archive scripts.
+  **`"orchestrator": "orca"`** under `session` in `workflow/config.json` (an update adds it as `"none"`): a new session's folder
+  is made by Orca (`orca worktree create`), on the kit's branch name, from the local main with its unpushed features;
+  `--start "<prompt>"` opens the Claude CLI in a terminal of its own there (`"agent"` is the command, `claude` by default), so
+  `/work` can open the build's new chat for the owner; the session's card, port and state (in progress, in review) show in
+  Orca's sidebar. Orca that does not answer is one warning line and the folder is made next to the main one, as before.
+  **Trying it and saying what is wrong, in Orca**: `--serve` opens the session's link in its own browser tab there (`--phone`:
+  as a phone, `"serve": { "device" }`, an iPhone 12 without one); an element the owner clicks in that tab (Orca's Design Mode)
+  and notes on the diff's lines are items of a feedback round, numbered back and answered one by one (`try-it.md`, `/ui`);
+  the session's card is a link on it in the sidebar (`orca reference add`). An extra Orca refuses is left out, nothing stops.
+  **`--connect orca`**, once per project: the setting, the project added to Orca, its open sessions shown there.
+  **The cost report still finds the sessions**: a folder that is not next to the main one is noted
+  (`.git/kit-session-folders`), so `npm run cost` and `npm run shipped` count it after it is gone.
+  **Tests**: `workflow/tests/session-adopt.test.ts`, Orca as a stand-in script (`WORKFLOW_ORCA`). **Not yet tried in a real
+  project**: what the kit asks of Orca's command line is written from Orca's own guide for agents. The guide:
+  `workflow/guides/ORCHESTRATOR.md` (who does what, setting it up, a project with open sessions, another orchestrator).
+  T3 Code is left out for now: it runs Claude through the Agent SDK, not the CLI (checked November 2026).
 - **4.9.3**: **seven gaps in 4.9.0 to 4.9.2, found by reading the releases against their notes.**
   **A card in *Done* counts as done.** `--finish` moves the card to *Done* but nothing closes the issue, and the goal line,
   the code health goal, the label goals and the app map counted only closed issues: a goal never finished, its shipped cards

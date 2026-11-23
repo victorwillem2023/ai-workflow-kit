@@ -10,7 +10,7 @@ script does not say "done" when it is not).
 Around that: the way of working with Claude Code and OpenCode from one set of skills, from an idea worth building to an app
 people use. Plans you approve, tests first, one commit when you say done, and the basis for running it without going down.
 
-> **Build on the latest `v4.x` tag** (now `v4.9.3`). 4.0 works in phases (prototype, pilot, production, read from facts about
+> **Build on the latest `v4.x` tag** (now `v4.10.0`: sessions in an orchestrator, Orca, with the Claude CLI in its terminals; `workflow/guides/ORCHESTRATOR.md`). 4.0 works in phases (prototype, pilot, production, read from facts about
 > who depends on the product: fast while you build, strict once people rely on it) and has the docs portal (`/portal`): every doc
 > in one page, in the project's own style sheet, with where the project stands at the top. 3.0 put the kit's own files under one folder, `workflow/`, so the root is
 > the project's; it comes in profiles (minimal, solo, product, team), can be taken out again, and knows a repository with several
@@ -47,7 +47,7 @@ customers) decides what the kit brings up, so a personal project is never told t
 3. **One card, one type label, one route.** `ui` = mockup board first. `feature` = a plan with named tests. `bug` = a failing test first. `workflow` = like a feature, nothing in the app changes.
 4. **Plan before code, and stop for a yes.** A spec (what the user sees, files, tests, docs, security) is approved before anything is built.
 5. **Tests first, named as behaviour.** "refuses a 20 MB upload", not "test upload". New behaviour in the core layer needs one.
-6. **One card = one folder = one branch = one port = one commit.** Sessions are git worktrees, so work in progress never breaks main or another session.
+6. **One card = one folder = one branch = one port = one commit.** Sessions are git worktrees, so work in progress never breaks main or another session. An orchestrator (Orca) may make the folders and run the agents in them; the port, the card and the commit stay the kit's.
 7. **You try it, you say done.** Claude stops with a URL; feedback comes as one numbered list per round; it commits only on "finish it". Pushing is a separate word.
 8. **Docs ride in the same commit,** and the gate fails when a doc names a file or command that no longer exists.
 9. **Read by the part, never whole.** A new chat per build; the file map searched, the guide one file per part, folder notes
@@ -68,7 +68,8 @@ payload/                  CORE machinery (copied; overwritten only with --force)
   workflow/tools/         gate, board, file map, harness (OpenCode commands, opencode.jsonc, AGENTS.md), quiet test reporter,
                           updates (Dependabot and Renovate verdicts), secops (the weekly security report), setupcheck
                           (SETUP.md proven on a fresh clone), spec template, README (the reference)
-  workflow/scripts/session.mjs     one worktree + port per card; --finish, --push, --list, --check-main, --remove
+  workflow/scripts/session.mjs     one worktree + port per card; --finish, --push, --list, --check-main, --remove;
+                          --adopt, --release, --connect orca: the folders made and the Claude CLI run by an orchestrator (Orca)
   workflow/tests/         tests for the gate, map, docrefs and board code
   workflow/guides/WORKFLOW.md        how to use it day to day, written for you
   workflow/guides/TOKENS.md          why the flow and the docs are shaped to keep sessions cheap
@@ -84,6 +85,7 @@ starter/                  CORE files that are YOURS (copied only when missing, t
   docs/code/core.md, src/core/CLAUDE.md   the pattern for every big folder: rules in the folder note, "where things are" in docs/code
   tsconfig.json
   workflow/config.json    roots, test commands, layer rules, naming rules, security folders, session ports, board columns, harness models
+  orca.yaml               Orca's setup and archive scripts for each worktree (workflow/guides/ORCHESTRATOR.md)
   renovate.json, .tool-versions   the update policy (one repository, or moved to a config repository for several) and the pinned tools
   docs/SETUP.md, docs/CONVENTIONS.md   the setup guide whose marked steps are run, and the conventions with their reasons
   gitignore.txt, package-scripts.json, settings.local.json    merged into the project by the installer
@@ -132,6 +134,7 @@ project stands, and names the next command; ask it "which command for ...?" and 
 | Build | `/work <n>` | The one entry for a card: takes the route its type says, plans, stops for yes, builds, stops for you to try it, ships on "done". |
 | Build | `/build <topic>`, `/ui <n>` | After the yes, **in a new chat**: builds in a session folder with the feedback rounds (`/build a b c`: up to 3 builders when their files do not overlap); the `ui` route with boards first. |
 | Ship | `/review`, `/ship` | Fresh eyes on the diff; one commit when you say done (`/work` and `/build` call them). |
+| Build | `node workflow/scripts/session.mjs --connect orca` | Once: sessions are made in Orca from then on, each with its own terminal and the Claude CLI; the open ones show there (`workflow/guides/ORCHESTRATOR.md`). |
 | Ship | `node workflow/scripts/session.mjs --push` | Sends finished features to origin, only when you say so. |
 | Run | `/launch` | Before the first real deploy: platform, shape, database, load balancer, sizes and infrastructure tool, one decision at a time with prices that day; writes the record, `infra/`, the environments and the run docs. Never applies. |
 | Run | `npm run infra-plan -- infra/<env>` then `npm run infra-apply -- infra/<env>` | The plan, reviewed against the stack's `plan.expect` (names, labels, nothing holding data destroyed); then you apply exactly that plan, typing a code. |

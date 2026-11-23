@@ -87,6 +87,8 @@ On the owner's yes, move the card to *Ready* (`/spec` does this itself).
 
 - **A card with a spec stops here.** Tell the owner to open a new chat in the main folder and type `/build <topic>`. The spec
   carries everything the build needs, and a new chat does not carry all that the planning read into every feedback round.
+  With `"orchestrator": "orca"` (`session` in `workflow/config.json`), offer to open it for them, after `--room`:
+  `node workflow/scripts/session.mjs <topic> --card <n> --start "/build <topic>"` (the new chat, in the session's own terminal).
 - **A small bug without a spec** goes on in this chat.
 
 ## 3. Build in a session folder, tests first

@@ -54,6 +54,18 @@ week over 15 km"). Short sentences, one idea each. In this order:
 End with: "Say **done** when it works, or tell me what is wrong." Before you send it: `node workflow/scripts/session.mjs --handover <topic>`
 (main comes in, so a clash shows now, while the work is fresh: settle it and run it again; the card moves to *Waiting for your check*).
 
+### Feedback that comes from the orchestrator
+
+With Orca (`workflow/guides/ORCHESTRATOR.md`) `--serve` opens the link in the session's own browser tab (`--phone`: as a phone),
+and the owner's feedback may arrive without a typed list:
+
+- **A clicked element** (Orca's *Annotate*): its HTML, styles, a picture and often the source file and line, with a few words.
+- **Notes on the diff**: comments on lines of the change, sent as one batch.
+
+Each one is an item of the round, like a line of the numbered list. Number them yourself in your answer ("1. the chip you
+clicked: ...") and answer every one: done, or why not. An element with no words: ask what should change, never guess. The
+source line it names is where to look first, not proof the fault is there.
+
 ### Open points become cards
 
 Before the message, every *Later* item from the builder (and anything else noticed and left out) becomes a Backlog card,

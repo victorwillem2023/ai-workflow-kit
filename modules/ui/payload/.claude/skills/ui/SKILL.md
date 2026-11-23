@@ -124,7 +124,8 @@ stage 1. It is a brief, not the design: redraw it on the project's tokens and pa
    Then stop and hand it over as `.claude/skills/build/try-it.md` says: the link, what to click with example values, and edge
    cases such as an empty list or a long name; the before and after paths; what differs from the board, and why. The hand-over
    starts with `--handover <topic>` (try-it.md): main comes in and the card moves to *Waiting for your check*.
-4. **Feedback rounds**: ask for feedback as one numbered list per round ("1. the chip is too tall 2. ..."). One pass per round:
+4. **Feedback rounds**: ask for feedback as one numbered list per round ("1. the chip is too tall 2. ..."); with Orca, elements
+   the owner clicked in the session's browser tab count as items too (`try-it.md`, *Feedback that comes from the orchestrator*). One pass per round:
    - answer every number: done, or why not;
    - change only `src/web`. A number that needs core logic is said out loud and becomes its own card (`/idea`);
    - new after pictures from the same commands, then stop again.

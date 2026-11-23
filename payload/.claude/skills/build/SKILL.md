@@ -24,7 +24,8 @@ Read `workflow/specs/<topic>.md` in the main folder. **The owner typing `/build`
 
 ## 2. The session folder
 
-The folder is `../{{PREFIX}}-<topic>`, next to the main folder.
+The folder is `../{{PREFIX}}-<topic>`, next to the main folder. With an orchestrator (`workflow/guides/ORCHESTRATOR.md`) it is
+the folder `session.mjs` prints (`--list` names it again): use that path wherever this says `../{{PREFIX}}-<topic>`.
 
 - **Missing**: first `npm run board -- --room`. STOP there (more work in progress than `board.wip`): ask the owner which to
   finish or park before this one starts; their answer that this one goes ahead anyway is enough. Then run
@@ -33,6 +34,9 @@ The folder is `../{{PREFIX}}-<topic>`, next to the main folder.
   - A "Starts on: <other topic>" line: add `--on <other topic>`, so the session starts on top of that built card
     (`.claude/skills/work/together.md`).
   - A board warning line in its output is not a failure.
+- **This chat is in it** (an orchestrator started it there: `git branch --show-current` is the topic): run
+  `node workflow/scripts/session.mjs --adopt --card <n>` (twice changes nothing) and go on as *Present*; the main folder is
+  the first line of `git worktree list`.
 - **Present**: reuse it. Read its `.env` for `PORT`; never recreate or reset it. Run `git -C ../{{PREFIX}}-<topic> status --short`
   and tell the owner when it already has changes: it may be half built.
 
