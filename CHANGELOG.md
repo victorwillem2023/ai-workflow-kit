@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.14.1**: **`npm run anatomy` after its first blind round.** A fresh agent ran `/anatomy to-a-top` on a copy of a real
+  project from before its refactor was planned, with no example and no board, and reached the end state the owner's own spec
+  had (one pipeline: the top found once, the ways up found once, one way to route a way up and one judge of reaching the top
+  for a day and a trip), plus two jobs with two homes the spec had missed. What it said was noise is gone: a flow from the app
+  map no longer counts the other kinds its files ask about (a pipeline's files ask about every kind it serves); until its
+  flags are named it says so. A flag can be dotted (`run.climb`, not every `climb`). The file list says when it shows the
+  first 30. The skill no longer names the example's check (`measure:tops`), which the blind round had picked up.
 - **4.14.0**: **`/anatomy`: look at how one flow of the code is built, and plan its clean-up, for code written before the checks too.**
   The kit's checks stop new duplication; nothing went back over older code. `npm run anatomy` (no AI) lists the flows worst
   first: from `anatomy.flows` in the config, the app map's kinds, and each kind the code asks about in three or more shared steps
