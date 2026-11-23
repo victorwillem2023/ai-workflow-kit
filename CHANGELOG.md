@@ -2,6 +2,12 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.17.1**: **approved work never waits to be sorted, and noticed work is settled in the same sitting.** A card made after
+  the owner's yes (a plan they approved, cards they asked for) is never `--unsorted` (`CLAUDE.md`, *One change at a time*, for
+  every skill, as 4.17.0 did for `/anatomy`). Cards noticed along the way end the chat with one question: let them all in,
+  some, or drop them (the hand-over, `/ship`); `/tidy` is for what slipped through. Picking a card still to
+  sort is the yes: `/work <n>` lets it in and goes on, and the `unlocked:` line points there instead of to a command
+  (after the checks for blocked or someone else's, so a card is never let in that `/work` then does not start).
 - **4.17.0**: **the order the owner agreed stays on the board, and `/next` shows it without being asked.** In a real project the
   approved reshaping (#609, #610) dropped out of `/next` while fixes on the old shape were offered, and the owner had to point it
   out. Five causes, five fixes:
