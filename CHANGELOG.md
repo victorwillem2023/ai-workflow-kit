@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.12.0**: **the chat `/next` points to opens itself, in Orca.** With `"orchestrator": "orca"`, the owner's answer to
+  `/next` (`1`, or the card's number) opens the new chat for them: `session.mjs --chat "/work 131"` starts the Claude CLI with
+  that command in a terminal of its own in the main folder. With Orca closed, or no orchestrator, it says the line to type, as
+  before (`next`, `session.mjs`, `ORCHESTRATOR.md`; a test in `session-adopt.test.ts`).
+  **`--focus --add` puts a card in the focus again.** The board tool checked for `--add` (make a new card) before `--focus`,
+  so `npm run board -- --focus --add 590` failed with "A card needs exactly one type label". `--focus` is now read first,
+  and it takes several cards at once: `--focus --add 590,593,595` (`workflow/tools/board.mjs`).
 - **4.11.1**: **the main folder's path in the system's own form too.** 4.11.0 wrote the session folders' paths as Windows
   writes them but not the main folder's, so `npm run schedule -- --on` handed Orca `path:C:/...` and the `--on` test of
   `session-adopt.test.ts` failed on Windows (`main`, `session-core.mjs`).
