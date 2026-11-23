@@ -13,18 +13,22 @@ const isTestFile = (f) => /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.[a-z]+
 export const slug = (s) => String(s).toLowerCase().replace(/^area:\s*/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /**
- * The flows the project names: `named` (anatomy.flows: { name: [file globs] } or { name: { files: [globs], values: ['summit'], flags: ['wayUp'] } },
- * matched by `match`), else the app map's kinds (`kinds` { kind: [part ids] }, `partFiles` { part id: [files] }):
- * [{ name, from, files: Set, values }]. Their own files only: following the imports from a pipeline reaches most of the app.
+ * The flows the project names (`named`, anatomy.flows: { name: [file globs] } or { name: { files: [globs], values: ['summit'],
+ * flags: ['wayUp'] } }, matched by `match`) and beside them the app map's kinds (`kinds` { kind: [part ids] }, `partFiles`
+ * { part id: [files] }), a named flow taking the place of the map's kind of the same name: [{ name, from, files: Set, values }].
+ * Their own files only: following the imports from a pipeline reaches most of the app.
  */
 export function namedFlows(codeFiles, { named = null, match = () => false, kinds = {}, partFiles = {} } = {}) {
   const has = (f) => codeFiles.includes(f);
-  if (named && Object.keys(named).length) return Object.entries(named).map(([name, v]) => {
+  const mine = Object.entries(named ?? {}).map(([name, v]) => {
     const globs = Array.isArray(v) ? v : v.files ?? [];
     return { name, from: 'config', files: new Set(codeFiles.filter((f) => match(f, globs))), values: Array.isArray(v) ? [] : v.values ?? [], flags: Array.isArray(v) ? [] : v.flags ?? [] };
   });
-  return Object.entries(kinds).map(([kind, parts]) => ({ name: kind, from: 'map', files: new Set(parts.flatMap((p) => partFiles[p] ?? []).filter(has)), values: [] }))
+  const taken = new Set(mine.map((f) => slug(f.name)));
+  const mapped = Object.entries(kinds).filter(([kind]) => !taken.has(slug(kind)))
+    .map(([kind, parts]) => ({ name: kind, from: 'map', files: new Set(parts.flatMap((p) => partFiles[p] ?? []).filter(has)), values: [] }))
     .filter((f) => f.files.size);
+  return [...mine, ...mapped];
 }
 
 // a field compared with a fixed text: `a.b === 'x'`, `'x' == a.b`, Python's `a.b == "x"`, and `case 'x':` under `switch (a.b)`

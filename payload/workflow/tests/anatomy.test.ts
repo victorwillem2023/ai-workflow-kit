@@ -33,6 +33,11 @@ describe('the shape of the code', () => {
     const more = new Map([...files, ['src/plan/other.ts', 'if (trip.wayUp) a();\nif (run?.wayUp) b();\n']]);
     assert.deepEqual(flagsOf(dotted, more).map((c) => `${c.file}:${c.line}`), ['src/plan/select.ts:4', 'src/plan/other.ts:2'], 'run.wayUp, not trip.wayUp');
   });
+  it('lists the flows the project names beside the app map\'s, a named one taking the place of the map\'s of that name', () => {
+    const flows = namedFlows([...files.keys()], { named: { 'to-a-top': { files: ['src/climb/**'] } }, match: matchesAny,
+      kinds: { 'to-a-top': ['plan'], 'hill-repeats': ['plan'] }, partFiles: { plan: ['src/plan/select.ts'] } });
+    assert.deepEqual(flows.map((f) => `${f.name} (${f.from})`), ['to-a-top (config)', 'hill-repeats (map)']);
+  });
   it('finds a rule written twice: one name in two files, one list of numbers under two names', () => {
     const rules = repeatedRules(files);
     assert.ok(rules.some((r) => r.what === 'NEAR_TOP_M has different values'));

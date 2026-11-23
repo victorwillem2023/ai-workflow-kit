@@ -58,7 +58,8 @@ const readOnly = (prompt, what, setup) => ({
 export const SCENARIOS = {
   'check-read-only': readOnly('/check', '/check runs the checks and explains them'),
   'find-read-only': readOnly('/find where is the README read', '/find answers where something is'),
-  'review-read-only': readOnly('/review demo', '/review reads the spec and the diff with fresh eyes', builtSession),
+  // the build is in the session folder beside the project: it may read it, as the owner allows when asked
+  'review-read-only': { ...readOnly('/review demo', '/review reads the spec and the diff with fresh eyes', builtSession), addDirs: ({ dir }) => [join(dirname(dir), 'st-demo')] },
   'estimate-read-only': readOnly('/estimate a page that lists last week\'s rides', '/estimate says what a change would take'),
   'advise-read-only': readOnly('/advise should this app have a database yet', '/advise gives the board\'s views'),
   'idea-one-card': {
@@ -238,7 +239,7 @@ export const SCENARIOS = {
 
 // the parts and the module the scenarios use on top of the build loop (a lean install has none of them, and a scenario for a
 // command that is not there would pass without testing anything)
-const SCENARIO_PARTS = 'shape,spike,tidy,estimate,advise,launch,market,secops,retro,ui';
+const SCENARIO_PARTS = 'shape,spike,tidy,estimate,advise,launch,market,secops,retro,ui,anatomy';
 
 /** A lean install, committed, with or without the packages the gate needs: made once, removed when the process ends. */
 const templates = {};
@@ -266,14 +267,15 @@ const state = (dir) => ({ commits: commits(dir), head: git(dir, 'rev-parse', 'ma
  * One scenario in a new throwaway project: { name, ok, problems, cost, said }. `agent`: the command that takes `-p <prompt>`;
  * `deps`: install the packages the gate needs (a real agent runs it; the fake does not).
  */
-export function runScenario(name, { agent = 'claude', deps = true, keep = false } = {}) {
-  const s = SCENARIOS[name];
+export function runScenario(name, { agent = 'claude', deps = true, keep = false, scenario = SCENARIOS[name], prepare = null } = {}) {
+  const s = scenario;
   const tmp = mkdtempSync(join(tmpdir(), `kit-skilltest-${name}-`));
   const dir = join(tmp, 'skilltest-app');
   const log = join(tmp, 'gh-calls.jsonl');
   try {
-    // the project as the kit leaves it, made once per run of this script and copied for each scenario (git and all)
-    cpSync(template(deps), dir, { recursive: true });
+    // the project as the kit leaves it, made once per run of this script and copied for each scenario (git and all); `prepare`
+    // makes another one instead (scripts/qualitytest.mjs: a real project at a commit)
+    if (prepare) prepare(dir); else cpSync(template(deps), dir, { recursive: true });
     s.setup?.({ dir });
     fakeGh(join(tmp, 'bin'), log);
     const before = state(dir);
@@ -291,20 +293,24 @@ export function runScenario(name, { agent = 'claude', deps = true, keep = false 
     const missing = turns.map((t) => /^\/([\w-]+)/.exec(t.prompt)?.[1]).filter((n) => n && !existsSync(join(dir, '.claude', 'skills', n, 'SKILL.md')));
     if (missing.length) return { name, ok: false, problems: [`/${missing.join(', /')} is not installed in the scenarios' project (SCENARIO_PARTS)`], cost: null, said: '', dir: null };
     const problems = [];
-    let cost = null, said = '', last = before;
+    let cost = null, said = '', result = '', stop = null, last = before;
     for (const [i, t] of turns.entries()) {
-      const r = spawnSync(cmd, [...pre, ...(i ? ['--continue'] : []), '-p', t.prompt, '--output-format', 'json', '--max-turns', String(t.maxTurns ?? 25), '--permission-mode', 'acceptEdits'].map(quote), { cwd: dir, env, encoding: 'utf8', shell, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
+      // folders beside the project the agent may read as the owner would allow them (a session folder: ../st-<topic>)
+      const dirs = (s.addDirs?.({ dir }) ?? []).flatMap((d) => ['--add-dir', d]);
+      const r = spawnSync(cmd, [...pre, ...(i ? ['--continue'] : []), ...dirs, '-p', t.prompt, '--output-format', 'json', '--max-turns', String(t.maxTurns ?? 25), '--permission-mode', 'acceptEdits'].map(quote), { cwd: dir, env, encoding: 'utf8', shell, maxBuffer: 64 << 20, timeout: 15 * 60 * 1000 });
       let out = {};
       try { out = JSON.parse(r.stdout); } catch { out = { result: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim().slice(-2000) }; }
       if (out.total_cost_usd != null) cost = (cost ?? 0) + out.total_cost_usd;
-      said = String(out.result ?? '').slice(0, 600);
+      result = String(out.result ?? '');
+      stop = out.subtype ?? null; // 'success', or why it stopped early ('error_max_turns')
+      said = result.slice(0, 600);
       const now = state(dir);
-      const found = t.check({ dir, before, previous: last, after: now, ghWrites: writes(log), ghCalls: calls(log) });
+      const found = t.check({ dir, before, previous: last, after: now, ghWrites: writes(log), ghCalls: calls(log), result });
       problems.push(...(turns.length > 1 ? found.map((p) => `turn ${i + 1} ("${t.prompt.slice(0, 40)}"): ${p}`) : found));
       last = now;
       if (found.length && turns.length > 1) break; // a later turn builds on this one: no use going on
     }
-    return { name, ok: problems.length === 0, problems, cost, said, dir: keep ? dir : null };
+    return { name, ok: problems.length === 0, problems, cost, said, result, stop, dir: keep ? dir : null };
   } finally {
     if (!keep) rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }

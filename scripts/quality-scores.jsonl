@@ -1,0 +1,3 @@
+{"at":"2026-11-23T19:12:27.809Z","kit":"4.15.0","scenario":"anatomy-spread-kind","runs":1,"passed":1,"ok":true,"score":1,"share":{"list-twice":1,"shared-steps":1,"own-home":1,"one-route-up":1,"one-reach":1,"check-first":1,"order":1},"cost":0.66}
+{"at":"2026-11-23T19:14:37.764Z","kit":"4.15.0","scenario":"spec-rule-home","runs":1,"passed":1,"ok":true,"score":1,"share":{"spec-written":1,"home-named":1,"callers":1,"rule-home":1,"patch-not-end":1,"test-first":1},"cost":0.49}
+{"at":"2026-11-23T19:17:22.941Z","kit":"4.15.0","scenario":"review-catches-bugs","runs":1,"passed":1,"ok":true,"score":1,"share":{"missing-km":1,"rounding":1,"both-wrong":1,"tests-miss":1,"no-false-alarm":1},"cost":0.41}

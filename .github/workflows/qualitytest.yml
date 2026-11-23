@@ -1,0 +1,43 @@
+# The quality scenarios (scripts/qualitytest.mjs) with the real Claude Code: a skill answers on a planted project and its answer is
+# graded against points written beforehand. It costs more than the skill scenarios (an /anatomy run reads a whole flow, and each
+# scenario runs three times), so it runs only by hand: Actions, "qualitytest", Run workflow, optionally naming scenarios and the
+# number of runs. It needs the ANTHROPIC_API_KEY secret; without it the run says so and passes. The scores are printed, not kept:
+# scripts/quality-scores.jsonl is kept by the runs made on the owner's computer.
+name: qualitytest
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: 'Scenarios to run, separated by spaces (empty: all; node scripts/qualitytest.mjs --list names them)'
+        required: false
+        default: ''
+      runs:
+        description: 'Runs per scenario (a scenario passes when most pass)'
+        required: false
+        default: '3'
+permissions:
+  contents: read
+concurrency:
+  group: qualitytest-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  qualitytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: starter/.tool-versions
+      # (not pinned yet: pin the version the scenarios last passed with, as the kit pins its other tools)
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: git config --global user.name "Quality test" && git config --global user.email quality@example.invalid
+      # the names through the environment, never pasted into the command (what is typed into a form is not trusted as shell)
+      - run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "qualitytest: no ANTHROPIC_API_KEY secret here, so the scenarios were not run"; exit 0; fi
+          node scripts/qualitytest.mjs $SCENARIOS --runs "$RUNS" --no-record
+        env:
+          SCENARIOS: ${{ inputs.scenarios }}
+          RUNS: ${{ inputs.runs }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
