@@ -19,7 +19,7 @@ export const gitQuiet = (cwd, ...args) => { try { return git(cwd, ...args); } ca
 export const here = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** The first worktree git lists is the main folder, wherever this runs from. */
-export const main = git(here, 'worktree', 'list', '--porcelain').split('\n')[0].replace(/^worktree /, '');
+export const main = resolve(git(here, 'worktree', 'list', '--porcelain').split('\n')[0].replace(/^worktree /, '').trim());
 
 /** Project settings: the "session" block of workflow/config.json (prefix of the session folders, ports, extra .env lines). */
 export const sessionCfg = (() => {
