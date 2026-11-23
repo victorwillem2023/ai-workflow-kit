@@ -2,6 +2,9 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.11.1**: **the main folder's path in the system's own form too.** 4.11.0 wrote the session folders' paths as Windows
+  writes them but not the main folder's, so `npm run schedule -- --on` handed Orca `path:C:/...` and the `--on` test of
+  `session-adopt.test.ts` failed on Windows (`main`, `session-core.mjs`).
 - **4.11.0**: **a screen is walked by a script before it is handed over, and the weekly runs go on Orca's schedule; both only past a prototype. And 4.10.0's Orca tests pass on Windows.**
   **Paths in the system's own form**: git prints a worktree's path with forward slashes on Windows too, so 4.10.0 handed Orca
   `path:C:/...` and three tests of `session-adopt.test.ts` failed there. What the kit says and hands on is now as the system
