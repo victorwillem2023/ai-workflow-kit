@@ -139,7 +139,8 @@ In plain language, with an example wherever a term is technical: what changed, a
 - A `flaky:` line the gate printed becomes a card, unless one is there already (`npm run board -- --search "Flaky test"`; the
   line names the `--add` to run; add `--label "area: Code health"` when the board has it).
 - Anything still open is a question with your recommendation, or a card made now (`.claude/skills/build/try-it.md`, *Open
-  points become cards*, made with `--unsorted`), never a bare "unsure".
+  points become cards*, made with `--unsorted` and settled in one question before the end, as there), never a bare
+  "unsure".
 - **What it took**: `--finish` kept the size of the change by itself. Add what only this chat knows, once, never asking the
   owner:
 

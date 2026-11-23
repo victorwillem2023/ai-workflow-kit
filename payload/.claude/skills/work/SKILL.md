@@ -36,6 +36,8 @@ outside the UI block you picked") and go on; the owner chose it. Never add it to
 - **Someone else's** (assigned to another person, or in *In progress* with their session): say so and stop. In a team, take
   a card before starting it (`workflow/guides/TEAM.md`, *Two people on one board*).
 - **In *Blocked***: say the reason (the last "Blocked:" comment) and ask whether it is unblocked before going on.
+- **To sort** (it waits for the owner's yes), and nothing above stopped it: picking it is the yes. `npm run board --
+  --accept <n>`, say so in one line, go on.
 - **No type label, or more than one**: ask which of `ui`, `feature`, `bug`, `workflow` or `spike` it is, with your
   recommendation. After the owner's yes, add it: `gh issue edit <n> --repo <board.repo> --add-label <type>`.
 - **It changes old code that has no tests** (the gate's *untested* list): the plan starts with tests that pin down what the

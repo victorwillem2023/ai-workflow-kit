@@ -280,7 +280,7 @@ function anatomyPlans() {
  */
 function unlockedLines(all) {
   const shippedAt = Object.fromEntries(shippedRecords(root).flatMap((r) => r.cards.map((n) => [n, r.at])));
-  return freshlyUnlocked(all, { startable: STARTABLE, shippedAt }).map(({ card, by }) => `unlocked: #${by.join(', #')} ${by.length === 1 ? 'is' : 'are'} done, so #${card.number} ${card.title} can start${card.labels.includes(TO_SORT) ? ` (it waits for your yes first: npm run board -- --accept ${card.number})` : ''}`);
+  return freshlyUnlocked(all, { startable: STARTABLE, shippedAt }).map(({ card, by }) => `unlocked: #${by.join(', #')} ${by.length === 1 ? 'is' : 'are'} done, so #${card.number} ${card.title} can start${card.labels.includes(TO_SORT) ? ` (still to sort: /work ${card.number} lets it in and starts it)` : ''}`);
 }
 
 /** The stopping note (board --stopped "<text>") and, asked of git now, the finished features not pushed (lib/stopped.mjs). */

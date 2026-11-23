@@ -25,7 +25,9 @@ The owner wants to understand and steer the project, not just receive features. 
   (`npm run board -- --focus`); when they stop for now, leave one line for the next session: `npm run board -- --stopped "<line>"`.
 - **One change at a time**: no extra cleanups or "while I was there" edits; each becomes a card that waits for the owner's yes
   (`npm run board -- --add ... --unsorted`). Small steps are about what goes
-  in one commit, never a reason to pick the smaller design.
+  in one commit, never a reason to pick the smaller design. A card made after the owner's yes (a plan they approved, cards
+  they asked for) is never `--unsorted`. Cards noticed along the way are settled before the chat ends: one question, "let them
+  all in (recommended)", "some (say which)" or "drop them" (`--accept <n,m>`, `--close <n> "<reason>"`).
 - **The best design, not the quickest patch**, for app code, infra and docs alike: every plan names the end state first (clean,
   easy to change, the version that scales). No special case beside a rule that could take it, no second way of doing one job:
   extend the rule's home, and split or refactor first when that is what it takes (`/spec` step 2).

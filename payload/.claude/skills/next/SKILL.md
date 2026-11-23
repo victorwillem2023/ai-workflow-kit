@@ -40,7 +40,7 @@ then stop.
    - **`where you stopped:`**: the line the last session left. Say it first; a fact in it git can tell (pushed, committed, a
      folder or branch) is checked with git first, and git wins.
    - **`unlocked:`**: a card just finished lets another start. Say it first, in one line ("#607 is done, so the refactor #609
-     can start"); when that card waits for the owner's yes, letting it in is part of the step (`--accept <n>`).
+     can start"), as a next step (`/work <n>`; picking a card still to sort lets it in).
    - **`where you stopped`** with *careful: ... done already*: the note points at a card that is done; take the next card from
      the board, not from the note.
    - **`step back:`**: one area had a run of fixes in a few days, spread too thin for any file to stand out. The recommended

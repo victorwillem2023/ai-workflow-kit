@@ -84,7 +84,8 @@ without asking: the owner should never have to ask for them. They wait for the o
 
 An item that is really a decision is not a card: it goes under *Questions for you*. One inside the card goes back to the
 builder, done before the hand-over. The message lists the new card numbers
-under *Not in this card*.
+under *Not in this card*, and ends with one question about them (AskUserQuestion): "let them all in (recommended)", "some
+(say which)" or "drop them"; then `npm run board -- --accept <n,m>` and `--close <n> "<reason>"` for the rest.
 
 ## 3. After the check
 

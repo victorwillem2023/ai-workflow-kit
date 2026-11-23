@@ -16,7 +16,7 @@
     "payload/.claude/skills/arch/SKILL.md": 1479,
     "payload/.claude/skills/build/several.md": 3697,
     "payload/.claude/skills/build/SKILL.md": 8451,
-    "payload/.claude/skills/build/try-it.md": 7437,
+    "payload/.claude/skills/build/try-it.md": 7623,
     "payload/.claude/skills/check/SKILL.md": 1697,
     "payload/.claude/skills/debug/SKILL.md": 4052,
     "payload/.claude/skills/docs/SKILL.md": 3683,
@@ -26,7 +26,7 @@
     "payload/.claude/skills/launch/SKILL.md": 6577,
     "payload/.claude/skills/lesson/SKILL.md": 2295,
     "payload/.claude/skills/market/SKILL.md": 5563,
-    "payload/.claude/skills/next/SKILL.md": 13395,
+    "payload/.claude/skills/next/SKILL.md": 13372,
     "payload/.claude/skills/portal/SKILL.md": 1639,
     "payload/.claude/skills/retro/SKILL.md": 4609,
     "payload/.claude/skills/review/SKILL.md": 6753,
@@ -35,7 +35,7 @@
     "payload/.claude/skills/setup/stack.md": 17464,
     "payload/.claude/skills/setup/when.md": 6035,
     "payload/.claude/skills/shape/SKILL.md": 4768,
-    "payload/.claude/skills/ship/SKILL.md": 10794,
+    "payload/.claude/skills/ship/SKILL.md": 11061,
     "payload/.claude/skills/spec/SKILL.md": 12049,
     "payload/.claude/skills/spec/when.md": 3685,
     "payload/.claude/skills/spike/SKILL.md": 3190,
@@ -62,7 +62,7 @@
     "payload/workflow/guides/TOOLS.md": 10725,
     "payload/workflow/guides/WORKFLOW.md": 15345,
     "payload/workflow/tools/README.md": 71959,
-    "starter/CLAUDE.md": 14553,
+    "starter/CLAUDE.md": 14845,
     "starter/src/core/CLAUDE.md": 625
   },
   "reasons": {
@@ -70,9 +70,10 @@
     "payload/.claude/skills/anatomy/example.md": "4.14.0: the worked example, read on a project's first round only",
     "payload/.claude/skills/anatomy/SKILL.md": "4.17.0: cards after the owner's yes are not to sort; the plan's order on the page and the board",
     "payload/.claude/skills/build/SKILL.md": "4.10.0: with an orchestrator the session folder is the one session.mjs prints, and a chat started inside it adopts it",
-    "payload/.claude/skills/build/try-it.md": "4.11.0: with Orca the link opens in the session's browser tab and a clicked element or diff notes are a feedback round; from pilot on a screen is walked by a script before the hand-over",
+    "payload/.claude/skills/build/try-it.md": "4.17.1: cards noticed along the way settled in one ticked question",
     "payload/.claude/skills/next/SKILL.md": "4.17.0: the unlocked: line and a stopping note that names a done card",
     "payload/.claude/skills/review/SKILL.md": "4.13.0: one job, one home: the jobs of the change against the flow",
+    "payload/.claude/skills/ship/SKILL.md": "4.17.1: cards noticed along the way settled before the end",
     "payload/.claude/skills/spec/SKILL.md": "4.13.0: the flow and the job, and two designs by shape in every phase",
     "payload/.claude/skills/work/SKILL.md": "4.10.0: with Orca the build's new chat is opened for the owner (--start)",
     "payload/workflow/guides/ORCHESTRATOR.md": "4.12.0: the /next answer opening its chat in Orca",
@@ -80,6 +81,6 @@
     "payload/workflow/guides/TOKENS.md": "4.8.0: two lines on comparing what a command and a card cost across kit versions (npm run cost -- --by-kit)",
     "payload/workflow/guides/WORKFLOW.md": "4.14.0: the /anatomy row",
     "payload/workflow/tools/README.md": "4.16.0: the npm run measure row",
-    "starter/CLAUDE.md": "4.16.0: whose a proposed script is: the project's own or a kit card"
+    "starter/CLAUDE.md": "4.17.1: a card made after the owner's yes is never to sort; noticed ones settled in the chat"
   }
 }
