@@ -2,6 +2,19 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.14.0**: **`/anatomy`: look at how one flow of the code is built, and plan its clean-up, for code written before the checks too.**
+  The kit's checks stop new duplication; nothing went back over older code. `npm run anatomy` (no AI) lists the flows worst
+  first: from `anatomy.flows` in the config, the app map's kinds, and each kind the code asks about in three or more shared steps
+  (`shape === 'loop'`). Per flow: how many shared steps ask about it (its kind checks, and the flags the project names for it,
+  wherever code it does not own branches on them), rules written twice (one name in two files, one list of numbers under two
+  names), look-alike functions (close but not the same, which the copy check misses), fixes in four weeks, and its page.
+  `/anatomy` takes one flow per round: its jobs in order and where each lives, marked (two homes, a flag in a shared step, no
+  clear home, a name that says another job), the end state, then the clean-up as cards in order for a yes (a before-and-after
+  check first, refactors that change nothing anyone sees, then the behaviour they unlock), and the page `docs/anatomy/<flow>.md`.
+  Never changes code. A worked example (`.claude/skills/anatomy/example.md`). **`/next` links it**: `anatomy:` when no flow has
+  been looked at yet (from 15 code files) or one not for `anatomy.every` (60) days, and the `step back:` line now points to it.
+  A part (`--lean --with anatomy`; in the product profile). Tests: `anatomy.test.ts`. Tried on a real project: it found a list of
+  numbers in two files that was one rule, and a constant written twice, without being told.
 - **4.13.0**: **one job, one home: flows have a shape, a run of fixes makes you step back, and a new job gets two designs, in a prototype too.**
   **A page per flow** (`docs/anatomy/<flow>.md`, its shape in `docs/anatomy/README.md`, the list in `docs/ARCHITECTURE.md`,
   *Flows and their jobs*; `CLAUDE.md` rule 15): the flow's jobs in order, each with one home, and its end state. `/spec` names
