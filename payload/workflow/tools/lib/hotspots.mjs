@@ -5,6 +5,8 @@
 //   untested-churn   a file changed often with no test: every change is a guess. Pin what it does with tests first
 //                    (Michael Feathers, "Working Effectively with Legacy Code").
 //   bug-cluster      an area with several open bugs: stabilise it before building more on it (stop the line).
+//   fix-streak       an area with many fixes in a short time (bug cards closed, bug cards shipped), even when no file stands
+//                    out: the shape is wrong, not the details. Step back and draw its flow before the next fix.
 //   flaky            tests that fail now and then: a check nobody trusts is a check nobody reads. Fix them first.
 //   circles          files that import each other in a circle: nothing in it can change alone. Untangle the circle.
 //   in-the-way       a file the builders of several shipped cards said got in their way (lib/shipped.mjs, noted at /ship): the
@@ -20,9 +22,9 @@ export function churn(log) {
 /**
  * The suggestions, best first: [{ kind, principle, what, files, score }]. `changes`: churn(); `baseline`: the gate's
  * (sizes { file: lines }, functions { "file|name": lines } or [..], untested [file], cycles [[file]]); `bugs`: open bug cards
- * with their area; `flaky`: the flaky list's files; `hard`: lib/shipped.mjs hardFiles(). At most `n`.
+ * with their area; `flaky`: the flaky list's files; `hard`: lib/shipped.mjs hardFiles(); `fixes`: fixStreaks(). At most `n`.
  */
-export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky = [], hard = [], days = 90, n = 6 } = {}) {
+export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky = [], hard = [], fixes = [], days = 90, n = 6 } = {}) {
   const out = [];
   const sizes = baseline.sizes ?? {};
   const fnFiles = new Map();
@@ -45,6 +47,8 @@ export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky 
     out.push({ kind: 'bug-cluster', principle: 'stabilise before you build on it: bugs gather where the design is weak', score: nums.length * 5,
       what: `${nums.length} open bugs in ${String(area).replace(/^area:\s*/i, '')} (${nums.slice(0, 6).map((x) => `#${x}`).join(', ')}): fix them as one goal, and look for the shared cause`, files: [] });
   }
+  for (const s of fixes.slice(0, 2)) out.push({ kind: 'fix-streak', principle: STREAK, score: s.fixes.length * 6,
+    what: streakLine(s), files: [], area: s.area });
   if (flaky.length) out.push({ kind: 'flaky', principle: 'a check nobody trusts is a check nobody reads: fix flaky tests first', score: flaky.length * 8,
     what: `${flaky.length} flaky test file${flaky.length === 1 ? '' : 's'}: ${flaky.slice(0, 4).join(', ')}`, files: flaky });
   const cycles = baseline.cycles ?? [];
@@ -53,6 +57,32 @@ export function hotspots({ changes = new Map(), baseline = {}, bugs = [], flaky 
   for (const h of hard.slice(0, 2)) out.push({ kind: 'in-the-way', principle: 'ask who just changed it: a file that got in the way of several cards will get in the way of the next', score: h.cards.length * 6,
     what: `${h.file} got in the way of ${h.cards.length} shipped cards (${h.cards.slice(0, 4).join(', ')}): ${h.whys.at(-1)}`, files: [h.file] });
   return out.sort((a, b) => b.score - a.score).slice(0, n);
+}
+
+const STREAK = 'step back: a run of fixes in one place means its shape is wrong, not its details';
+const areaName = (a) => String(a).replace(/^area:\s*/i, '');
+/** "<n> fixes in <area> in <days> days (#1, #2, ...): ..." for one streak. */
+export const streakLine = (s) => `${s.fixes.length} fixes in ${areaName(s.area)} in ${s.days} days (${s.fixes.slice(0, 6).join(', ')}${s.fixes.length > 6 ? ', ...' : ''}): ` +
+  'stop patching it and draw its flow first: its jobs in order, each with one home (docs/anatomy/<flow>.md)';
+
+/**
+ * The areas with a streak of fixes, most first: [{ area, fixes: ['#12' | '<topic>'], days }]. `fixes`: [{ area, at, card?,
+ * topic? }] (closed bug cards, shipped bug records); counted once per card within `days` of `now`, from `count` on.
+ * `setting`: board.fixStreak in workflow/config.json ({ count, days }, false turns it off).
+ */
+export function fixStreaks(fixes, setting = {}, now = new Date()) {
+  if (setting === false) return [];
+  const count = setting?.count ?? 5, days = setting?.days ?? 7;
+  const since = now.getTime() - days * 864e5;
+  const byArea = new Map();
+  for (const f of fixes) {
+    const t = Date.parse(f.at ?? '');
+    if (!f.area || !(t >= since)) continue;
+    const key = f.card ? `#${f.card}` : f.topic;
+    if (!key) continue;
+    byArea.set(f.area, new Set([...(byArea.get(f.area) ?? []), key]));
+  }
+  return [...byArea].filter(([, s]) => s.size >= count).sort((a, b) => b[1].size - a[1].size).map(([area, s]) => ({ area, fixes: [...s], days }));
 }
 
 /** The suggestions as text, one per line with its principle under it. */

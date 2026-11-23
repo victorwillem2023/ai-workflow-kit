@@ -14,6 +14,18 @@ What each may import (made from `boundaries` in workflow/config.json by `npm run
 ## How a request flows
 <step by step, with the file that does each step>
 
+## Flows and their jobs
+A flow is one path through the app from what someone asks to what they get (a search, a checkout, a plan for a kind of
+outing). Its jobs are the steps it takes, in order, and each job has one home: one file and function. Each flow has a page,
+`docs/anatomy/<flow>.md` (the shape: `docs/anatomy/README.md`): its jobs in order, each one's home, and the end state. A second
+home for a job, or a new job, is a design question for the owner, never a patch (`/spec` drafts two designs for it). A step
+every flow shares does not ask which flow it is in: what differs lives in the flow's own job, and a ratchet in
+`workflow/config.json` counts the patterns that ask (`if (plan === 'pro')`, `shape === 'summit'`) so their number only goes down.
+
+| Flow | Its page | Starts at |
+|---|---|---|
+| <the flow, in the user's words> | `docs/anatomy/<flow>.md` | <the route, command or screen> |
+
 ## Rules and where each lives
 A rule is something every feature must keep to (how a total is worked out, what counts as valid input, who may see what). Each
 has one home. Before a fix, find the rule here and change it in its home (`CLAUDE.md`, *Fix it where the rule lives*). The last

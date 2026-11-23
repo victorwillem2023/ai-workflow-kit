@@ -246,9 +246,9 @@ export function searchCards(board, run, words) {
  *  changed, for the worksheet, the ranking and the triage. `wholeText`: the card's whole text (the stage check reads it). */
 export function listCards(board, run, { wholeText = false } = {}) {
   return ghJson(run, 'reading the cards', ['issue', 'list', '--repo', board.repo, '--state', 'all', '--limit', '1000',
-    '--json', 'number,title,state,labels,projectItems,createdAt,updatedAt,body'])
+    '--json', 'number,title,state,labels,projectItems,createdAt,updatedAt,closedAt,body'])
     .map((c) => ({ number: c.number, title: c.title, state: String(c.state).toLowerCase(), labels: (c.labels ?? []).map((l) => l.name),
-      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null,
+      column: (c.projectItems ?? []).find((p) => p.status?.name)?.status.name ?? null, createdAt: c.createdAt ?? null, updatedAt: c.updatedAt ?? null, closedAt: c.closedAt ?? null,
       // otherwise only the "Depends on: #n" lines are kept from the text (lib/cardgraph.mjs), not the whole body
       // (and its "Touches" line: what it changes, for today's plan, lib/today.mjs)
       body: wholeText ? (c.body ?? '') : [dependsOnLines(c.body), /^\W*touches\W*[:.].*$/im.exec(String(c.body ?? ''))?.[0] ?? ''].filter(Boolean).join('\n') }));

@@ -49,7 +49,8 @@ import { boardView } from './lib/boardview.mjs';
 import { ghRun } from './lib/gh.mjs';
 import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 import { STOPPED_FILE, stoppedLines } from './lib/stopped.mjs';
-import { codeHotspots, shippedRecords } from './lib/codestate.mjs';
+import { codeHotspots, recentFixes, shippedRecords } from './lib/codestate.mjs';
+import { fixStreaks, streakLine } from './lib/hotspots.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
 import { together, togetherLines } from './lib/together.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
@@ -156,7 +157,7 @@ async function gatherGoals(config, all) {
       }
       if (s === 'health') {
         const g = healthGoal(all, healthNumbers(config), readJson(commonFile('workflow-health-seen.json')), { health: board.health ?? HEALTH, every: board.upkeepEvery ?? 8 });
-        goals.push({ ...g, notes: [...g.notes, ...spots.filter((x) => x.kind !== 'bug-cluster').slice(0, 3).map((x) => `${x.what} (${x.principle.split(':')[0]})`)] });
+        goals.push({ ...g, notes: [...g.notes, ...spots.filter((x) => x.kind !== 'bug-cluster' && x.kind !== 'fix-streak').slice(0, 3).map((x) => `${x.what} (${x.principle.split(':')[0]})`)] });
       }
     }
   }
@@ -269,12 +270,23 @@ function stoppedLine() {
   return stoppedLines(readJson(commonFile(STOPPED_FILE)), { ahead });
 }
 
+/**
+ * For --next: "step back: ..." for an area with a streak of fixes (lib/hotspots.mjs fixStreaks: closed bug cards and shipped
+ * bug records, `board.fixStreak` in the config). A fix streak is spread thin, so no file stands out; the shape does.
+ */
+function stepBack(config, all) {
+  const areas = config.board.labels?.areas ?? [];
+  const closed = all.filter((c) => c.state === 'closed' && c.labels.includes('bug'))
+    .map((c) => ({ card: c.number, area: areas.find((a) => c.labels.includes(a)) ?? null, at: c.closedAt ?? c.updatedAt }));
+  return fixStreaks(recentFixes(root, closed), config.board.fixStreak).slice(0, 1).map((s) => `step back: ${streakLine(s)}`);
+}
+
 /** For --next: the ranking kept to the picked focus while it is not finished, and the lines to say around it. */
 async function withinFocus(config, all, ranked) {
   const board = config.board;
   const was = whereYouWere(all);
   const room = roomToStart(all, board.wip ?? 2, sessionCards());
-  const before = [...stoppedLine(), ...(was ? [`you were on: ${was}`] : []),
+  const before = [...stoppedLine(), ...(was ? [`you were on: ${was}`] : []), ...stepBack(config, all),
     ...(room.room ? [] : [`STOP: ${room.count} pieces of work are in progress and the limit is ${room.limit}: finish or park one before starting another (park: npm run board -- --move <n> "Ready")`])];
   const waiting = toSort(all, TO_SORT).length;
   const sort = waiting ? [`(${waiting} card${waiting === 1 ? '' : 's'} made along the way wait${waiting === 1 ? 's' : ''} for your yes before ${waiting === 1 ? 'it is' : 'they are'} offered: npm run board -- --unsorted)`] : [];

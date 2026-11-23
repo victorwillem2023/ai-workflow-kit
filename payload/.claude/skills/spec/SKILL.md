@@ -29,6 +29,9 @@ the vision becomes cards for later, not this spec.
     end state needs a split or a refactor first* in step 2, and the plan says what it does about it.
 - Its type label (`ui`, `feature`, `bug` or `workflow`) goes on the spec's "Card:" line. A card with none: ask which. A
   `spike` card goes to `/spike`, not a spec.
+- **The flow and the job**: the flow this card changes has a page, `docs/anatomy/<flow>.md` (the list: `docs/ARCHITECTURE.md`,
+  *Flows and their jobs*); name the flow and the job on the spec's "Flow:" line. A flow with no page yet: write it as the code
+  is now (`docs/anatomy/README.md` has the shape), under *Docs that change*. Each job the change does goes to its home.
 - What the feature does today: `docs/GUIDE.md` lists the guide's parts; open only the part for it in `docs/guide/`.
 - The files: search `docs/MAP.md` (never read it whole), then open only the line ranges you need.
 
@@ -53,7 +56,9 @@ to build it is the owner's first thought: a better way is named and recommended 
 
 **Two designs, drafted apart, for a card that is worth it.** One author writes one design and then defends it. So when
 `npm run levels -- --needs designs <its effort>` says yes (large cards once people use the app, none in a prototype), or
-the change is hard to undo whatever its size, do this before the owner's questions:
+the change is hard to undo whatever its size, or **in any phase** the card adds a flow or a job, gives a job a second home,
+or is the step back a `step back:` line asked for (`npm run board -- --next`), do this before the owner's questions (in a
+prototype too: that is when the shapes form and when they are cheapest to get right):
 
 1. Start two subagents at the same time (the Task tool, on the strong model), each with the card's text, the End state line,
    the files step 1 found, and one of these two briefs. Neither sees this chat or the other's draft.

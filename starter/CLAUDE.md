@@ -98,6 +98,8 @@ Notes live in each folder's CLAUDE.md (rules only); where things are lives in `d
     is a new row in that table, in the same commit.
 14. A shared step doesn't ask what kind of thing it is handling where the kind's own file can hold what differs. A number that
     is a rule gets a name and a comment saying what it is.
+15. One job, one home: a flow's jobs and their homes are on its page, `docs/anatomy/<flow>.md`. A card that adds a job, or a
+    second home for one, is a design question for the owner (`/spec`), never a patch.
 <!-- /kit:rule-lives -->
 
 <!-- kit:docs-before-memory -->

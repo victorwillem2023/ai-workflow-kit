@@ -36,6 +36,9 @@ Each answer that is no comes with the file and line.
 - **Two ways of doing one thing**: a second path beside an old one for the same job, a special case (`if` this kind, else the
   old way) where the general rule could have taken it, or a copy of logic that already has a home. Each is a finding, with
   what one way would look like.
+- **One job, one home**: list the jobs the change does and check each against the flow's page (`docs/anatomy/<flow>.md`;
+  the spec's "Flow:" line names it). A job done somewhere other than its home, or a new job with no row, is a
+  finding. A script cannot see this; you can.
 - The same for infra and docs: a second stack or module for what one already does; a doc that repeats another, or lists what
   a folder or a pattern would name.
 - **The design not taken**: when the spec has a "Design not taken:" line, did the build drift into that design after all (its
