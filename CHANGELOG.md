@@ -2,6 +2,21 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.17.0**: **the order the owner agreed stays on the board, and `/next` shows it without being asked.** In a real project the
+  approved reshaping (#609, #610) dropped out of `/next` while fixes on the old shape were offered, and the owner had to point it
+  out. Five causes, five fixes:
+  **A sentence was read as a dependency**: a line starting "Needs" or "After" counted without a colon ("Needs its own spec ...
+  (#380)" made the refactor wait for the fix it should come before). Only `Depends on:`, `After:`, `Needs:` or `Blocked by:` with
+  the colon, or with the card number right after ("Depends on #5"), counts now (`lib/cardgraph.mjs`).
+  **`/anatomy` hid the cards just approved**: it made them `--unsorted`, which `--next` never offers. Cards made after the owner's
+  yes are not to sort, and their order goes on the board as `Depends on:` lines.
+  **A goal did not see its own clean-up plan**: a kind's goal took only the app map's ends, and a refactor sits on none. It now
+  takes in the cards of its flow page's "Cards:" line first, in their order (`docs/anatomy/<kind>.md`; `lib/goals.mjs`,
+  `lib/anatomy.mjs` planCards), and `--next` offers them before the cards on the ends.
+  **Finishing a card did not say what it unlocked**: `--next` starts with `unlocked: #607 is done, so #609 ... can start` for three
+  days after it was closed or shipped, also for a card that waits for the owner's yes (with the command to let it in).
+  **The stopping note was not checked**: a note naming a card that is done says "careful" when it is written and when it is
+  shown, so the next card comes from the board. Tests in `cardgraph`, `stopped`, `goals` and `anatomy`.
 - **4.16.0**: **a line between a project's own scripts and the kit's, and before and after compared the same way everywhere.**
   An agent proposing a script (a measuring run, a data check) now says which side it is on (`CLAUDE.md`, *How we work*): it
   knows the app's words or data, so it is the project's own, kept in the project, run by hand, never by `npm test` or the
