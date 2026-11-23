@@ -42,6 +42,8 @@ start with there (`"agent": "claude --model opus"`); it is typed as written.
 
 ## A day with it
 
+- **From `/next`**: answer with the choice (`1`, or the card's number) and the chat for it is opened for you:
+  `session.mjs --chat "/work <n>"` starts the Claude CLI in a new terminal of the main folder. Switch to it in Orca.
 - **From the board** (as before): `/work <n>` in the main folder's chat plans and stops for your yes. Then the build's new chat
   is opened for you: `session.mjs <topic> --card <n> --start "/build <topic>"` makes the session in Orca and starts the Claude
   CLI in it with `/build <topic>`. You switch to it in the sidebar; when it says "try it", the session shows as *in review*.

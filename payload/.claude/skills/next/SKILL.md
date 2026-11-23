@@ -103,9 +103,11 @@ The next steps you found, at most four, most urgent first: a security alert, the
 has decisions, a card waiting to be tried, picking a focus, the top card. Mark the one you recommend, with why in a few words. The quick ones that keep the rest honest
 come first: a look back due, an empty roadmap, decisions waiting; then the card.
 
-**On the answer, do not run it here.** Say: "Start it in a new chat (so it begins clean, on the right model): type
-`<command>`". A new chat gives the command its own model (planning on the strong one) and none of this chat's reading.
-"Not now" ends it.
+**On the answer, do not run it here**: a new chat gives the command its own model and none of this chat's reading. With
+`"orchestrator": "orca"` (`session` in `workflow/config.json`), open it for them: `node workflow/scripts/session.mjs --chat
+"<command>"`, then say "It is open in a new Orca terminal of the main folder." Otherwise, or when Orca did not start it, say:
+"Start it in a new chat (so it begins clean, on the right model): type `<command>`". "1" or a card's number is enough of an
+answer; "Not now" ends it.
 
 **Each choice in plain words**, as someone who never heard of the workflow would follow it: what will happen, what you get,
 how long. The command goes after it in brackets, never as the choice itself:

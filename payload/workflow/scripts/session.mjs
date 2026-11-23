@@ -8,6 +8,8 @@
 //                                               the owner's check); finishing the other one moves this one onto main by itself
 //                                               --start "<prompt>": with an orchestrator, the agent starts in a terminal of its own in the new folder
 //                                               (the Claude CLI with that prompt, like --start "/build hill-repeats"); without one the line to type is printed
+//   node workflow/scripts/session.mjs --chat "<prompt>"  a new chat in the main folder, started with that prompt (like --chat "/work 131", what /next
+//                                               runs on the owner's answer): with an orchestrator in a terminal of its own; without one the line to type
 //   node workflow/scripts/session.mjs --adopt | --release | --connect orca   sessions in folders an orchestrator makes: workflow/scripts/session-adopt.mjs
 //   node workflow/scripts/session.mjs --restack <topic>  move a session that was built on another one onto main, once that one is finished (what
 //                                               --finish does by itself; by hand after uncommitted work or a conflict was in the way)
@@ -381,6 +383,7 @@ try {
   else if (a === '--carry-notes' && b) carryNotes(b);
   else if (a === '--adopt') await adopt(valueOf('--card'));
   else if (a === '--release') release();
+  else if (a === '--chat' && textOf('--chat')) startAgent(main, textOf('--chat'), textOf('--chat'));
   else if (a === '--connect') connect(b);
   else if (a === '--serve' && b) await serve(b, { lan: has('--lan'), copyData: has('--copy-data'), phone: has('--phone') });
   else if (a === '--catch-up' && b) catchUpSession(b);
@@ -392,7 +395,7 @@ try {
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
   else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'), textOf('--start'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] [--start "<prompt>"] | --adopt [--card <n>] | --release | --connect orca | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] [--phone] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] [--start "<prompt>"] | --chat "<prompt>" | --adopt [--card <n>] | --release | --connect orca | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] [--phone] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

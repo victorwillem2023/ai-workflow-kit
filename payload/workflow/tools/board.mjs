@@ -15,7 +15,7 @@
 //                                "code:" line when it is likely to change a file to clean up first (lib/cardcode.mjs)
 //   --next [n] --json            the same as fields: the tie, the next cards, the waiting ones, the triage (lib/boardview.mjs)
 //   --focus [--all]              the focus block: where the picked one stands, or the best blocks to pick from (one theme each, lib/focus.mjs)
-//   --focus "<theme>" [n,m]      picks a block (its proposed cards, or the ones named); --focus --add <n> puts one more card in it;
+//   --focus "<theme>" [n,m]      picks a block (its proposed cards, or the ones named); --focus --add <n>[,m] puts more cards in it;
 //                                --focus --clear drops it. While a block is picked, --next offers only its cards
 //   --focus                      with the app map, goals come first: a kind of request or a part of the app with a count of how far it is, and
 //                                code health with its numbers (--focus "<goal id>" picks one; --all every goal; --areas the blocks by area)
@@ -172,10 +172,12 @@ async function focusCommand(config, all) {
   if (word === '--clear') { rmSync(focusFile(), { force: true }); console.log(now ? `board: the focus "${now.theme}" is dropped; --next offers every card again` : 'board: no focus was picked'); return; }
   if (word === '--add') {
     if (!now) throw new BoardError('No focus is picked yet: npm run board -- --focus shows what to pick from.');
-    const n = cardNumber(argv[at + 2]);
-    if (!all.some((c) => c.number === n && c.state === 'open')) throw new BoardError(`#${n} is not an open card.`);
-    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, n])] }, null, 2) + '\n');
-    console.log(`board: #${n} is in the focus "${now.theme}" now`);
+    // one card or several: --focus --add 590 or --focus --add 590,593,595
+    const ns = String(argv[at + 2] ?? '').split(',').map(cardNumber);
+    const shut = ns.filter((n) => !all.some((c) => c.number === n && c.state === 'open'));
+    if (shut.length) throw new BoardError(`#${shut.join(', #')} ${shut.length === 1 ? 'is not an open card' : 'are not open cards'}.`);
+    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, ...ns])] }, null, 2) + '\n');
+    console.log(`board: #${ns.join(', #')} ${ns.length === 1 ? 'is' : 'are'} in the focus "${now.theme}" now`);
     return;
   }
   const goals = await gatherGoals(config, all);
@@ -347,6 +349,9 @@ async function main() {
     if (problems.length) throw new BoardError(problems.join('\n'));
     console.log(`board: project ${board.project} of ${board.owner} has all ${board.columns.length} columns` +
       (board.types?.length ? ', and every open card has a type label' : '') + '; every label the config names exists');
+  } else if (argv.includes('--focus')) {
+    // before --add: --focus --add <n> puts a card in the focus, it does not make a new card
+    await focusCommand(config, listCards(board, run));
   } else if (argv.includes('--add')) {
     const title = value('--add');
     if (!title?.trim()) throw new BoardError(`--add needs a title. ${usage}`);
@@ -464,8 +469,6 @@ async function main() {
     const theme = value('--sweep');
     const groups = sweepGroups(listCards(board, run), { areas: board.labels?.areas ?? [], types: board.types ?? [] });
     console.log(renderSweep(groups, theme && !theme.startsWith('--') ? theme : null, Number(value('--from')) || 0));
-  } else if (argv.includes('--focus')) {
-    await focusCommand(config, listCards(board, run));
   } else if (argv.includes('--graph')) {
     // which card needs which, as a tree: what nothing waits on at the top, what depends on it below (lib/cardgraph.mjs)
     // only the cards on the board (the reports and Renovate's dashboard are issues, not work)

@@ -137,6 +137,19 @@ describe('sessions in folders an orchestrator makes', () => {
     assert.ok(!existsSync(dir), 'finished: the folder is taken away, wherever it was');
   });
 
+  it('--chat opens a new chat in the main folder, in a terminal of its own in Orca, and says the line to type when Orca cannot', () => {
+    const { r, calls } = withOrca();
+    const out = run(r, '--chat', '/work 131');
+    assert.ok(out.ok, out.out);
+    const terminal = calls().find((c) => c.slice(0, 2).join(' ') === 'terminal create') ?? [];
+    assert.equal(terminal[terminal.indexOf('--command') + 1], 'claude "/work 131"');
+    assert.match(terminal[terminal.indexOf('--worktree') + 1], /^path:/);
+    assert.ok(!calls().some((c) => c.slice(0, 2).join(' ') === 'worktree create'), 'no session folder: /work makes its own');
+    const down = run({ ...r, env: { ...r.env, ORCA_FAIL: '1' } }, '--chat', '/work 131');
+    assert.ok(down.ok, down.out);
+    assert.match(down.out, /run: claude "\/work 131"/);
+  });
+
   it('--serve opens the link in the session\'s own browser tab in Orca, and --phone as a phone', async () => {
     const { r, calls } = withOrca();
     ran(r, 'screen');
