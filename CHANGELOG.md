@@ -2,6 +2,17 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.13.0**: **one job, one home: flows have a shape, a run of fixes makes you step back, and a new job gets two designs, in a prototype too.**
+  **A page per flow** (`docs/anatomy/<flow>.md`, its shape in `docs/anatomy/README.md`, the list in `docs/ARCHITECTURE.md`,
+  *Flows and their jobs*; `CLAUDE.md` rule 15): the flow's jobs in order, each with one home, and its end state. `/spec` names
+  the flow and the job on a new "Flow:" line, and writes a flow's page from the code the first time a card touches it; `/review` checks each job the change does against its home.
+  **Step back** (`npm run board -- --next`, `npm run health`; `lib/hotspots.mjs` fixStreaks): 5 fixes in one area in 7 days
+  (closed bug cards and shipped bug records, each once; `board.fixStreak` sets it, `false` turns it off) gives a
+  `step back:` line, and `/next` recommends drawing the flow and planning the clean version before the next fix.
+  **Two designs by shape, not only by size** (`/spec` step 2): in every phase, a card that adds a flow or a job, gives a job a
+  second home, or is a step back. Special cases in shared steps are counted by the existing `ratchets`; the new section says so.
+  Tests: `hotspots.test.ts` (the streak, its days and count, off). Projects made before: the section is added by `/spec` the
+  first time a card touches a flow (`docs/ARCHITECTURE.md` is the project's own file, never overwritten; `docs/anatomy/README.md` is added when missing).
 - **4.12.0**: **the chat `/next` points to opens itself, in Orca.** With `"orchestrator": "orca"`, the owner's answer to
   `/next` (`1`, or the card's number) opens the new chat for them: `session.mjs --chat "/work 131"` starts the Claude CLI with
   that command in a terminal of its own in the main folder. With Orca closed, or no orchestrator, it says the line to type, as
