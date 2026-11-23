@@ -121,7 +121,7 @@ export function orcaRun(args, { timeout = 30000 } = {}) {
 }
 
 /** orca's answer as JSON, or null with the reason in `why` (not installed, not running, refused). After one failure it is not asked again. */
-function orca(args, why = {}, { extra = false } = {}) {
+export function orca(args, why = {}, { extra = false } = {}) {
   if (orcaDown) return null;
   const r = orcaRun([...args, '--json']);
   if (r.error || r.status !== 0) {
@@ -134,7 +134,7 @@ function orca(args, why = {}, { extra = false } = {}) {
 }
 
 /** Every object in a JSON answer, however deep (the shape of orca's answers is its own: only an id next to this project's path is read). */
-function* objectsIn(x, depth = 0) {
+export function* objectsIn(x, depth = 0) {
   if (!x || typeof x !== 'object' || depth > 8) return;
   if (!Array.isArray(x)) yield x;
   for (const v of Object.values(x)) yield* objectsIn(v, depth + 1);
@@ -232,4 +232,5 @@ export function connect(name) {
   const shown = worktrees().filter((w) => !sameDir(w.dir, main) && w.branch);
   for (const w of shown) { orcaNote(w.dir, 'in-progress', sessionNote(cardOf(w.branch), keptPort(w.dir)) || w.branch); orcaCards(w.dir, cardOf(w.branch)); }
   console.log(orcaDown ? `Orca has the project, but it stopped answering: ${why.said ?? 'no answer'}.` : `Orca has the project (id ${repo}) and shows its ${shown.length} open session${shown.length === 1 ? '' : 's'}${shown.length ? `: ${shown.map((w) => w.branch).join(', ')}` : ''}. New sessions are made by Orca from now on.`);
+  console.log('The weekly runs (the security report, the retro, the updates) can be Orca\'s too, once the project is past a prototype: npm run schedule');
 }

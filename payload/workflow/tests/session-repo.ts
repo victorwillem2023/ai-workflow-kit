@@ -6,7 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFi
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-const SCRIPTS = ['session.mjs', 'session-core.mjs', 'session-extras.mjs', 'session-live.mjs', 'session-stop.mjs', 'session-adopt.mjs', 'notes.mjs', 'packages.mjs'].map((f) => resolve('workflow', 'scripts', f));
+const SCRIPTS = ['session.mjs', 'session-core.mjs', 'session-extras.mjs', 'session-live.mjs', 'session-stop.mjs', 'session-adopt.mjs', 'schedule.mjs', 'notes.mjs', 'packages.mjs'].map((f) => resolve('workflow', 'scripts', f));
 export const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
 export const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 export const roots: string[] = [];

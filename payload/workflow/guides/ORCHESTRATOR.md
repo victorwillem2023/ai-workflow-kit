@@ -58,6 +58,16 @@ start with there (`"agent": "claude --model opus"`); it is typed as written.
 Orca that is closed, or its command line missing, is one warning line: the session's folder is then made next to the main
 folder as before, and Orca shows it the next time it runs.
 
+## The weekly runs, on Orca's schedule
+
+Once the project is past a prototype (`workflow/levels.json`), Orca can start the runs nobody should have to remember:
+the security report read (`/secops`, Monday), the dependency updates (`npm run updates`, Wednesday) and the retro (`/retro`,
+Friday). `npm run schedule` shows them; `npm run schedule -- --on` makes them in Orca. Each is a chat in the main folder that
+reports and then waits for you: none builds, commits or pushes by itself. In a prototype the command makes nothing and says
+so. `"schedule"` under `session` replaces the three with your own list, or switches them off with `false`; a time or a day
+is changed on Orca's Automations page. Whether Orca has to be open at that hour, Orca's own guide does not say (checked
+November 2026).
+
 ## What the kit does not hand over
 
 - **The stop points.** Orca can commit, push and open pull requests from its own buttons. Those go around "you say done":

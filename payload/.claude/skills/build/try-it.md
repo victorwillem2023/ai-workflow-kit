@@ -15,6 +15,12 @@ it is the try command alone.
   that first, and never hand over a link that does not open. For a check on the owner's phone add `--lan` (it prints the
   address on the Wi-Fi), and for a check that needs their real data add `--copy-data` (it runs on a copy; the real data is
   never opened). Never edit the session's `.env` for either: both end by themselves when the server is stopped.
+  **Walk it first, from pilot on** (the ui module; `node workflow/scripts/walk.mjs --on` says "off" in a prototype: then skip
+  this). Write `tests/smoke/<topic>.json`: three to eight steps from the spec's "What the user sees", in the owner's words
+  (`{ "type": "Goal distance", "text": "10" }`, `{ "click": "Make plan" }`, `{ "see": "14 weeks" }`; the form is at the top of
+  `workflow/scripts/walk.mjs`). Then `cd <session folder> && node workflow/scripts/walk.mjs <topic>`: one line when it passes,
+  the failed step when not. Fix a failed step before the hand-over; never read the page yourself to check it. The walk is
+  committed with the feature, and *Try this* below gives the steps it passed.
 - **It has no screen** (rules, a calculation, an API, an import): the builder writes a small try command,
   `workflow/specs/<topic>.try.<ext>`, in the session folder, in the project's language (`npx tsx workflow/specs/<topic>.try.ts ...`,
   `python workflow/specs/<topic>.try.py ...`). `workflow/specs/` is ignored, so it is never committed, and it goes with the spec

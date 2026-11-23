@@ -32,7 +32,8 @@ export const sameDir = (x, y) => resolve(x).toLowerCase() === resolve(y).toLower
 
 /** The worktrees git lists, the main folder first: { dir, branch } (the porcelain form, one field per line: a path with a space stays whole). */
 export const worktrees = () => git(main, 'worktree', 'list', '--porcelain').split(/\r?\n\r?\n/).filter((b) => b.trim()).map((block) => ({
-  dir: /^worktree (.+)$/m.exec(block)?.[1]?.trim(), branch: /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim(),
+  // (resolve: git prints a path with forward slashes on Windows too; every path the kit says or hands on is the system's own form)
+  dir: resolve(/^worktree (.+)$/m.exec(block)?.[1]?.trim() ?? ''), branch: /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim(),
 }));
 
 /**

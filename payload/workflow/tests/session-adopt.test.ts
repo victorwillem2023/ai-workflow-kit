@@ -9,6 +9,7 @@ import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { ENV, PORTS, commitIn, ghCalls, git, makeRepo, ran, roots, run, type Repo } from './session-repo';
 import { withOrchestrator } from '../scripts/session-adopt.mjs';
+import { planOf } from '../scripts/schedule.mjs';
 
 /** The session script run from inside a folder, as an orchestrator's setup script runs it. */
 const runIn = (r: Repo, dir: string, args: string[], env: Record<string, string> = {}) => {
@@ -177,6 +178,47 @@ describe('sessions in folders an orchestrator makes', () => {
     assert.ok(calls().some((c) => c.includes('--external-worktree-visibility') && c.includes('show')));
     assert.ok(calls().some((c) => c.includes(`path:${r.wt('old-one')}`) && c.some((x) => /card #42/.test(x))));
     assert.match(out.out, /shows its 1 open session: old-one/);
+  });
+
+  /** `npm run schedule` in the main folder, as the owner runs it. */
+  const schedule = (r: Repo, ...args: string[]) => {
+    try { return { ok: true, out: execFileSync('node', [join(r.main, 'workflow', 'scripts', 'schedule.mjs'), ...args], { cwd: r.main, env: { ...ENV, ...r.env }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) }; }
+    catch (e) { const x = e as { stdout?: string; stderr?: string }; return { ok: false, out: `${x.stdout ?? ''}${x.stderr ?? ''}` }; }
+  };
+
+  it('the weekly runs are off in a prototype: nothing is asked of Orca', () => {
+    const { r, calls } = withOrca();
+    writeFileSync(join(r.main, 'workflow', 'levels.json'), '{ "phase": "prototype" }');
+    const out = schedule(r, '--on');
+    assert.ok(out.ok, out.out);
+    assert.match(out.out, /^Scheduled runs: off, the project is a prototype/);
+    assert.equal(calls().length, 0);
+  });
+
+  it('from pilot on --on makes them in Orca: a chat in the main folder each, and only for a command the project has', () => {
+    const { r, calls } = withOrca();
+    writeFileSync(join(r.main, 'workflow', 'levels.json'), '{ "phase": "pilot" }');
+    mkdirSync(join(r.main, '.claude', 'skills', 'retro'), { recursive: true });
+    const shown = schedule(r);
+    assert.ok(shown.ok, shown.out);
+    assert.match(shown.out, /app: retro .*not in Orca yet/);
+    assert.ok(!calls().some((c) => c[1] === 'create'), 'without --on nothing is made');
+    const out = schedule(r, '--on');
+    assert.ok(out.ok, out.out);
+    const made = calls().filter((c) => c.slice(0, 2).join(' ') === 'automations create');
+    assert.deepEqual(made.map((c) => c[c.indexOf('--name') + 1]), ['app: retro', 'app: updates'], 'no /secops here, so no security run');
+    assert.deepEqual([made[0][made[0].indexOf('--prompt') + 1], made[0][made[0].indexOf('--provider') + 1], made[0][made[0].indexOf('--workspace') + 1]], ['/retro', 'claude', `path:${r.main}`]);
+  });
+
+  it('what is scheduled: the project\'s own list, none with "schedule": false, none without the orchestrator', () => {
+    const has = () => true;
+    const orcaOn = (schedule?: unknown) => ({ session: { orchestrator: 'orca', ...(schedule === undefined ? {} : { schedule }) } });
+    assert.equal(planOf({ config: orcaOn(), levels: '{ "phase": "production" }', hasSkill: has, project: 'app' }).runs.length, 3);
+    assert.deepEqual(planOf({ config: orcaOn([{ name: 'tidy', trigger: 'weekly', time: '09:00', prompt: '/tidy' }]), levels: '{ "phase": "pilot" }', hasSkill: has, project: 'app' }),
+      { off: '', runs: [{ name: 'app: tidy', trigger: 'weekly', time: '09:00', prompt: '/tidy' }] });
+    assert.match(planOf({ config: orcaOn(false), levels: '{ "phase": "pilot" }', hasSkill: has, project: 'app' }).off, /"schedule": false/);
+    assert.match(planOf({ config: { session: {} }, levels: '{ "phase": "pilot" }', hasSkill: has, project: 'app' }).off, /"orchestrator": "orca"/);
+    assert.match(planOf({ config: orcaOn(), levels: null, hasSkill: has, project: 'app' }).off, /prototype/);
   });
 
   it('the setting is added to a config that lacks it and left alone when it is there', () => {

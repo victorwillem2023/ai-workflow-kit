@@ -2,6 +2,21 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.11.0**: **a screen is walked by a script before it is handed over, and the weekly runs go on Orca's schedule; both only past a prototype. And 4.10.0's Orca tests pass on Windows.**
+  **Paths in the system's own form**: git prints a worktree's path with forward slashes on Windows too, so 4.10.0 handed Orca
+  `path:C:/...` and three tests of `session-adopt.test.ts` failed there. What the kit says and hands on is now as the system
+  writes it (`worktrees`, `session-core.mjs`).
+  **A screen is walked before it is handed over, from pilot on** (`workflow/scripts/walk.mjs`, the ui module; no Orca
+  needed): `tests/smoke/<topic>.json` holds three to eight steps in the owner's words (type into a field by its label, click
+  a button by its text, a text is there or gone), run in headless Chrome or Edge on the session's dev server. The script
+  reads the page; the agent reads one line, or the failed step with what the page shows instead and a picture's path. An
+  error the page throws fails it too. Off in a prototype, where screens still change daily (`--force` runs one anyway).
+  **The weekly runs on Orca's schedule, past a prototype** (`npm run schedule`, `-- --on` makes them): `/secops`, `/retro`
+  and `npm run updates` as chats in the main folder that report and wait; a run whose command is not installed is left out,
+  `"schedule"` under `session` is the project's own list or `false`. In a prototype it makes nothing and says so.
+  **Tests**: `workflow/tests/walk.test.ts` (the walk file, the failed step's words, the phase), the runs in
+  `workflow/tests/session-adopt.test.ts`; the walk itself was run against a real page in headless Chrome. The Orca part of the
+  runs is **not yet tried in a real project**.
 - **4.10.0**: **sessions in an orchestrator: Orca makes the folders and runs the Claude CLI in them, the kit keeps the port, the
   card, the gate and the one commit.** The kit's session folders (one worktree, branch and port per card, opened by hand in an
   editor) were an orchestrator built by hand. Orca (https://orca.dev) does that part better: every session in one sidebar with
