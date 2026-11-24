@@ -2,6 +2,12 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.18.2**: **`/next` recommends the goal step when the goal cannot move, and cards made while working on a goal go in it
+  without asking.** A `next goal:` line at the top of `--next` (no goal and more than five cards, the goal done, or nothing of
+  it can start) names `/tidy focus` (`npm run board -- --focus` without `/tidy`), and `/next` puts it above a step back,
+  `anatomy:` and the tidy-up. New work from a build is made with its labels and put in the goal when its finish line needs
+  it, else parked (no goal: the backlog), then said ("drop #n" changes one): no `to sort`, no question (`try-it.md`,
+  `CLAUDE.md`).
 - **4.18.1**: **short paths and paths in backticks are read as the files they are.** A test run of 4.18.0 on a real project
   missed an overlap (its spec wrote `multiday/new-trip.ts`), read no file on any card (`**Touches.** \`src/a.ts\``) and held cards
   apart over a doc. A short path is matched to the one file it fits (`lib/claims.mjs` resolvePath; never a bare name or a path
