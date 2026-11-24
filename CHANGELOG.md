@@ -2,6 +2,11 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.18.1**: **short paths and paths in backticks are read as the files they are.** A test run of 4.18.0 on a real project
+  missed an overlap (its spec wrote `multiday/new-trip.ts`), read no file on any card (`**Touches.** \`src/a.ts\``) and held cards
+  apart over a doc. A short path is matched to the one file it fits (`lib/claims.mjs` resolvePath; never a bare name or a path
+  from the project's top); backticks and a trailing "'s" around a path are taken off; the plan, today and the grouping read a
+  card's paths as a claim does. Tests in `claims`.
 - **4.18.0**: **sessions never change the same files side by side, a goal has a plan in waves, and open points are sorted
   before any becomes a card.** With several sessions at once, agents changed the same files and undid or contradicted each
   other's work, every open point became a card, and the owner had to ask for the order.
