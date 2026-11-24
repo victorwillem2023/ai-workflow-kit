@@ -2,6 +2,21 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.18.0**: **sessions never change the same files side by side, a goal has a plan in waves, and open points are sorted
+  before any becomes a card.** With several sessions at once, agents changed the same files and undid or contradicted each
+  other's work, every open point became a card, and the owner had to ask for the order.
+  **Each session holds its files** (`lib/claims.mjs`, `lib/sessionclaims.mjs`): its spec's files and tests, else its cards'
+  Touches lines, and every file it changed; never docs, shared files, generated pages, lock files or specs. A new session on a
+  held file does not start (stack, combine or wait; `--anyway` is the owner's); the gate in a session advises when another one
+  changed the same file; `session.mjs --list` shows each one's files and `--beside` the rules the sessions next to it decide
+  (`/build` reads it, `/spec` writes a `Beside:` line, `/review` checks against it). Today's plan compares real files first.
+  **A goal's plan** (`/tidy focus`, `lib/goalplan.mjs`): dependencies and files on its cards, a finish line, and waves: what
+  runs side by side, no two cards on one file (`npm run board -- --plan [--finish]`, `--park`, `--touches`). `--next` orders
+  by wave and says how much the goal grew since its plan was agreed.
+  **Open points are sorted** at the hand-over (`try-it.md`, `CLAUDE.md`): inside the card, a question, routine, or new work,
+  which joins the goal only when its finish line needs it, else is parked until the goal is done.
+  Tests: `claims`, `goalplan`, `session-claims`, `today`. The review step's 17 runs found 38 problems, 37 fixed; package.json
+  and the config stay held on purpose. Quality: `/spec` 1.00, `/review` 1.00 (one run of 0.93 was chance).
 - **4.17.1**: **approved work never waits to be sorted, and noticed work is settled in the same sitting.** A card made after
   the owner's yes (a plan they approved, cards they asked for) is never `--unsorted` (`CLAUDE.md`, *One change at a time*, for
   every skill, as 4.17.0 did for `/anatomy`). Cards noticed along the way end the chat with one question: let them all in,
