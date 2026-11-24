@@ -2,7 +2,8 @@ export interface Claim { topic: string; cards: number[]; dir?: string; on?: stri
 export function setTouches(body: string | null | undefined, paths: string[]): string;
 export function looksLikeFile(p: string): boolean;
 export function touchedPaths(body: string | null | undefined): string[];
-export function claimOf(parts?: { spec?: string; touches?: string[]; changed?: string[] }, never?: string[]): string[];
+export function claimOf(parts?: { spec?: string; touches?: string[]; changed?: string[] }, never?: string[], resolve?: (p: string) => string[]): string[];
+export function resolvePath(p: string, tracked: Set<string>): string[];
 export function specFiles(spec: string | null | undefined): string[];
 export const DOCS: string[];
 export function settledFiles(config?: Record<string, any>): string[];

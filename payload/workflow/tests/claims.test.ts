@@ -2,7 +2,7 @@
 // said when they do (the refusal, the gate's advice, the note for the builder beside).
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { DOCS, stackOf, besideNote, claimOf, clashAdvice, clashes, clashMessage, meet, setTouches, settledFiles, sharedFiles, specFiles, specSection, touchedPaths } from '../../workflow/tools/lib/claims.mjs';
+import { DOCS, resolvePath, stackOf, besideNote, claimOf, clashAdvice, clashes, clashMessage, meet, setTouches, settledFiles, sharedFiles, specFiles, specSection, touchedPaths } from '../../workflow/tools/lib/claims.mjs';
 
 const SPEC = `# Spec: from-start
 Card: #379
@@ -40,11 +40,25 @@ describe('what a session holds', () => {
     assert.deepEqual(claimOf({ changed: ['src/core/CLAUDE.md', 'src/core/geo.ts', 'docs/flow/map.js', 'apps/web/package-lock.json', 'go.sum'] }, never), ['src/core/geo.ts'], 'a folder\'s own notes, the map\'s data and every lock file are edited by their own rule');
   });
 
+  it('a path written the short way is the project\'s own when one file fits; a bare name that fits several stays as written', () => {
+    const tracked = new Set(['src/pipeline/climb/route-up.ts', 'src/pipeline/multiday/run.ts', 'src/pipeline/generate/run.ts', 'src/pipeline/multiday/new-trip.ts']);
+    assert.deepEqual(resolvePath('climb/route-up.ts', tracked), ['src/pipeline/climb/route-up.ts']);
+    assert.deepEqual(resolvePath('multiday/new-trip.ts', tracked), ['src/pipeline/multiday/new-trip.ts']);
+    assert.deepEqual(resolvePath('run.ts', tracked), ['run.ts'], 'run.ts alone does not say which');
+    assert.deepEqual(resolvePath('src/pipeline/climb/new-file.ts', tracked), ['src/pipeline/climb/new-file.ts'], 'a new file as written');
+    const mono = new Set(['apps/web/src/index.ts', 'apps/docs/vite.config.ts']);
+    assert.deepEqual(resolvePath('src/index.ts', mono), ['src/index.ts'], 'a whole path for a new file is never another one');
+    assert.deepEqual(resolvePath('vite.config.ts', mono), ['vite.config.ts'], 'a bare name is never moved into a folder');
+    assert.deepEqual(claimOf({ spec: '## Files that change\n- `climb/route-up.ts`\n- `run.ts`' }, [], (p) => resolvePath(p, tracked)), ['run.ts', 'src/pipeline/climb/route-up.ts']);
+  });
+
   it('reads and writes a card\'s Touches line, as /idea writes it or plain', () => {
     assert.deepEqual(touchedPaths('Why: x\n**Touches.** src/web/controller.ts, src/core/ and the results panel.'), ['src/web/controller.ts', 'src/core/']);
     assert.equal(setTouches('Why: x\n\nTouches: src/a.ts\n\nDepends on: #4', ['src/b.ts', 'src/c/']), 'Why: x\n\nTouches: src/b.ts, src/c/\n\nDepends on: #4');
     assert.equal(setTouches('Why: x', ['src/b.ts']), 'Why: x\n\nTouches: src/b.ts\n');
     assert.deepEqual(touchedPaths('Touches: package.json, index.html and board.wip, e.g. the panel'), ['package.json', 'index.html'], 'a file at the root counts, a code name does not');
+    assert.deepEqual(touchedPaths("**Touches.** The trip's notes (`src/pipeline/multiday/climb-plan.ts` `climbNote`, `src/pipeline/climb/notes.ts` `joinNote`); row 97 in `docs/ARCHITECTURE.md`."), ['src/pipeline/multiday/climb-plan.ts', 'src/pipeline/climb/notes.ts', 'docs/ARCHITECTURE.md'], 'paths in backticks, as the cards write them');
+    assert.deepEqual(touchedPaths("Touches: `config.json`'s keys and `src/a.ts`."), ['config.json', 'src/a.ts']);
     assert.deepEqual(touchedPaths('Touches: src/routes/+page.svelte, app/[slug]/page.tsx, (app/(shop)/cart/page.tsx), app/routes/$id.tsx.'), ['src/routes/+page.svelte', 'app/[slug]/page.tsx', 'app/(shop)/cart/page.tsx', 'app/routes/$id.tsx'], 'route files, and a path in brackets');
     assert.deepEqual(specFiles('## Tests (written first)\nFor `src/core` / `src/pipeline` a behaviour change needs one: `tests/a.test.ts`'), ['tests/a.test.ts'], 'a folder a spec names in passing is no claim');
     assert.deepEqual(sharedFiles('- **Shared files** (`README.md`, `docs/guide/`,\n  `src/routes.ts`, `src/i18n/en.json`): edit only your own\n  lines.\n- **Next rule**: `src/x.ts`'), ['README.md', 'docs/guide/**', 'src/routes.ts', 'src/i18n/en.json'], 'a bullet that wraps');

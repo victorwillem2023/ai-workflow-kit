@@ -60,7 +60,7 @@ import { codeTest } from './lib/lang.mjs';
 import { matchesAny } from './lib/glob.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
-import { together, togetherLines } from './lib/together.mjs'; import { claimOf, touchedPaths } from './lib/claims.mjs'; import { growthLine, growthOf, planLines, waveLine, wavesOf } from './lib/goalplan.mjs'; import { mainOf, neverIn, sessionClaims } from './lib/sessionclaims.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
+import { together, togetherLines } from './lib/together.mjs'; import { claimOf, touchedPaths } from './lib/claims.mjs'; import { growthLine, growthOf, planLines, waveLine, wavesOf } from './lib/goalplan.mjs'; import { mainOf, neverIn, resolverFor, sessionClaims } from './lib/sessionclaims.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
 import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -296,7 +296,7 @@ function cardClaims() {
       const spec = readFileSync(join(dir, f), 'utf8');
       const line = /^Card:\s*(.+)$/m.exec(spec)?.[1] ?? '';
       // a spec that names no file yet leaves the card to its Touches line
-      const files = claimOf({ spec }, never);
+      const files = claimOf({ spec }, never, resolverFor(main));
       // (the cards combined into one commit are inside the line's brackets: every #n counts)
       if (files.length) for (const m of line.matchAll(/#(\d+)/g)) byCard.set(Number(m[1]), files);
     }
@@ -306,14 +306,21 @@ function cardClaims() {
   return (claimsNow = { byCard, held });
 }
 
+/** Each card's Touches line read as a claim is (lib/claims.mjs): short paths made whole, docs and shared files left out. */
+function writtenFiles(all) {
+  let toClaim = (c) => touchedPaths(c.body);
+  try { const main = mainOf(root); const never = neverIn(main); const resolve = resolverFor(main); toClaim = (c) => claimOf({ touches: touchedPaths(c.body) }, never, resolve); } catch { /* no git: as written */ }
+  return new Map(all.filter((c) => touchedPaths(c.body).length).map((c) => [c.number, toClaim(c)]));
+}
+
 /** The cards that go together among `candidates` (lib/together.mjs), as lines; side by side fills the free room, not a fixed three. */
 async function togetherFor(board, all, candidates) {
-  return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], claims: cardClaims().byCard, room: Math.max(2, roomToStart(all, board.wip ?? 2, sessionCards()).room) })).slice(0, 4);
+  return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], claims: cardClaims().byCard, written: writtenFiles(all), room: Math.max(2, roomToStart(all, board.wip ?? 2, sessionCards()).room) })).slice(0, 4);
 }
 /** Today's plan among the cards to start (lib/today.mjs): the free room filled, in the goal's order, checked against the files the running sessions change. */
 async function todayFor(board, all, ranked) {
   const { byCard, held } = cardClaims();
-  return today(ranked, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], limit: board.wip ?? 2, sessions: sessionCards(), claims: byCard, held });
+  return today(ranked, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], limit: board.wip ?? 2, sessions: sessionCards(), claims: byCard, written: writtenFiles(all), held });
 }
 
 /** Each flow page's clean-up plan (docs/anatomy/<flow>.md, its "Cards:" line): { <flow slug>: [card numbers in order] }. */
@@ -371,7 +378,8 @@ function stepBack(config, all) {
  * page's "Cards:" line: the reshaping before fixes on the old shape), then the ranking (`ranked`), then the rest.
  */
 function goalPlan(all, f, ranked = []) {
-  const files = new Map(all.map((c) => [c.number, cardClaims().byCard.get(c.number) ?? touchedPaths(c.body)]));
+  const written = writtenFiles(all);
+  const files = new Map(all.map((c) => [c.number, cardClaims().byCard.get(c.number) ?? written.get(c.number) ?? []]));
   const mine = new Set(f.cards);
   const order = [...new Set([...f.plan.filter((n) => mine.has(n)), ...ranked.map((c) => c.number).filter((n) => mine.has(n)), ...f.cards])];
   return wavesOf(order, { all, files });

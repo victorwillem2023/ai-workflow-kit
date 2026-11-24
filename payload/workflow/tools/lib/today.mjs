@@ -27,10 +27,11 @@ export const touchedParts = (body) => {
  * spec's); `held`: what every running session changes ([{ topic, cards, files }]), whatever column its cards are in (one handed
  * over to the owner still holds its files).
  */
-export function today(ranked, { all = ranked, places = new Map(), areas = [], limit = 2, sessions = null, perSession = 3, claims = new Map(), held: running = [] } = {}) {
+export function today(ranked, { all = ranked, places = new Map(), areas = [], limit = 2, sessions = null, perSession = 3, claims = new Map(), written = new Map(), held: running = [] } = {}) {
   const room = roomToStart(all, limit, sessions);
   const partsOf = (c) => { const p = places.get(c.number); if (p?.length) return [...p]; const t = touchedParts(c.body); if (t.length) return t; const a = areas.find((x) => c.labels.includes(x)); return a ? [a] : []; };
-  const filesOf = (c) => claims.get(c.number) ?? touchedPaths(c.body);
+  // `written`: a card's Touches line read as a claim is (short paths made whole); still a guess, so not `exact`
+  const filesOf = (c) => claims.get(c.number) ?? written.get(c.number) ?? touchedPaths(c.body);
   const held = new Map(); // a part -> the card that changes it: the running ones first, then the ones picked here
   const heldFiles = []; // { by, files, running }: the same, by the files themselves
   // known exactly: a claim, not a guess from the map, a folder or an area; two exact claims are compared by their files only

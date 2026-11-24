@@ -21,12 +21,12 @@ const short = (s) => String(s).replace(/^area:\s*/i, '');
  * touches (parts of the app map), when there is a map; `areas`: the config's area labels; `room`: how many may run at once;
  * `claims`: card number -> the files it changes (a waiting spec's; lib/claims.mjs), else its "Touches" line's.
  */
-export function together(cards, { all = cards, places = new Map(), areas = [], room = 3, claims = new Map() } = {}) {
+export function together(cards, { all = cards, places = new Map(), areas = [], room = 3, claims = new Map(), written = new Map() } = {}) {
   const groups = [];
   const used = new Set();
   const area = (c) => areas.find((a) => c.labels.includes(a)) ?? null;
   const at = (c) => [...(places.get(c.number) ?? [])];
-  const filesOf = (c) => claims.get(c.number) ?? touchedPaths(c.body);
+  const filesOf = (c) => claims.get(c.number) ?? written.get(c.number) ?? touchedPaths(c.body);
   const shared = (a, b) => at(a).find((p) => at(b).includes(p)) ?? meet(filesOf(a), filesOf(b))[0] ?? null;
   const small = (c) => word(c.labels, 'effort') === 'small';
   const take = (how, list, why) => { groups.push({ how, cards: list.map((c) => c.number), why }); for (const c of list) used.add(c.number); };

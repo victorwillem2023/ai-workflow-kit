@@ -22,7 +22,8 @@ function balanced(s, o, c) {
 }
 /** A path written in a sentence, without the sentence's punctuation around it ("(src/a.ts)," is src/a.ts). */
 function unwrap(t) {
-  let p = t.replace(/[.,;:!?]+$/, '');
+  // a path in backticks or quotes, as cards write them (`src/a.ts`, "src/a.ts", `config.json`'s): only around it, never inside
+  let p = t.replace(/`/g, '').replace(/[.,;:!?]+$/, '').replace(/['’]s$/, '').replace(/^['"“‘]+|['"”’]+$/g, '');
   for (const [o, c] of [['(', ')'], ['[', ']']]) {
     if (p.startsWith(o) && !p.includes(c)) p = p.slice(1);
     if (p.endsWith(c) && !p.includes(o)) p = p.slice(0, -1);
@@ -46,9 +47,29 @@ export function setTouches(body, paths) {
   return existing.test(text) ? text.replace(existing, () => line) : `${text.replace(/\s*$/, '')}\n\n${line}\n`;
 }
 
-/** One session's claim, sorted: the spec's paths, the "Touches" paths and the changed files, without the ones never claimed. */
-export function claimOf({ spec = '', touches = [], changed = [] } = {}, never = []) {
-  return [...new Set([...specFiles(spec), ...touches, ...changed])].filter((p) => p && !neverClaimed(p, never)).sort();
+/**
+ * One session's claim, sorted: the spec's paths, the "Touches" paths and the changed files, without the ones never claimed.
+ * `resolve`: turns a path as written into the project's paths (a spec's short `climb/route-up.ts` is
+ * `src/pipeline/climb/route-up.ts`; resolverFor in lib/sessionclaims.mjs); the changed files are real paths already.
+ */
+export function claimOf({ spec = '', touches = [], changed = [] } = {}, never = [], resolve = (p) => [p]) {
+  const written = [...specFiles(spec), ...touches].flatMap(resolve);
+  return [...new Set([...written, ...changed])].filter((p) => p && !neverClaimed(p, never)).sort();
+}
+
+/**
+ * The project's path for one written the short way (`climb/route-up.ts` for src/pipeline/climb/route-up.ts), from the files git
+ * knows (`tracked`). Only a path with a "/" that does not start at the project's top (a folder there, or a usual one: src/,
+ * tests/, apps/ ...) is short: every file whose path ends in it. Anything else is as written: a bare name (`run.ts` says not
+ * which), a whole path, a folder, a new file.
+ */
+const TOPS = ['src', 'tests', 'test', 'app', 'apps', 'packages', 'lib', 'docs', 'workflow', 'scripts', 'config', 'public'];
+export function resolvePath(p, tracked) {
+  if (p.endsWith('/') || tracked.has(p) || !p.includes('/')) return [p];
+  const first = p.split('/')[0];
+  if (TOPS.includes(first) || [...tracked].some((f) => f.startsWith(`${first}/`))) return [p];
+  const fits = [...tracked].filter((f) => f.endsWith(`/${p}`));
+  return fits.length ? fits : [p];
 }
 
 /**

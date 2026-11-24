@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { MAIN } from './branch.mjs';
-import { DOCS, claimOf, settledFiles, sharedFiles } from './claims.mjs';
+import { DOCS, claimOf, resolvePath, settledFiles, sharedFiles } from './claims.mjs';
 
 const run = (cwd, args) => { try { return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim(); } catch { return null; } };
 const read = (f) => { try { return readFileSync(f, 'utf8'); } catch { return ''; } };
@@ -19,6 +19,16 @@ export function neverIn(main) {
   let config = {};
   try { config = JSON.parse(read(join(main, 'workflow/config.json')) || '{}'); } catch { /* the defaults */ }
   return [...settledFiles(config), ...DOCS, ...sharedFiles(read(join(main, 'CLAUDE.md')))];
+}
+
+/** Turns a path written the short way into the project's own (lib/claims.mjs resolvePath), from the files git knows in `main`. */
+const resolvers = new Map();
+export function resolverFor(main) {
+  if (!resolvers.has(main)) {
+    const tracked = new Set((run(main, ['-c', 'core.quotePath=false', 'ls-files']) ?? '').split('\n').map((f) => f.trim()).filter(Boolean));
+    resolvers.set(main, (p) => resolvePath(p, tracked));
+  }
+  return resolvers.get(main);
 }
 
 /** A topic's spec: the session folder's copy first (the one being built), else the one waiting in the main folder. */
@@ -50,6 +60,6 @@ export function sessionClaims(main = mainOf(process.cwd())) {
     const cards = (run(main, ['config', '--get', `branch.${topic}.card`]) ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
     const spec = specOf(main, topic, dir);
     const on = run(main, ['config', '--get', `branch.${topic}.kitOn`]) ?? '';
-    return [{ topic, dir, cards, on, spec, files: claimOf({ spec, changed: changedIn(dir, on) }, never) }];
+    return [{ topic, dir, cards, on, spec, files: claimOf({ spec, changed: changedIn(dir, on) }, never, resolverFor(main)) }];
   });
 }

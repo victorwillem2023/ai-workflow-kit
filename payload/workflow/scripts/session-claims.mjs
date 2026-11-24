@@ -2,7 +2,7 @@
 // whose files a running one is changing does not start (the owner may say --anyway), --list says what each one changes, and
 // --beside tells a builder what the sessions next to it decide.
 import { touchedPaths, claimOf, clashes, clashMessage, besideNote, stackOf } from '../tools/lib/claims.mjs';
-import { neverIn, sessionClaims, specOf } from '../tools/lib/sessionclaims.mjs';
+import { neverIn, resolverFor, sessionClaims, specOf } from '../tools/lib/sessionclaims.mjs';
 import { main, onBoard, eachCard, FLOW } from './session-core.mjs';
 
 /** The "Touches" paths of the cards (read only when the topic has no spec: the spec says it better). */
@@ -18,14 +18,15 @@ async function touchesOf(card) {
  */
 async function claimsNow(topic, card) {
   const never = neverIn(main);
+  const resolve = resolverFor(main);
   const all = sessionClaims(main);
   const self = all.find((s) => s.topic === topic);
   const spec = specOf(main, topic, self?.dir);
-  let mine = claimOf({ spec, changed: self?.files ?? [] }, never);
+  let mine = claimOf({ spec, changed: self?.files ?? [] }, never, resolve);
   const cards = card ?? self?.cards.join(',') ?? '';
-  if (!mine.length && cards) mine = claimOf({ touches: await touchesOf(cards) }, never);
+  if (!mine.length && cards) mine = claimOf({ touches: await touchesOf(cards) }, never, resolve);
   const others = all.filter((s) => s.topic !== topic);
-  for (const s of others) if (!s.files.length && s.cards.length) s.files = claimOf({ touches: await touchesOf(s.cards.join(',')) }, never);
+  for (const s of others) if (!s.files.length && s.cards.length) s.files = claimOf({ touches: await touchesOf(s.cards.join(',')) }, never, resolve);
   return { mine, spec, self, others, all };
 }
 
