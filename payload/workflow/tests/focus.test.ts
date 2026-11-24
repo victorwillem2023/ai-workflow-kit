@@ -94,7 +94,9 @@ describe('the focus block', () => {
     assert.deepEqual([g.due, g.cards, g.notes], [true, [4], ['9 long functions, 1 flaky tests', 'worse since this goal was last picked: long functions 7 to 9']]);
     assert.equal(healthGoal(cards, { 'long functions': 9 }, { 'long functions': 9 }).due, false);
     const s = focusState(cards, { theme: 'x', cards: [1, 5] });
-    assert.equal(goalLine({ id: 'request:a', name: 'Hikes to a top', kind: 'request', done: 14, left: 12, total: 26, cards: [1, 5], uncarded: 3, notes: [] }, s), 'goal: Hikes to a top: 14 of 26 done (#5 in progress, 1 to start; 3 things left with no card yet)');
+    assert.match(goalLine({ id: 'request:a', name: 'Hikes to a top', kind: 'request', done: 26, left: 0, total: 26, cards: [1, 5], uncarded: 0, notes: [] }, s), /26 of 26 on the app map done, 0 of 2 cards done/, 'every case works but cards are left: not done');
+    assert.equal(goalLine({ id: 'request:a', name: 'Hikes to a top', kind: 'request', done: 14, left: 12, total: 26, cards: [], uncarded: 12, notes: [] }, focusState(cards, { theme: 'x', cards: [] })), 'goal: Hikes to a top: 14 of 26 done (12 things left with no card yet)', 'no cards: no "0 of 0 cards"');
+    assert.equal(goalLine({ id: 'request:a', name: 'Hikes to a top', kind: 'request', done: 14, left: 12, total: 26, cards: [1, 5], uncarded: 3, notes: [] }, s), 'goal: Hikes to a top: 14 of 26 on the app map done, 0 of 2 cards done (#5 in progress, 1 to start; 3 things left with no card yet)');
   });
   it('a card in Done counts as done though its issue is still open (--finish moves it there and nothing closes it)', () => {
     const c = (number: number, column: string, state = 'open') => ({ number, title: `card ${number}`, labels: ['area: Code health'], column, state });

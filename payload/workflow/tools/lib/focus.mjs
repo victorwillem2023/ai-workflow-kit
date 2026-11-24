@@ -245,8 +245,12 @@ export function pickedWords(since, now = new Date()) {
 export function goalLine(g, s, { sessions = null, now = new Date() } = {}) {
   const cards = [pickedWords(s.since, now), doingWords(s.doing, sessions), s.check.length ? `${list(s.check)} waiting for you to try` : '', s.left.length ? `${s.left.length} to start` : '', s.held.length ? `${list(s.held)} held up` : ''].filter(Boolean).join(', ');
   const noCard = g.uncarded ? `${g.uncarded} thing${g.uncarded === 1 ? '' : 's'} left with no card yet` : '';
-  const count = g.kind === 'request' || g.kind === 'part' ? goalCount(g) : `${s.done} of ${s.total} done`;
-  return `goal: ${g.name}: ${g.left === 0 ? 'done' : count}${[cards, noCard].filter(Boolean).length ? ` (${[cards, noCard].filter(Boolean).join('; ')})` : ''}`;
+  // a goal of the app map counts its cases, and its cards beside them: cards added to it (found while building it) are work
+  // left too, so it is done only when both are
+  const mapped = g.kind === 'request' || g.kind === 'part';
+  // (what the map counts: its cases, weak or missing ends and clean-up cards; said by where it comes from, not as "cases")
+  const count = !mapped ? `${s.done} of ${s.total} done` : s.total ? `${g.done} of ${g.total} on the app map done, ${s.done} of ${s.total} card${s.total === 1 ? '' : 's'} done` : goalCount(g);
+  return `goal: ${g.name}: ${g.left === 0 && s.finished ? 'done' : count}${[cards, noCard].filter(Boolean).length ? ` (${[cards, noCard].filter(Boolean).join('; ')})` : ''}`;
 }
 
 /** The cards the owner was on, whatever their theme: in progress and built-waiting-for-a-check. One line, or ''. */

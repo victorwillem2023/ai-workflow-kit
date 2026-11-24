@@ -57,7 +57,7 @@ then stop.
      progress than `board.wip` in `workflow/config.json` (2 when not set): the next step is to finish or park those (the
      board tidy-up), never a new card.
    - **`goal:`** (or `focus:` for a block of one area): the owner picked what the coming days are about. Say the line as it
-     is, with its count ("A hike to a top: 14 of 26 done"), and offer only the cards listed: the others wait on purpose. An
+     is, with its count ("A hike to a top: 14 of 26 on the app map done, 3 of 9 cards done"), and offer only the cards listed: the others wait on purpose. An
      "outside the focus but urgent" card is the one exception: name it. "Things left with no card yet": the next step is
      making them (`/tidy focus`). The `plan:` line is the order: say the wave to start now in plain words. A `grew since`
      line is said as it is; no finish line yet: offer to write it with the plan (`/tidy focus`, 5 minutes).
