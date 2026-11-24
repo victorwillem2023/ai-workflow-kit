@@ -2,6 +2,9 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.18.3**: **a goal from the app map counts its cards too.** Its line said "30 of 32 done" (what the map counts) while 27 of
+  its cards were left. Now "30 of 32 on the app map done, 10 of 37 cards done", and "done" only when both are (`lib/focus.mjs`
+  goalLine). Tests in `focus`.
 - **4.18.2**: **`/next` recommends the goal step when the goal cannot move, and cards made while working on a goal go in it
   without asking.** A `next goal:` line at the top of `--next` (no goal and more than five cards, the goal done, or nothing of
   it can start) names `/tidy focus` (`npm run board -- --focus` without `/tidy`), and `/next` puts it above a step back,
