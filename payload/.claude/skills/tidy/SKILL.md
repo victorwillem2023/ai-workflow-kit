@@ -89,7 +89,11 @@ One goal for the coming days, with a finish line, and the rest waits: the owner 
      and the app map, and the owner decides each row). Code health with no card: propose at most five from `npm run health`
      (the biggest files, the longest functions, the flaky tests), labelled `area: Code health`. Make the approved ones with
      `/idea` (they are the owner's, so no `--unsorted`) and add each to the goal: `--focus --add <n>`.
-4. End with three lines: what to finish first (the cards in progress), the goal's first card (`npm run board -- --next 1`),
+   - **The plan, for one yes**: read each goal card (`--show <n>`); write what it needs first (`--depends <n> <m>`) and the
+     files it will change (`--touches <n> "<paths>"`, a guess from the map and code). Write the finish line, what must work
+     when it is done (`npm run board -- --plan --finish "<what>"`). Say the waves in plain words ("first #4, #7 and #9 side by
+     side; then #5 on top of #4, and #8") and ask once.
+4. End with three lines: what to finish first (the cards in progress), the goal's first wave (`npm run board -- --plan`),
    and that everything else waits until the goal is done, when `/next` offers the next pick.
 
 For `project.audience: me`, keep it light: lecture no limits; a hobby board may be messy.

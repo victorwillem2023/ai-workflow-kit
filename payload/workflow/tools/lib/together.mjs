@@ -9,6 +9,7 @@
 //                      there is free room for (a small card with nothing to share takes a place of its own).
 // A guess from labels and the map, never from the code: /work still reads the cards and may sort them again.
 import { cardGraph } from './cardgraph.mjs';
+import { meet, touchedPaths } from './claims.mjs';
 
 const word = (labels, group) => labels.map((l) => new RegExp(`^${group}:\\s*(.+)$`, 'i').exec(l)?.[1]?.trim().toLowerCase()).find(Boolean);
 const tag = (cards) => cards.map((c) => `#${c.number}`);
@@ -17,14 +18,16 @@ const short = (s) => String(s).replace(/^area:\s*/i, '');
 /**
  * The groups: [{ how: 'one session' | 'one after another' | 'side by side', cards: [number], why }]. `cards`: the candidates,
  * best first (startable, ranked); `all`: every card (for what waits on a candidate); `places`: card number -> the places it
- * touches (parts of the app map), when there is a map; `areas`: the config's area labels; `room`: how many may run at once.
+ * touches (parts of the app map), when there is a map; `areas`: the config's area labels; `room`: how many may run at once;
+ * `claims`: card number -> the files it changes (a waiting spec's; lib/claims.mjs), else its "Touches" line's.
  */
-export function together(cards, { all = cards, places = new Map(), areas = [], room = 3 } = {}) {
+export function together(cards, { all = cards, places = new Map(), areas = [], room = 3, claims = new Map() } = {}) {
   const groups = [];
   const used = new Set();
   const area = (c) => areas.find((a) => c.labels.includes(a)) ?? null;
   const at = (c) => [...(places.get(c.number) ?? [])];
-  const shared = (a, b) => at(a).find((p) => at(b).includes(p)) ?? null;
+  const filesOf = (c) => claims.get(c.number) ?? touchedPaths(c.body);
+  const shared = (a, b) => at(a).find((p) => at(b).includes(p)) ?? meet(filesOf(a), filesOf(b))[0] ?? null;
   const small = (c) => word(c.labels, 'effort') === 'small';
   const take = (how, list, why) => { groups.push({ how, cards: list.map((c) => c.number), why }); for (const c of list) used.add(c.number); };
 

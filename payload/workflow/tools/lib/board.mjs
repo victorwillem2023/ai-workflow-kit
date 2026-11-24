@@ -3,6 +3,7 @@
 // so tests pass a fake and the real one is in workflow/tools/board.mjs. Columns and type labels come from the config.
 
 import { addDepends, dependsOn, dependsOnLines, removeDepends } from './cardgraph.mjs';
+import { looksLikeFile, setTouches, touchedPaths } from './claims.mjs';
 
 /** A failure said as one plain sentence, safe to print as is. */
 export class BoardError extends Error {
@@ -229,6 +230,16 @@ export function dependCard(board, run, number, on, { remove = false } = {}) {
   const body = remove ? removeDepends(c.body, on) : addDepends(c.body, on);
   gh(run, `writing the dependencies of #${number}`, ['issue', 'edit', String(number), '--repo', board.repo, '--body-file', '-'], body);
   return dependsOn(body);
+}
+
+/** Sets the files card #number will change (its "Touches" line: the plan and today's work read it); returns the paths written. */
+export function touchCard(board, run, number, paths) {
+  const clean = [...new Set(paths.map((p) => p.trim()).filter(looksLikeFile))];
+  if (!clean.length) throw new BoardError(`Name the files or folders #${number} changes, for example --touches ${number} "src/core/geo.ts, src/web/panels/".`);
+  const c = readCard(board, run, number);
+  const body = setTouches(c.body, clean);
+  gh(run, `writing the files #${number} touches`, ['issue', 'edit', String(number), '--repo', board.repo, '--body-file', '-'], body);
+  return touchedPaths(body);
 }
 
 /** Cards (open and closed, at most 20) whose title or text contains the words; the words go to gh as one argument. */

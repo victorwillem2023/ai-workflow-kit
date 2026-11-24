@@ -36,7 +36,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { gatePassAdvice, gatePassOf, isTreeish, recordGatePass, recordShipPass, shipPassOf, treeOf, untrackedInputs } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { clashAdvice, clashes, claimOf, settledFiles, stackOf } from './lib/claims.mjs'; import { changedIn, mainOf, neverIn, sessionClaims } from './lib/sessionclaims.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { gatePassAdvice, gatePassOf, isTreeish, recordGatePass, recordShipPass, shipPassOf, treeOf, untrackedInputs } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -258,7 +258,7 @@ function guardLines() {
 }
 /** --advice: only the advice lines, and what is loosened (workflow/levels.json), so the short run never looks cleaner. */
 function adviceOnly() {
-  console.log([...adviceLines(), ...depsLines(), ...guardLines(), ...(levels.loosened.length ? [loosenedLine(levels)] : [])].join('\n'));
+  console.log([...adviceLines(), ...depsLines(), ...guardLines(), ...besideLines(), ...(levels.loosened.length ? [loosenedLine(levels)] : [])].join('\n'));
   process.exit(0);
 }
 if (flag('--advice')) adviceOnly();
@@ -294,7 +294,7 @@ function scopeLines() {
   // notes) is not that spec's change, so it is not held to it
   if ((gitOk('branch', '--show-current') ?? '') === MAIN && specs[0] !== `${MAIN}.md`) return [];
   // never the change's own choice: what a script writes (the map's pages, the docs index, the baseline, the lock files) and the owner's sign-off row
-  const ignore = ['workflow/specs/**', config.map?.out ?? 'docs/MAP.md', 'docs/README.md', config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline, '.opencode/**', 'package-lock.json', 'Cargo.lock', 'docs/company/SIGNOFFS.md', ...(config.scopeIgnore ?? [])].filter(Boolean);
+  const ignore = [...settledFiles(config), ...(config.scopeIgnore ?? [])];
   const spec = readFileSync(`workflow/specs/${specs[0]}`, 'utf8');
   // a kit update's spec says "the kit's files" once: every file the kit wrote (workflow/record) is named by it
   const kitFiles = namesKitFiles(spec) && existsSync('workflow/record') ? kitFilesIn(readFileSync('workflow/record', 'utf8')) : [];
@@ -540,7 +540,21 @@ function recordAllowance() {
 }
 // the app map (map module): code the map names changed while the map did not (lib/worksheet.mjs)
 const mapLines = existsSync('docs/flow/map.js') && existsSync('workflow/tools/lib/worksheet.mjs') ? await import('./lib/worksheet.mjs').then((w) => w.staleMapAdvice(w.loadFlow('.'), changed)).catch(() => []) : [];
+// in a session folder: the files this change shares with another running session (lib/claims.mjs), said while both can still settle it
+function besideLines() {
+  const topic = gitOk('branch', '--show-current') ?? '';
+  // (only where the session script is: a project without it has no sessions to settle with)
+  if (process.env.CI || !topic || topic === MAIN || !existsSync('workflow/scripts/session.mjs')) return [];
+  try {
+    const all = sessionClaims(mainOf('.'));
+    const self = all.find((s) => s.topic === topic);
+    if (!self) return [];
+    // against the local main, as the other sessions' claims are (the gate's own base may be origin's: unpushed features are not this change)
+    const mine = claimOf({ changed: changedIn('.', self.on) }, neverIn(mainOf('.')));
+    return clashAdvice(clashes(mine, all.filter((s) => s.topic !== topic), { skip: stackOf(topic, all) }));
+  } catch { return []; }
+}
 // a rule row that grew into a list of files (lib/rulerows.mjs): said when the change touches the doc
 const ruleLines = changed.includes('docs/ARCHITECTURE.md') && existsSync('docs/ARCHITECTURE.md') ? longRuleCells('docs/ARCHITECTURE.md', readFileSync('docs/ARCHITECTURE.md', 'utf8'), config.docs?.ruleCellMax ?? 200) : [];
-for (const line of [...flakyNow(testPaths), ...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...ruleLines, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines]) { console.log(line); said.push(line); }
+for (const line of [...flakyNow(testPaths), ...(config.scope === 'fail' ? [] : scopeLines()), ...specAdvice, ...ruleLines, ...adviceLines(), ...depsLines(), ...guardLines(), ...slowLines(), ...mapLines, ...besideLines()]) { console.log(line); said.push(line); }
 console.log(`gate passed in ${((Date.now() - started) / 1000).toFixed(1)}s, ${changed.length} changed files`);

@@ -53,6 +53,9 @@ combine those two, or wait for one.
 Independent cards (no dependency between them, different files) each get their own session from main, at most three at once
 (`/build a b c`), and finish in any order.
 
+"Different files" is checked: a session holds what its spec names and what it changed (`session.mjs --list`), and a new one on
+a held file does not start; the ways on are stack, combine or wait (`--anyway` is the owner's).
+
 ## Wait
 
 The card it needs is not built yet, and is not close enough to combine: say which card it waits for, and offer that card

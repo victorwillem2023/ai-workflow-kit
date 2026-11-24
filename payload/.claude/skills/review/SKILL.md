@@ -19,6 +19,7 @@ Work in the session folder `../{{PREFIX}}-<topic>`.
 3. **The new files**: `git ls-files --others --exclude-standard` lists the files git does not know yet, which no diff shows. A
    new feature is mostly new files, so read each one that matters, whole. Without this, the review reads only the edits to old
    files. (Do not `git add` them to see them: that changes the session's index, and a later `--catch-up` would refuse.)
+4. **Beside it**: `node workflow/scripts/session.mjs --beside <topic>`: what the sessions changing the same files decide there.
 
 ## 2. Answer these
 
@@ -27,6 +28,8 @@ Each answer that is no comes with the file and line.
 **Does it do the job, and only the job?**
 - **Does it do what the spec says the user sees?** Name anything missing, and anything built that the spec never asked for.
 - **Is anything outside the spec touched?** `npm run gate` prints `scope:` lines for those files.
+- **Does it contradict a session beside it?** A rule this change decides otherwise than a session `--beside` names (another
+  limit, another order, another shape for the same data) is a finding, unless the spec's "Beside:" line says the owner chose it.
 - **Were tests bent to pass?** List every existing test whose expectation changed
   (`git diff $(git merge-base main HEAD) -- tests`), and whether the spec meant that change.
 - **Would each new test fail for the mistake it is named for?** A test that asserts nothing, repeats the code's own sum, or

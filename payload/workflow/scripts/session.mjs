@@ -8,6 +8,10 @@
 //                                               the owner's check); finishing the other one moves this one onto main by itself
 //                                               --start "<prompt>": with an orchestrator, the agent starts in a terminal of its own in the new folder
 //                                               (the Claude CLI with that prompt, like --start "/build hill-repeats"); without one the line to type is printed
+//                                               It does not start when a running session changes files this one will (its spec's files, else its
+//                                               cards' Touches lines; workflow/scripts/session-claims.mjs): it says which and the ways on; --anyway is the owner's
+//   node workflow/scripts/session.mjs --beside [<topic>]  what the running sessions that change the same files decide there (their spec's rule):
+//                                               /build reads it before the first line, /spec and /review use it
 //   node workflow/scripts/session.mjs --chat "<prompt>"  a new chat in the main folder, started with that prompt (like --chat "/work 131", what /next
 //                                               runs on the owner's answer): with an orchestrator in a terminal of its own; without one the line to type
 //   node workflow/scripts/session.mjs --adopt | --release | --connect orca   sessions in folders an orchestrator makes: workflow/scripts/session-adopt.mjs
@@ -43,7 +47,7 @@
 //   node workflow/scripts/session.mjs --catch-up <topic> bring main into a session mid-build (main's fixes come in). Work main also changed is saved first as a checkpoint
 //                                               on the session's own branch; a clash is left open in the folder, named, and the same command goes on once it is settled
 //   node workflow/scripts/session.mjs --handover <topic> before the owner tries it: main comes in (as --catch-up) and the cards wait for the check
-//   node workflow/scripts/session.mjs --list             the sessions, their ports and cards, and how many finished features are not pushed
+//   node workflow/scripts/session.mjs --list             the sessions, their ports and cards, the files each one changes, and how many finished features are not pushed
 // node_modules is linked to the main folder's; .env is copied and given its own PORT plus the lines of "session.env" in
 // workflow/config.json ({main} in a value is the main folder: use it to share a big data folder instead of copying it).
 // The board is reached through workflow/tools/lib/board.mjs; a board that cannot be reached is one warning line, never a stop.
@@ -54,13 +58,15 @@ import { existsSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSy
 import { basename, dirname, join, resolve } from 'node:path';
 import { heldMessage, removeEmptyStrangers, removeFolder, unlinkModules } from './session-stop.mjs'; import { adopt, release, connect, prepare, orcaCreate, orcaNote, orcaCards, startAgent, sessionNote } from './session-adopt.mjs';
 import { git, gitQuiet, here, main, PREFIX, folderOf, sameDir, MAIN_PORT, FLOW, usedPorts, mainState, waiting, looseMessage, catchUp, ghRun, onBoard, cardOf, eachCard, moveAndSay, sayPartial, isAncestor, looseWork, looseFiles, stopServer, ensurePackages, ensureShortcuts, rebaseOn, remakeMap, runChecks, finishChecks, dropSpecs, gh, CHECKPOINT } from './session-core.mjs';
-import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession, handover } from './session-live.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs'; import { markPushed, STOPPED_FILE } from '../tools/lib/stopped.mjs';
+import { sync, checkMain, commitNotes, carryNotes, onOf, branchExists, stackedOn, restack, recordShip } from './session-extras.mjs'; import { serve, catchUpSession, handover } from './session-live.mjs'; import { beside, checkClaims, claimLines } from './session-claims.mjs'; import { MAIN, ORIGIN_MAIN } from '../tools/lib/branch.mjs'; import { markPushed, STOPPED_FILE } from '../tools/lib/stopped.mjs';
 
-async function make(topic, card, on, start) {
+async function make(topic, card, on, start, anyway) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(topic)) throw new Error('The topic is lower case words with dashes, like hill-repeats.');
   if (card !== undefined && !/^[1-9][0-9]*(,[1-9][0-9]*)*$/.test(card)) throw new Error('--card takes the number of a board card, like --card 42 (or --card 12,14 for cards built as one).');
   let dir = folderOf(topic);
   if (existsSync(dir)) throw new Error(`${dir} exists already.`);
+  // the files it will change against the ones the running sessions change: a clash stops here, before anything is made (lib/claims.mjs)
+  await checkClaims(topic, card, on, anyway);
   let from = MAIN;
   if (on !== undefined) {
     if (FLOW === 'pr') throw new Error('--on is for the direct flow; with pull requests, start from main once the other one is merged.');
@@ -351,6 +357,7 @@ function clean(yes) {
 function list() {
   const ports = usedPorts();
   const all = sessions();
+  const claimed = claimLines();
   for (const s of all) {
     const env = join(s.dir, '.env');
     const port = s.isMain || !existsSync(env) ? undefined : /^PORT=(\d+)\s*$/m.exec(readFileSync(env, 'utf8'))?.[1];
@@ -358,7 +365,7 @@ function list() {
     const on = s.branch && port ? onOf(s.branch) : '';
     const mark = s.isMain ? '' : s.state === 'merged' ? '  finished (merged)' : s.state === 'uncommitted' ? '  uncommitted work' : '';
     const shown = cards.length ? `  card${cards.length > 1 ? 's' : ''} ${cards.map((c) => `#${c}`).join(', ')}` : '';
-    console.log(`${s.row}${port ? `  port ${port}` : ''}${shown}${on ? `  on ${on}` : ''}${mark}`);
+    console.log(`${s.row}${port ? `  port ${port}` : ''}${shown}${on ? `  on ${on}` : ''}${mark}${claimed.get(s.branch) ? `\n${claimed.get(s.branch)}` : ''}`);
   }
   const odd = strangers(all);
   if (odd.length) console.log(strangerNote(odd));
@@ -366,6 +373,13 @@ function list() {
   console.log(`\nPorts in use by sessions: ${[...ports].sort().join(', ') || 'none'} (main uses ${MAIN_PORT}, see ${basename(main)}/.env)`);
   const s = mainState(false);
   console.log(s.ahead.length ? `${waiting(s.ahead.length)} not pushed yet: node workflow/scripts/session.mjs --push` : 'No finished feature is waiting to be pushed.');
+}
+
+/** --beside with no topic: the session this folder is. */
+function besideTopic() {
+  const t = gitQuiet(process.cwd(), 'branch', '--show-current');
+  if (!t || t === MAIN) throw new Error('Name the topic: node workflow/scripts/session.mjs --beside <topic> (this folder is the main folder).');
+  return t;
 }
 
 const argv = process.argv.slice(2);
@@ -393,9 +407,10 @@ try {
   else if (a === '--remove' && b) remove(b);
   else if (a === '--drop' && b) drop(b);
   else if (a === '--finish' && b) await finish(b, { noChecks: has('--no-checks'), keepCommits: has('--keep-commits'), partial: textOf('--partial'), subject: textOf('--subject'), body: textOf('--body') });
+  else if (a === '--beside') await beside(b && !b.startsWith('--') ? b : besideTopic());
   else if (a === '--restack' && b) { if (!onOf(b)) console.log(`"${b}" is not built on another session.`); else if (!restack(b)) process.exit(1); }
-  else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'), textOf('--start'));
-  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] [--start "<prompt>"] | --chat "<prompt>" | --adopt [--card <n>] | --release | --connect orca | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] [--phone] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
+  else if (a && !a.startsWith('--')) await make(a, valueOf('--card'), valueOf('--on'), textOf('--start'), has('--anyway'));
+  else console.log('usage: node workflow/scripts/session.mjs <topic> [--card <n>[,<m>]] [--on <topic>] [--start "<prompt>"] [--anyway] | --beside [<topic>] | --chat "<prompt>" | --adopt [--card <n>] | --release | --connect orca | --check-main | --sync | --commit-notes "<subject>" | --carry-notes <topic> | --serve <topic> [--lan] [--copy-data] [--phone] | --catch-up <topic> | --handover <topic> | --restack <topic> | --finish <topic> [--subject "<approved subject>"] [--body "<why>"] [--no-checks] [--keep-commits] [--partial "<what is left>"] | --push [--no-checks] | --merge <topic> | --remove <topic> | --drop spike-<topic> | --clean [--yes] | --list');
 } catch (e) {
   console.error(e.stderr?.toString().trim() || e.message);
   process.exit(1);

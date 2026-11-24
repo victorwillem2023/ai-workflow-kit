@@ -34,6 +34,8 @@ the folder `session.mjs` prints (`--list` names it again): use that path whereve
   - A "Starts on: <other topic>" line: add `--on <other topic>`, so the session starts on top of that built card
     (`.claude/skills/work/together.md`).
   - A board warning line in its output is not a failure.
+  - A refusal (a running session changes the same files): say it in plain words, recommend one of the ways on it prints;
+    `--anyway` only on the owner's word.
 - **This chat is in it** (an orchestrator started it there: `git branch --show-current` is the topic): run
   `node workflow/scripts/session.mjs --adopt --card <n>` (twice changes nothing) and go on as *Present*; the main folder is
   the first line of `git worktree list`.
@@ -69,7 +71,9 @@ tool, named `build-<topic>`.
 
 **The builder's rules**: the subagent's prompt, with the real absolute folder; your own rules when you build here.
 
-> Build the approved spec `<folder>/workflow/specs/<topic>.md`. Read it first, and the CLAUDE.md of each folder you touch. Read
+> Build the approved spec `<folder>/workflow/specs/<topic>.md`. Read it first, then `cd <folder> && node workflow/scripts/session.mjs
+> --beside <topic>` (what the sessions changing the same files decide: build on their rules; one you would decide otherwise is
+> a Question), and the CLAUDE.md of each folder you touch. Read
 > `<folder>/workflow/tools/README.md`, *What it checks*, only when a gate failure is unclear.
 >
 > - Work ONLY in `<folder>`: use absolute paths and start every Bash command with `cd <folder> &&`. Never edit the main folder
@@ -77,7 +81,7 @@ tool, named `build-<topic>`.
 > - Write the tests first, then the code.
 > - Run `npm run gate` and fix what it names until it passes. A test that fails with nothing you changed under it is flaky:
 >   put it under Questions with its output, and never run the gate again hoping it turns green (the gate lists flaky tests
->   by itself).
+>   by itself). An advice line saying another session changes the same file: a Question (who changes it), never settled alone.
 > - Update the spec's `## Status`.
 > - Do NOT commit, push or run `--finish`: the owner says when it is done.
 > - A failure main has fixed since, or a fix the spec needs from main: `cd <folder> && node workflow/scripts/session.mjs --catch-up <topic>`
@@ -102,7 +106,8 @@ tool, named `build-<topic>`.
 
 ## 5. Hand it over
 
-When the builder reports (or you finish, building here): make its *Later* items cards, then hand it to the owner as
+When the builder reports (or you finish, building here): sort its *Later* items and doubts (`try-it.md`, *Open points are
+sorted*), then hand it to the owner as
 `.claude/skills/build/try-it.md` says.
 - A screen: `node workflow/scripts/session.mjs --serve <topic>`; the owner only opens the link.
 - No screen: the try command.

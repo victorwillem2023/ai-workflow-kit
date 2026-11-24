@@ -31,6 +31,10 @@
 //   --triage                     the view for /tidy: too much in progress, cards waiting for you, stalled or long-blocked work, the inbox,
 //                                cards without a value, likely duplicates, an old backlog to prune; and the focus (lib/triage.mjs)
 //   --graph                      which card needs which, as a tree (a "Depends on: #n" line in a card's text; lib/cardgraph.mjs)
+//   --plan [--finish "<line>"]   the picked goal's plan: its cards in waves (what they need first, no two in a wave on one file;
+//                                lib/goalplan.mjs), its finish line (--finish writes it), what waits outside it, and how much it grew
+//   --park <n,m>                 cards made along the way that the goal's finish line does not need: out of the goal, offered when it is done
+//   --touches <number> "<paths>" writes card <number>'s "Touches" line: the files it will change, for the plan and today's work
 //   --depends <number> <n,m>     card <number> needs #n and #m done first: writes or extends its "Depends on:" line
 //   --rate <number> value high   set one label of a group (value, effort, feasibility) and take off its others
 //   --undepend <number> <n,m>    takes #n and #m off that line (both print the full list the card ends up with)
@@ -42,7 +46,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderTriage, triage, triageLine } from './lib/triage.mjs';
-import { unlabelCard, adoptCard, closeCard, createCard, dependCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
+import { unlabelCard, adoptCard, closeCard, createCard, dependCard, touchCard, moveCard, rateCard, blockCard, readCard, searchCards, checkBoard, initBoard, labelGroups, listCards, BoardError } from './lib/board.mjs';
 import { inbox, rankCards, STARTABLE, TO_SORT, TOOL_ISSUES, topTie, waitingCards } from './lib/rank.mjs';
 import { freshlyUnlocked, isDone, renderTree } from './lib/cardgraph.mjs';
 import { boardView } from './lib/boardview.mjs';
@@ -56,7 +60,7 @@ import { codeTest } from './lib/lang.mjs';
 import { matchesAny } from './lib/glob.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
-import { together, togetherLines } from './lib/together.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
+import { together, togetherLines } from './lib/together.mjs'; import { claimOf, touchedPaths } from './lib/claims.mjs'; import { growthLine, growthOf, planLines, waveLine, wavesOf } from './lib/goalplan.mjs'; import { mainOf, neverIn, sessionClaims } from './lib/sessionclaims.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
 import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -180,7 +184,10 @@ async function focusCommand(config, all) {
     const ns = String(argv[at + 2] ?? '').split(',').map(cardNumber);
     const shut = ns.filter((n) => !all.some((c) => c.number === n && c.state === 'open'));
     if (shut.length) throw new BoardError(`#${shut.join(', #')} ${shut.length === 1 ? 'is not an open card' : 'are not open cards'}.`);
-    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, ...ns])] }, null, 2) + '\n');
+    // a parked card put in again is not parked any more; until the finish line is written the plan is still being made, so
+    // what goes in is part of it, not growth (lib/goalplan.mjs growthOf)
+    const picked = now.finish || !Array.isArray(now.picked) ? now.picked : [...new Set([...now.picked, ...ns])];
+    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, ...ns])], picked, parked: (now.parked ?? []).filter((n) => !ns.includes(n)) }, null, 2) + '\n');
     console.log(`board: #${ns.join(', #')} ${ns.length === 1 ? 'is' : 'are'} in the focus "${now.theme}" now`);
     return;
   }
@@ -212,13 +219,17 @@ function focusNow(board, all, goals) {
   const now = readFocus();
   if (!now) return null;
   const g = now.goal ? goals.find((x) => x.id === now.goal) : null;
-  const cards = [...new Set([...now.cards, ...(g?.cards ?? [])])];
+  // a parked card stays out, also one the goal itself would take in (its area, its flow page)
+  const cards = [...new Set([...now.cards, ...(g?.cards ?? [])])].filter((n) => !(now.parked ?? []).includes(n));
   const state = focusState(all, { ...now, cards }, focusOptions(board));
   const say = { sessions: sessionCards() }; // the work in progress by session folder, as --room counts it
   if (!g) return { state, cards, plan: [], line: focusLine(state, say), finished: state.finished, extra: [] };
-  const stuck = state.finished && g.left > 0;
-  const extra = stuck ? [`(nothing of this goal can be started: ${g.uncarded || g.left} thing${(g.uncarded || g.left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}; /tidy focus makes the cards, ${g.notes[0] ?? ''})`] : [];
-  return { state, cards, plan: g.plan ?? [], line: goalLine(g, state, say), finished: state.finished && g.left === 0, extra };
+  // what is left, without the parked cards: they wait for after the goal, so they never hold it open
+  const parkedOpen = (now.parked ?? []).filter((n) => (g.cards ?? []).includes(n) && all.some((c) => c.number === n && !isDone(c))).length;
+  const left = Math.max(0, g.left - parkedOpen);
+  const stuck = state.finished && left > 0;
+  const extra = stuck ? [`(nothing of this goal can be started: ${g.uncarded || left} thing${(g.uncarded || left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}; /tidy focus makes the cards, ${g.notes[0] ?? ''})`] : [];
+  return { state, cards, plan: g.plan ?? [], line: goalLine({ ...g, left }, state, say), finished: state.finished && left === 0, extra };
 }
 
 /** Picks a goal (by its id or name) or an area's block: the cards named, else the goal's or the block's own. */
@@ -226,7 +237,19 @@ function pickFocus(config, all, goals, blocks, name, numbers) {
   const board = config.board;
   const low = name.toLowerCase();
   const named = String(numbers ?? '').split(/[\s,]+/).filter((x) => x && !x.startsWith('--'));
-  const save = (focus, said) => { writeFileSync(focusFile(), JSON.stringify({ ...focus, since: new Date().toISOString().slice(0, 10) }, null, 2) + '\n'); console.log(said); };
+  // `picked`: the cards it had then, so what it takes in later is counted (lib/goalplan.mjs growthOf)
+  // the same goal or block picked again while it runs keeps its finish line, its parked cards and when it was picked; once it
+  // was done, picking it again is a new round
+  const was = readFocus();
+  const running = was && !focusNow(board, all, goals)?.finished;
+  const again = (focus) => running && (focus.goal ? was.goal === focus.goal : !was.goal && was.theme === focus.theme);
+  const save = (focus, said) => {
+    // what it holds from the start: the cards named and the goal's own (focusNow takes those in too), never counted as growth
+    const start = [...new Set([...focus.cards, ...(goals.find((x) => x.id === focus.goal)?.cards ?? [])])];
+    const kept = again(focus) ? { picked: was.picked ?? start, since: was.since, finish: was.finish, parked: was.parked } : { picked: start, since: new Date().toISOString().slice(0, 10) };
+    writeFileSync(focusFile(), JSON.stringify({ ...focus, ...kept, cards: focus.cards.filter((n) => !(kept.parked ?? []).includes(n)) }, null, 2) + '\n');
+    console.log(said);
+  };
   const g = goals.find((x) => x.id.toLowerCase() === low || x.name.toLowerCase() === low);
   if (g) {
     const cards = named.length ? named.map(cardNumber) : g.cards;
@@ -257,13 +280,40 @@ async function cardPlaces() {
   return places;
 }
 
+/**
+ * The files each card changes, where that is known (lib/claims.mjs): a running session's claim for its cards, else the spec waiting
+ * in workflow/specs/ that names the card ("Card: #n"). `held`: what each running session changes. Read once per run.
+ */
+let claimsNow;
+function cardClaims() {
+  if (claimsNow) return claimsNow;
+  const byCard = new Map(), held = [];
+  try {
+    const main = mainOf(root); // the waiting specs are the main folder's, also when the board runs in a session folder
+    const never = neverIn(main);
+    const dir = join(main, 'workflow', 'specs');
+    for (const f of existsSync(dir) ? readdirSync(dir).filter((x) => x.endsWith('.md')) : []) {
+      const spec = readFileSync(join(dir, f), 'utf8');
+      const line = /^Card:\s*(.+)$/m.exec(spec)?.[1] ?? '';
+      // a spec that names no file yet leaves the card to its Touches line
+      const files = claimOf({ spec }, never);
+      // (the cards combined into one commit are inside the line's brackets: every #n counts)
+      if (files.length) for (const m of line.matchAll(/#(\d+)/g)) byCard.set(Number(m[1]), files);
+    }
+    // a session holding nothing yet leaves its cards to their Touches lines (lib/today.mjs reads them)
+    for (const s of sessionClaims(main)) { if (s.files.length) { held.push(s); for (const n of s.cards) byCard.set(n, s.files); } }
+  } catch { /* no git or no specs: the map, the Touches lines and the areas decide */ }
+  return (claimsNow = { byCard, held });
+}
+
 /** The cards that go together among `candidates` (lib/together.mjs), as lines; side by side fills the free room, not a fixed three. */
 async function togetherFor(board, all, candidates) {
-  return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], room: Math.max(2, roomToStart(all, board.wip ?? 2, sessionCards()).room) })).slice(0, 4);
+  return togetherLines(together(candidates, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], claims: cardClaims().byCard, room: Math.max(2, roomToStart(all, board.wip ?? 2, sessionCards()).room) })).slice(0, 4);
 }
-/** Today's plan among the cards to start (lib/today.mjs): the free room filled, in the goal's order. */
+/** Today's plan among the cards to start (lib/today.mjs): the free room filled, in the goal's order, checked against the files the running sessions change. */
 async function todayFor(board, all, ranked) {
-  return today(ranked, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], limit: board.wip ?? 2, sessions: sessionCards() });
+  const { byCard, held } = cardClaims();
+  return today(ranked, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], limit: board.wip ?? 2, sessions: sessionCards(), claims: byCard, held });
 }
 
 /** Each flow page's clean-up plan (docs/anatomy/<flow>.md, its "Cards:" line): { <flow slug>: [card numbers in order] }. */
@@ -315,6 +365,49 @@ function stepBack(config, all) {
   return fixStreaks(recentFixes(root, closed), config.board.fixStreak).slice(0, 1).map((s) => `step back: ${streakLine(s)}`);
 }
 
+/**
+ * The picked goal's plan (lib/goalplan.mjs): its cards in waves by what they need and the files they change. Taken in the goal's
+ * own order, so of two cards on one file the one that comes first gets the earlier wave: its clean-up plan's order (its flow
+ * page's "Cards:" line: the reshaping before fixes on the old shape), then the ranking (`ranked`), then the rest.
+ */
+function goalPlan(all, f, ranked = []) {
+  const files = new Map(all.map((c) => [c.number, cardClaims().byCard.get(c.number) ?? touchedPaths(c.body)]));
+  const mine = new Set(f.cards);
+  const order = [...new Set([...f.plan.filter((n) => mine.has(n)), ...ranked.map((c) => c.number).filter((n) => mine.has(n)), ...f.cards])];
+  return wavesOf(order, { all, files });
+}
+const rankedOf = (board, all) => rankCards(all, { firstVersion: board.labels?.milestone?.[0], columns: board.columns.filter((c) => STARTABLE.includes(c)), measured: measured() });
+
+/** --plan --finish "<what must work>": the goal's finish line, written before the board is read (it needs no board). */
+function saveFinish() {
+  const now = readFocus();
+  if (!now) throw new BoardError('No goal is picked: npm run board -- --focus shows what to pick from (/tidy focus).');
+  if (!argv.includes('--finish')) return;
+  const finish = value('--finish');
+  if (!String(finish ?? '').trim() || String(finish).startsWith('--')) throw new BoardError('--finish needs the finish line: what must work when the goal is done.');
+  writeFileSync(focusFile(), JSON.stringify({ ...now, finish: String(finish).trim().slice(0, 400) }, null, 2) + '\n');
+  console.log('board: the finish line is written');
+}
+
+/** --plan: the goal's plan. */
+async function planCommand(config, all) {
+  const now = readFocus();
+  const f = focusNow(config.board, all, await gatherGoals(config, all));
+  console.log(planLines(goalPlan(all, f, rankedOf(config.board, all)), { name: now.theme, finish: now.finish, since: now.since, growth: growthOf(now, f.cards), byNo: new Map(all.map((c) => [c.number, c])) }).join('\n'));
+}
+
+/** --park <n,m>: cards made while a goal runs that its finish line does not need: kept out of it, offered when it is done. */
+function parkCommand(all) {
+  const now = readFocus();
+  if (!now) throw new BoardError('No goal is picked, so there is nothing to park a card outside of: it simply waits in the backlog.');
+  const ns = String(value('--park') ?? '').split(/[\s,]+/).filter(Boolean).map(cardNumber);
+  if (!ns.length) throw new BoardError('--park needs card numbers, for example --park 612,613.');
+  const shut = ns.filter((n) => !all.some((c) => c.number === n && c.state === 'open'));
+  if (shut.length) throw new BoardError(`#${shut.join(', #')} ${shut.length === 1 ? 'is not an open card' : 'are not open cards'}.`);
+  writeFileSync(focusFile(), JSON.stringify({ ...now, cards: now.cards.filter((n) => !ns.includes(n)), parked: [...new Set([...(now.parked ?? []), ...ns])] }, null, 2) + '\n');
+  console.log(`board: #${ns.join(', #')} parked: outside the goal "${now.theme}", offered when it is done`);
+}
+
 /** For --next: the ranking kept to the picked focus while it is not finished, and the lines to say around it. */
 async function withinFocus(config, all, ranked) {
   const board = config.board;
@@ -332,17 +425,26 @@ async function withinFocus(config, all, ranked) {
     const hint = ranked.length > 5 ? [`(no goal picked: ${ranked.length} cards can be started. One goal at a time is calmer: npm run board -- --focus shows what to pick from)`] : [];
     return { ranked, before, after: [...sort, ...hint, ...due, ...anatomyNote(config)], line: null };
   }
-  if (f.finished) return { ranked, before: [...before, `focus: "${readFocus().theme}" is done: pick the next one (npm run board -- --focus)`], after: [...sort, ...due, ...anatomyNote(config)], line: null };
+  const parked = readFocus()?.parked?.filter((n) => all.some((c) => c.number === n && !isDone(c))) ?? [];
+  const parkedLine = parked.length ? [`(parked while it ran: #${parked.join(', #')}: look at them first for the next goal)`] : [];
+  if (f.finished) return { ranked, before: [...before, `focus: "${readFocus().theme}" is done: pick the next one (npm run board -- --focus)`, ...parkedLine], after: [...sort, ...due, ...anatomyNote(config)], line: null };
   const mine = new Set(f.cards);
   const outside = ranked.filter((c) => !mine.has(c.number)).length;
   const urgent = urgentOutside(all, { cards: f.cards });
   const after = [...f.extra,
     ...(urgent.length ? [`(outside the focus but urgent: ${urgent.map((c) => `#${c.number} ${c.title}`).join('; ')}: a bug of high value)`] : []),
     ...(outside ? [`(${outside} other card${outside === 1 ? '' : 's'} can be started but wait${outside === 1 ? 's' : ''} for a later goal)`] : []), ...sort, ...due, ...anatomyNote(config)];
-  // the goal's clean-up plan first, in its order (its flow page's "Cards:" line): the reshaping before fixes on the old shape
+  // the goal's waves first (lib/goalplan.mjs), then its clean-up plan's order (its flow page's "Cards:" line): the reshaping
+  // before fixes on the old shape
+  const plan = goalPlan(all, f, ranked);
+  const waveAt = new Map(plan.waves.flatMap((w, i) => w.map((x) => [x.card, i])));
   const planAt = (c) => { const i = f.plan.indexOf(c.number); return i < 0 ? Infinity : i; };
+  const key = (c) => [waveAt.get(c.number) ?? Infinity, planAt(c)];
   const kept = ranked.filter((c) => mine.has(c.number));
-  return { ranked: f.plan.length ? [...kept].sort((a, b) => (planAt(a) === planAt(b) ? 0 : planAt(a) < planAt(b) ? -1 : 1)) : kept, before: [...before, f.line], after, line: f.line };
+  const byKey = (a, b) => { const [x, y] = [key(a), key(b)]; return x[0] !== y[0] ? (x[0] < y[0] ? -1 : 1) : x[1] === y[1] ? 0 : x[1] < y[1] ? -1 : 1; };
+  const focus = readFocus();
+  const planSaid = [waveLine(plan), growthLine(growthOf(focus, f.cards)), ...(focus?.goal && !focus.finish ? ['(no finish line written for this goal: /tidy focus writes it with its plan, so new cards know whether they belong in it)'] : [])].filter(Boolean);
+  return { ranked: [...kept].sort(byKey), before: [...before, f.line, ...planSaid], after, line: f.line };
 }
 
 async function main() {
@@ -521,6 +623,15 @@ async function main() {
     const theme = value('--sweep');
     const groups = sweepGroups(listCards(board, run), { areas: board.labels?.areas ?? [], types: board.types ?? [] });
     console.log(renderSweep(groups, theme && !theme.startsWith('--') ? theme : null, Number(value('--from')) || 0));
+  } else if (argv.includes('--plan')) {
+    saveFinish();
+    await planCommand(config, listCards(board, run));
+  } else if (argv.includes('--park')) {
+    parkCommand(listCards(board, run));
+  } else if (argv.includes('--touches')) {
+    const number = cardNumber(value('--touches'));
+    const paths = touchCard(board, run, number, String(argv[argv.indexOf('--touches') + 2] ?? '').split(/[\s,]+/).filter(Boolean));
+    console.log(`board: #${number} touches ${paths.join(', ')} now (its "Touches" line)`);
   } else if (argv.includes('--graph')) {
     // which card needs which, as a tree: what nothing waits on at the top, what depends on it below (lib/cardgraph.mjs)
     // only the cards on the board (the reports and Renovate's dashboard are issues, not work)
@@ -563,7 +674,7 @@ async function main() {
 }
 
 // the commands that only read: when GitHub cannot be reached they warn in one line and let the flow around them go on
-const READS = ['--labels', '--check', '--map', '--gaps', '--show', '--search', '--next', '--triage', '--inbox', '--graph', '--focus', '--sweep', '--unsorted', '--room', '--together', '--today'];
+const READS = ['--labels', '--check', '--map', '--gaps', '--show', '--search', '--next', '--triage', '--inbox', '--graph', '--focus', '--sweep', '--unsorted', '--room', '--together', '--today', '--plan'];
 try { await main(); } catch (e) {
   if (e instanceof BoardError && e.gh && READS.some((r) => argv.includes(r))) {
     console.log(`board (warning): ${e.message} Carrying on without the board.`);

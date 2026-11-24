@@ -6,7 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFi
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-const SCRIPTS = ['session.mjs', 'session-core.mjs', 'session-extras.mjs', 'session-live.mjs', 'session-stop.mjs', 'session-adopt.mjs', 'schedule.mjs', 'notes.mjs', 'packages.mjs'].map((f) => resolve('workflow', 'scripts', f));
+const SCRIPTS = ['session.mjs', 'session-core.mjs', 'session-extras.mjs', 'session-live.mjs', 'session-stop.mjs', 'session-adopt.mjs', 'session-claims.mjs', 'schedule.mjs', 'notes.mjs', 'packages.mjs'].map((f) => resolve('workflow', 'scripts', f));
 export const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' };
 export const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 export const roots: string[] = [];
@@ -31,7 +31,7 @@ const cmd=a.slice(0,2).join(' ');const out=(o)=>console.log(JSON.stringify(o));
 if(cmd==='project field-list')out({fields:[{id:'F',name:'Status',options:cols.map((name,i)=>({id:'o'+i,name}))}]});
 else if(cmd==='project view')out({id:'P'});
 else if(cmd==='api graphql')out({data:{repository:{issue:{projectItems:{nodes:[{id:'I42',project:{number:1}}]}}}}});
-else if(cmd==='issue view')out({number:42,projectItems:[{status:{name:process.env.CARD_COLUMN||'In progress'}}]});
+else if(cmd==='issue view')out({number:42,body:process.env.CARD_BODY||'',projectItems:[{status:{name:process.env.CARD_COLUMN||'In progress'}}]});
 else out({});`;
 export const OPTION = { 'In progress': 'o3', 'Waiting for your check': 'o4', Done: 'o5' };
 /** A throwaway project with its origin; `prefix` names the session folders (<prefix>-<topic>), as `session.prefix` does in a project. */
@@ -48,7 +48,7 @@ export function makeRepo({ prefix = 'app' }: { prefix?: string } = {}): Repo {
   for (const s of SCRIPTS) copyFileSync(s, join(main, 'workflow', 'scripts', basename(s)));
   mkdirSync(join(main, 'workflow', 'tools', 'lib'), { recursive: true });
   // the board library and what it imports (a missing one fails every card move in these repos, silently: the board is only a warning)
-  for (const lib of ['board.mjs', 'cardgraph.mjs', 'branch.mjs', 'gh.mjs', 'shippass.mjs', 'nowindow.mjs', 'hidden.mjs', 'frommain.mjs', 'signoff.mjs', 'folderenv.mjs', 'stopped.mjs', 'sessionfiles.mjs']) copyFileSync(resolve('workflow/tools/lib', lib), join(main, 'workflow', 'tools', 'lib', lib));
+  for (const lib of ['board.mjs', 'cardgraph.mjs', 'branch.mjs', 'gh.mjs', 'shippass.mjs', 'nowindow.mjs', 'hidden.mjs', 'frommain.mjs', 'signoff.mjs', 'folderenv.mjs', 'stopped.mjs', 'sessionfiles.mjs', 'claims.mjs', 'sessionclaims.mjs', 'scope.mjs', 'glob.mjs']) copyFileSync(resolve('workflow/tools/lib', lib), join(main, 'workflow', 'tools', 'lib', lib));
   // the project's own config, with the session folders named app-<topic> whatever the project calls its own
   const config = JSON.parse(readFileSync(resolve('workflow/config.json'), 'utf8'));
   writeFileSync(join(main, 'workflow/config.json'), JSON.stringify({ ...config, session: { prefix, firstPort: 8788 + PORTS, mainPort: 8787 + PORTS, env: {} } }));

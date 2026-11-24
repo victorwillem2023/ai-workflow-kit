@@ -72,20 +72,25 @@ Each one is an item of the round, like a line of the numbered list. Number them 
 clicked: ...") and answer every one: done, or why not. An element with no words: ask what should change, never guess. The
 source line it names is where to look first, not proof the fault is there.
 
-### Open points become cards
+### Open points are sorted, and only new work becomes a card
 
-Before the message, every *Later* item from the builder (and anything else noticed and left out) becomes a Backlog card,
-without asking: the owner should never have to ask for them. They wait for the owner's yes before they are offered
-(`--unsorted`), so the list to choose from only grows by what the owner let in. For each item:
+Before the message, sort every *Later* item, every doubt and anything noticed and left out, without asking. Most are not new
+work, and a card for each makes the goal grow without end:
 
-1. Search first: `npm run board -- --search "<2-3 main words>"`. An open card with the same idea gets a comment instead of a twin.
-2. Otherwise make it as `.claude/skills/idea/SKILL.md` steps 2 to 4 say: your best guess for the labels, no question, a short
-   body, and `Depends on: #<this card>` when it builds on this one; add `--unsorted` to its `npm run board -- --add`.
+1. **Inside the card** (the card or its spec says it, like "the day hike and the climb trip both use it"): back to the builder,
+   done before the hand-over, never listed as a doubt.
+2. **A decision** (a name, a wording, a trade-off): under *Questions for you*, with your recommendation.
+3. **Routine** (what `/docs catch-up`, the map or a check does by itself): no card, not mentioned.
+4. **New work**: search first (`npm run board -- --search "<2-3 main words>"`); an open card with the idea gets a comment, never a
+   twin. Otherwise one card (`.claude/skills/idea/SKILL.md` steps 2 to 4: your labels, no question, a short body,
+   `Depends on: #<this card>` when it builds on it, a `Touches:` line), with `--unsorted`. While a goal is picked, say where it
+   goes against its finish line (`npm run board -- --plan`): **in the goal** only when the finish line needs it; else **parked**,
+   offered when the goal is done. A path nobody asked for ("up one way, down another, from a typed start") is no card: one
+   comment on this card, "maybe later: ...", turned into a card when a person asks for it or the owner picks it.
 
-An item that is really a decision is not a card: it goes under *Questions for you*. One inside the card goes back to the
-builder, done before the hand-over. The message lists the new card numbers
-under *Not in this card*, and ends with one question about them (AskUserQuestion): "let them all in (recommended)", "some
-(say which)" or "drop them"; then `npm run board -- --accept <n,m>` and `--close <n> "<reason>"` for the rest.
+The message lists the new cards under *Not in this card*, each with where it goes, and ends with one question
+(AskUserQuestion): "as sorted (recommended)", "some (say which)" or "drop them". Then `npm run board -- --accept <n,m>`,
+`--focus --add <n>` for the goal's, `--park <n>` for the parked ones, `--close <n> "<reason>"` for the rest.
 
 ## 3. After the check
 

@@ -46,7 +46,8 @@ outside the UI block you picked") and go on; the owner chose it. Never add it to
   already costly. Say it to the owner in one plain sentence with the plan, and what the plan does about it: the split or
   the test first when it fits the card's size, else a card of its own that this one depends on (`/spec` step 2). When the
   line names a card that is that work, offer that card first.
-- **What it needs first**: `npm run board -- --graph` shows the tree built from the cards' "Depends on:" lines. For each open
+- **What it needs first**: `npm run board -- --graph` shows the tree built from the cards' "Depends on:" lines (with a goal
+  picked, `--plan` shows its waves: a card in a later wave waits for the wave before it). For each open
   card this one waits for, pick the earliest way that keeps the owner's work flowing (the rules: `.claude/skills/work/together.md`):
   - That card is **built** (in *Waiting for your check*, or its session is done): start this one on top of it
     (`--on <its topic>`), so nothing waits for its commit on main.

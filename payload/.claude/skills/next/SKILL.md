@@ -59,7 +59,8 @@ then stop.
    - **`goal:`** (or `focus:` for a block of one area): the owner picked what the coming days are about. Say the line as it
      is, with its count ("A hike to a top: 14 of 26 done"), and offer only the cards listed: the others wait on purpose. An
      "outside the focus but urgent" card is the one exception: name it. "Things left with no card yet": the next step is
-     making them (`/tidy focus`).
+     making them (`/tidy focus`). The `plan:` line is the order: say the wave to start now in plain words. A `grew since`
+     line is said as it is; no finish line yet: offer to write it with the plan (`/tidy focus`, 5 minutes).
    - **No goal picked**, **the goal is done**, or a goal is **due** (each a line the script prints): one next step, "Pick
      what the coming days are about (2 minutes): I show a few goals with a finish line, for example one kind of request made
      really good, one part of the app finished, or speed and cleaning up the code; you pick one and the rest waits. (/tidy

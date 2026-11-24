@@ -5,6 +5,7 @@ End state: <the best version, in one sentence>. This spec: <is it | a step towar
 Flow: <the flow and the job this card changes (`docs/anatomy/<flow>.md`) | a new job or a second home for one: <which> (two designs, `/spec` step 2) | none>
 Design not taken: <none: one design was drafted | the other design in one line, and why it lost (`/spec` step 2, two designs)>
 Starts on: <main | <topic> of a built, unfinished card it needs (`.claude/skills/work/together.md`)>
+Beside: <none | #<n> (session <topic>) changes <file> too: the rule both follow there (`node workflow/scripts/session.mjs --beside <topic>`)>
 Card stays open after this spec: <no | yes, what is left>
 Owner approval: <not yet | approved on YYYY-MM-DD>
 Session: `node workflow/scripts/session.mjs <topic>` (folder `../{{PREFIX}}-<topic>`)

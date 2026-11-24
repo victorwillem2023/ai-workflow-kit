@@ -49,6 +49,22 @@ describe("today's work", () => {
     assert.deepEqual(t.sessions, [[1, 3]], '#2 would join, but src/core is in progress');
     assert.deepEqual(t.after.map((x) => [x.card, x.by]), [[2, 500], [4, 3]], '#4 changes src/data, which the joined #3 changes');
   });
+  it('checks the files a running session really changes first, and two exact claims in one folder do not wait for each other', () => {
+    const running = [card(653, ['effort: medium'], 'In progress')];
+    const a = card(379, ['effort: medium']);
+    const b = card(380, ['effort: medium']);
+    const claims = new Map([[653, ['src/pipeline/climb/route-up.ts']], [379, ['src/pipeline/climb/route-up.ts', 'src/pipeline/climb/from-start.ts']], [380, ['src/pipeline/climb/notes.ts']]]);
+    const places = new Map([[379, ['Finding the way up']], [380, ['Finding the way up']], [653, ['Finding the way up']]]);
+    const t = today([a, b], { all: [...running, a, b], places, areas, limit: 4, claims, held: [{ topic: 'climb-trip', cards: [653], files: ['src/pipeline/climb/route-up.ts'] }] });
+    assert.deepEqual(t.sessions, [[380]], 'the same place on the map, but not the same files');
+    assert.deepEqual(t.after, [{ card: 379, by: 653, place: 'src/pipeline/climb/route-up.ts', running: true }]);
+    const idle = today([b], { all: [b], areas, limit: 4, held: [{ topic: 'spike-notes', cards: [], files: ['src/pipeline/climb/notes.ts'] }], claims });
+    assert.match(todayLines(idle).join('\n'), /#380 after session "spike-notes" \(in progress\), both change src\/pipeline\/climb\/notes.ts/);
+    const handed = today([a], { all: [card(653, ['effort: medium'], 'Waiting for your check'), a], areas, limit: 4, claims, held: [{ topic: 'climb-trip', cards: [653], files: ['src/pipeline/climb/route-up.ts'] }] });
+    assert.deepEqual(handed.after.map((x) => [x.card, x.by]), [[379, 653]], 'a session handed over to the owner still holds its files');
+    const own = today([a], { all: [a], areas, limit: 4, claims, held: [{ topic: 'from-start', cards: [379], files: ['src/pipeline/climb/route-up.ts'] }] });
+    assert.deepEqual(own.after, [], 'a card never waits for its own session');
+  });
   it('reads a card\'s Touches line for its parts when the map has none, so two cards on one folder do not run side by side', () => {
     assert.deepEqual(touchedParts('Why: x\n**Touches:** src/web/controller.ts, src/web/panels/results.ts and src/core/geo.ts'), ['src/web', 'src/web/panels', 'src/core']);
     const a = card(131, ['effort: medium'], 'Ready', 'Touches: src/core/geo.ts');

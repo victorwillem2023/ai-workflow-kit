@@ -129,6 +129,8 @@ in every section in short, plain English. When the card is only partly done, the
 - **Security**: any new endpoint, file reader or outbound fetch gets its limits listed and a `security-review` before finish.
   A new endpoint follows `workflow/guides/API.md` (schema, errors, paging, limits, who may call it). A new outside host goes
   in `security.egress`, once the owner says yes to what data goes there.
+- **Beside**: with "Files that change" saved, run `node workflow/scripts/session.mjs --beside <topic>`. For each session it
+  names, the "Beside:" line says the rule both follow there (theirs; another is a question in the summary), or "Starts on:" it.
 - **When the change has one of these, read its section in `.claude/skills/spec/when.md`**, and only that section: the app map
   module; stored data; a new route, screen or stored thing (who may do it); a `ui` card; a screen; email, payments, uploads,
   a scheduled job or dates; code no test reaches yet; a big job that might split into work packages; a sensitive file.

@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { git, gitQuiet, main, sessionCfg, worktrees, sameDir, FIRST_PORT, SESSION_ENV, usedPorts, free, warmTypecheck, bringSpec, cardOf, moveAndSay, stopServer } from './session-core.mjs';
-import { unlinkModules } from './session-stop.mjs'; import { MAIN } from '../tools/lib/branch.mjs'; import { noteSessionFolder } from '../tools/lib/sessionfiles.mjs';
+import { unlinkModules } from './session-stop.mjs'; import { MAIN } from '../tools/lib/branch.mjs'; import { noteSessionFolder } from '../tools/lib/sessionfiles.mjs'; import { checkClaims } from './session-claims.mjs';
 
 /** Who makes the session folders and runs the agents in them: 'orca', or '' (the kit itself, in folders next to the main one). */
 export const ORCHESTRATOR = String(sessionCfg.orchestrator ?? '').toLowerCase() === 'orca' ? 'orca' : '';
@@ -86,6 +86,7 @@ export async function adopt(card) {
     await moveAndSay(card, 'In progress', `Session "${topic}" started: folder ${dir}`);
   }
   const cards = card ?? before;
+  if (fresh) await checkClaims(topic, cards, gitQuiet(main, 'config', '--get', `branch.${topic}.kitOn`) || undefined, 'adopted'); // made by the orchestrator: said, never refused
   orcaNote(dir, 'in-progress', sessionNote(cards, port));
   if (card !== undefined && card !== before) orcaCards(dir, card);
   console.log(`Session "${topic}" ${fresh ? 'is ready' : 'was ready already'}.\n  folder: ${dir}\n  branch: ${topic}${cards ? `\n  card:   #${String(cards).split(',').join(', #')}` : ''}\n  port:   ${port} (only for a change with a screen: node workflow/scripts/session.mjs --serve ${topic} starts it)`);

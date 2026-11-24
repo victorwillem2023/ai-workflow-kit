@@ -25,3 +25,4 @@ export function labelGroups(board: Board): { types: string[]; areas: string[]; v
 /** Makes what the config describes and the board lacks: labels, the project itself (when `project` is not a number), the columns. */
 export function initBoard(board: Board, run: GhRunner, cache?: BoardCache, opts?: { title?: string }): { project: number; created: boolean; labelsMade: string[]; columnsAdded: string[] };
 export function listCards(board: Board, run: GhRunner, o?: { wholeText?: boolean }): { number: number; title: string; state: string; labels: string[]; column: string | null; body?: string }[];
+export function touchCard(board: Board, run: GhRunner, number: number, paths: string[]): string[];

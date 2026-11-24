@@ -23,11 +23,11 @@ The owner wants to understand and steer the project, not just receive features. 
 - **The backlog is the GitHub board**: one card at a time (`npm run board -- --show <n>`), never the whole list; "blocked,
   waiting for X" is `npm run board -- --block <n> "<reason>"`. The owner works towards one goal at a time
   (`npm run board -- --focus`); when they stop for now, leave one line for the next session: `npm run board -- --stopped "<line>"`.
-- **One change at a time**: no extra cleanups or "while I was there" edits; each becomes a card that waits for the owner's yes
-  (`npm run board -- --add ... --unsorted`). Small steps are about what goes
-  in one commit, never a reason to pick the smaller design. A card made after the owner's yes (a plan they approved, cards
-  they asked for) is never `--unsorted`. Cards noticed along the way are settled before the chat ends: one question, "let them
-  all in (recommended)", "some (say which)" or "drop them" (`--accept <n,m>`, `--close <n> "<reason>"`).
+- **One change at a time**: no "while I was there" edits. What you notice is sorted (`.claude/skills/build/try-it.md`, *Open
+  points are sorted*): only new work becomes a card that waits for the owner's yes (`--add ... --unsorted`), in the goal when
+  its finish line needs it, else parked. Small steps are about one commit, never a reason for the smaller design. A card made
+  after the owner's yes is never `--unsorted`. Before the chat ends, one question settles the cards noticed: "as sorted
+  (recommended)", "some" or "drop them".
 - **The best design, not the quickest patch**, for app code, infra and docs alike: every plan names the end state first (clean,
   easy to change, the version that scales). No special case beside a rule that could take it, no second way of doing one job:
   extend the rule's home, and split or refactor first when that is what it takes (`/spec` step 2).
@@ -166,7 +166,8 @@ style rules, the feedback rounds and the done checklist.
 - **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted files
   in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.
 - **Shared files** (`README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>): edit only your own
-  feature's lines, small. A rebase conflict keeps both sides' changes, never drops the other's.
+  feature's lines, small. A rebase conflict keeps both sides' changes, never drops the other's. Code and tests are held by the
+  session changing them: `session.mjs` refuses a second one on them.
 
 ## This project's own rules
 Rules only this project has, one line each (`/lesson` adds them here). The kit's parts above are between `<!-- kit:... -->`
