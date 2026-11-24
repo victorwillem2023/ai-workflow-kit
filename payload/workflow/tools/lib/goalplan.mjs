@@ -87,5 +87,5 @@ export function waveLine(plan) {
 export function growthLine(growth) {
   if (!growth || (!growth.grew.length && !growth.parked.length)) return '';
   const parts = [growth.grew.length ? `${growth.grew.length} in the goal (${tags(growth.grew)})` : '', growth.parked.length ? `${growth.parked.length} parked until it is done (${tags(growth.parked)})` : ''].filter(Boolean);
-  return `grew since its plan was agreed: ${parts.join(', ')}. Widening the finish line is the owner's call, never a builder's.`;
+  return `grew since its plan was agreed: ${parts.join(', ')}. A new finish line is the owner's call, never a builder's.`;
 }

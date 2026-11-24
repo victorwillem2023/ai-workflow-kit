@@ -24,10 +24,8 @@ The owner wants to understand and steer the project, not just receive features. 
   waiting for X" is `npm run board -- --block <n> "<reason>"`. The owner works towards one goal at a time
   (`npm run board -- --focus`); when they stop for now, leave one line for the next session: `npm run board -- --stopped "<line>"`.
 - **One change at a time**: no "while I was there" edits. What you notice is sorted (`.claude/skills/build/try-it.md`, *Open
-  points are sorted*): only new work becomes a card that waits for the owner's yes (`--add ... --unsorted`), in the goal when
-  its finish line needs it, else parked. Small steps are about one commit, never a reason for the smaller design. A card made
-  after the owner's yes is never `--unsorted`. Before the chat ends, one question settles the cards noticed: "as sorted
-  (recommended)", "some" or "drop them".
+  points are sorted*): only new work becomes a card, labelled and put in the goal when its finish line needs it, else parked (no goal: the backlog),
+  then said ("say 'drop #n' to change one"). Small steps are about one commit, never a reason for the smaller design.
 - **The best design, not the quickest patch**, for app code, infra and docs alike: every plan names the end state first (clean,
   easy to change, the version that scales). No special case beside a rule that could take it, no second way of doing one job:
   extend the rule's home, and split or refactor first when that is what it takes (`/spec` step 2).

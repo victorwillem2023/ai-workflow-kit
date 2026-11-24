@@ -83,14 +83,15 @@ work, and a card for each makes the goal grow without end:
 3. **Routine** (what `/docs catch-up`, the map or a check does by itself): no card, not mentioned.
 4. **New work**: search first (`npm run board -- --search "<2-3 main words>"`); an open card with the idea gets a comment, never a
    twin. Otherwise one card (`.claude/skills/idea/SKILL.md` steps 2 to 4: your labels, no question, a short body,
-   `Depends on: #<this card>` when it builds on it, a `Touches:` line), with `--unsorted`. While a goal is picked, say where it
-   goes against its finish line (`npm run board -- --plan`): **in the goal** only when the finish line needs it; else **parked**,
-   offered when the goal is done. A path nobody asked for ("up one way, down another, from a typed start") is no card: one
-   comment on this card, "maybe later: ...", turned into a card when a person asks for it or the owner picks it.
+   `Depends on: #<this card>` when it builds on it, a `Touches:` line, and its value and effort), never `--unsorted`: the owner
+   trusts this sorting, so it is done, not asked. While a goal is picked, put it where its finish line says
+   (`npm run board -- --plan`): **in the goal** when the finish line needs it (`--focus --add <n>`), else **parked**
+   (`--park <n>`), offered when the goal is done; with no goal it joins the backlog, ranked by its labels. A path nobody asked for ("up one way, down another, from a typed start") is no
+   card: one comment on this card, "maybe later: ...", turned into a card when a person asks for it or the owner picks it.
 
-The message lists the new cards under *Not in this card*, each with where it goes, and ends with one question
-(AskUserQuestion): "as sorted (recommended)", "some (say which)" or "drop them". Then `npm run board -- --accept <n,m>`,
-`--focus --add <n>` for the goal's, `--park <n>` for the parked ones, `--close <n> "<reason>"` for the rest.
+The message lists the new cards under *Not in this card*, each with where it went ("#612 in the goal: the finish line needs
+a typed start to work for trips; #613 parked"), and one line: "Say 'drop #n' or 'not in the goal' to change one." No question:
+on such a word, `--close <n> "<reason>"`, or `--park <n>`.
 
 ## 3. After the check
 

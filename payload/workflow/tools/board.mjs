@@ -64,6 +64,8 @@ import { together, togetherLines } from './lib/together.mjs'; import { claimOf, 
 import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+// where a goal is picked and planned: /tidy focus, or the command itself in a lean install without /tidy
+const FOCUS_STEP = existsSync(join(root, '.claude', 'skills', 'tidy')) ? '/tidy focus' : 'npm run board -- --focus';
 const run = (args, input) => ghRun(args, input); // lib/gh.mjs
 
 // The cards each session folder carries (branch.<topic>.card, kept by workflow/scripts/session.mjs), for the limit on work in
@@ -198,7 +200,7 @@ async function focusCommand(config, all) {
   if (f && !f.finished) {
     console.log(f.line);
     for (const c of f.state.left) console.log(`  #${c.number} ${c.title} (${c.why})`);
-    for (const l of f.extra) console.log(l);
+    for (const l of f.extra) console.log(l.replace(/^next goal: /, '').replace(/ \([^()]*\)$/, '')); // (this is the focus step already)
     // what comes after it, without dropping it: --all lists the other goals (or blocks) to pick from next
     const others = goals.filter((g) => g.left > 0 && g.id !== now.goal);
     if (argv.includes('--all')) {
@@ -228,7 +230,8 @@ function focusNow(board, all, goals) {
   const parkedOpen = (now.parked ?? []).filter((n) => (g.cards ?? []).includes(n) && all.some((c) => c.number === n && !isDone(c))).length;
   const left = Math.max(0, g.left - parkedOpen);
   const stuck = state.finished && left > 0;
-  const extra = stuck ? [`(nothing of this goal can be started: ${g.uncarded || left} thing${(g.uncarded || left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}; /tidy focus makes the cards, ${g.notes[0] ?? ''})`] : [];
+  // said at the top of --next (withinFocus): the goal cannot move, so its next step comes before any card or clean-up
+  const extra = stuck ? [`next goal: nothing of this goal can be started (${g.uncarded || left} thing${(g.uncarded || left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}${g.notes[0] ? `, ${g.notes[0]}` : ''}): make ${g.uncarded ? 'those cards' : 'what they wait for'}, or finish it and pick the next goal (${FOCUS_STEP})`] : [];
   return { state, cards, plan: g.plan ?? [], line: goalLine({ ...g, left }, state, say), finished: state.finished && left === 0, extra };
 }
 
@@ -428,18 +431,19 @@ async function withinFocus(config, all, ranked) {
   const goals = await gatherGoals(config, all);
   const f = focusNow(board, all, goals);
   const dueGoals = goals.filter((g) => g.due && g.left > 0 && g.id !== readFocus()?.goal);
-  const due = dueGoals.length ? [`(due: ${dueGoals.map((g) => `${g.name} (${g.notes.at(-1) ?? goalCount(g)})`).join('; ')}; npm run board -- --focus)`] : [];
+  const due = dueGoals.length ? [`(due: ${dueGoals.map((g) => `${g.name} (${g.notes.at(-1) ?? goalCount(g)})`).join('; ')}; ${FOCUS_STEP})`] : [];
   if (!f) {
-    const hint = ranked.length > 5 ? [`(no goal picked: ${ranked.length} cards can be started. One goal at a time is calmer: npm run board -- --focus shows what to pick from)`] : [];
-    return { ranked, before, after: [...sort, ...hint, ...due, ...anatomyNote(config)], line: null };
+    // the next step itself, at the top: without a goal every card competes, and the owner has to ask for the order
+    const hint = ranked.length > 5 ? [`next goal: no goal picked, so ${ranked.length} cards compete: pick what the coming days are about, with its plan (${FOCUS_STEP})`] : [];
+    return { ranked, before: [...before, ...hint], after: [...sort, ...due, ...anatomyNote(config)], line: null };
   }
   const parked = readFocus()?.parked?.filter((n) => all.some((c) => c.number === n && !isDone(c))) ?? [];
   const parkedLine = parked.length ? [`(parked while it ran: #${parked.join(', #')}: look at them first for the next goal)`] : [];
-  if (f.finished) return { ranked, before: [...before, `focus: "${readFocus().theme}" is done: pick the next one (npm run board -- --focus)`, ...parkedLine], after: [...sort, ...due, ...anatomyNote(config)], line: null };
+  if (f.finished) return { ranked, before: [...before, `next goal: "${readFocus().theme}" is done: pick the next one, with its plan (${FOCUS_STEP})`, ...parkedLine], after: [...sort, ...due, ...anatomyNote(config)], line: null };
   const mine = new Set(f.cards);
   const outside = ranked.filter((c) => !mine.has(c.number)).length;
   const urgent = urgentOutside(all, { cards: f.cards });
-  const after = [...f.extra,
+  const after = [
     ...(urgent.length ? [`(outside the focus but urgent: ${urgent.map((c) => `#${c.number} ${c.title}`).join('; ')}: a bug of high value)`] : []),
     ...(outside ? [`(${outside} other card${outside === 1 ? '' : 's'} can be started but wait${outside === 1 ? 's' : ''} for a later goal)`] : []), ...sort, ...due, ...anatomyNote(config)];
   // the goal's waves first (lib/goalplan.mjs), then its clean-up plan's order (its flow page's "Cards:" line): the reshaping
@@ -452,7 +456,7 @@ async function withinFocus(config, all, ranked) {
   const byKey = (a, b) => { const [x, y] = [key(a), key(b)]; return x[0] !== y[0] ? (x[0] < y[0] ? -1 : 1) : x[1] === y[1] ? 0 : x[1] < y[1] ? -1 : 1; };
   const focus = readFocus();
   const planSaid = [waveLine(plan), growthLine(growthOf(focus, f.cards)), ...(focus?.goal && !focus.finish ? ['(no finish line written for this goal: /tidy focus writes it with its plan, so new cards know whether they belong in it)'] : [])].filter(Boolean);
-  return { ranked: [...kept].sort(byKey), before: [...before, f.line, ...planSaid], after, line: f.line };
+  return { ranked: [...kept].sort(byKey), before: [...before, f.line, ...f.extra, ...planSaid], after, line: f.line };
 }
 
 async function main() {

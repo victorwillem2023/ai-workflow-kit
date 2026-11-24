@@ -43,8 +43,8 @@ then stop.
      can start"), as a next step (`/work <n>`; picking a card still to sort lets it in).
    - **`where you stopped`** with *careful: ... done already*: the note points at a card that is done; take the next card from
      the board, not from the note.
-   - **`step back:`**: one area had a run of fixes in a few days, spread too thin for any file to stand out. The recommended
-     next step, before its next fix: "<Area> had <n> fixes this week: stop patching it, look at how it is built and plan the
+   - **`step back:`**: one area had a run of fixes in a few days, spread too thin for any file to stand out. A next step,
+     before its next fix: "<Area> had <n> fixes this week: stop patching it, look at how it is built and plan the
      clean version, about an hour; you get the clean-up as cards for your yes (/anatomy <flow>)". Its cards' `/spec` drafts two
      designs whatever the phase.
    - **`anatomy:`** (no flow looked at yet, or one not for two months): one next step, never before a card in progress: "See
@@ -61,10 +61,11 @@ then stop.
      "outside the focus but urgent" card is the one exception: name it. "Things left with no card yet": the next step is
      making them (`/tidy focus`). The `plan:` line is the order: say the wave to start now in plain words. A `grew since`
      line is said as it is; no finish line yet: offer to write it with the plan (`/tidy focus`, 5 minutes).
-   - **No goal picked**, **the goal is done**, or a goal is **due** (each a line the script prints): one next step, "Pick
+   - **A `next goal:` line** (no goal picked, the goal is done, or nothing of it can be started) or a goal **due**: one next step, "Pick
      what the coming days are about (2 minutes): I show a few goals with a finish line, for example one kind of request made
      really good, one part of the app finished, or speed and cleaning up the code; you pick one and the rest waits. (/tidy
-     focus)". When a goal is due, recommend it and say why in the script's words.
+     focus)"; a stuck goal: "Make the last cards of <goal> and plan what comes next (/tidy focus)". Recommend it above a
+     step back, `anatomy:` and the tidy-up; a due goal with the script's reason.
    - **Cards made along the way wait for your yes** (the script's line): one next step, "Let in or drop the <n> cards made
      while building (2 minutes) (/tidy)".
    - A card that "starts on top of #m" does not wait for #m's check: say so.
@@ -111,8 +112,8 @@ offer follows the size of the work, from the cards' effort labels:
 
 ## End with ONE question
 
-The next steps you found, at most four, most urgent first: a security alert, the `stage:` lines, the board tidy-up when it
-has decisions, a card waiting to be tried, picking a focus, the top card. Mark the one you recommend, with why in a few words. The quick ones that keep the rest honest
+The next steps you found, at most four, most urgent first: a security alert, the `stage:` lines, a card waiting to be tried,
+a `next goal:` line (the step it names), the board tidy-up when it has decisions, the top card. Mark the one you recommend, with why in a few words. The quick ones that keep the rest honest
 come first: a look back due, an empty roadmap, decisions waiting; then the card.
 
 **On the answer, do not run it here**: a new chat gives the command its own model and none of this chat's reading. With

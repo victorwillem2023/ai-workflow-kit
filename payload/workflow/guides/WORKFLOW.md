@@ -19,7 +19,7 @@ the rules the agent follows are in `CLAUDE.md`.
 - **One goal at a time, few cards at once.** You pick a goal with a finish line (`/tidy focus`), and `/next` shows how far it
   is, with its plan in waves (what runs side by side). No more than `board.wip` pieces of work are in progress (the cards one session builds together count once): `/work` and `/build` stop and ask before one more starts. A
   session on files another one is changing does not start. Only new work becomes a card: in the goal when its finish line
-  needs it, else parked; those wait for your yes, and the last session's "where I stopped" line opens the next.
+  needs it, else parked, and you are told which ("drop #n" changes one). The last session's "where I stopped" line opens the next.
 - **You steer, the agent builds.** The agent plans and stops for your yes, builds and stops for you to try it,
   and commits only when you say it is done. (`CLAUDE.md` calls the person steering "the owner".)
 - **One card, one session folder, one commit.** Each piece of work happens in its own folder
@@ -128,7 +128,7 @@ A small tweak to something that exists (spacing, a label, a colour) skips the bo
 | find a card | `npm run board -- --search "<words>"` |
 | see the goal you are on, or the ones to pick from | `npm run board -- --focus` |
 | see the goal's plan: what runs side by side now, what comes after | `npm run board -- --plan` |
-| let in the cards made while building (they wait for your yes) | `npm run board -- --unsorted`, then `--accept <n,m>` |
+| let in the cards agents made on their own (they wait for your yes) | `npm run board -- --unsorted`, then `--accept <n,m>` |
 | close the cards nobody touched for eight weeks | `npm run board -- --expire`, then `--expire --yes` |
 | see the running sessions, the files each one changes, and unpushed work | `node workflow/scripts/session.mjs --list` |
 | park a card ("waiting for X") | `npm run board -- --block <n> "<reason>"` |

@@ -25,8 +25,8 @@ and offer the full pass, `/sweep`, which goes over every card, a theme at a time
 
 ## 2. One batch of proposals
 
-First the cards made along the way: `npm run board -- --unsorted` lists the cards agents made while building (open points,
-things noticed). Offer them as one choice each, ticked: let in (`--accept <n,m>`) or drop (`--close <n> "<reason>"`). Then
+First the cards made along the way: `npm run board -- --unsorted` lists the cards agents made on their own outside a
+hand-over (a build's open points are made sorted: in the goal, parked or in the backlog, `try-it.md`). Offer them as one choice each, ticked: let in (`--accept <n,m>`) or drop (`--close <n> "<reason>"`). Then
 `npm run board -- --expire`: the cards nobody touched for eight weeks that are not of high value; offer closing them all
 (`--expire --yes`, each can be reopened), unticked.
 
