@@ -2,6 +2,10 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.18.4**: **a session holds its code, not its tests or the generated request rows.** A session was refused because the one
+  running added a test case to the same test file and both changed `docs/flow/requests.js`. Tests are never held (each session
+  adds its own cases; a clash is settled at the catch-up by keeping both), and the request rows are written again from the
+  request pages when they clash in a merge. A spec claims its "Files that change". Tests in `claims`.
 - **4.18.3**: **a goal from the app map counts its cards too.** Its line said "30 of 32 done" (what the map counts) while 27 of
   its cards were left. Now "30 of 32 on the app map done, 10 of 37 cards done", and "done" only when both are (`lib/focus.mjs`
   goalLine). Tests in `focus`.
