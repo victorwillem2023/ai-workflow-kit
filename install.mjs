@@ -139,7 +139,7 @@ const markFile = join(target, 'workflow/record');
 const before = existsSync(markFile) ? (/version=(\S+)/.exec(readFileSync(markFile, 'utf8'))?.[1] ?? 'unknown') : null;
 // the app map's request group as it was, to say after the update when it came out different (install-report.mjs)
 const requestsBefore = existsSync(join(target, 'docs', 'flow', 'requests.js')) ? readFileSync(join(target, 'docs', 'flow', 'requests.js'), 'utf8') : null;
-const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], stageNamed: [], helpers: [], skipped: [] };
+const done = { added: [], kept: [], replaced: [], yours: [], removed: [], orphans: [], staged: [], stageKept: [], stageNamed: [], helpers: [], skipped: [], pairedKept: [] };
 // what a stage not reached yet would have written: an update takes away the untouched copies an older kit wrote there
 const stageSkipped = new Map();
 const shipped = new Set(); // every machinery file this run of the kit ships, to find the ones an older kit wrote and this one dropped
@@ -176,6 +176,8 @@ claudeGrowth = (migrate('before').claudeGrowth ?? 0) + layout.claudeGrowth;
 // does not have them (TypeScript only; a project in another language writes its own, CLAUDE.md says what they do)
 const HELPERS = lang === 'ts' ? needs.helpers : [];
 const overwriteOnly = (from) => from.endsWith('payload');
+// what a replaced file held before, so a test the kit replaces can go back when the file it tests is the project's own (below)
+const replacedFrom = new Map();
 function copyTree(from, overwrite) {
   for (const src of walk(from)) {
     const rel = relative(from, src);
@@ -212,6 +214,7 @@ function copyTree(from, overwrite) {
       if (!untouched(key, readFileSync(dest, TEXT.test(src) ? 'utf8' : 'latin1')) && !inList(take, key)) { done.yours.push(key); continue; }
     } else if (exists && !overwrite) { done.kept.push(rel); continue; }
     mkdirSync(dirname(dest), { recursive: true });
+    if (exists && update) replacedFrom.set(key, readFileSync(dest));
     writeFileSync(dest, next);
     if (machinery) stamp.set(key, hash(TEXT.test(src) ? next : raw.toString('latin1')));
     (exists ? done.replaced : done.added).push(rel);
@@ -229,6 +232,37 @@ for (const m of modules) {
   // the same examples in the project's language, where the module has them (modules/<name>/starter-<lang>)
   if (existsSync(join(kit, 'modules', m, `starter-${lang}`))) copyTree(join(kit, 'modules', m, `starter-${lang}`), false);
 }
+// --update: a test the kit replaced while the file it tests is the project's own (kept, changed) would check the kit's version
+// of that file and break the project's tests and typecheck: the test goes back to what it was, and both are named
+if (update && done.yours.length) {
+  const yours = new Set(done.yours);
+  // what a test loads: its static imports and its import() calls, as keys from the project's top
+  const testsOf = (key, text) => [...text.matchAll(/(?:from\s+|import\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)].map((m) => {
+    const parts = [...key.split('/').slice(0, -1), ...m[1].split('/')];
+    const out = [];
+    for (const p of parts) { if (p === '..') out.pop(); else if (p !== '.') out.push(p); }
+    return out.join('/');
+  });
+  for (const rel of [...done.replaced]) {
+    const key = rel.replace(/\\/g, '/');
+    if (!/(^|\/)tests?\/.*\.test\.[cm]?[jt]s$/.test(key) || !replacedFrom.has(key)) continue;
+    const text = readFileSync(join(target, key), 'utf8');
+    const variants = (p) => [p, `${p}.ts`, `${p}.mjs`, p.replace(/\.mjs$/, '.d.mts')];
+    const old = replacedFrom.get(key).toString('utf8');
+    const own = [...testsOf(key, text), ...testsOf(key, old)].map((p) => variants(p).find((x) => yours.has(x))).find(Boolean);
+    if (!own) continue;
+    // the old test (what would go back) also loads files this update replaced, or ones it takes away: neither version fits
+    // both, so the new one stays and the owner decides
+    const replacedKeys = new Set(done.replaced.map((r) => r.replace(/\\/g, '/')));
+    const goes = (x) => written.has(x) && !shipped.has(x);
+    if (testsOf(key, old).some((p) => variants(p).some((x) => x !== own && (replacedKeys.has(x) || goes(x))))) { done.pairedKept.push(`${key}: the kit's new one, which checks the kit's ${own} (yours differs) and other files this update replaced; take ${own} too, or change the test to yours`); continue; }
+    writeFileSync(join(target, key), replacedFrom.get(key));
+    stamp.set(key, hash(replacedFrom.get(key).toString(TEXT.test(key) ? 'utf8' : 'latin1')));
+    done.replaced.splice(done.replaced.indexOf(rel), 1);
+    done.pairedKept.push(`${key}: kept as it was, because it tests ${own}, which is yours`);
+  }
+}
+
 // --update: a machinery file an older kit wrote and this one no longer ships (renamed, removed, or its module dropped) is taken
 // out when the project never changed it, with its folder when that is left empty; a changed one is kept and named
 if (update) {

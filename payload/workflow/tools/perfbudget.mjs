@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { gzipSync } from 'node:zlib';
 import { matchesAny } from './lib/glob.mjs';
 import { buildApp } from './lib/buildapp.mjs';
-import { builtPages, startupFiles, weighPages, weightLine } from './lib/perfbudget.mjs';
+import { builtPages, pageRoots, startupFiles, weighPages, weightLine } from './lib/perfbudget.mjs';
 import { hasWeb, surfacesOf } from './lib/surfaces.mjs';
 
 process.chdir(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
@@ -42,7 +42,8 @@ if (!found.length) {
 }
 // each built page on its own, with what it loads at start-up: a phone page that also pulls in the desktop map is caught, and a
 // heavy part loaded later (import()) costs nothing at the start. No page found (a framework that builds no HTML): the files together.
-const pages = builtPages(perf, roots, (r) => (existsSync(r) && statSync(r).isDirectory() ? readdirSync(r) : []));
+const listDir = (r) => (existsSync(r) && statSync(r).isDirectory() ? readdirSync(r) : []);
+const pages = builtPages(perf, pageRoots(perf.files, listDir), listDir);
 const BASELINE = 'workflow/tools/perf-baseline.json';
 const saved = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')) : {};
 const update = process.argv.includes('--update');

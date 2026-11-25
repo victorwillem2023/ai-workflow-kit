@@ -26,7 +26,7 @@ import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { buildApp } from './lib/buildapp.mjs';
-import { builtPages, startupFiles } from './lib/perfbudget.mjs';
+import { builtPages, pageRoots, startupFiles } from './lib/perfbudget.mjs';
 import { LINES, median, speedVerdict, timedSteps, walkVerdict } from './lib/speed.mjs';
 import { hasWeb, surfacesOf } from './lib/surfaces.mjs';
 
@@ -116,9 +116,10 @@ async function main() {
     if (b.none) { console.log('speed: no build script, nothing to time'); return 0; }
     if (!b.ok) { console.log(`speed: the build failed\n${b.tail}`); return 1; }
   }
-  const roots = [...new Set((perf.files ?? ['dist/assets/*.js']).map((g) => g.split('/')[0]))];
   const own = perf.speed?.pages ?? {};
-  let pages = builtPages(perf, roots, (r) => (existsSync(r) && statSync(r).isDirectory() ? readdirSync(r) : []));
+  const listDir = (r) => (existsSync(r) && statSync(r).isDirectory() ? readdirSync(r) : []);
+  const roots = pageRoots(perf.files, listDir);
+  let pages = builtPages(perf, roots, listDir);
   // a running app with no build here: the pages the config names, by their paths
   if (given && !pages.length) pages = Object.keys(own).map((name) => ({ name, html: null, root: null }));
   // an HTML the build writes beside the app with none of its scripts (a bundle report, stats.html) is no page to time
@@ -130,7 +131,13 @@ async function main() {
   });
   const onlyWalks = args.includes('--walks');
   const walkNames = perf.speed?.walks ?? [];
-  if (!pages.length && !walkNames.length) { console.log('speed: no built page to time (no .html at the top of the build; "performance.pages" names them)'); return 0; }
+  // a build with scripts but no page found timed nothing: that is said out loud, never a quiet pass
+  if (!pages.length && !walkNames.length) {
+    const built = roots.some((r) => listDir(r).length);
+    // (a framework that builds no HTML, a server-rendered app, is no fault: it passes, and the line says how to time it)
+    console.log(built ? `speed: TIMED NOTHING: the build (${roots.join(', ')}) has no .html page to open; name the pages in "performance.pages" ({ "html": "dist/web/index.html" }), or time the steps with "performance.speed.walks" against the running app` : 'speed: nothing built to time');
+    return 0;
+  }
   const { openBrowser } = await import(pathToFileURL(browserAt).href);
   const runs = perf.speed?.runs ?? 3;
   const file = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')) : {};
@@ -150,6 +157,12 @@ async function main() {
     return true;
   };
   let ok = true;
+  // with `performance.speed.serve`, pages are timed in the running app (its data, its server), not as bare built files
+  let served = null;
+  if (!given && perf.speed?.serve?.command && (walkNames.length || (pages.length && !onlyWalks))) {
+    try { served = await walkServer(perf.speed, null); } catch (e) { console.log(`speed: the app did not start, so the pages are timed as built files and the walks not at all: ${e.message}`); ok = false; }
+  }
+  try {
   if (pages.length && !onlyWalks) {
     let b;
     try { b = await openBrowser({ width: 390, height: 844, scale: 2 }); } catch (e) { console.log(`speed: not timed: no headless browser here (${e.message})`); return 0; }
@@ -160,10 +173,10 @@ async function main() {
       for (const page of pages) {
         const o = own[page.name] ?? {};
         const key = `${page.root}|${page.base ?? ''}`;
-        if (!given && !hosts.has(key)) hosts.set(key, await serve(page.root || '.', page.base));
+        if (!given && !served && !hosts.has(key)) hosts.set(key, await serve(page.root || '.', page.base));
         const rel = page.html ? (page.root ? page.html.slice(page.root.length + 1) : page.html) : null;
         const path = o.path ?? (rel ? `${page.base ? `${page.base}/` : ''}${rel}` : page.name === 'index' ? '' : page.name);
-        const url = `${given ? given.replace(/\/$/, '') : hosts.get(key).url}/${String(path).replace(/^\//, '')}`;
+        const url = `${given ? given.replace(/\/$/, '') : served ? served.base : hosts.get(key).url}/${String(path).replace(/^\//, '')}`;
         const script = await b.send('Page.addScriptToEvaluateOnNewDocument', { source: RECORDER(o.ready ?? 'document.readyState === "complete"') });
         const all = [];
         for (let i = 0; i < runs; i++) all.push(await run(b, url, o));
@@ -184,7 +197,10 @@ async function main() {
     }
   }
   if (onlyWalks && !walkNames.length) console.log('speed walks: none named yet ("performance.speed.walks" lists the smoke walks in tests/smoke/ to time, each step with a "name")');
-  if (walkNames.length) ok = (await timeWalks({ openBrowser, perf, given, walkNames, savedWalks, walkBaselines, update, judged, runs, canKeep: !shared && !other && !inSession })) && ok;
+  if (walkNames.length && (served || given || !perf.speed?.serve?.command)) ok = (await timeWalks({ openBrowser, perf, given, served, walkNames, savedWalks, walkBaselines, update, judged, runs, canKeep: !shared && !other && !inSession })) && ok;
+  } finally {
+    served?.stop();
+  }
   if (!shared && !other && !inSession && (JSON.stringify(baselines) !== JSON.stringify(saved) || JSON.stringify(walkBaselines) !== JSON.stringify(savedWalks))) {
     writeFileSync(BASELINE, `${JSON.stringify({ note: 'Each page and each timed walk step on a slow phone the first time (ms), on this computer, in the main folder; every session is held to it. Slower than this, with a little room, fails. npm run speed -- --update takes today\'s numbers again, with the owner\'s yes. Commit it with the next settings.', machine: MACHINE, pages: baselines, walks: walkBaselines }, null, 2)}\n`);
     console.log(`speed: the baseline is in ${BASELINE_AT}; commit it with the next settings`);
@@ -242,12 +258,12 @@ function freePort() {
 }
 
 /** Times each named step of the walks `performance.speed.walks` names (tests/smoke/<name>.json) on both lines. */
-async function timeWalks({ openBrowser, perf, given, walkNames, savedWalks, walkBaselines, update, judged, runs, canKeep }) {
+async function timeWalks({ openBrowser, perf, given, served, walkNames, savedWalks, walkBaselines, update, judged, runs, canKeep }) {
   const walkAt = resolve('workflow/scripts/walk.mjs');
   if (!existsSync(walkAt)) { console.log('speed walks: not timed: they need the walks of the ui module (workflow/scripts/walk.mjs)'); return true; }
   const wm = await import(pathToFileURL(walkAt).href);
-  let server;
-  try { server = await walkServer(perf.speed, given); } catch (e) { console.log(`speed walks: not timed: ${e.message}`); return false; }
+  let server = served ? { ...served, stop: () => {} } : null;
+  if (!server) try { server = await walkServer(perf.speed, given); } catch (e) { console.log(`speed walks: not timed: ${e.message}`); return false; }
   if (!server) { console.log(`speed walks: not timed: no app to walk (start the dev server, or name the command that starts the built app in "performance.speed.serve")`); return true; }
   let ok = true;
   try {

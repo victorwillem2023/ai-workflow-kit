@@ -48,7 +48,7 @@ A page kept on the phone for offline use stays until a new version replaces it: 
   `APP_VERSION`) and the oldest page build still allowed (`MIN_CLIENT_BUILT`, a build time, set when a release breaks old pages);
   `checkForUpdate` (`src/web/update.ts`, the production module) offers a later build, and drops the cache and reloads a page built
   before the minimum (only when the running build meets it, so it never loops). A server copied from the kit before `/health` said
-  `built` offers nothing: one small card brings `healthAnswer` (`src/server/shutdown.ts`) and the build argument in. That is the forced update the big apps have, and the way out of a bad version.
+  `built`, or one of the project's own, offers nothing until a card brings `built` into its `/health` and the build argument in. That is the forced update the big apps have, and the way out of a bad version.
 - **Staged**: a release that changes what is cached goes to the beta channel first (below), and `MIN_CLIENT_BUILT` moves only
   once the new version is known good. Rolling back the server never brings old pages back: a page newer than the server is
   offered nothing and goes on.

@@ -7,7 +7,6 @@
 //     message: 'The route planner is not answering. Try again in a minute.' };
 //   const route = await callOutside(ROUTER, (signal) => fetch(url, { signal }).then(okJson), { log: req.log });
 import { AppError } from './errors';
-import type { Logger } from './log';
 
 export type OutsidePlan = {
   /** the service's name, in the log and the error code */
@@ -42,7 +41,7 @@ const sleep = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 export async function callOutside<T>(
   plan: OutsidePlan,
   fn: (signal: AbortSignal) => Promise<T>,
-  o: { log?: Pick<Logger, 'warn'>; fallback?: (err: unknown) => T | Promise<T>; wait?: (ms: number) => Promise<unknown> } = {},
+  o: { log?: { warn(msg: string, fields?: Record<string, unknown>): void }; fallback?: (err: unknown) => T | Promise<T>; wait?: (ms: number) => Promise<unknown> } = {},
 ): Promise<T> {
   const wait = o.wait ?? sleep;
   const tries = 1 + Math.max(0, plan.retries ?? 0);

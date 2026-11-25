@@ -51,6 +51,21 @@ export function startupFiles(html, htmlPath, read) {
 }
 
 /**
+ * The folders the built pages are in: for each `performance.files` glob, the deepest folder of its fixed part that holds an
+ * .html ("dist/web/*.js": dist/web, else dist; "dist/assets/*.js": dist), else the glob's first folder. `listHtml(dir)` lists a folder.
+ */
+export function pageRoots(globs, listHtml) {
+  const roots = (globs?.length ? globs : ['dist/assets/*.js']).map((g) => {
+    const fixed = [];
+    for (const part of String(g).split('/')) { if (/[*?[{]/.test(part)) break; fixed.push(part); }
+    if (fixed.length === String(g).split('/').length) fixed.pop(); // a glob naming one file: its folder
+    for (let n = fixed.length; n > 0; n--) { const dir = fixed.slice(0, n).join('/'); if (listHtml(dir).some((f) => f.endsWith('.html'))) return dir; }
+    return fixed[0] ?? '.';
+  });
+  return [...new Set(roots)];
+}
+
+/**
  * The built pages to weigh and time: `performance.pages` ([{ name, html, maxKb }]) when the config names them, else every .html at
  * the top of each build folder (`roots`, read by `listHtml(dir)`), each against `performance.maxKb`.
  */

@@ -3,7 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { inbox, rankCards, scoreCard } from '../../workflow/tools/lib/rank.mjs';
-import { builtPages, startupFiles, weighPages, weightLine } from '../../workflow/tools/lib/perfbudget.mjs';
+import { builtPages, pageRoots, startupFiles, weighPages, weightLine } from '../../workflow/tools/lib/perfbudget.mjs';
 import { changelogText, groupCommits } from '../../workflow/tools/lib/changelog.mjs';
 
 const card = (number: number, labels: string[], column = 'Backlog', state = 'open') => ({ number, title: `card ${number}`, state, labels, column });
@@ -76,6 +76,13 @@ describe('the page-weight budget', () => {
     assert.deepEqual(startupFiles('<script type="text/plain" data-src="/assets/later.js"></script><link data-href="/x.css" rel="stylesheet">', 'index.html', () => '').files, [], 'an address for later is not a start-up file');
   });
 
+  it('looks for the pages where the build put them, not only in its first folder', () => {
+    const dirs: Record<string, string[]> = { dist: ['web', 'stats.json'], 'dist/web': ['index.html', 'assets'], build: ['index.html', 'assets'] };
+    const list = (d: string) => dirs[d] ?? [];
+    assert.deepEqual(pageRoots(['dist/web/*.js', 'dist/web/*.css'], list), ['dist/web']);
+    assert.deepEqual(pageRoots(['build/assets/*.js'], list), ['build']);
+    assert.deepEqual(pageRoots(['out/**/*.js'], list), ['out'], 'no page anywhere: the first folder, where the check then says it found none');
+  });
   it('finds each built page and the folder its addresses start from', () => {
     assert.deepEqual(builtPages({ maxKb: 250 }, ['dist'], () => ['phone.html', 'assets', 'index.html']).map((p) => [p.name, p.html, p.root]), [['index', 'dist/index.html', 'dist'], ['phone', 'dist/phone.html', 'dist']]);
     assert.deepEqual(builtPages({ maxKb: 250, pages: [{ html: 'web/dist/app.html', maxKb: 120 }] }, ['dist'], () => []).map((p) => [p.name, p.root, p.maxKb]), [['app', 'web/dist', 120]]);

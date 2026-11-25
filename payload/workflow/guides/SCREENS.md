@@ -72,8 +72,10 @@ How a screen moves decides whether it feels fast, and a computer's browser canno
   the work per frame. A STUTTERS line is fixed before the owner tries it.
 - **Read the page's events after every try**: with `src/web/feel.ts` wired (in development only; its first lines say how), each
   motion, busy moment and key action's time reaches the session's log: `node workflow/scripts/logs.mjs <topic> --page`. Read it
-  yourself and ask the owner only whether anything felt off. A TypeScript project without the file gets it with the kit's next
-  update (the production module); wiring it in is one small card.
+  yourself and ask the owner only whether anything felt off. A project that already records its own trace keeps it and
+  sends that to the log instead: the page events are for one that has none. Without the production module:
+  `node <kit>/install.mjs . --update --with production` adds its helper files (TypeScript: the logger, the request id, the page
+  events, the vitals); the project's own server stays its own, so wiring them in is a card of its own.
 - **Time the steps a person takes**: a walk in `tests/smoke/` with a name on each step ("swipe to the next card"), listed in
   `performance.speed.walks`, is timed by the speed check on slow 4G with a slowed phone and on fast 4G, with what each step
   downloaded (a map library before the first card shows at once). Today's numbers are the reference; a step clearly slower

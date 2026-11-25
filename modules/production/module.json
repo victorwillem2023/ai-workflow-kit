@@ -5,6 +5,7 @@
   "what": "settings, logs, health, request ids, the error answer, and the server that wires them with the request guards",
   "npmDev": { "always": ["esbuild"] },
   "helpers": [
+    "src/server/log.ts",
     "src/server/trace.ts",
     "src/server/errors.ts",
     "src/web/report.ts",

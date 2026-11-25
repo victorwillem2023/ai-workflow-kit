@@ -101,6 +101,7 @@ function updateLines(r) {
     ran.length && `  the kit's changes since ${r.before} (migrations/): ${ran.join('; ')}\n${r.migrated.flatMap((m) => m.said).map((l) => `  ${l}`).join('\n')}`,
     done.orphans.length && `  the kit no longer ships these, but the project changed them, so they stay; delete them if you do not need them:\n${list(done.orphans)}`,
     done.yours.length && `  kept, because the project changed them (${done.yours.length}); the kit's version differs. Compare, then take the kit's with --take <path,path>:\n${list(done.yours)}`,
+    done.pairedKept.length && `  tests beside a file of the project's own (the kit's new test checks the kit's version of that file; take both with --take <test,file>):\n${list(done.pairedKept)}`,
     lang === 'ts' && !config().checks?.some((c) => c.name === 'lint') && '  not switched on: lint (Biome). It reformats the code once, so it is your call: npx biome check --write src tests, then add { "name": "lint", "command": "npx --no-install biome check --no-errors-on-unmatched .", "when": ["src/**", "tests/**", "biome.json"] } to "checks".',
     r.framework && config().ui?.boards === 'html' && '  not changed: "ui": { "boards": "html" } although the project has a UI framework. Set it to "components" to have /ui draw its variants as real components.',
     '  then: step 1 below, npm run map, node workflow/tools/gate.mjs --update-baseline (what the new checks find today becomes the baseline; only new ones fail), npm run gate:all',
