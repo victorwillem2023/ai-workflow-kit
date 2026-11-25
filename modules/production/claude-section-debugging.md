@@ -7,4 +7,6 @@
 - How it felt, in development: `watchFeel` at start-up (`src/web/feel.ts`, `logPageEvents` on the server) puts each motion,
   busy moment and timing in the session's log; read them after every try (`logs.mjs <topic> --page`). Real people's speed:
   `reportVitals` (`src/web/vitals.ts`), into the same log: wire its route without a development-only condition (`src/server/pageevents.ts`).
+- Each call to an outside service: `callOutside` with its plan (`src/server/outside.ts`), its row in `docs/ARCHITECTURE.md`,
+  *Outside services*, and a drill test that cuts it off (`cutOff`).
 - Something wrong: `/debug`. A session's log: `node workflow/scripts/logs.mjs <topic> --follow` (`--ref <reference>`).

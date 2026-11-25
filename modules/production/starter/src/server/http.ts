@@ -45,7 +45,11 @@ export type Ctx = {
 };
 export type Reply = Stored;
 /** `public`: anyone may call it, signed in or not; every other route needs a signed-in user when `signIn` is given. */
-export type Route = { method: string; path: string; public?: boolean; handler: (ctx: Ctx) => Promise<Reply> | Reply };
+/**
+ * `perMinute`: a heavy request's own limit (planning a route, a report, an AI call), per signed-in user or per caller, beside the
+ * app's limit for every route: one person cannot use up what a heavy request costs (docs/run/SCALING.md, *The heavy work*).
+ */
+export type Route = { method: string; path: string; public?: boolean; perMinute?: number; handler: (ctx: Ctx) => Promise<Reply> | Reply };
 
 export type AppOptions = {
   routes: Route[];
@@ -156,6 +160,12 @@ export function createApp(o: AppOptions) {
   const withinPages = rateLimit((o.requestsPerMinute ?? 120) * 10, o.now);
   const tooMany = () => new AppError('too-many', 'That was a lot of requests at once. Wait a minute and try again.', { status: 429 });
   const once = idempotent(o.idempotency ?? memoryIdempotency(o.now));
+  const heavy = new Map<Route, (who: string) => boolean>();
+  const withinHeavy = (r: Route, who: string) => {
+    if (!r.perMinute) return true;
+    if (!heavy.has(r)) heavy.set(r, rateLimit(r.perMinute, o.now));
+    return heavy.get(r)?.(who) ?? true;
+  };
   const max = o.maxBodyBytes ?? 100_000;
 
   /** The answer for one request, every guard in order; throws AppError for a refusal. */
@@ -181,9 +191,12 @@ export function createApp(o: AppOptions) {
     const body = changesData(method) ? parseJson(raw, m.headers['content-type']) : undefined;
     const key = idempotencyKey(method, url.pathname, user?.id ?? caller, m.headers);
     const params = route.params;
-    return once(key, requestPrint(raw), async () =>
-      route.r.handler({ method, path: url.pathname, query: url.searchParams, params, header, body, req, caller, user }),
-    );
+    // the heavy limit inside: a retry with the same idempotency key gets its kept answer back, never a refusal
+    return once(key, requestPrint(raw), async () => {
+      if (!withinHeavy(route.r, user?.id ?? caller))
+        throw new AppError('too-many-heavy', `This takes a lot of work, so it can be asked ${route.r.perMinute} times a minute. Try again in a minute.`, { status: 429 });
+      return route.r.handler({ method, path: url.pathname, query: url.searchParams, params, header, body, req, caller, user });
+    });
   }
 
   return {

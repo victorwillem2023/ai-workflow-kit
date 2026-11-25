@@ -2,7 +2,10 @@
 // `performance.goals` (workflow/config.json), and the verdict from k6's summary in plain words. The goals are the pass line,
 // so a load test passes or fails by script, the same way every run.
 //   "performance": { "goals": { "p95ms": 300, "errorRate": 0.01 },
-//                    "load": { "url": "http://127.0.0.1:8787", "paths": ["/health", "/api/plans"], "users": 20, "duration": "2m" } }
+//                    "load": { "url": "http://127.0.0.1:8787", "paths": ["/health", "/api/plans"], "users": 20, "duration": "2m",
+//                              "requests": [{ "name": "plan a route", "method": "POST", "path": "/api/plan", "body": { "from": "..." } }] } }
+// `requests`: the heavy ones with their body, as a person sends them (docs/run/SCALING.md, *The heavy work*), after the paths;
+// `headers`: sent with every one (a test account's sign-in).
 
 /** The kinds of test and what each asks. */
 export const KINDS = {
@@ -28,7 +31,8 @@ export function stagesFor(kind, { users = 20, duration = '2m', soak = '1h' } = {
 
 /** The k6 script: every virtual user walks the paths in turn, with a pause like a person's, and the goals as thresholds. */
 export function k6Script(kind, load = {}, goals = {}) {
-  const paths = (load.paths?.length ? load.paths : ['/health']).map((p) => `/${String(p).replace(/^\/+/, '')}`);
+  const requests = (load.requests ?? []).map((q) => ({ name: q.name ?? `${q.method ?? 'POST'} ${q.path}`, method: String(q.method ?? 'POST').toUpperCase(), path: `/${String(q.path).replace(/^\/+/, '')}`, body: q.body ?? null, headers: q.headers ?? {} }));
+  const paths = (load.paths?.length ? load.paths : requests.length ? [] : ['/health']).map((p) => `/${String(p).replace(/^\/+/, '')}`);
   const options = {
     stages: stagesFor(kind, load),
     thresholds: { http_req_duration: [`p(95)<${goals.p95ms ?? 300}`], http_req_failed: [`rate<${goals.errorRate ?? 0.01}`] },
@@ -37,11 +41,17 @@ export function k6Script(kind, load = {}, goals = {}) {
   return [
     "import http from 'k6/http';",
     "import { check, sleep } from 'k6';",
+    "import { Counter } from 'k6/metrics';",
+    // a 429 still fails the test (most answers being refusals measures nothing), and is counted apart so the verdict says why
+    "const refused = new Counter('refused');",
     `export const options = ${JSON.stringify(options)};`,
     `const BASE = __ENV.BASE_URL;`,
     `const PATHS = ${JSON.stringify(paths)};`,
+    `const REQUESTS = ${JSON.stringify(requests)};`,
+    `const HEADERS = ${JSON.stringify(load.headers ?? {})};`,
     'export default function () {',
-    "  for (const p of PATHS) { const r = http.get(BASE + p); check(r, { 'answers below 500': (x) => x.status < 500 }); sleep(1); }",
+    "  for (const p of PATHS) { const r = http.get(BASE + p, { headers: HEADERS }); if (r.status === 429) refused.add(1); check(r, { 'answers below 500': (x) => x.status < 500 }); sleep(1); }",
+    "  for (const q of REQUESTS) { const r = http.request(q.method, BASE + q.path, q.body == null ? null : JSON.stringify(q.body), { headers: { 'content-type': 'application/json', ...HEADERS, ...q.headers }, tags: { name: q.name } }); if (r.status === 429) refused.add(1); check(r, { 'answers below 500': (x) => x.status < 500 }); sleep(1); }",
     '}',
     '',
   ].join('\n');
@@ -68,6 +78,7 @@ export function readSummary(summary, kind, goals = {}) {
       `${kind}: ${reqs.count ?? '?'} requests, ${reqs.rate ? Math.round(reqs.rate * 10) / 10 : '?'} a second, up to ${vus ?? '?'} user${vus === 1 ? '' : 's'} at once`,
       `95% answered within ${ms(p95)} (goal under ${goalMs} ms) ${okTime ? 'ok' : 'TOO SLOW'}; the slowest ${ms(d.max)}, the middle ${ms(d.med)}`,
       `failed requests: ${failed == null ? '?' : pct(failed)} (goal under ${pct(goalErr)}) ${okErr ? 'ok' : 'TOO MANY'}`,
+      ...(m.refused?.count ? [`refused by a rate limit: ${m.refused.count} (429). The test is one caller: start the server for it with limits above what it sends (perMinute on a heavy route, requestsPerMinute), or give each user a test account, so it measures the work and not the refusals.`] : []),
       ...(okTime && okErr ? [] : [kind === 'stress' || kind === 'spike'
         ? 'Expected for a stress or spike test past what you plan for: note the number of users where it broke, and check it came back afterwards.'
         : 'Find the slow path first (the slowest route in the logs, a query without an index, work that could wait in a queue), then run it again.']),

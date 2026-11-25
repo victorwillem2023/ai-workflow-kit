@@ -44,6 +44,8 @@ export async function start(
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : settings.PORT;
   log.info('listening', { port });
+  // a minimum page build needs this version's own build time to be compared with (src/web/update.ts): without it, it does nothing
+  if (process.env.MIN_CLIENT_BUILT && !process.env.APP_BUILT_AT) log.warn('MIN_CLIENT_BUILT is ignored: APP_BUILT_AT is not set (the build time, a build argument of the image)');
   const stop = gracefulStop({
     server,
     state: app.state,

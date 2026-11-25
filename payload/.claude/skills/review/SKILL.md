@@ -65,6 +65,10 @@ Each answer that is no comes with the file and line.
   (`workflow/guides/DATA.md`).
 - **Email, payments, uploads, jobs, time**: the rules of `workflow/guides/COMMON.md` for the part it touches, above all: a
   webhook checked and acted on once, a file's type read from its content, a job safe to run twice, a day stored as a date.
+- **Does every outside call have its plan?** A call to a service not through `callOutside` (or the project's own way of it),
+  with no row in `docs/ARCHITECTURE.md`, *Outside services*, or no drill test that cuts it off, is a finding
+  (`workflow/guides/COMMON.md`, *When an outside service fails*). A page kept on the phone: its cache named by version
+  (`docs/run/RELEASES.md`, *Apps that stay on the phone*).
 - **If it fails, does the log say what and where?** Each error a person or a dependency can cause is an `AppError` with its
   `doing`, the ids and the `cause`; no catch swallows one; a new path writes its request line (CLAUDE.md, *Requests, errors
   and logs*). A failure that would leave nothing to find is a finding.

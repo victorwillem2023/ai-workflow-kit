@@ -50,6 +50,7 @@ The guide part (`docs/guide/<part>.md`), `README.md`, `docs/ARCHITECTURE.md`, or
 
 ## Security triggers
 New endpoint, file reader or outbound fetch? yes/no. If yes: limits (body size, count, rate) and run a security review before finish.
+A call to an outside service? yes/no. If yes: its failure plan (time limit, retries, fallback, the message) as its row in `docs/ARCHITECTURE.md`, *Outside services*, and its drill test.
 Untrusted input read? yes/no.
 Who may do it: <who may read and change it, and what everyone else gets (`workflow/guides/PERMISSIONS.md`); "no change">
 Stored data changed (a table, column, query or migration)? yes/no. If yes: the migration, whether it destroys anything (the

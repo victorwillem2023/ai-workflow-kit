@@ -11,8 +11,16 @@ export type Check = () => Promise<boolean> | boolean;
 
 const CHECK_MS = 2_000; // a check slower than this counts as failing: /ready must answer quickly
 
-export function healthAnswer(version: string = process.env.APP_VERSION ?? 'dev'): Answer {
-  return { status: 200, body: { ok: true, version } };
+/**
+ * Alive, the version, and for pages kept on a phone (src/web/update.ts, docs/run/RELEASES.md, *Apps that stay on the phone*):
+ * `built`, when this version was built (`APP_BUILT_AT`, set with APP_VERSION), and `minBuilt` (`MIN_CLIENT_BUILT`), the oldest
+ * page build still allowed; each only when set.
+ */
+export function healthAnswer(
+  version: string = process.env.APP_VERSION ?? 'dev',
+  times: { built?: string; minBuilt?: string } = { built: process.env.APP_BUILT_AT, minBuilt: process.env.MIN_CLIENT_BUILT },
+): Answer {
+  return { status: 200, body: { ok: true, version, ...(times.built ? { built: times.built } : {}), ...(times.minBuilt ? { minBuilt: times.minBuilt } : {}) } };
 }
 
 /** Whether the app takes traffic: false from the moment it starts stopping. */

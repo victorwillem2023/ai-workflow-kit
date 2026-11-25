@@ -44,4 +44,7 @@ The kinds of case a rule can be shared by: <the kinds this app has, for example:
 <memory, browser storage, database, files; who writes and who reads>
 
 ## Outside services
-<each one: what it is for, how it is reached, how tests fake it>
+Each one with its failure plan (`workflow/guides/COMMON.md`, *When an outside service fails*):
+| Service | For | Time limit | Retries | Fallback | What people see when it fails | Its quota | Drill test |
+|---|---|---|---|---|---|---|---|
+| <name, the file that talks to it> | <what it does for us> | <ms> | <n, or none: not safe to repeat> | <none, or what answers> | <the plan's message> | <none, or the limit> | <the test that cuts it off> |

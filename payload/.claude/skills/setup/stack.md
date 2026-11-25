@@ -107,6 +107,9 @@ Which framework for which app, what server rendering asks for, and content from 
   these screens.
 - **A separate API** when phones, other apps or jobs will use it too: TypeScript with Hono (runs on Node, Bun and edge hosts),
   Rust with Axum, Python with FastAPI, Go with the standard `net/http`.
+- **The heavy work**: the one request that costs the most (a route planned, a report, an AI answer): where it runs (our server,
+  the browser, an outside service), what limits it (an outside service's quota, the CPU), and the limit per person; written in
+  `docs/run/SCALING.md`, *The heavy work*. An outside service with a quota is said now, with what real users would need.
 - **The contract is typed at the edge**: every request and answer has a schema checked on arrival (Zod in TypeScript, serde in
   Rust, Pydantic in Python), and an OpenAPI description when anyone else calls the API.
 

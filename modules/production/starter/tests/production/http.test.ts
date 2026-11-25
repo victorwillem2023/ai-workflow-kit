@@ -67,6 +67,17 @@ describe('the assembled server', () => {
     assert.equal(again.headers.get('idempotent-replayed'), 'true');
     assert.equal(made, 1);
   });
+  it('a heavy request has its own limit per person, beside the limit for every route', async () => {
+    const url = await serve([
+      { method: 'POST', path: '/api/plan', perMinute: 2, handler: () => ({ status: 200, body: {} }) },
+      { method: 'GET', path: '/api/goals', handler: () => ({ status: 200, body: {} }) },
+    ]);
+    const post = () => fetch(`${url}/api/plan`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const codes = [(await post()).status, (await post()).status, (await post()).status, (await fetch(`${url}/api/goals`)).status];
+    assert.deepEqual(codes, [200, 200, 429, 200], 'the third plan waits; other routes go on');
+    const url2 = await serve([{ method: 'POST', path: '/api/plan', perMinute: 1, handler: () => ({ status: 200, body: { route: 1 } }) }]);
+    const keyed = (key: string) => fetch(`${url2}/api/plan`, { method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': key }, body: '{}' });
+    assert.deepEqual([(await keyed('k1')).status, (await keyed('k1')).status], [200, 200], 'a retry with the same key gets its answer back');  });
   it('refuses a caller past the rate limit with 429', async () => {
     const url = await serve([{ method: 'GET', path: '/api/x', handler: () => ({ status: 200, body: {} }) }], { requestsPerMinute: 2 });
     const codes = [];

@@ -132,6 +132,18 @@ describe('load tests', async () => {
     assert.match(s, /"http_req_failed":\["rate<0\.02"\]/);
     assert.match(s, /const PATHS = \["\/health","\/api\/plans"\];/);
   });
+  it('sends the heavy requests with their body, as a person does', () => {
+    const s = k6Script('load', { requests: [{ name: 'plan a route', path: 'api/plan', body: { from: 'A', to: 'B' } }] }, {});
+    assert.match(s, /const PATHS = \[\];/, 'no /health walked when the real requests are given');
+    assert.match(s, /const REQUESTS = \[\{"name":"plan a route","method":"POST","path":"\/api\/plan","body":\{"from":"A","to":"B"\},"headers":\{\}\}\];/);
+    assert.match(s, /http\.request\(q\.method, BASE \+ q\.path/);
+    assert.match(k6Script('load', { paths: ['/api/plans'], headers: { authorization: 'Bearer test' } }, {}), /const HEADERS = \{"authorization":"Bearer test"\};[^]*http\.get\(BASE \+ p, \{ headers: HEADERS \}\)/);
+  });
+  it('a test refused by a rate limit says so, and still fails', () => {
+    const v = readSummary({ metrics: { http_req_duration: { 'p(95)': 20 }, http_req_failed: { value: 0.8 }, http_reqs: { count: 1000 }, refused: { count: 800 } } }, 'load', {});
+    assert.equal(v.ok, false);
+    assert.match(v.lines.join('\n'), /refused by a rate limit: 800 \(429\)\. The test is one caller/);
+  });
   it('reads k6\'s summary against the goals, in plain words', () => {
     const good = { metrics: { http_req_duration: { 'p(95)': 120.4, med: 40, max: 400 }, http_req_failed: { value: 0.001 }, http_reqs: { count: 1200, rate: 19.96 }, vus_max: { value: 20 } } };
     const v = readSummary(good, 'load', { p95ms: 300, errorRate: 0.01 });

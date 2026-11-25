@@ -13,6 +13,10 @@
     "tests/production/feel.test.ts",
     "src/web/vitals.ts",
     "tests/production/vitals.test.ts",
+    "src/server/outside.ts",
+    "tests/production/outside.test.ts",
+    "src/web/update.ts",
+    "tests/production/update.test.ts",
     "tests/production/debugging.test.ts"
   ]
 }

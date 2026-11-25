@@ -76,7 +76,8 @@ describe('logs', () => {
 
 describe('health, readiness and stopping', () => {
   it('health says alive and the version; ready says 503 with the names of the checks that fail or are too slow', async () => {
-    assert.deepEqual(healthAnswer('3f2a9c1d04be'), { status: 200, body: { ok: true, version: '3f2a9c1d04be' } });
+    assert.deepEqual(healthAnswer('3f2a9c1d04be', {}), { status: 200, body: { ok: true, version: '3f2a9c1d04be' } });
+    assert.deepEqual(healthAnswer('3f2a9c1d04be', { built: '2026-11-22T09:00:00Z', minBuilt: '2026-11-20T10:00:00Z' }).body, { ok: true, version: '3f2a9c1d04be', built: '2026-11-22T09:00:00Z', minBuilt: '2026-11-20T10:00:00Z' }, 'when it was built, and the oldest page build still allowed');
     const state = readiness();
     const slow = () => new Promise<boolean>((done) => setTimeout(() => done(true), 50));
     assert.deepEqual(

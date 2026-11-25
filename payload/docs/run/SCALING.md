@@ -27,6 +27,19 @@ In this order, each step measured first with the load test (`docs/run/PERFORMANC
 6. **The database**: a managed one with a read copy for reports; partitioning or sharding only with numbers that demand it.
 7. **Split a service out** only for the reasons below.
 
+## The heavy work: where it runs and what limits it
+One request usually costs more than all the others (planning a route, a report, an AI answer, an import). Name it at `/setup`,
+and decide where it runs and what stops it growing, before real people find the wall:
+| Decide | Why |
+|---|---|
+| **Where it runs**: our server, the browser (the person's own phone does the work), or an outside service | the cheapest place to grow is the one that grows with the users: the browser does; an outside service often does not |
+| **The wall**: the outside service's quota, our server's CPU, the database | an outside service that blocks an address after a few hundred requests is the hard wall: real users need its own instance (self-hosted) or the work moved to the browser, with our instance behind it (`/arch`, `/estimate`) |
+| **A limit per person** on the heavy request, keyed by the signed-in user or the caller (the production module's server: `perMinute` on its route, `src/server/http.ts`, and an older copy gets it with one small card; another server: its framework's rate limit on that route) | one person, or one script, cannot use up what everyone shares |
+| **Answers people share are cached** (the same route, the same report for the same input, keyed by the input, with a lifetime) | the second person asking costs nothing; caching what is personal is never shared |
+| **A load test of the real request**, with its body (`load.requests` in `workflow/config.json`, `npm run load`; behind sign-in, a test account's header in `load.headers`) | a test of `/health` says nothing about the request that costs the most. The test is one caller: start the server for it with limits above what it sends, or the answers are refusals (the verdict counts them) |
+
+Write the answers here, under this heading, and the quota in the service's row of `docs/ARCHITECTURE.md`, *Outside services*.
+
 ## Background jobs and queues
 
 Slow or failing work (emails, exports, imports, AI calls, webhooks to others) leaves the request: the request saves a job, a

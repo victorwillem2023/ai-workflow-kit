@@ -31,6 +31,7 @@ jobs:
           sha="$HEAD_SHA"
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${sha:0:12}" >> "$GITHUB_OUTPUT"
           echo "version=${sha:0:12}" >> "$GITHUB_OUTPUT"
+          echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - if: steps.name.outputs.skip != '1'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - if: steps.name.outputs.skip != '1'
@@ -46,7 +47,10 @@ jobs:
           context: .
           load: true
           tags: ${{ steps.name.outputs.image }}
-          build-args: APP_VERSION=${{ steps.name.outputs.version }}
+          # the build time too: pages kept on a phone compare it with their own (src/web/update.ts)
+          build-args: |
+            APP_VERSION=${{ steps.name.outputs.version }}
+            APP_BUILT_AT=${{ steps.name.outputs.built }}
       - name: Scan the image (known vulnerabilities that have a fix)
         if: steps.name.outputs.skip != '1'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

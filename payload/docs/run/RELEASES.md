@@ -38,6 +38,21 @@ its own plan and review (`docs/run/IAC.md`), and goes out before the app change 
 first when users are hurt, fix after. **A database change** that cannot be undone goes out in its own release, after a backup
 that was restored once.
 
+## Apps that stay on the phone (an offline cache)
+A page kept on the phone for offline use stays until a new version replaces it: a bad version lives on phones until then. So:
+- **The cache is named by version** (the build's version or time in the service worker's cache name), and the old one is deleted
+  when the new one takes over; `index.html` and the service worker file are never cached long by the host (`no-cache`).
+- **A new version is offered, not forced**: the new service worker waits, and the app says "a new version is ready" and reloads
+  when the person picks it, or on the next open.
+- **A version too old to run is replaced at once**: `/health` says when the running version was built (`APP_BUILT_AT`, set with
+  `APP_VERSION`) and the oldest page build still allowed (`MIN_CLIENT_BUILT`, a build time, set when a release breaks old pages);
+  `checkForUpdate` (`src/web/update.ts`, the production module) offers a later build, and drops the cache and reloads a page built
+  before the minimum (only when the running build meets it, so it never loops). A server copied from the kit before `/health` said
+  `built` offers nothing: one small card brings `healthAnswer` (`src/server/shutdown.ts`) and the build argument in. That is the forced update the big apps have, and the way out of a bad version.
+- **Staged**: a release that changes what is cached goes to the beta channel first (below), and `MIN_CLIENT_BUILT` moves only
+  once the new version is known good. Rolling back the server never brings old pages back: a page newer than the server is
+  offered nothing and goes on.
+
 ## Release channels
 
 | Channel | Who | How |

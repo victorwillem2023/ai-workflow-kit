@@ -26,7 +26,8 @@ format with their size set, fewer and smaller libraries, fonts that do not block
 
 ## The server: load, stress, spike and soak
 `npm run load -- <kind>` runs **k6** (Grafana's open-source load tester) in Docker, against the dev server, staging or an
-address you give, never production unless planned (`--yes-production`). It walks `load.paths` with `load.users` people and
+address you give, never production unless planned (`--yes-production`). It walks `load.paths`, then sends `load.requests`
+(the heavy ones with their body: `[{ "name", "method", "path", "body" }]`, `docs/run/SCALING.md`, *The heavy work*), with `load.users` people and
 judges the result against the goals in plain lines; it fails when they are not met.
 | Kind | What it does | Answers | When |
 |---|---|---|---|

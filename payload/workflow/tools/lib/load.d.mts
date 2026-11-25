@@ -1,4 +1,4 @@
-type Load = { url?: string; paths?: string[]; users?: number; duration?: string; soak?: string };
+type Load = { url?: string; headers?: Record<string, string>; paths?: string[]; requests?: { name?: string; method?: string; path: string; body?: unknown; headers?: Record<string, string> }[]; users?: number; duration?: string; soak?: string };
 type Goals = { p95ms?: number; errorRate?: number };
 export const KINDS: Record<'smoke' | 'load' | 'stress' | 'spike' | 'soak', string>;
 export function stagesFor(kind: string, load?: Load): { duration: string; target: number }[];

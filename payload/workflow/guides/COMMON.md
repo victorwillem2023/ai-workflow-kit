@@ -1,4 +1,4 @@
-# The parts every app ends up needing: email, payments, uploads, scheduled jobs, time
+# The parts every app ends up needing: email, payments, uploads, scheduled jobs, time, and outside services that fail
 
 Each of these is built once per app and then trusted for years, and each has a mistake that is cheap to make and expensive to
 find: a double charge, a public file with someone's address in it, a job that ran twice, a race day that moved by an hour.
@@ -15,6 +15,18 @@ The legal side (consent, terms, VAT) is `workflow/guides/LIFECYCLE.md`; where it
 - **Everything that comes back from a provider is checked** like any input: signatures on webhooks, sizes, types.
 - **It can happen twice**: every step that sends, charges or writes on behalf of a provider's message is idempotent, keyed by an
   id it already has (an event id, an order id), so a retry does nothing the second time.
+
+## When an outside service fails
+Every service the app calls will be slow or down some day (a route planner, a mail provider, a weather API, a model). A plan
+written before that day turns it into a short wait and a clear message, never a hung request or a raw error:
+- **A plan per service**, kept in the file that talks to it and listed in `docs/ARCHITECTURE.md`, *Outside services*: the time
+  limit of one try, the retries (only for a call safe to repeat: a read, or a write with an idempotency key), the fallback (a
+  cached answer, a simpler result, the work queued for later) and the words a person reads when there is none.
+- **Every call goes through it**: `callOutside` (`src/server/outside.ts`, the production module) aborts a try at its limit,
+  retries, falls back, or throws the plan's message as a 503 with the cause in the log.
+- **A drill test per service**: its fake cut off (`cutOff('down')`, `cutOff('hangs')`), and the test checks what the person
+  gets. A service with a quota (requests a day, a block after a few hundred) has the quota in its row, and the scale plan
+  says what happens at it (`docs/run/SCALING.md`, *The heavy work*).
 
 ## Email
 - **Sent after the answer, not in it**: the request records "send this" and a job sends it with retries, so a slow provider

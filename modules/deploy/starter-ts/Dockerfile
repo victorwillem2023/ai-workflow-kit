@@ -7,7 +7,7 @@
 # The gate's *image* check holds these rules (workflow/tools/README.md, *What it checks*). Node starts directly, so the app
 # gets the stop signal and can finish open requests (docs/PRODUCTION.md): set the last line to the app's server entry.
 # Another folder the app reads at run time (migrations, public files): one more COPY --from=build line for that folder only.
-#   docker build --build-arg APP_VERSION=$(git rev-parse --short=12 HEAD) -t {{PREFIX}} .
+#   docker build --build-arg APP_VERSION=$(git rev-parse --short=12 HEAD) --build-arg APP_BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) -t {{PREFIX}} .
 FROM node:26-trixie-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -18,6 +18,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# the pages carry the same build time as the server (__BUILT_AT__ in the bundler's define, src/web/update.ts)
+ARG APP_BUILT_AT=
+ENV APP_BUILT_AT=$APP_BUILT_AT
 RUN npm run build --if-present && npm run build:server --if-present
 
 # the same Debian (13, trixie) as the build steps, so a native library built there runs here
@@ -28,7 +31,9 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/dist ./dist
 # the commit this image was built from: /health answers with it, so a deploy can prove the new version runs
 ARG APP_VERSION=dev
-ENV NODE_ENV=production APP_VERSION=$APP_VERSION PORT=8787
+# when this version was built: pages kept on a phone compare it with their own (src/web/update.ts)
+ARG APP_BUILT_AT=
+ENV NODE_ENV=production APP_VERSION=$APP_VERSION APP_BUILT_AT=$APP_BUILT_AT PORT=8787
 USER nonroot
 EXPOSE 8787
 # the host restarts the container when /health stops answering (Node's own fetch: there is no shell or curl in the image)
