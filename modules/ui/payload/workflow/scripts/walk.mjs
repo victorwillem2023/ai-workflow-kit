@@ -7,7 +7,11 @@
 //   node workflow/scripts/walk.mjs                  every walk in tests/smoke/
 //   node workflow/scripts/walk.mjs --url <address>  another address (a staging site)        --on: only say whether walks are on
 // A walk: { "path": "/", "width": 1280, "steps": [ { "type": "Goal distance", "text": "10" }, { "click": "Make plan" },
-//   { "see": "14 weeks" }, { "gone": "Loading" }, { "press": "Enter" }, { "go": "/plans" } ] }
+//   { "see": "14 weeks" }, { "gone": "Loading" }, { "press": "Enter" }, { "go": "/plans" }, { "swipe": "left", "on": "css:.card" } ] }
+// "swipe" moves a finger left, right, up or down across the element "on" names (a css: selector; the screen's middle without
+// one). Any step may have a "name" in the owner's words ("swipe to the next card"): the speed check times each step on a slow and
+// a fast phone network until the "see" or "gone" after it is true (a swipe from the moment the finger lifts), so a timed step
+// says what shows when it is done (workflow/tools/speed.mjs, `performance.speed.walks`). "open" names the first one.
 // "type" and "click" name what a person sees: a field by its label, placeholder or name, a button or link by its text; "css:<selector>"
 // when there is no such word. "see" and "gone" wait up to 5 seconds ("within": ms). An error the page throws fails the walk too.
 // Off in a prototype (workflow/levels.json): screens still change every day there; from pilot on a walk is part of the hand-over
@@ -18,7 +22,8 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const DIR = 'tests/smoke';
-const KINDS = ['go', 'type', 'click', 'press', 'see', 'gone'];
+const KINDS = ['go', 'type', 'click', 'press', 'swipe', 'see', 'gone'];
+const SWIPES = ['left', 'right', 'up', 'down'];
 
 /** A walk's text as { path, width, steps }, or an Error that says what is wrong with it in one sentence. */
 export function readWalk(text, name = 'walk') {
@@ -29,12 +34,13 @@ export function readWalk(text, name = 'walk') {
     const kind = KINDS.filter((k) => typeof s?.[k] === 'string' && s[k]);
     if (kind.length !== 1) throw new Error(`${DIR}/${name}.json, step ${i + 1}: one of ${KINDS.join(', ')} with its words, not ${JSON.stringify(s)}`);
     if (kind[0] === 'type' && typeof s.text !== 'string') throw new Error(`${DIR}/${name}.json, step ${i + 1}: "type" names the field, "text" is what to type.`);
+    if (kind[0] === 'swipe' && !SWIPES.includes(s.swipe)) throw new Error(`${DIR}/${name}.json, step ${i + 1}: "swipe" is one of ${SWIPES.join(', ')}, not "${s.swipe}".`);
   });
-  return { path: w.path ?? '/', width: Number(w.width) || 1280, steps: w.steps };
+  return { path: w.path ?? '/', width: Number(w.width) || 1280, steps: w.steps, ...(typeof w.open === 'string' ? { open: w.open } : {}) };
 }
 
 /** A step in the owner's words, for the one line a failure prints. */
-export const sayStep = (s) => (s.type ? `type "${s.text}" into "${s.type}"` : `${KINDS.find((k) => s[k])} "${s[KINDS.find((k) => s[k])]}"`);
+export const sayStep = (s) => s.name ?? (s.type ? `type "${s.text}" into "${s.type}"` : `${KINDS.find((k) => s[k])} "${s[KINDS.find((k) => s[k])]}"`);
 
 /** Whether walks are on: not in a prototype. `levels` is the text of workflow/levels.json (none: a project without phases, on). */
 export function walksOn(levels) {
@@ -76,29 +82,66 @@ const PAGE = `(() => {
   window.addEventListener('unhandledrejection', (e) => window.__walk.errors.push(String(e.reason?.message ?? e.reason)));
 })()`;
 
-/** Runs one walk in the browser `b` against `base`: '' when every step passes, else the one line that says which did not and why. */
-export async function walk(b, base, w) {
-  const q = (v) => JSON.stringify(v);
-  const arm = async () => { await b.ev(`window.__walk ? 0 : ${PAGE}`); };
-  const waitText = async (text, want, ms) => { try { await b.until(`!!window.__walk && window.__walk.has(${q(text)}) === ${want}`, ms); return true; } catch { return false; } };
+const q = (v) => JSON.stringify(v);
+const arm = async (b) => { await b.ev(`window.__walk ? 0 : ${PAGE}`); };
+
+/** Gets the browser `b` ready for a walk (touch on when the walk swipes), its first page not opened yet. */
+export async function prepareWalk(b, w) {
+  if (w.steps.some((s) => s.swipe)) await b.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   // in every page before its own scripts run, so an error thrown while it loads is caught too
   await b.send('Page.addScriptToEvaluateOnNewDocument', { source: PAGE });
+}
+
+/** Gets the browser ready for a walk and opens its first page. */
+export async function startWalk(b, base, w) {
+  await prepareWalk(b, w);
   await b.go(new URL(w.path, base).href);
+}
+
+/** A finger across the element `on` names (or the screen's middle), in about a quarter of a second. */
+async function swipe(b, dir, on) {
+  const box = await b.ev(`(() => { const e = ${on ? `document.querySelector(${q(String(on).replace(/^css:/, ''))})` : 'null'};
+    if (${on ? 'true' : 'false'} && !e) return null;
+    if (e) e.scrollIntoView({ block: 'center' });
+    const r = e ? e.getBoundingClientRect() : { x: 0, y: 0, width: innerWidth, height: innerHeight }; return { x: r.x, y: r.y, w: r.width, h: r.height }; })()`);
+  if (!box) return `nothing on the page matches "${on}"`;
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const dx = { left: -0.35, right: 0.35, up: 0, down: 0 }[dir] * box.w;
+  const dy = { left: 0, right: 0, up: -0.35, down: 0.35 }[dir] * box.h;
+  const at = (k) => [{ x: cx - dx + (2 * dx * k) / 15, y: cy - dy + (2 * dy * k) / 15 }];
+  await b.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(0) });
+  for (let k = 1; k <= 15; k++) { await new Promise((r) => setTimeout(r, 16)); await b.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(k) }); }
+  await b.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  return '';
+}
+
+/** One step: '' when it passed, else why not, in a few words. */
+export async function runStep(b, base, s) {
+  const waitText = async (text, want, ms) => { try { await b.until(`!!window.__walk && window.__walk.has(${q(text)}) === ${want}`, ms, 20); return true; } catch { return false; } };
+  await arm(b); // (a page that was open before the walk started)
+  if (s.go) { await b.go(new URL(s.go, base).href); return ''; }
+  if (s.type) return b.ev(`window.__walk.type(${q(s.type)}, ${q(s.text)})`);
+  if (s.click) return b.ev(`window.__walk.click(${q(s.click)})`);
+  if (s.press) return b.ev(`window.__walk.press(${q(s.press)})`);
+  if (s.swipe) return swipe(b, s.swipe, s.on);
+  if (s.see && !(await waitText(s.see, true, s.within ?? 5000))) {
+    await arm(b);
+    const near = await b.ev(`window.__walk.near(${q(s.see)})`);
+    return `the page does not show it${near.length ? `; it shows: ${near.map((l) => `"${l}"`).join(', ')}` : ''}`;
+  }
+  if (s.gone && !(await waitText(s.gone, false, s.within ?? 5000))) return 'it is still on the page';
+  return '';
+}
+
+/** Runs one walk in the browser `b` against `base`: '' when every step passes, else the one line that says which did not and why. */
+export async function walk(b, base, w) {
+  await startWalk(b, base, w);
   for (const [i, s] of w.steps.entries()) {
-    await arm(); // (a page that was open before the line above)
-    let why = '';
-    if (s.go) await b.go(new URL(s.go, base).href);
-    else if (s.type) why = await b.ev(`window.__walk.type(${q(s.type)}, ${q(s.text)})`);
-    else if (s.click) why = await b.ev(`window.__walk.click(${q(s.click)})`);
-    else if (s.press) why = await b.ev(`window.__walk.press(${q(s.press)})`);
-    else if (s.see && !(await waitText(s.see, true, s.within ?? 5000))) {
-      await arm();
-      const near = await b.ev(`window.__walk.near(${q(s.see)})`);
-      why = `the page does not show it${near.length ? `; it shows: ${near.map((l) => `"${l}"`).join(', ')}` : ''}`;
-    } else if (s.gone && !(await waitText(s.gone, false, s.within ?? 5000))) why = 'it is still on the page';
+    const why = await runStep(b, base, s);
     if (why) return `step ${i + 1} of ${w.steps.length} (${sayStep(s)}): ${why}`;
   }
-  await arm();
+  await arm(b);
   await new Promise((r) => setTimeout(r, 300)); // what the last step started gets a moment to fail
   const errors = await b.ev('window.__walk.errors');
   return errors.length ? `every step passed, but the page threw: ${errors[0]}` : '';

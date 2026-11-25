@@ -9,18 +9,22 @@ describe('walking a screen before it is handed over', () => {
     const w = readWalk('{ "steps": [ { "type": "Goal distance", "text": "10" }, { "click": "Make plan" }, { "see": "14 weeks" } ] }', 'plan');
     assert.deepEqual([w.path, w.width, w.steps.length], ['/', 1280, 3]);
     assert.equal(readWalk('{ "path": "/plans", "width": 400, "steps": [ { "see": "Plans" } ] }').width, 400);
+    assert.equal(readWalk('{ "open": "open the plan page", "steps": [ { "see": "Plans" } ] }').open, 'open the plan page');
   });
   it('says in one sentence what is wrong with a walk file', () => {
     assert.throws(() => readWalk('{', 'plan'), /tests\/smoke\/plan\.json is not JSON/);
     assert.throws(() => readWalk('{ "steps": [] }', 'plan'), /has no "steps"/);
-    assert.throws(() => readWalk('{ "steps": [ { "tap": "x" } ] }', 'plan'), /step 1: one of go, type, click, press, see, gone/);
+    assert.throws(() => readWalk('{ "steps": [ { "tap": "x" } ] }', 'plan'), /step 1: one of go, type, click, press, swipe, see, gone/);
     assert.throws(() => readWalk('{ "steps": [ { "see": "a", "click": "b" } ] }', 'plan'), /step 1: one of/);
     assert.throws(() => readWalk('{ "steps": [ { "see": "a" }, { "type": "Goal" } ] }', 'plan'), /step 2: "type" names the field, "text" is what to type/);
+    assert.throws(() => readWalk('{ "steps": [ { "swipe": "sideways" } ] }', 'deck'), /step 1: "swipe" is one of left, right, up, down, not "sideways"/);
+    assert.equal(readWalk('{ "steps": [ { "swipe": "left", "on": "css:.deck" }, { "see": "Card 2" } ] }').steps.length, 2);
   });
   it('puts a step in the owner\'s words', () => {
     assert.equal(sayStep({ type: 'Goal distance', text: '10' }), 'type "10" into "Goal distance"');
     assert.equal(sayStep({ click: 'Make plan' }), 'click "Make plan"');
     assert.equal(sayStep({ see: '14 weeks', within: 2000 }), 'see "14 weeks"');
+    assert.equal(sayStep({ swipe: 'left', name: 'swipe to the next card' }), 'swipe to the next card', 'a step\'s own name first');
   });
   it('is off in a prototype and on from pilot; a project without phases walks', () => {
     assert.equal(walksOn('{ "phase": "prototype" }'), false);

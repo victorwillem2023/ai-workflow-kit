@@ -74,6 +74,10 @@ How a screen moves decides whether it feels fast, and a computer's browser canno
   motion, busy moment and key action's time reaches the session's log: `node workflow/scripts/logs.mjs <topic> --page`. Read it
   yourself and ask the owner only whether anything felt off. A TypeScript project without the file gets it with the kit's next
   update (the production module); wiring it in is one small card.
+- **Time the steps a person takes**: a walk in `tests/smoke/` with a name on each step ("swipe to the next card"), listed in
+  `performance.speed.walks`, is timed by the speed check on slow 4G with a slowed phone and on fast 4G, with what each step
+  downloaded (a map library before the first card shows at once). Today's numbers are the reference; a step clearly slower
+  fails from pilot on. It sits beside the trace your phone records, never in its place.
 - **The same feel problem twice: stop patching.** Measure (the two above), plan again from the best known way, and show the
   owner the new plan for a yes. No third patch.
 

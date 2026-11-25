@@ -14,7 +14,7 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Starts a headless browser with a fresh profile and one page: { send(method, params), ev(expression), until(expression, ms),
- * go(url), shot(file, { full }), close() }. `ev` runs an expression in the page (a promise is awaited) and returns its value;
+ * go(url), shot(file, { full }), close(), on(event, fn) }. `ev` runs an expression in the page (a promise is awaited) and returns its value;
  * a page error becomes an Error with the page's message. `until` waits for an expression to be truthy (10 s by default).
  */
 export async function openBrowser({ width = 1280, height = 900, scale = 1, theme } = {}) {
@@ -22,9 +22,9 @@ export async function openBrowser({ width = 1280, height = 900, scale = 1, theme
   const child = spawn(findChrome(), ['--headless=new', '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--hide-scrollbars', `--window-size=${width},${height}`, `--force-device-scale-factor=${scale}`, 'about:blank'],
   { stdio: 'ignore', windowsHide: true });
-  const waitFor = async (fn, what, ms = 15000) => {
+  const waitFor = async (fn, what, ms = 15000, every = 150) => {
     const end = Date.now() + ms;
-    for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error(`timed out waiting for ${what}`); await sleep(150); }
+    for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error(`timed out waiting for ${what}`); await sleep(every); }
   };
   try {
     // the browser writes the port it picked into the profile
@@ -34,8 +34,11 @@ export async function openBrowser({ width = 1280, height = 900, scale = 1, theme
     await new Promise((ok, fail) => { ws.addEventListener('open', ok); ws.addEventListener('error', () => fail(new Error('could not reach the browser'))); });
     let id = 0;
     const pending = new Map();
+    const listeners = new Map();
     ws.addEventListener('message', (e) => {
       const m = JSON.parse(e.data);
+      // an event the browser sends by itself (Network.loadingFinished...): to whoever listens
+      if (m.method && !m.id) for (const fn of listeners.get(m.method) ?? []) fn(m.params);
       const p = m.id && pending.get(m.id);
       if (!p) return;
       pending.delete(m.id);
@@ -50,8 +53,9 @@ export async function openBrowser({ width = 1280, height = 900, scale = 1, theme
       if (r.exceptionDetails) throw new Error(`in the page: ${r.exceptionDetails.exception?.description?.split('\n')[0] ?? r.exceptionDetails.text}`);
       return r.result.value;
     };
-    const until = (expression, ms = 10000) => waitFor(() => ev(expression).catch(() => false), expression, ms);
-    const go = async (url) => { await send('Page.navigate', { url }); await until('document.readyState === "complete"', 30000); };
+    // `every`: how often it looks (a timed walk looks often, so a step's time is not rounded up to the next look)
+    const until = (expression, ms = 10000, every = 150) => waitFor(() => ev(expression).catch(() => false), expression, ms, every);
+    const go = async (url) => { await send('Page.navigate', { url }); await until('document.readyState === "complete"', 30000, 25); };
     const shot = async (file, { full = false } = {}) => {
       const size = full ? await ev('({ w: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight })') : { w: width, h: height };
       const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: full, ...(full ? { clip: { x: 0, y: 0, width: size.w, height: size.h, scale: 1 } } : {}) });
@@ -59,7 +63,9 @@ export async function openBrowser({ width = 1280, height = 900, scale = 1, theme
     };
     // a profile the browser still holds a moment after it stops (Windows) is left in the temp folder: it must not fail the check
     const close = async () => { try { ws.close(); } catch { /* gone already */ } child.kill(); await sleep(300); try { rmSync(profile, { recursive: true, force: true, maxRetries: 5 }); } catch { /* left in temp */ } };
-    return { send, ev, until, go, shot, close };
+    /** Listens to a browser event (after its domain is enabled: Network.enable); returns a function that stops listening. */
+    const on = (method, fn) => { listeners.set(method, [...(listeners.get(method) ?? []), fn]); return () => listeners.set(method, (listeners.get(method) ?? []).filter((f) => f !== fn)); };
+    return { send, ev, until, go, shot, close, on };
   } catch (e) {
     child.kill();
     rmSync(profile, { recursive: true, force: true, maxRetries: 5 });

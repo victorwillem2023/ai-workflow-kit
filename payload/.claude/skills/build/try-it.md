@@ -22,6 +22,8 @@ it is the try command alone.
   the failed step when not. Fix a failed step before the hand-over; never read the page yourself to check it. The walk is
   committed with the feature, and *Try this* below gives the steps it passed. A screen that swipes, scrolls or animates is
   also measured first (`smooth.mjs`, the ui module; `workflow/guides/SCREENS.md`, *Feel*): a STUTTERS line is fixed before the hand-over.
+  A card that changes what a timed walk does (`performance.speed.walks`): `npm run speed -- --walks` in the session folder, and
+  its lines go under *What is new* as before and after ("swipe to the next card: 0.9 s on slow 4G, was 1.4 s"), never "it feels faster".
 - **It has no screen** (rules, a calculation, an API, an import): the builder writes a small try command,
   `workflow/specs/<topic>.try.<ext>`, in the session folder, in the project's language (`npx tsx workflow/specs/<topic>.try.ts ...`,
   `python workflow/specs/<topic>.try.py ...`). `workflow/specs/` is ignored, so it is never committed, and it goes with the spec

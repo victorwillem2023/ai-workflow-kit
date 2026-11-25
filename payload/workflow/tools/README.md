@@ -99,7 +99,9 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   each built page on a slow phone (processor slowed 4 times, slow 4G): the first screen, when it is usable
   (`performance.speed.pages.<name>.ready`) and a tap on its main button (`.tap`; `.tapDone`, a test true once its answer shows).
   The first run in the main folder is the baseline (`workflow/tools/speed-baseline.json`; `--update` takes it again, with the
-  owner's yes); a page that got slower fails. On a shared runner (CI) the numbers are shown, not judged.
+  owner's yes); a page that got slower fails. On a shared runner (CI) the numbers are shown, not judged. Timed walks
+  (`performance.speed.walks`, smoke walks with a name per step; `--walks` for only them): each step on slow 4G with a slowed phone
+  and on fast 4G, with what it downloaded and the numbers before, against the built app `performance.speed.serve` starts.
   Advice in a prototype, a failure from pilot on.
 - **image** (when there is a `Dockerfile`): every base pinned to a version (no bare name, no `:latest`); the image that runs
   has a `USER` that is not root (or a `:nonroot` base) and copies only what runs, never `COPY . .` or a whole earlier stage;

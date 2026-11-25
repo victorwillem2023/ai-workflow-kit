@@ -2,6 +2,10 @@ type Timings = { firstMs: number | null; usableMs: number | null; tapMs: number 
 export const ROOM: number;
 export const SLACK_MS: { firstMs: number; usableMs: number; tapMs: number };
 export const GOOD: { firstMs: number; tapMs: number };
+export const LINES: Record<'slow' | 'fast', { label: string; latency: number; downKbit: number; upKbit: number; cpu: number }>;
+export function timedSteps(w: { path?: string; open?: string; steps: Record<string, unknown>[] }, say?: (s: Record<string, unknown>) => string): { name: string; steps: Record<string, unknown>[] }[];
+export function downloadLine(files: { url: string; bytes: number }[]): string;
+export function walkVerdict(walk: string, steps: { name: string; slowMs: number | null; fastMs: number | null; downloads?: { url: string; bytes: number }[] }[], base: Record<string, { slowMs: number | null; fastMs: number | null }> | null | undefined): { ok: boolean; slower: string[]; lines: string[] };
 export function median(xs: (number | null)[]): number | null;
 export function limitOf(base: number, kind: 'firstMs' | 'usableMs' | 'tapMs'): number;
 export function speedVerdict(page: string, today: Timings, base: Timings | null | undefined): { ok: boolean; slower: string[]; lines: string[] };
