@@ -2,6 +2,12 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.22.0**: **the speed check times the steps a person takes, on slow and fast 4G, with what each step downloads and the
+  numbers before.** On a real project a phone screen loaded the desktop map before its first card, and only feel showed it. A
+  smoke walk names its steps in the owner's words and can swipe (`walk.mjs`); the walks `performance.speed.walks` lists are timed
+  by `npm run speed` (`--walks` for only them) on slow 4G with a slowed phone and on fast 4G, each step until what it shows, with
+  its downloads and the numbers before, against the built app `performance.speed.serve` starts. Today's numbers are the
+  reference; slower fails from pilot on. A card that changes a walk hands over its before and after. Tests in `speed`, `walk`.
 - **4.21.0**: **every outside service has a failure plan, the heavy request has a home and a limit, and a page kept on the
   phone is replaced safely.** A real project's route planner blocks an address after a few hundred requests, and a bad version
   kept for offline use stays on phones. `COMMON.md`, *When an outside service fails*: a plan per service, `callOutside` and a drill
