@@ -2,6 +2,16 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.20.0**: **each page is weighed by what it loads at start-up and timed on a slow phone, a web app's shape is picked at
+  setup, and real phones' speed reaches the log.** On a real project a page took 7 seconds to start on a phone and only a spike
+  found it. The page weight check weighs each built page with what it loads at once (`lib/perfbudget.mjs` startupFiles; an
+  `import()` for later costs nothing; `performance.pages` with `root` and `base`). `workflow/tools/speed.mjs` (`npm run speed`,
+  a gate check the update adds) times each page in Chrome slowed like a phone on slow 4G: first screen, usable, a tap answered;
+  the first run in the main folder is the baseline every session is held to. Both advise in a prototype and fail from pilot on.
+  `FRONTEND.md`, *The shape of a web app*, is what `/setup` picks from (a Shape row in `docs/STACK.md`), and specs say their
+  "Start-up cost:". `src/web/vitals.ts` (production module, with Google's `web-vitals`) sends real people's Core Web Vitals to the
+  log. After updating: run `npm run speed` once in the main folder and commit `workflow/tools/speed-baseline.json`; wire the
+  page-events route without a development-only condition. Tests in `speed`, `levels`, `rank-weight-changelog`, `vitals`.
 - **4.19.0**: **work on how the app moves starts from the best known way, is measured before the hand-over, and the page
   tells the session log how a try felt.** On a real project a card swipe took six rounds of patches: built on the code that
   was there, not tried on the phone the card asked for, tested blind in a computer's browser. One home for the rules
