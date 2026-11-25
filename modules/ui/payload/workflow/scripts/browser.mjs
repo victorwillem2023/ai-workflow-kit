@@ -57,7 +57,8 @@ export async function openBrowser({ width = 1280, height = 900, scale = 1, theme
       const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: full, ...(full ? { clip: { x: 0, y: 0, width: size.w, height: size.h, scale: 1 } } : {}) });
       writeFileSync(file, Buffer.from(r.data, 'base64'));
     };
-    const close = async () => { try { ws.close(); } catch { /* gone already */ } child.kill(); await sleep(300); rmSync(profile, { recursive: true, force: true, maxRetries: 5 }); };
+    // a profile the browser still holds a moment after it stops (Windows) is left in the temp folder: it must not fail the check
+    const close = async () => { try { ws.close(); } catch { /* gone already */ } child.kill(); await sleep(300); try { rmSync(profile, { recursive: true, force: true, maxRetries: 5 }); } catch { /* left in temp */ } };
     return { send, ev, until, go, shot, close };
   } catch (e) {
     child.kill();

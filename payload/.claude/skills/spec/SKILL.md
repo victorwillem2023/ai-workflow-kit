@@ -94,6 +94,8 @@ It waits for the owner's yes with the spec's (`--accept <n>` when the spec is ap
 
 **Only when it applies:**
 
+- **How it moves or feels** (gestures, scrolling, animation, loading): the End state line names the best known way
+  (`workflow/guides/SCREENS.md`, *Feel*); a part still to prove on the phone is a spike first, not a spec.
 - **Hard to undo** (a new service or datastore, a platform or provider, a boundary): suggest `/arch` first (the architecture
   board, `docs/run/SCALING.md`), and write the spec on the decision it accepts.
 - **Under `infra/`**: the spec names what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).

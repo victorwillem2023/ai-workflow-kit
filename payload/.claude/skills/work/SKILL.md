@@ -68,7 +68,8 @@ route, or a spec.
 
 Every plan, light or not, names the other way it could be built and recommends one (the end state over a step, as `/spec`
 says). A card that says how to build it is the owner's first thought, not the decision: a better way you see is said and
-recommended, and the owner picks.
+recommended, and the owner picks. Work on how something moves or feels (gestures, scrolling, animation, loading) starts from
+the best known way: `workflow/guides/SCREENS.md`, *Feel*.
 
 - **`feature` or `workflow`**: run `/spec <n>`, the plan with its tests named. A `workflow` card changes nothing in the app,
   so its spec says "none" under what the user sees and names the workflow files and docs instead. The spec's "Card stays open
@@ -84,7 +85,9 @@ recommended, and the owner picks.
   `/ship` when the owner says done. A card of another type that turns out to need a new screen: ask to relabel it `ui`, or
   to split it, before going on.
 - **`spike`**: run `/spike <n>` and follow it instead: a throwaway try with a time limit, no spec, tests or gate, ending in a
-  decision note. A `feature` card for an idea nobody has tried yet: offer a spike first, in one line.
+  decision note. A `feature` card for an idea nobody has tried yet: offer a spike first, in one line. One that names a part
+  to prove, or whose result depends on how it feels on a phone: the first step is the spike (say so in one line; the owner may
+  still say build).
 
 On the owner's yes, move the card to *Ready* (`/spec` does this itself).
 

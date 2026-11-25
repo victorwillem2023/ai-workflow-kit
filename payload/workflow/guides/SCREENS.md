@@ -59,6 +59,24 @@ the recipe is in `.claude/skills/setup/stack.md`, *7. Tests*.
 The page-weight check holds what is downloaded (`performance` in `workflow/config.json`). On the screen itself: images sized for
 where they show and lazy below the fold; a long list paged or windowed; nothing heavy on every keystroke (debounce a search).
 
+## Feel: gestures, scrolling, animation, loading
+How a screen moves decides whether it feels fast, and a computer's browser cannot judge how it feels on a phone. So:
+- **Start from the best known way.** The plan says how the leading apps do it and uses what the phone or browser does itself
+  first: native scrolling with scroll snap for a deck or a carousel, CSS transitions on `transform` and `opacity`, the
+  system's own back swipe. Code that moves things frame by frame (a touch handler setting positions) is the exception, and the
+  plan says why the native way cannot do it.
+- **Prove the risky part on the phone first.** A card that names a part to prove, or whose result depends on how it feels,
+  starts with a spike (`/spike`) the owner tries on their own phone (`session.mjs --serve <topic> --lan`), before the build.
+- **Measure before the hand-over** (the ui module): `node workflow/scripts/smooth.mjs <url> --swipe "300,500 40,500"` (or
+  `--scroll`, `--step`) moves the page as a phone with a slowed processor and says the dropped frames, the longest frame and
+  the work per frame. A STUTTERS line is fixed before the owner tries it.
+- **Read the page's events after every try**: with `src/web/feel.ts` wired (in development only; its first lines say how), each
+  motion, busy moment and key action's time reaches the session's log: `node workflow/scripts/logs.mjs <topic> --page`. Read it
+  yourself and ask the owner only whether anything felt off. A TypeScript project without the file gets it with the kit's next
+  update (the production module); wiring it in is one small card.
+- **The same feel problem twice: stop patching.** Measure (the two above), plan again from the best known way, and show the
+  owner the new plan for a yes. No third patch.
+
 ## What the gate checks, and what it does not
 - **Checked**: the page weight; the screen tests that run; the browser checks, once the project has them.
 - **Not checked**: that the four states exist, that messages say what to do, that it works with a keyboard. `/review` reads the

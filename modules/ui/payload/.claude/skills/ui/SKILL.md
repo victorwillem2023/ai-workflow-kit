@@ -128,7 +128,8 @@ stage 1. It is a brief, not the design: redraw it on the project's tokens and pa
    the owner clicked in the session's browser tab count as items too (`try-it.md`, *Feedback that comes from the orchestrator*). One pass per round:
    - answer every number: done, or why not;
    - change only `src/web`. A number that needs core logic is said out loud and becomes its own card (`/idea`);
-   - new after pictures from the same commands, then stop again.
+   - new after pictures from the same commands, then stop again;
+   - the same problem with how it moves, a second time: stop patching (`try-it.md`, *After the check*).
 
    No commit between rounds.
 5. **Done** only when the owner says so ("finish it", "commit and push"): add to the notes file what was built and how it

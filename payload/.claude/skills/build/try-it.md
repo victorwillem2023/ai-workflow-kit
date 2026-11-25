@@ -20,7 +20,8 @@ it is the try command alone.
   (`{ "type": "Goal distance", "text": "10" }`, `{ "click": "Make plan" }`, `{ "see": "14 weeks" }`; the form is at the top of
   `workflow/scripts/walk.mjs`). Then `cd <session folder> && node workflow/scripts/walk.mjs <topic>`: one line when it passes,
   the failed step when not. Fix a failed step before the hand-over; never read the page yourself to check it. The walk is
-  committed with the feature, and *Try this* below gives the steps it passed.
+  committed with the feature, and *Try this* below gives the steps it passed. A screen that swipes, scrolls or animates is
+  also measured first (`smooth.mjs`, the ui module; `workflow/guides/SCREENS.md`, *Feel*): a STUTTERS line is fixed before the hand-over.
 - **It has no screen** (rules, a calculation, an API, an import): the builder writes a small try command,
   `workflow/specs/<topic>.try.<ext>`, in the session folder, in the project's language (`npx tsx workflow/specs/<topic>.try.ts ...`,
   `python workflow/specs/<topic>.try.py ...`). `workflow/specs/` is ignored, so it is never committed, and it goes with the spec
@@ -95,6 +96,9 @@ on such a word, `--close <n> "<reason>"`, or `--park <n>`.
 
 ## 3. After the check
 
+- **How it felt**: with the page's events in the log (`src/web/feel.ts`), read `logs.mjs <topic> --page` after each try
+  yourself; the owner is asked only whether anything felt off. **The same feel problem reported a second time**: stop
+  patching, measure, plan again from the best known way (*Feel*), and show the new plan for a yes. No third patch.
 - A change after the owner tried it (feedback, or a review fix in `/ship`) that changes **what it does** (other numbers, other
   rules, another screen) is handed over again with this page, showing what changed. Only a change that keeps the behaviour
   the same (a rename, a test, a comment) needs no new check.

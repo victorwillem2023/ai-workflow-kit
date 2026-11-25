@@ -21,6 +21,11 @@ plan starts from this page, and it changes when what we learn changes it. Short,
 ## When we stop or change course
 <what would make us drop it or turn>
 
+## What it must be
+<the promises to the person using it, in the owner's words ("the most reliable and fast app for ..."), each with the number that
+holds it once it is known: how fast it opens, how smooth a swipe is (`smooth.mjs` drops no frames), how often it fails. The
+checks hold the app to the numbers; a plan that would break one says so.>
+
 ## Signs to look at
 Written by `/ship` for each feature whose spec says how we will know it worked, read back by `npm run retro` once the date has
 come: `- <date to look>: <the sign> (<what shipped>)`. After looking, add "Looked: <what you saw>" to the line.

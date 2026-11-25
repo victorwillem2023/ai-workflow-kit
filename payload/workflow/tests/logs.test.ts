@@ -27,4 +27,10 @@ describe('reading a server log', () => {
     assert.equal(formatLine(line({ level: 'info', msg: 'x' }), { level: 'warn' }), null);
     assert.equal(formatLine('plain words', { ref: 'abc' }), null, 'a filter shows only the app\'s own lines');
   });
+  it('--page keeps what the page sent: its motions, busy moments, timings and errors', () => {
+    assert.equal(formatLine(line({ level: 'info', msg: 'page motion', by: 'touch', dropped: 2, longest: 50 }), { page: true }), '10:00:01 INFO  page motion  by=touch dropped=2 longest=50');
+    assert.match(String(formatLine(line({ level: 'warn', msg: 'page error', message: 'x is undefined' }), { page: true })), /WARN  page error  message=x is undefined/);
+    assert.equal(formatLine(line({ level: 'info', msg: 'POST /api/goal 200 4 ms' }), { page: true }), null);
+    assert.equal(formatLine('  VITE ready', { page: true }), null);
+  });
 });

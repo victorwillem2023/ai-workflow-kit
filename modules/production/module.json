@@ -8,6 +8,9 @@
     "src/server/trace.ts",
     "src/server/errors.ts",
     "src/web/report.ts",
+    "src/web/feel.ts",
+    "src/server/pageevents.ts",
+    "tests/production/feel.test.ts",
     "tests/production/debugging.test.ts"
   ]
 }

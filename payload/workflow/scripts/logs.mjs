@@ -2,8 +2,8 @@
 // A session's server log, readable. `session.mjs --serve <topic>` writes the dev server's output to a file outside the folder;
 // this shows it one line per event: the time, the level, the message, the request it belongs to and its fields, instead of raw
 // JSON. --ref shows one request's lines only (the "reference" a person sees in an error, src/server/errors.ts), --follow keeps
-// showing new lines as they come.
-//   node workflow/scripts/logs.mjs <topic> [--follow] [--ref <reference>] [--level warn]     a session's server
+// showing new lines as they come, --page only what the page sent (src/web/feel.ts: each motion, busy moment and timing; its errors).
+//   node workflow/scripts/logs.mjs <topic> [--follow] [--ref <reference>] [--level warn] [--page]     a session's server
 //   node workflow/scripts/logs.mjs <file> ...                                                  any log file
 //   node workflow/scripts/logs.mjs                                                             which logs there are
 import '../tools/lib/nowindow.mjs'; // no console window per child process on Windows (lib/nowindow.mjs): first, before anything starts one
@@ -17,10 +17,11 @@ const LEVELS = ['debug', 'info', 'warn', 'error'];
 const SHOWN_ALREADY = new Set(['time', 'level', 'msg', 'requestId', 'method', 'path', 'error', 'causes', 'app', 'version']);
 
 /** One log line as a person reads it; a line that is not JSON (the dev server's own words) as it is. Null when filtered out. */
-export function formatLine(raw, { ref, level } = {}) {
+export function formatLine(raw, { ref, level, page } = {}) {
   let e;
-  try { e = JSON.parse(raw); } catch { return ref || level ? null : raw; }
-  if (!e || typeof e !== 'object' || !e.msg) return ref || level ? null : raw;
+  try { e = JSON.parse(raw); } catch { return ref || level || page ? null : raw; }
+  if (!e || typeof e !== 'object' || !e.msg) return ref || level || page ? null : raw;
+  if (page && !String(e.msg).startsWith('page ')) return null;
   if (ref && !String(e.requestId ?? '').startsWith(ref)) return null;
   if (level && LEVELS.indexOf(e.level) < LEVELS.indexOf(level)) return null;
   const time = String(e.time ?? '').slice(11, 19);
@@ -55,7 +56,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const file = existsSync(what) ? what : logFileOf(what, prefix);
   if (!existsSync(file)) { console.error(`No log at ${file}: start the server with node workflow/scripts/session.mjs --serve ${what}`); process.exit(1); }
-  const filter = { ref: opt('--ref'), level: opt('--level') };
+  const filter = { ref: opt('--ref'), level: opt('--level'), page: argv.includes('--page') };
   let shown = 0;
   const show = () => {
     const lines = readFileSync(file, 'utf8').split(/\r?\n/);

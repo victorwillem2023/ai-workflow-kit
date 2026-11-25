@@ -1,0 +1,3 @@
+export interface SmoothOptions { url: string; swipe: { from: { x: number; y: number }; to: { x: number; y: number } } | null; scroll: number | null; step: string | null; ms: number; times: number; settle: number; setup: string; ready: string; width: number; slow: number; json: boolean }
+export function parseSmoothArgs(argv: string[]): SmoothOptions;
+export function verdict(frames: number[] | number[][], tasks: number[], work: { task?: number; script?: number; layout?: number; style?: number }, slow?: number): { stutters: boolean; dropped: number; share: number; longest: number; hitches: number; busy: { count: number; longest: number }; perFrame: { all: number; script: number; layout: number; style: number }; lines: string[] };
