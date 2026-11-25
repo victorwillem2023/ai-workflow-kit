@@ -2,6 +2,15 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.19.0**: **work on how the app moves starts from the best known way, is measured before the hand-over, and the page
+  tells the session log how a try felt.** On a real project a card swipe took six rounds of patches: built on the code that
+  was there, not tried on the phone the card asked for, tested blind in a computer's browser. One home for the rules
+  (`workflow/guides/SCREENS.md`, *Feel*; `/work`, `/spec`, `/review`, `try-it.md` and `/ui` point to it): the leading
+  apps' way and the browser's own first, a spike on the phone for a part to prove, and no third patch for the same feel
+  problem. `workflow/scripts/smooth.mjs` (ui module) swipes or scrolls as a slowed phone and says the dropped frames, the
+  longest frame and the work per frame. `src/web/feel.ts` with `src/server/pageevents.ts` (production module; an update adds
+  them to a TypeScript project, wiring them in is one card) put each motion, busy moment and timing in the session log, shown by
+  `logs.mjs --page`. `docs/PRODUCT.md` gets *What it must be*. Tests in `smooth`, `feel`, `logs`.
 - **4.18.4**: **a session holds its code, not its tests or the generated request rows.** A session was refused because the one
   running added a test case to the same test file and both changed `docs/flow/requests.js`. Tests are never held (each session
   adds its own cases; a clash is settled at the catch-up by keeping both), and the request rows are written again from the
