@@ -10,6 +10,10 @@ describe('the levels', () => {
     assert.deepEqual([none.preset, levelOf(none, 'untested'), none.loosened], ['production', 'fail', []]);
     assert.match(loosenedLine(none), /nothing loosened/);
   });
+  it('a page that got heavier or slower only advises in a prototype, and fails from a pilot on', () => {
+    const at = (phase: string) => readLevels(`{ "phase": "${phase}" }`, ['page weight', 'speed']);
+    assert.deepEqual(['prototype', 'pilot', 'production'].map((ph) => [levelOf(at(ph), 'page weight'), levelOf(at(ph), 'speed')]), [['advise', 'advise'], ['fail', 'fail'], ['fail', 'fail']]);
+  });
   it('the prototype preset loosens the structure checks to advise, and says so', () => {
     const p = readLevels('{ "preset": "prototype" }');
     assert.equal(levelOf(p, 'untested'), 'advise');

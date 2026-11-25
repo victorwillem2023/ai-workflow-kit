@@ -30,10 +30,11 @@ export const QUALITY = ['layers', 'size', 'functions', 'ratchets', 'nesting', 'c
   'copies', 'settings', 'versions', 'spikes', 'covers', 'together', 'scope', 'map', 'requests', 'harness', 'surfaces', 'docs', 'spec', 'errors', 'waits', 'quality'];
 
 const PROTOTYPE_ADVISE = ['size', 'functions', 'ratchets', 'nesting', 'circles', 'untested', 'budget', 'naming', 'copies', 'covers',
-  'docs', 'errors', 'spikes', 'quality', 'map', 'harness', 'waits', 'unused'];
+  'docs', 'errors', 'spikes', 'quality', 'map', 'harness', 'waits', 'unused', 'page weight', 'speed'];
 
-// what a pilot holds to again: real people meet its errors, its docs and its untested code, and a flaky test hides a real failure
-const PILOT_FAIL = ['untested', 'covers', 'docs', 'errors', 'waits'];
+// what a pilot holds to again: real people meet its errors, its docs and its untested code, a flaky test hides a real failure,
+// and a page that got heavier or slower is felt on their phones (a prototype is only told)
+const PILOT_FAIL = ['untested', 'covers', 'docs', 'errors', 'waits', 'page weight', 'speed'];
 const advise = (names) => Object.fromEntries(names.map((c) => [c, 'advise']));
 
 /** The phases, lightest first; `ship` is what /ship's gate runs (`gate.mjs --ship`): the tests the change reaches, or all of them. */

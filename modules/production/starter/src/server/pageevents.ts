@@ -1,9 +1,10 @@
-// The page's own events (src/web/feel.ts) into the session's log, in development only: one line each, so
-// `node workflow/scripts/logs.mjs <topic> --page` shows how a try felt (each motion with its dropped frames, each busy moment,
-// each key action's time), and `--level warn` only the busy moments and the errors. They come from outside, so only the known
-// fields are kept, each capped, and at most 50 a call: a page cannot write what it likes into the log. Wired in development only:
-//   if (process.env.NODE_ENV !== 'production') routes.push({ method: 'POST', path: '/api/page-events', public: true,
-//     handler: (c) => { logPageEvents(c.body, c.req); return { status: 200, body: {} }; } });
+// What the page sends about itself into the log, one line each: in development how a try felt (src/web/feel.ts: each motion with
+// its dropped frames, each busy moment, each key action's time), and everywhere the speed real people get (src/web/vitals.ts:
+// Google's Core Web Vitals, a poor one as a warning). `node workflow/scripts/logs.mjs <topic> --page` shows them, `--level warn`
+// only the busy moments, the poor vitals and the errors. They come from outside, so only the known fields are kept, each capped,
+// and at most 50 a call: a page cannot write what it likes into the log (the route's rate limit, http.ts, holds the rest).
+// One route for both, in production too (a route wired for development only, as this file once said, loses the vitals):
+//   routes.push({ method: 'POST', path: '/api/page-events', public: true, handler: (c) => { logPageEvents(c.body, c.req); return { status: 200, body: {} }; } });
 import type { Request } from './trace';
 
 const MAX_EVENTS = 50;
@@ -24,6 +25,12 @@ export function logPageEvents(body: unknown, req: Pick<Request, 'log'>): number 
         dropped: num(e.dropped), longest: num(e.longest), page });
     } else if (e.kind === 'busy') {
       req.log.warn('page busy', { ms: num(e.ms), page });
+    } else if (e.kind === 'vital') {
+      const value = typeof e.value === 'number' && Number.isFinite(e.value) ? Math.round(Math.min(Math.max(e.value, 0), 600_000) * 1000) / 1000 : undefined;
+      const rating = text(e.rating, 20);
+      const fields = { name: text(e.name, 10), value, rating, page, phone: e.phone === true };
+      if (rating === 'poor') req.log.warn('page vital', fields);
+      else req.log.info('page vital', fields);
     } else if (e.kind === 'timing') {
       req.log.info('page timing', { name: text(e.name, 100), ms: num(e.ms), page });
     } else continue;

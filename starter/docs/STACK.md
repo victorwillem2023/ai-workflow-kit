@@ -6,6 +6,7 @@ A new library or service is a new line here, with the owner's yes, in the same c
 | Part | Choice | Why | We would change it when |
 |---|---|---|---|
 | Language | <> | <> | <> |
+| Shape | <how the app loads: `workflow/guides/FRONTEND.md`, *The shape of a web app*> | <> | <> |
 
 Prices checked: <YYYY-MM-DD> (the host, the database and any AI model: the price, the link it came from; `npm run health` says when this is over 90 days old)
 

@@ -76,8 +76,8 @@ Each answer that is no comes with the file and line.
 - **Does it move the way the best known way does?** Motion the browser can do itself (native scrolling, CSS transitions)
   built as code that moves things frame by frame, with no reason in the spec, is a finding (`workflow/guides/SCREENS.md`, *Feel*).
 - **Is it slow where it does not need to be?** A query or a fetch inside a loop, a whole table read to show ten rows, a list
-  with no limit, a heavy library for one small use, work on every keystroke; the gate's page weight line when screens changed
-  (`docs/run/PERFORMANCE.md`, when the project has it).
+  with no limit, a heavy library for one small use, work on every keystroke; the gate's page weight and speed lines when screens changed, against the spec's "Start-up cost:"
+  line (`docs/run/PERFORMANCE.md`, when the project has it).
 - **Would the owner understand it?** Names and comments say what a thing does; nothing is cleverer than it needs to be.
 
 ## 3. Report

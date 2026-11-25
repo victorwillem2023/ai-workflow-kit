@@ -1,4 +1,4 @@
-# Frontends: which React framework, and content from a CMS
+# Frontends: which React framework, the shape of a web app, and content from a CMS
 
 The kit's advice for the screens: which framework fits which app, what each one asks of hosting and security, and how to
 take content from a headless CMS such as Storyblok. `/setup` reads it with `stack.md` part 2; the choice goes in
@@ -14,6 +14,23 @@ take content from a headless CMS such as Storyblok. `/setup` reads it with `stac
 | Phone apps from the same code | **Expo** (React Native), sharing `src/core` | one language; the core rules run on the phone too | the app stores, EAS builds |
 | Fewer lines per screen, the owner prefers it | **SvelteKit** | not React, but the same shapes (routes, loaders, actions) | like Next.js |
 Change only with a reason: a framework move rewrites every screen.
+
+## The shape of a web app
+How a web app loads decides how fast it feels before any screen is tuned: a page that sends the desktop map to a phone, or waits
+for all its data before it draws, is slow whatever its code. Pick the shape at `/setup`, write it in `docs/STACK.md` (the Shape
+row), and hold it with the gate's page weight and speed checks (`docs/run/PERFORMANCE.md`).
+
+| The app is | Shape | What a person gets |
+|---|---|---|
+| One tool, one screen, used now and then | **One page**, everything in it, under the budget | nothing to wait for twice |
+| Several screens, a phone and a desk use them differently | **A page per device or per main screen** (its own HTML entry and script), sharing `src/core` | the phone never downloads the desk's map or editor |
+| A heavy part (a map, an editor, charts) on some screens | **The heavy part last**: the screen draws first, the part comes with `import()` when it is needed | a first screen in a second, the map a moment later |
+| Used outside, on a bad network, or every day | **An offline cache** (a service worker caching the built files by version, the data in the browser's storage) | it opens at once, even without a network; a new version must replace the cached one on the next open |
+| Pages that must be found, or show before any script runs | **Server-rendered** (the framework table above) | content on the first paint; the script only adds what moves |
+
+In every shape: a **loading screen** that is the real screen's frame (its header, its empty list) shown at once, never a blank page
+or a spinner alone; the data after the frame; and nothing heavy on the first screen that the first tap does not need. A change
+that makes a page load more at start says so in its spec (the "Start-up cost:" line).
 
 ## What a server-rendering framework asks for
 - **Server code is an endpoint**: a Next.js server action, route handler or a loader is reachable by anyone who finds it, like

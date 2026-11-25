@@ -5,5 +5,6 @@
 - Each error a person or a service can cause: an `AppError` (`src/server/errors.ts`: code, words, `doing`, ids, `cause`), all
   answered by `answerError`. The page: `apiError` for a failed call, `reportPageErrors` at start-up (`logPageError` on the server).
 - How it felt, in development: `watchFeel` at start-up (`src/web/feel.ts`, `logPageEvents` on the server) puts each motion,
-  busy moment and timing in the session's log; read them after every try (`logs.mjs <topic> --page`).
+  busy moment and timing in the session's log; read them after every try (`logs.mjs <topic> --page`). Real people's speed:
+  `reportVitals` (`src/web/vitals.ts`), into the same log: wire its route without a development-only condition (`src/server/pageevents.ts`).
 - Something wrong: `/debug`. A session's log: `node workflow/scripts/logs.mjs <topic> --follow` (`--ref <reference>`).

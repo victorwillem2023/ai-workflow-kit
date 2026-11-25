@@ -53,7 +53,8 @@
     { "name": "unused", "command": "node workflow/tools/unused.mjs", "all": true },
     { "name": "audit", "command": "npm audit --audit-level=high --omit=dev", "all": true },
     { "name": "infra", "command": "node workflow/tools/infracheck.mjs", "when": ["deploy/helm/**", "infra/**"] },
-    { "name": "page weight", "command": "node workflow/tools/perfbudget.mjs", "when": ["src/web/**", "package.json", "vite.config.*", "next.config.*"] }
+    { "name": "page weight", "command": "node workflow/tools/perfbudget.mjs", "when": ["src/web/**", "package.json", "vite.config.*", "next.config.*"] },
+    { "name": "speed", "command": "node workflow/tools/speed.mjs", "when": ["src/web/**", "package.json", "vite.config.*", "next.config.*"] }
   ],
   "docs": {
     "include": ["README.md", "CLAUDE.md", "src/**/CLAUDE.md", "docs/*.md", "workflow/guides/*.md", "docs/run/*.md", "docs/market/*.md", "docs/company/*.md", "docs/guide/*.md", "docs/code/*.md"],

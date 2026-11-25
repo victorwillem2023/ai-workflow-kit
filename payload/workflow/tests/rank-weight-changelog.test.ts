@@ -3,7 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { inbox, rankCards, scoreCard } from '../../workflow/tools/lib/rank.mjs';
-import { weighPages, weightLine } from '../../workflow/tools/lib/perfbudget.mjs';
+import { builtPages, startupFiles, weighPages, weightLine } from '../../workflow/tools/lib/perfbudget.mjs';
 import { changelogText, groupCommits } from '../../workflow/tools/lib/changelog.mjs';
 
 const card = (number: number, labels: string[], column = 'Backlog', state = 'open') => ({ number, title: `card ${number}`, state, labels, column });
@@ -54,6 +54,31 @@ describe('the page-weight budget', () => {
     assert.match(weightLine(same), /over the budget of 250 KB as it was before \(the baseline: 329 KB, with room up to 345\.5 KB\)/);
     assert.equal(weighPages(at(360), 250, 329).ok, false, 'much heavier than before fails');
     assert.equal(weighPages(at(260), 250, 200).ok, false, 'a baseline under the budget gives no room');
+  });
+
+  it('weighs a page by what it loads at start-up: its scripts, styles and their imports, never what an import() loads later', () => {
+    const built: Record<string, string> = {
+      'assets/phone-a1.js': 'import{m as o}from"./shared-b2.js";import"./phone-c3.css";const t=()=>import("./map-d4.js");',
+      'assets/shared-b2.js': 'export{x as m}from"./util-e5.js";',
+      'assets/util-e5.js': 'export const x=1;',
+      'assets/map-d4.js': 'import"./maplibre-f6.js";',
+      'assets/maplibre-f6.js': '/* 200 KB */',
+      'assets/phone-c3.css': '@import "./fonts-g7.css";',
+      'assets/fonts-g7.css': '',
+      'assets/desk-h8.css': '',
+    };
+    const html = '<script type="module" crossorigin src="/assets/phone-a1.js"></script><link rel="modulepreload" href="/assets/shared-b2.js"><link rel="stylesheet" href="assets/desk-h8.css"><link rel="icon" href="/favicon.svg"><script src="https://cdn.example.org/x.js"></script>';
+    const { files, missing } = startupFiles(html, 'phone.html', (p) => built[p] ?? null);
+    assert.deepEqual(missing, []);
+    assert.deepEqual(files.sort(), ['assets/desk-h8.css', 'assets/fonts-g7.css', 'assets/phone-a1.js', 'assets/phone-c3.css', 'assets/shared-b2.js', 'assets/util-e5.js']);
+    assert.match(weightLine(weighPages([{ path: 'dist/assets/phone-a1.js', gzipBytes: 2048 }], 250), 'phone'), /^page weight \(phone\): 2 KB of 250 KB/);
+    assert.deepEqual(startupFiles('<script src="/app/assets/a.js"></script>', 'index.html', () => null).missing, ['app/assets/a.js'], 'a file not found is said, never weighed as nothing');
+    assert.deepEqual(startupFiles('<script type="text/plain" data-src="/assets/later.js"></script><link data-href="/x.css" rel="stylesheet">', 'index.html', () => '').files, [], 'an address for later is not a start-up file');
+  });
+
+  it('finds each built page and the folder its addresses start from', () => {
+    assert.deepEqual(builtPages({ maxKb: 250 }, ['dist'], () => ['phone.html', 'assets', 'index.html']).map((p) => [p.name, p.html, p.root]), [['index', 'dist/index.html', 'dist'], ['phone', 'dist/phone.html', 'dist']]);
+    assert.deepEqual(builtPages({ maxKb: 250, pages: [{ html: 'web/dist/app.html', maxKb: 120 }] }, ['dist'], () => []).map((p) => [p.name, p.root, p.maxKb]), [['app', 'web/dist', 120]]);
   });
 });
 

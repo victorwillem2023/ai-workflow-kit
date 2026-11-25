@@ -91,8 +91,16 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
 - **spikes**: no file under `spikes/` outside a `spike-<topic>` session: a spike's code is thrown away, what it taught is in
   `docs/decisions/`.
 - **page weight** (a `checks` entry, when screens or the build change): `node workflow/tools/perfbudget.mjs` builds the app and
-  adds up the compressed size of `performance.files` against `performance.maxKb` (250 KB to start), naming the biggest files
-  when over. No budget, no build script or nothing built: it passes and says so.
+  weighs each built page by what it loads at start-up (its scripts and styles and all they import at once, compressed; what an
+  `import()` loads later does not count) against `performance.maxKb` (250 KB to start) or the page's own (`performance.pages`),
+  naming the biggest files when over. No page found: the compressed `performance.files` together. No budget, no build script or
+  nothing built: it passes and says so. Advice in a prototype, a failure from pilot on.
+- **speed** (a `checks` entry, the same files; the ui module's browser): `node workflow/tools/speed.mjs` (`npm run speed`) times
+  each built page on a slow phone (processor slowed 4 times, slow 4G): the first screen, when it is usable
+  (`performance.speed.pages.<name>.ready`) and a tap on its main button (`.tap`; `.tapDone`, a test true once its answer shows).
+  The first run in the main folder is the baseline (`workflow/tools/speed-baseline.json`; `--update` takes it again, with the
+  owner's yes); a page that got slower fails. On a shared runner (CI) the numbers are shown, not judged.
+  Advice in a prototype, a failure from pilot on.
 - **image** (when there is a `Dockerfile`): every base pinned to a version (no bare name, no `:latest`); the image that runs
   has a `USER` that is not root (or a `:nonroot` base) and copies only what runs, never `COPY . .` or a whole earlier stage;
   no `ARG`/`ENV` named like a secret (they stay in the image's history: `RUN --mount=type=secret` instead); no `ADD` from a URL;

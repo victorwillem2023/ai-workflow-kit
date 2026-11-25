@@ -2,8 +2,8 @@
 // the agent reads the log after every try instead of asking how it felt. One event per motion (a finger on the screen or a
 // scroll: how long, how far, the frames drawn, the ones dropped, the longest), one for each moment the page was busy (its
 // heartbeat came late), and one for each key action timed with performance.measure, by its name. Errors: reportPageErrors
-// (report.ts). Only in development: the events go to the dev server, never to a real person's log
-// (workflow/guides/SCREENS.md, *Feel*). Once, at start-up:
+// (report.ts); the speed real people get: vitals.ts. Only in development: the events go to the dev server, never to a real
+// person's log (workflow/guides/SCREENS.md, *Feel*). Once, at start-up:
 //   if (import.meta.env.DEV) watchFeel(window, (events) => void fetch('/api/page-events', { method: 'POST', keepalive: true,
 //     headers: { 'content-type': 'application/json' }, body: JSON.stringify(events) }));
 //   performance.mark('plan'); ... performance.measure('plan made', 'plan');        a key action, in the log as "plan made"

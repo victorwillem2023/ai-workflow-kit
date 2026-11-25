@@ -92,6 +92,9 @@ Which framework for which app, what server rendering asks for, and content from 
   around the map (MapLibre in React: react-map-gl).
 - **App framework**: Vite for a page that talks to its own API or works offline; Next.js (React) or SvelteKit when pages must come
   from the server (sign-in, search engines, many pages).
+- **The shape**: how the app loads (a loading screen first, a page per device or screen, heavy parts last, an offline cache):
+  pick it from the table in `workflow/guides/FRONTEND.md`, *The shape of a web app*, and write it as the Shape row of
+  `docs/STACK.md`. It decides what the first screen costs before any screen is built.
 - **Styling and parts**: Tailwind CSS with shadcn/ui for React, the colours and sizes as tokens in `docs/STYLE.md` mapped to the
   Tailwind theme. One way of styling, never two.
 - A brand-new folder: the framework's starter makes it first (`npm create vite@latest <name> -- --template react-ts`,

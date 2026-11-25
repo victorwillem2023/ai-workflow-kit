@@ -11,6 +11,8 @@
     "src/web/feel.ts",
     "src/server/pageevents.ts",
     "tests/production/feel.test.ts",
+    "src/web/vitals.ts",
+    "tests/production/vitals.test.ts",
     "tests/production/debugging.test.ts"
   ]
 }

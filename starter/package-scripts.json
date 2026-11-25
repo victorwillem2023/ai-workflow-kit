@@ -21,6 +21,7 @@
   "changelog": "node workflow/tools/changelog.mjs",
   "retro": "node workflow/tools/retro.mjs",
   "load": "node workflow/tools/load.mjs",
+  "speed": "node workflow/tools/speed.mjs",
   "infra-check": "node workflow/tools/infracheck.mjs",
   "infra-plan": "node workflow/tools/infraplan.mjs",
   "infra-apply": "node workflow/tools/infraplan.mjs --apply",

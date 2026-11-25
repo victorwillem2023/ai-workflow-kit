@@ -4,6 +4,7 @@ Card: #<n> (`npm run board -- --show <n>`; cards combined into one commit: #<n>,
 End state: <the best version, in one sentence>. This spec: <is it | a step toward it, because <reason>; the rest is card #<n>>
 Flow: <the flow and the job this card changes (`docs/anatomy/<flow>.md`) | a new job or a second home for one: <which> (two designs, `/spec` step 2) | none>
 Design not taken: <none: one design was drafted | the other design in one line, and why it lost (`/spec` step 2, two designs)>
+Start-up cost: <none: no page loads more at start | +<n> KB and +<n> ms on <page>'s first screen (the gate's page weight and speed lines), and why it cannot load later>
 Starts on: <main | <topic> of a built, unfinished card it needs (`.claude/skills/work/together.md`)>
 Beside: <none | #<n> (session <topic>) changes <file> too: the rule both follow there (`node workflow/scripts/session.mjs --beside <topic>`)>
 Card stays open after this spec: <no | yes, what is left>
