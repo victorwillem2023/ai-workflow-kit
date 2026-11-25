@@ -164,8 +164,8 @@ style rules, the feedback rounds and the done checklist.
 - **The main folder stays on `main`.** Never `git checkout` another branch in it. Found it on another branch, uncommitted files
   in it or a branch you don't know: that is someone else's work. Leave it and tell the owner.
 - **Shared files** (`README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>): edit only your own
-  feature's lines, small. A rebase conflict keeps both sides' changes, never drops the other's. Code and tests are held by the
-  session changing them: `session.mjs` refuses a second one on them.
+  feature's lines, small. A rebase conflict keeps both sides' changes, never drops the other's; in a test file too (each
+  session adds its own cases). Code is held by the session changing it: `session.mjs` refuses a second one on it.
 
 ## This project's own rules
 Rules only this project has, one line each (`/lesson` adds them here). The kit's parts above are between `<!-- kit:... -->`

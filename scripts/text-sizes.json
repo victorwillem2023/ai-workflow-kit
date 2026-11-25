@@ -61,7 +61,7 @@
     "payload/workflow/guides/TOKENS.md": 6792,
     "payload/workflow/guides/TOOLS.md": 10725,
     "payload/workflow/guides/WORKFLOW.md": 15345,
-    "payload/workflow/tools/README.md": 71959,
+    "payload/workflow/tools/README.md": 73435,
     "starter/CLAUDE.md": 14758,
     "starter/src/core/CLAUDE.md": 625
   },
@@ -82,7 +82,7 @@
     "payload/workflow/guides/TESTING.md": "4.16.0: measuring before and after with npm run measure",
     "payload/workflow/guides/TOKENS.md": "4.8.0: two lines on comparing what a command and a card cost across kit versions (npm run cost -- --by-kit)",
     "payload/workflow/guides/WORKFLOW.md": "4.14.0: the /anatomy row",
-    "payload/workflow/tools/README.md": "4.16.0: the npm run measure row",
+    "payload/workflow/tools/README.md": "4.18.3: the reference for 4.18: what a session holds and never holds, --beside, --plan, --park, --touches; read only when a tool is unclear",
     "starter/CLAUDE.md": "4.17.1: a card made after the owner's yes is never to sort; noticed ones settled in the chat"
   }
 }

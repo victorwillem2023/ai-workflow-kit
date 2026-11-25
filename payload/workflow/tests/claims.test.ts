@@ -26,18 +26,20 @@ The route joins the nearest way up; a link over 8 km leaves it at its own trailh
 `;
 
 describe('what a session holds', () => {
-  it('a spec holds the files it changes and its tests: not the files it only reads, its docs, or code names', () => {
-    assert.deepEqual(specFiles(SPEC), ['src/pipeline/climb/from-start.ts', 'src/pipeline/climb/route-up.ts', 'workflow/config.json', 'tests/from-start.test.ts']);
-    assert.ok(specFiles('Some text naming `src/a.ts` and nothing else').includes('src/a.ts'), 'a spec without those headings: every path it names');
+  it('a spec holds the files it changes: not the files it only reads, its tests and docs, or code names', () => {
+    assert.deepEqual(specFiles(SPEC), ['src/pipeline/climb/from-start.ts', 'src/pipeline/climb/route-up.ts', 'workflow/config.json']);
+    assert.ok(specFiles('Some text naming `src/a.ts` and nothing else').includes('src/a.ts'), 'a note with no headings: every path it names');
+    assert.deepEqual(specFiles('## Tests\n- `tests/a.test.ts`\n\n## Context\nIt reads `src/core/geo.ts`.'), [], 'headings but no Files that change: nothing, not the files it reads');
   });
 
   it('a claim is the spec, the Touches paths and the changes, without what has a rule of its own', () => {
     const never = [...settledFiles({}), ...DOCS, ...sharedFiles('- **Shared files** (`README.md`, `docs/GUIDE.md`, `docs/guide/`, <other files every feature touches>): edit only your own')];
     assert.deepEqual(never.slice(-3), ['README.md', 'docs/GUIDE.md', 'docs/guide/**']);
     const claim = claimOf({ spec: SPEC, touches: ['src/core/'], changed: ['src/core/geo.ts', 'README.md', 'docs/guide/hikes.md', 'docs/ARCHITECTURE.md', 'docs/MAP.md', 'package-lock.json', 'workflow/specs/from-start.md'] }, never);
-    assert.deepEqual(claim, ['src/core/', 'src/core/geo.ts', 'src/pipeline/climb/from-start.ts', 'src/pipeline/climb/route-up.ts', 'tests/from-start.test.ts', 'workflow/config.json']);
+    assert.deepEqual(claim, ['src/core/', 'src/core/geo.ts', 'src/pipeline/climb/from-start.ts', 'src/pipeline/climb/route-up.ts', 'workflow/config.json']);
     assert.deepEqual(claimOf({ touches: ['docs/guide/'] }, never), [], 'a shared folder is never held whole');
     assert.deepEqual(claimOf({ changed: ['src/core/CLAUDE.md', 'src/core/geo.ts', 'docs/flow/map.js', 'apps/web/package-lock.json', 'go.sum'] }, never), ['src/core/geo.ts'], 'a folder\'s own notes, the map\'s data and every lock file are edited by their own rule');
+    assert.deepEqual(claimOf({ changed: ['tests/resolve.test.ts', 'apps/web/tests/helpers.ts', 'src/web/a.spec.tsx', 'src/x/__tests__/y.ts', 'internal/route/geo_test.go', 'src/pkg/test_geo.py', 'spec/geo_spec.rb', 'docs/flow/requests.js', 'src/resolve.ts'] }, never), ['src/resolve.ts'], 'tests (each session adds its own cases) and the generated request rows are not held: the code is');
   });
 
   it('a path written the short way is the project\'s own when one file fits; a bare name that fits several stays as written', () => {
@@ -60,7 +62,8 @@ describe('what a session holds', () => {
     assert.deepEqual(touchedPaths("**Touches.** The trip's notes (`src/pipeline/multiday/climb-plan.ts` `climbNote`, `src/pipeline/climb/notes.ts` `joinNote`); row 97 in `docs/ARCHITECTURE.md`."), ['src/pipeline/multiday/climb-plan.ts', 'src/pipeline/climb/notes.ts', 'docs/ARCHITECTURE.md'], 'paths in backticks, as the cards write them');
     assert.deepEqual(touchedPaths("Touches: `config.json`'s keys and `src/a.ts`."), ['config.json', 'src/a.ts']);
     assert.deepEqual(touchedPaths('Touches: src/routes/+page.svelte, app/[slug]/page.tsx, (app/(shop)/cart/page.tsx), app/routes/$id.tsx.'), ['src/routes/+page.svelte', 'app/[slug]/page.tsx', 'app/(shop)/cart/page.tsx', 'app/routes/$id.tsx'], 'route files, and a path in brackets');
-    assert.deepEqual(specFiles('## Tests (written first)\nFor `src/core` / `src/pipeline` a behaviour change needs one: `tests/a.test.ts`'), ['tests/a.test.ts'], 'a folder a spec names in passing is no claim');
+    assert.deepEqual(specFiles('## Files that change\nFor `src/core` / `src/pipeline` a behaviour change needs one: `src/a.ts`'), ['src/a.ts'], 'a folder a spec names in passing is no claim');
+    assert.deepEqual(claimOf({ changed: ['src/test_mode.ts', 'src/api/spec/schema.ts'] }, DOCS), ['src/api/spec/schema.ts', 'src/test_mode.ts'], 'code that only looks like a test is held');
     assert.deepEqual(sharedFiles('- **Shared files** (`README.md`, `docs/guide/`,\n  `src/routes.ts`, `src/i18n/en.json`): edit only your own\n  lines.\n- **Next rule**: `src/x.ts`'), ['README.md', 'docs/guide/**', 'src/routes.ts', 'src/i18n/en.json'], 'a bullet that wraps');
   });
 });

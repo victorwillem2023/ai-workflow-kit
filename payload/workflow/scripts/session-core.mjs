@@ -162,11 +162,18 @@ export { folderEnv };
 /** The file map is written by a script (`map` in package.json); its path comes from the config. */
 export const mapScript = (dir) => existsSync(join(dir, 'package.json')) && Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).scripts?.map);
 
-/** Every whole page `npm run map` writes: the file map, the docs index and the infra map (the generated blocks inside hand-written docs are not whole pages). */
+/** The app map's request rows, written from the request pages by their own script (the map module), when the project has it. */
+const REQUESTS = { script: 'docs/flow/build-requests.mjs', out: 'docs/flow/requests.js' };
+const hasRequests = (dir) => existsSync(join(dir, REQUESTS.script));
+
+/**
+ * Every whole page a script writes: `npm run map`'s file map, docs index and infra map (the generated blocks inside hand-written
+ * docs are not whole pages), and the app map's request rows (docs/flow/requests.js, from the request pages).
+ */
 export function mapPages(dir) {
   let map = {};
   try { map = JSON.parse(readFileSync(join(dir, 'workflow/config.json'), 'utf8')).map ?? {}; } catch { /* the defaults */ }
-  return [map.out ?? 'docs/MAP.md', 'docs/README.md', map.infraOut ?? 'docs/run/INFRA-MAP.md'];
+  return [map.out ?? 'docs/MAP.md', 'docs/README.md', map.infraOut ?? 'docs/run/INFRA-MAP.md', ...(hasRequests(dir) ? [REQUESTS.out] : [])];
 }
 
 /**
@@ -248,7 +255,10 @@ export function rebaseOn(dir, upstream, what, { mapConflicts, from, hint }) {
       throw new Error(`${what} hit a conflict${commit ? ` in "${commit}"` : ''}${files.length ? ` (${(clash.rest.length ? clash.rest : files).join(', ')})` : ''}. Nothing was changed. ${hint ?? `Resolve it in ${dir} (git rebase ${how.join(' ')}), then run it again.`}`);
     }
     for (const f of clash.rows) keepBoth(dir, f);
-    if (clash.pages.length) stageMap(dir);
+    if (clash.pages.length && stageMap(dir, clash.pages) < 0) {
+      try { step('rebase', '--abort'); } catch { /* nothing to abort */ }
+      throw new Error(`${what} hit a conflict in ${REQUESTS.out}, and the merged request pages do not read (node ${REQUESTS.script} says why). Nothing was changed. ${hint ?? 'Fix the request pages where they are (in the session, or on main for what is on main) until it runs, then run this again.'}`);
+    }
     try { step('rebase', '--continue'); return; } catch { /* the next commit conflicts too */ }
   }
   try { step('rebase', '--abort'); } catch { /* nothing to abort */ }
@@ -260,8 +270,20 @@ export function rebaseOn(dir, upstream, what, { mapConflicts, from, hint }) {
  * in the docs. Only run where everything else is committed or staged (finish refuses loose work), so every change is the map's;
  * one left out would stop a rebase from going on, or the folder from being removed. Returns how many files it staged.
  */
-function stageMap(dir) {
+/**
+ * Writes the pages a script writes again: `npm run map`, and the request rows from their pages when they are among `clashed`
+ * (only then: otherwise the gate's own check keeps them up to date). False when the request rows could not be written (a
+ * request page that does not read): their clash is then not settled, never committed.
+ */
+export function writePages(dir, clashed = []) {
   npmRun(dir, 'map', true);
+  return !hasRequests(dir) || !clashed.includes(REQUESTS.out) || spawnSync(process.execPath, [REQUESTS.script], { cwd: dir, stdio: 'ignore' }).status === 0;
+}
+export const pagesFailed = `${REQUESTS.out} could not be written again from the request pages (node ${REQUESTS.script} says why): settle the request pages, then run it again`;
+
+/** Writes the pages and stages what changed: how many files, or -1 when a clashed page could not be written (nothing staged). */
+function stageMap(dir, clashed = []) {
+  if (!writePages(dir, clashed)) return -1;
   // (the session's node_modules is a link to the main folder's, which git may list as new: never committed)
   const changed = [...gitQuiet(dir, 'diff', '--name-only').split('\n'), ...gitQuiet(dir, 'ls-files', '--others', '--exclude-standard').split('\n')]
     .filter((f) => f && !/^node_modules\/?$/.test(f));
@@ -271,7 +293,7 @@ function stageMap(dir) {
 
 /** After a rebase the map is made again and what it changed goes into the last commit (so the feature stays one commit). */
 export function remakeMap(dir) {
-  if (mapScript(dir) && stageMap(dir)) git(dir, 'commit', '-q', '--amend', '--no-edit');
+  if (mapScript(dir) && stageMap(dir) > 0) git(dir, 'commit', '-q', '--amend', '--no-edit');
 }
 
 /**

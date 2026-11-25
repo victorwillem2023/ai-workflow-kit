@@ -1,5 +1,5 @@
 // Which files each session folder is changing, and where two of them meet (no I/O here; lib/sessionclaims.mjs reads git and the
-// specs). session.mjs refuses a new session on files a running one holds, the gate says it while building, the board's plan for
+// specs). session.mjs refuses a new session on code files a running one holds, the gate says it while building, the board's plan for
 // today counts with it, and --beside tells a builder what the sessions next to it decide. A session's claim: the files its spec
 // names, its cards' "Touches" lines (before there is a spec or a change), and every file it really changed against main. What has
 // a rule of its own for a clash is never claimed: the files every feature touches (CLAUDE.md's *Shared files*: each edits only
@@ -73,25 +73,28 @@ export function resolvePath(p, tracked) {
 }
 
 /**
- * The paths a spec says it changes: its "Files that change" and "Tests" sections (the rest of a spec also names files it only
- * reads; its docs are edited line by line, like the shared files). A spec without those headings: every path it names. Only
+ * The paths a spec says it changes: its "Files that change" section (the rest of a spec also names files it only reads; its tests
+ * and docs are never held, `DOCS`). A note with no headings at all: every path it names; a spec with headings but not that one:
+ * nothing (its Touches lines then say it). Only
  * files (looksLikeFile, with an ending): a folder a spec names in passing ("for `src/core` a change needs a test") is no claim;
  * a card's Touches line may claim a folder on purpose.
  */
 export function specFiles(spec) {
   const text = String(spec ?? '');
-  const parts = ['Files that change', 'Tests'].map((h) => specSection(text, h, Infinity)).filter(Boolean);
-  return specPaths(parts.length ? parts.join('\n') : text).filter((p) => looksLikeFile(p) && /\.[^./]+$/.test(p.split('/').pop()));
+  const files = specSection(text, 'Files that change', Infinity);
+  if (!files && /^##\s/m.test(text)) return [];
+  return specPaths(files || text).filter((p) => looksLikeFile(p) && /\.[^./]+$/.test(p.split('/').pop()));
 }
 
 /**
  * The files with a rule of their own for a clash (globs): the gate's scope guard leaves the same ones out. A claim also leaves
- * out what each change edits line by line (`DOCS`): the docs, and the app map's data, where each change writes its own entries.
+ * out what each change only adds its own lines to (`DOCS`): the docs, the app map's data, and the tests (each session adds its
+ * own cases; a clash there stops the catch-up, and the builder keeps both sides' cases, CLAUDE.md says). What is held is the code.
  */
-export const DOCS = ['**/*.md', 'docs/flow/map.js'];
+export const DOCS = ['**/*.md', 'docs/flow/map.js', '**/tests/**', '**/test/**', 'spec/**', '**/__tests__/**', '**/*.test.*', '**/*.spec.*', '**/*_test.*', '**/test_*.py', '**/*_spec.rb'];
 export function settledFiles(config = {}) {
   return ['workflow/specs/**', config.map?.out ?? 'docs/MAP.md', 'docs/README.md', config.map?.infraOut ?? 'docs/run/INFRA-MAP.md', config.baseline,
-    '.opencode/**', 'docs/company/SIGNOFFS.md',
+    '.opencode/**', 'docs/company/SIGNOFFS.md', 'docs/flow/requests.js',
     // the lock files, also a package's own in a monorepo (apps/web/package-lock.json)
     ...['package-lock.json', 'Cargo.lock', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb', 'uv.lock', 'poetry.lock', 'Pipfile.lock', 'go.sum', 'Gemfile.lock', 'composer.lock'].map((f) => `**/${f}`)].filter(Boolean);
 }

@@ -7,7 +7,7 @@ import { networkInterfaces, tmpdir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { startHidden } from '../tools/lib/hidden.mjs';
 import { dataCopyOf, pidFileOf } from './session-stop.mjs'; import { orcaNote, orcaOpen } from './session-adopt.mjs'; import { MAIN } from '../tools/lib/branch.mjs';
-import { CHECKPOINT, FIRST_PORT, PREFIX, cardOf, moveAndSay, catchUp, conflictsIn, ensurePackages, folderEnv, folderOf, git, gitQuiet, keepBoth, looseFiles, looseWork, main, mainState, mapPages, mapScript, npmRun, sessionCfg, splitConflicts, stopServer } from './session-core.mjs';
+import { CHECKPOINT, FIRST_PORT, PREFIX, cardOf, moveAndSay, catchUp, conflictsIn, ensurePackages, folderEnv, folderOf, git, gitQuiet, keepBoth, looseFiles, looseWork, main, mainState, mapPages, writePages, pagesFailed, mapScript, npmRun, sessionCfg, splitConflicts, stopServer } from './session-core.mjs';
 
 // "serve" under "session" in workflow/config.json: `lan` is what makes the app listen on every address (its own setting names),
 // `data` the setting that names the data folder and where the real one is (from the main folder).
@@ -153,7 +153,7 @@ export function catchUpSession(topic, { again } = {}) {
     }
     for (const f of clash.rows) keepBoth(dir, f);
     if (clash.rest.length) step('add', '--', ...clash.rest);
-    if (clash.pages.length) { npmRun(dir, 'map', true); step('add', '--', ...mapPages(dir).filter((p) => existsSync(join(dir, p)))); }
+    if (clash.pages.length) { if (!writePages(dir, clash.pages)) throw new Error(`The merge is left open in ${dir}: ${pagesFailed}.`); step('add', '--', ...mapPages(dir).filter((p) => existsSync(join(dir, p)))); }
     step('commit', '-q', '--no-edit');
   }
   console.log(`Session "${topic}" is on main again: ${came}${merged ? ' (as one merge, which --finish squashes away)' : ''}. ${saved ? 'Its work in progress is saved as a checkpoint commit on its own branch (not on main; --finish puts it under the approved subject).' : 'Work in progress is as it was.'}`);
