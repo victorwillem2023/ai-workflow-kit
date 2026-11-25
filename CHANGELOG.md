@@ -2,6 +2,15 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.21.0**: **every outside service has a failure plan, the heavy request has a home and a limit, and a page kept on the
+  phone is replaced safely.** A real project's route planner blocks an address after a few hundred requests, and a bad version
+  kept for offline use stays on phones. `COMMON.md`, *When an outside service fails*: a plan per service, `callOutside` and a drill
+  test with `cutOff` (`src/server/outside.ts`), a row each in `docs/ARCHITECTURE.md`. `SCALING.md`, *The heavy work*: where it runs,
+  its wall, `perMinute` per person on its route, shared answers cached, a load test of the real request (`load.requests`,
+  `load.headers`). `RELEASES.md`, *Apps that stay on the phone*: the cache named by version, a new build offered, one built before
+  `MIN_CLIENT_BUILT` replaced (`src/web/update.ts`, `built` in `/health`). After updating: an existing project brings `perMinute`
+  (`src/server/http.ts`) and `built` in `/health` (`src/server/shutdown.ts`) in with one small card; the update adds
+  `outside.ts` and `update.ts`. Tests in `outside`, `update`, `http`, `production`, `rank-weight-changelog`.
 - **4.20.0**: **each page is weighed by what it loads at start-up and timed on a slow phone, a web app's shape is picked at
   setup, and real phones' speed reaches the log.** On a real project a page took 7 seconds to start on a phone and only a spike
   found it. The page weight check weighs each built page with what it loads at once (`lib/perfbudget.mjs` startupFiles; an
