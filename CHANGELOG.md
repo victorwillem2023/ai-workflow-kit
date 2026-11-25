@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.22.1**: **the speed check finds the pages where the build put them and says when it timed nothing, pages are timed in the
+  running app, and an update keeps a test beside a file the project changed.** On Trailsmith (a build in `dist/web`) the speed
+  check found no page and passed, and the update broke the typecheck by replacing the kit's logs test while keeping the
+  project's own `logs.mjs`. `lib/perfbudget.mjs` pageRoots; TIMED NOTHING said out loud; `performance.speed.serve` times the pages
+  too; `install.mjs` puts such a test back and names it. Correction to 4.20.0 and 4.21.0: a project without the production module
+  gets its helper files with `--update --with production`, but its own server stays its own, so connecting them is a card of its
+  own size, not always a small one. Tests in `rank-weight-changelog`, `outside`.
 - **4.22.0**: **the speed check times the steps a person takes, on slow and fast 4G, with what each step downloads and the
   numbers before.** On a real project a phone screen loaded the desktop map before its first card, and only feel showed it. A
   smoke walk names its steps in the owner's words and can swipe (`walk.mjs`); the walks `performance.speed.walks` lists are timed
