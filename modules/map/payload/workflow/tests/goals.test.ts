@@ -49,4 +49,11 @@ describe('goals from the app map', () => {
       assert.deepEqual(odd.find((g) => g.id === `request:${kind}`)?.plan, [21], `${kind} finds the to-a-top page`);
     }
   });
+  it('says what a goal is about, so the cards its ends miss can be found (lib/goalcards.mjs)', () => {
+    const top = goals.find((g) => g.id === 'request:to-a-top');
+    assert.deepEqual(top?.places, ['What someone asks › A hike to a top', 'Planning › Finding the places', 'Planning › Making the candidates']);
+    assert.deepEqual(top?.ends, [{ text: 'says so', where: 'What someone asks › A hike to a top' }, { text: 'asks', where: 'Planning › Finding the places' }, { text: 'one way', where: 'Planning › Making the candidates' }]);
+    const make = goals.find((g) => g.id === 'part:make');
+    assert.deepEqual([make?.places, make?.words], [['Planning › Making the candidates'], ['Making the candidates', 'one way']]);
+  });
 });

@@ -1,0 +1,12 @@
+type Card = { number: number; title: string; state: string; labels: string[]; column?: string | null; body?: string | null };
+export type Goal = { name: string; kind?: string; area?: string; words?: string[]; places?: string[]; files?: string[]; ends?: { text: string; where: string }[] };
+export type Found = { number: number; title: string; column: string; score: number; why: string[]; end: { text: string; where: string } | null };
+export type Part = { name: string; cards: number[] };
+export function wordsOf(text: string): string[];
+export function gatherFor(goal: Goal, all: Card[], options?: { mine?: number[]; skip?: number[]; areas?: string[]; places?: Map<number, string[]>; files?: Map<number, string[]> }): Found[];
+export function gatherLines(found: Found[], name: string, options?: { shown?: number }): string[];
+export function splitGoal(order: number[], options: { all: Card[]; places?: Map<number, string[]>; areas?: string[]; size?: number }): Part[];
+export function currentPart(parts: Part[] | undefined, all: Card[], parked?: number[]): number;
+export function laterCards(parts: Part[] | undefined, all: Card[], parked?: number[]): number[];
+export function partLine(parts: Part[] | undefined, all: Card[], parked?: number[]): string;
+export function splitLines(parts: Part[], open: number): string[];

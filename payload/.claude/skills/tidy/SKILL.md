@@ -69,7 +69,7 @@ One goal for the coming days, with a finish line, and the rest waits: the owner 
 
 1. Run `npm run board -- --focus`.
    - **A goal or block is picked and not done**: say its line and its next card. Things "left with no card yet": go to step 3
-     to make them. Otherwise stop here.
+     to make them. It prints `gather:` or `split:`: do those (step 3). Else stop.
    - **Otherwise** it prints the goals to pick from (with the app map), each with its count and what is left. Without the app
      map it prints blocks of one area label instead.
 2. Ask with AskUserQuestion, one choice per goal (at most four), each in plain words: what it makes better for the person
@@ -89,6 +89,10 @@ One goal for the coming days, with a finish line, and the rest waits: the owner 
      and the app map, and the owner decides each row). Code health with no card: propose at most five from `npm run health`
      (the biggest files, the longest functions, the flaky tests), labelled `area: Code health`. Make the approved ones with
      `/idea` (they are the owner's, so no `--unsorted`) and add each to the goal: `--focus --add <n>`.
+   - **Gather** (the pick prints `gather:`, or `--focus --gather`): cards that look like they belong, with why. Read the doubtful
+     ones (`--show <n>`); add those that belong (`--focus --add <n,m>`), each on its closest end in `docs/flow/map.js`
+     (`card: [<n>]`); the others `--focus --not <n,m>`. Sorting: do it, say it in one line.
+   - **Too big** (`split:`): `--focus --split --yes`, or better parts (`--focus --split "<name>: <n,m>" ...`); say them.
    - **The plan, for one yes**: read each goal card (`--show <n>`); write what it needs first (`--depends <n> <m>`) and the
      files it will change (`--touches <n> "<paths>"`, a guess from the map and code). Write the finish line, what must work
      when it is done (`npm run board -- --plan --finish "<what>"`). Say the waves in plain words ("first #4, #7 and #9 side by

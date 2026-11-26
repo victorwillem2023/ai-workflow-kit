@@ -34,6 +34,10 @@
 //   --plan [--finish "<line>"]   the picked goal's plan: its cards in waves (what they need first, no two in a wave on one file;
 //                                lib/goalplan.mjs), its finish line (--finish writes it), what waits outside it, and how much it grew
 //   --park <n,m>                 cards made along the way that the goal's finish line does not need: out of the goal, offered when it is done
+//   --focus --gather [--all]     the open cards that look like they belong to the picked goal and are not in it, best first, each with why
+//                                (lib/goalcards.mjs); --focus --not <n,m>: not this goal's, never offered for it again
+//   --focus --split [--yes | --none | "<name>: <n,m>"...]   a goal too big for one go in parts, one after another: the proposal, taken
+//                                with --yes, or your own; --next offers only the part now
 //   --touches <number> "<paths>" writes card <number>'s "Touches" line: the files it will change, for the plan and today's work
 //   --depends <number> <n,m>     card <number> needs #n and #m done first: writes or extends its "Depends on:" line
 //   --rate <number> value high   set one label of a group (value, effort, feasibility) and take off its others
@@ -60,7 +64,7 @@ import { codeTest } from './lib/lang.mjs';
 import { matchesAny } from './lib/glob.mjs';
 import { calibrate } from './lib/shipped.mjs';
 import { codeAdvice } from './lib/cardcode.mjs';
-import { together, togetherLines } from './lib/together.mjs'; import { claimOf, touchedPaths } from './lib/claims.mjs'; import { growthLine, growthOf, planLines, waveLine, wavesOf } from './lib/goalplan.mjs'; import { mainOf, neverIn, resolverFor, sessionClaims } from './lib/sessionclaims.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs';
+import { together, togetherLines } from './lib/together.mjs'; import { claimOf, touchedPaths } from './lib/claims.mjs'; import { growthLine, growthOf, planLines, waveLine, wavesOf } from './lib/goalplan.mjs'; import { mainOf, neverIn, resolverFor, sessionClaims } from './lib/sessionclaims.mjs'; import { besideLine, today, todayLines } from './lib/today.mjs'; import { currentPart, gatherFor, gatherLines, laterCards, partLine, splitGoal, splitLines } from './lib/goalcards.mjs';
 import { expired, focusLine, focusState, goalCount, goalLine, healthGoal, HEALTH, labelGoal, proposeBlocks, renderBlocks, renderGoals, renderSweep, roomLines, roomToStart, sourcesFor, suggestGoals, sweepGroups, toSort, upkeepDue, urgentOutside, whereYouWere } from './lib/focus.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -162,11 +166,11 @@ async function gatherGoals(config, all) {
         const area = bugs.find((b) => h.what.includes(String(b.area ?? 'no area').replace(/^area:\s*/i, '')))?.area;
         const g = labelGoal(`bugs:${String(area ?? 'none').replace(/^area:\s*/i, '').toLowerCase().replace(/\W+/g, '-')}`, `Stabilise ${String(area ?? 'the cards with no area').replace(/^area:\s*/i, '')}: its open bugs`, all.filter((c) => c.labels.includes('bug') && (area ? c.labels.includes(area) : !(board.labels?.areas ?? []).some((a) => c.labels.includes(a)))), ['bug']);
         // a goal like the others, never "due": it is offered beside the product's own goals, not before them
-        goals.push({ ...g, kind: 'bugs', due: false, notes: [h.principle] });
+        goals.push({ ...g, kind: 'bugs', due: false, notes: [h.principle], area });
       }
       if (s === 'health') {
         const g = healthGoal(all, healthNumbers(config), readJson(commonFile('workflow-health-seen.json')), { health: board.health ?? HEALTH, every: board.upkeepEvery ?? 8 });
-        goals.push({ ...g, notes: [...g.notes, ...spots.filter((x) => x.kind !== 'bug-cluster' && x.kind !== 'fix-streak').slice(0, 3).map((x) => `${x.what} (${x.principle.split(':')[0]})`)] });
+        goals.push({ ...g, area: board.health ?? HEALTH, notes: [...g.notes, ...spots.filter((x) => x.kind !== 'bug-cluster' && x.kind !== 'fix-streak').slice(0, 3).map((x) => `${x.what} (${x.principle.split(':')[0]})`)] });
       }
     }
   }
@@ -189,18 +193,38 @@ async function focusCommand(config, all) {
     // a parked card put in again is not parked any more; until the finish line is written the plan is still being made, so
     // what goes in is part of it, not growth (lib/goalplan.mjs growthOf)
     const picked = now.finish || !Array.isArray(now.picked) ? now.picked : [...new Set([...now.picked, ...ns])];
-    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, ...ns])], picked, parked: (now.parked ?? []).filter((n) => !ns.includes(n)) }, null, 2) + '\n');
+    // a goal in parts: what joins it joins the part now (the last one when all are built), so --next and the part line count it
+    const cur = now.parts?.length ? currentPart(now.parts, all, now.parked ?? []) : -1;
+    const into = !now.parts?.length ? -1 : cur < 0 ? now.parts.length - 1 : cur;
+    const parts = into < 0 ? now.parts : now.parts.map((p, i) => ({ ...p, cards: i === into ? [...new Set([...p.cards, ...ns])] : p.cards.filter((n) => !ns.includes(n)) }));
+    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, ...ns])], picked, parked: (now.parked ?? []).filter((n) => !ns.includes(n)), parts }, null, 2) + '\n');
     console.log(`board: #${ns.join(', #')} ${ns.length === 1 ? 'is' : 'are'} in the focus "${now.theme}" now`);
+    return;
+  }
+  if (word === '--not') {
+    if (!now?.goal) throw new BoardError('No goal is picked, so no card can be left out of one: npm run board -- --focus shows what to pick from.');
+    const ns = String(argv[at + 2] ?? '').split(',').map(cardNumber);
+    const no = notThis();
+    writeFileSync(notThisFile(), JSON.stringify({ ...no, [now.goal]: [...new Set([...(no[now.goal] ?? []), ...ns])] }, null, 2) + '\n');
+    console.log(`board: #${ns.join(', #')} ${ns.length === 1 ? 'is' : 'are'} not of the goal "${now.theme}": never offered for it again`);
     return;
   }
   const goals = await gatherGoals(config, all);
   const blocks = proposeBlocks(all, focusOptions(board));
-  if (word && !word.startsWith('--')) { pickFocus(config, all, goals, blocks, word, argv[at + 2]); return; }
+  if (word === '--gather' || word === '--split') {
+    const f = now?.goal ? focusNow(board, all, goals) : null;
+    if (!f) throw new BoardError('No goal is picked: npm run board -- --focus shows what to pick from (/tidy focus).');
+    if (word === '--gather') console.log(gatherLines(await gathered(board, all, goals, f), now.theme, { shown: argv.includes('--all') ? Infinity : 15 }).join('\n'));
+    else await splitCommand(board, all, now, f, argv.slice(at + 2));
+    return;
+  }
+  if (word && !word.startsWith('--')) { await pickFocus(config, all, goals, blocks, word, argv[at + 2]); return; }
   const f = focusNow(board, all, goals);
   if (f && !f.finished) {
     console.log(f.line);
     for (const c of f.state.left) console.log(`  #${c.number} ${c.title} (${c.why})`);
     for (const l of f.extra) console.log(l.replace(/^next goal: /, '').replace(/ \([^()]*\)$/, '')); // (this is the focus step already)
+    if (now.goal) for (const l of await goalCardLines(board, all, goals, f)) console.log(l);
     // what comes after it, without dropping it: --all lists the other goals (or blocks) to pick from next
     const others = goals.filter((g) => g.left > 0 && g.id !== now.goal);
     if (argv.includes('--all')) {
@@ -221,22 +245,89 @@ function focusNow(board, all, goals) {
   const now = readFocus();
   if (!now) return null;
   const g = now.goal ? goals.find((x) => x.id === now.goal) : null;
-  // a parked card stays out, also one the goal itself would take in (its area, its flow page)
-  const cards = [...new Set([...now.cards, ...(g?.cards ?? [])])].filter((n) => !(now.parked ?? []).includes(n));
+  // a parked card stays out, also one the goal itself would take in (its area, its flow page); so do the cards of a later part
+  const later = laterCards(now.parts, all, now.parked ?? []);
+  const cards = [...new Set([...now.cards, ...(g?.cards ?? [])])].filter((n) => !(now.parked ?? []).includes(n) && !later.includes(n));
   const state = focusState(all, { ...now, cards }, focusOptions(board));
   const say = { sessions: sessionCards() }; // the work in progress by session folder, as --room counts it
-  if (!g) return { state, cards, plan: [], line: focusLine(state, say), finished: state.finished, extra: [] };
+  if (!g) return { state, cards, later, plan: [], line: focusLine(state, say), finished: state.finished, extra: [] };
   // what is left, without the parked cards: they wait for after the goal, so they never hold it open
   const parkedOpen = (now.parked ?? []).filter((n) => (g.cards ?? []).includes(n) && all.some((c) => c.number === n && !isDone(c))).length;
   const left = Math.max(0, g.left - parkedOpen);
-  const stuck = state.finished && left > 0;
+  const stuck = state.finished && left > 0 && !later.length;
   // said at the top of --next (withinFocus): the goal cannot move, so its next step comes before any card or clean-up
   const extra = stuck ? [`next goal: nothing of this goal can be started (${g.uncarded || left} thing${(g.uncarded || left) === 1 ? '' : 's'} left ${g.uncarded ? 'with no card yet' : 'on cards that wait'}${g.notes[0] ? `, ${g.notes[0]}` : ''}): make ${g.uncarded ? 'those cards' : 'what they wait for'}, or finish it and pick the next goal (${FOCUS_STEP})`] : [];
-  return { state, cards, plan: g.plan ?? [], line: goalLine({ ...g, left }, state, say), finished: state.finished && left === 0, extra };
+  const part = partLine(now.parts, all, now.parked ?? []);
+  return { state, cards, later, plan: g.plan ?? [], line: `${goalLine({ ...g, left }, state, say)}${part ? `; ${part}` : ''}`, finished: state.finished && left === 0 && !later.length, extra };
+}
+
+// The cards the owner said are not a goal's (--focus --not): { <goal id>: [n] }, in git's common folder like the focus.
+const notThisFile = () => commonFile('workflow-gather-no.json');
+const notThis = () => readJson(notThisFile()) ?? {};
+
+/** The open cards that look like they belong to the picked goal and are not in it (lib/goalcards.mjs gatherFor). `f`: focusNow(). */
+async function gathered(board, all, goals, f) {
+  const now = readFocus();
+  if (!now?.goal || !f) return [];
+  const g = goals.find((x) => x.id === now.goal) ?? { name: now.theme };
+  const mine = [...new Set([...f.cards, ...f.later, ...(now.picked ?? [])])];
+  return gatherFor(g, all, { mine, skip: [...(now.parked ?? []), ...(notThis()[now.goal] ?? [])], areas: board.labels?.areas ?? [], places: await cardPlaces(), files: writtenFiles(all) });
+}
+
+/** How many open cards a goal holds before it is cut in parts (`board.goalSize`, 30: goals of 20 to 30 cards work in one go), and about how many a part holds (`board.partSize`, 10). */
+const goalMax = (board) => board.goalSize ?? 30;
+const partMax = (board) => Math.min(board.partSize ?? 10, goalMax(board));
+const openOf = (all, ns) => ns.filter((n) => all.some((c) => c.number === n && !isDone(c)));
+
+/** The picked goal in parts (lib/goalcards.mjs splitGoal): all its cards, in its plan's order, grouped by where they sit. */
+async function proposedSplit(board, all, f) {
+  const whole = { ...f, cards: [...new Set([...f.cards, ...f.later])] };
+  const plan = goalPlan(all, whole, rankedOf(board, all));
+  const order = [...plan.waves.flat().map((x) => x.card), ...whole.cards];
+  const open = openOf(all, whole.cards).length;
+  // up to goalMax it is one go; your own parts (--focus --split "<name>: <n,m>") still cut a smaller one
+  return { open, parts: open > goalMax(board) ? splitGoal(order, { all, places: await cardPlaces(), areas: board.labels?.areas ?? [], size: partMax(board) }) : [] };
+}
+
+/** What the goal's own rule missed (gather:, when anything) and a split when it is too big and has no parts: for --focus and a pick. */
+async function goalCardLines(board, all, goals, f) {
+  const found = await gathered(board, all, goals, f);
+  const split = Array.isArray(readFocus()?.parts) ? null : await proposedSplit(board, all, f); // (cut, or kept whole on purpose)
+  return [...(found.length ? gatherLines(found, readFocus().theme) : []), ...(split?.parts.length ? splitLines(split.parts, split.open) : [])];
+}
+
+/** --focus --split: the parts now, or the proposal; --yes takes it, "<name>: <n,m>" writes your own, --none drops them. */
+async function splitCommand(board, all, now, f, args) {
+  const save = (parts, said) => {
+    writeFileSync(focusFile(), JSON.stringify({ ...now, cards: [...new Set([...now.cards, ...(parts ?? []).flatMap((p) => p.cards)])], parts }, null, 2) + '\n');
+    console.log(said);
+  };
+  // an empty list: the owner keeps it whole, so it is not proposed again for this round of the goal
+  if (args[0] === '--none') { save([], `board: "${now.theme}" is kept whole: --next offers all its cards, and no split is proposed again`); return; }
+  const own = args.filter((a) => !a.startsWith('--'));
+  if (own.length) {
+    const parts = own.map((a) => {
+      const m = /^(.+?):\s*([#\d,\s]+)$/.exec(a);
+      if (!m) throw new BoardError(`"${a}" is no part: write it as "<name>: <n,m>", for example "Offline: 12,15".`);
+      return { name: m[1].trim(), cards: m[2].split(/[\s,]+/).filter(Boolean).map(cardNumber) };
+    });
+    const shut = parts.flatMap((p) => p.cards).filter((n) => !all.some((c) => c.number === n && c.state === 'open'));
+    if (shut.length) throw new BoardError(`#${shut.join(', #')} ${shut.length === 1 ? 'is not an open card' : 'are not open cards'}: no part was saved.`);
+    save(parts, `board: "${now.theme}" in ${parts.length} parts now; ${partLine(parts, all) || 'every part is done'}`);
+    return;
+  }
+  const { open, parts } = await proposedSplit(board, all, f);
+  if (args[0] === '--yes') {
+    if (!parts.length) throw new BoardError(`"${now.theme}" has ${open} open cards: small enough for one go, so there is nothing to split.`);
+    save(parts, `board: "${now.theme}" in ${parts.length} parts now; ${partLine(parts, all)}`);
+    return;
+  }
+  if (now.parts?.length) console.log([`parts of "${now.theme}": ${partLine(now.parts, all) || 'all done'}`, ...now.parts.map((p, i) => `  ${i + 1}. ${p.name}: #${p.cards.join(', #')}`), '(cut again: --focus --split --yes takes a new proposal; none: --focus --split --none)'].join('\n'));
+  else console.log(splitLines(parts, open).join('\n'));
 }
 
 /** Picks a goal (by its id or name) or an area's block: the cards named, else the goal's or the block's own. */
-function pickFocus(config, all, goals, blocks, name, numbers) {
+async function pickFocus(config, all, goals, blocks, name, numbers) {
   const board = config.board;
   const low = name.toLowerCase();
   const named = String(numbers ?? '').split(/[\s,]+/).filter((x) => x && !x.startsWith('--'));
@@ -249,8 +340,10 @@ function pickFocus(config, all, goals, blocks, name, numbers) {
   const save = (focus, said) => {
     // what it holds from the start: the cards named and the goal's own (focusNow takes those in too), never counted as growth
     const start = [...new Set([...focus.cards, ...(goals.find((x) => x.id === focus.goal)?.cards ?? [])])];
-    const kept = again(focus) ? { picked: was.picked ?? start, since: was.since, finish: was.finish, parked: was.parked } : { picked: start, since: new Date().toISOString().slice(0, 10) };
-    writeFileSync(focusFile(), JSON.stringify({ ...focus, ...kept, cards: focus.cards.filter((n) => !(kept.parked ?? []).includes(n)) }, null, 2) + '\n');
+    const kept = again(focus) ? { picked: was.picked ?? start, since: was.since, finish: was.finish, parked: was.parked, parts: was.parts } : { picked: start, since: new Date().toISOString().slice(0, 10) };
+    // picked again while it runs: the cards added to it (gathered, --add) and its parts' cards stay in it, unless cards are named
+    const held = again(focus) ? [...(named.length ? [] : was.cards), ...(was.parts ?? []).flatMap((p) => p.cards)] : [];
+    writeFileSync(focusFile(), JSON.stringify({ ...focus, ...kept, cards: [...new Set([...focus.cards, ...held])].filter((n) => !(kept.parked ?? []).includes(n)) }, null, 2) + '\n');
     console.log(said);
   };
   const g = goals.find((x) => x.id.toLowerCase() === low || x.name.toLowerCase() === low);
@@ -259,6 +352,9 @@ function pickFocus(config, all, goals, blocks, name, numbers) {
     // the numbers as they are now: the goal is due again when one of them is worse than this
     if (g.kind === 'health') writeFileSync(commonFile('workflow-health-seen.json'), JSON.stringify(healthNumbers(config), null, 2) + '\n');
     save({ theme: g.name, goal: g.id, cards }, `board: the goal is "${g.name}" now (${goalCount(g)}): ${cards.length ? cards.map((n) => `#${n}`).join(', ') : 'no card yet'}${g.uncarded ? `; ${g.uncarded} thing${g.uncarded === 1 ? '' : 's'} left with no card yet` : ''}. --next offers only its cards until it is done; new cards wait.`);
+    // what the goal's own rule missed, and whether it is too big for one go: said at once, so nothing is forgotten
+    const lines = await goalCardLines(board, all, goals, focusNow(board, all, goals));
+    console.log((lines.length ? lines : ['(nothing else on the board looks like it belongs to this goal, and it is small enough for one go)']).join('\n'));
     return;
   }
   const same = (a) => a.toLowerCase() === low || a.toLowerCase().replace(/^area:\s*/, '') === low;
@@ -441,8 +537,10 @@ async function withinFocus(config, all, ranked) {
   const parkedLine = parked.length ? [`(parked while it ran: #${parked.join(', #')}: look at them first for the next goal)`] : [];
   if (f.finished) return { ranked, before: [...before, `next goal: "${readFocus().theme}" is done: pick the next one, with its plan (${FOCUS_STEP})`, ...parkedLine], after: [...sort, ...due, ...anatomyNote(config)], line: null };
   const mine = new Set(f.cards);
-  const outside = ranked.filter((c) => !mine.has(c.number)).length;
-  const urgent = urgentOutside(all, { cards: f.cards });
+  // a later part of the goal is the goal's, not outside it
+  const goalOwn = new Set([...f.cards, ...f.later]);
+  const outside = ranked.filter((c) => !goalOwn.has(c.number)).length;
+  const urgent = urgentOutside(all, { cards: [...goalOwn] });
   const after = [
     ...(urgent.length ? [`(outside the focus but urgent: ${urgent.map((c) => `#${c.number} ${c.title}`).join('; ')}: a bug of high value)`] : []),
     ...(outside ? [`(${outside} other card${outside === 1 ? '' : 's'} can be started but wait${outside === 1 ? 's' : ''} for a later goal)`] : []), ...sort, ...due, ...anatomyNote(config)];
@@ -456,6 +554,11 @@ async function withinFocus(config, all, ranked) {
   const byKey = (a, b) => { const [x, y] = [key(a), key(b)]; return x[0] !== y[0] ? (x[0] < y[0] ? -1 : 1) : x[1] === y[1] ? 0 : x[1] < y[1] ? -1 : 1; };
   const focus = readFocus();
   const planSaid = [waveLine(plan), growthLine(growthOf(focus, f.cards)), ...(focus?.goal && !focus.finish ? ['(no finish line written for this goal: /tidy focus writes it with its plan, so new cards know whether they belong in it)'] : [])].filter(Boolean);
+  // what the goal's own rule missed, and a goal too big for one go (lib/goalcards.mjs)
+  const found = await gathered(board, all, goals, f);
+  if (found.length) planSaid.push(`(${found.length} open card${found.length === 1 ? ' looks' : 's look'} like ${found.length === 1 ? 'it belongs' : 'they belong'} to this goal and ${found.length === 1 ? 'is' : 'are'} not in it: ${found.slice(0, 5).map((x) => `#${x.number}`).join(', ')}${found.length > 5 ? ', ...' : ''}; ${FOCUS_STEP} gathers them)`);
+  const open = openOf(all, [...f.cards, ...f.later]).length;
+  if (focus?.goal && !Array.isArray(focus.parts) && open > goalMax(board)) planSaid.push(`(this goal has ${open} open cards, too many for one go: ${FOCUS_STEP} cuts it in parts)`);
   return { ranked: [...kept].sort(byKey), before: [...before, f.line, ...f.extra, ...planSaid], after, line: f.line };
 }
 
