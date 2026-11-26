@@ -2,6 +2,13 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.23.0**: **a goal finds the cards its own rule missed, and a goal too big for one go is cut in parts.** A goal counted only
+  the cards on its map ends, or bugs with its one area label, so older cards, ones labelled otherwise or under a nearby area sat
+  forgotten while it looked nearly done. Picking a goal now lists the open cards that look like they belong, each with why (its
+  words, a file it changes, its place on the map; the same area only adds weight); `/tidy focus` takes in the ones that belong,
+  each on its map end, and marks the others not this goal (`--focus --gather`, `--not`); `--next` says when new ones turn up.
+  Over `board.goalSize` (30) open cards a cut in parts of about `board.partSize` (10) is proposed (`--focus --split`): `--next`
+  offers only the part now. `lib/goalcards.mjs`. Tests in `goalcards`, `goals`.
 - **4.22.1**: **the speed check finds the pages where the build put them and says when it timed nothing, pages are timed in the
   running app, and an update keeps a test beside a file the project changed.** On Trailsmith (a build in `dist/web`) the speed
   check found no page and passed, and the update broke the typecheck by replacing the kit's logs test while keeping the
