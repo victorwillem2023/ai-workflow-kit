@@ -19,6 +19,8 @@ each (`workflow/guides/TESTING.md`, *The levels*). A part that waits on data (a 
   what the person is typing lives in the form; what only one screen needs lives in that screen; only what many screens share
   (who is signed in, the theme) is shared. A value kept in two places will disagree.
 - **Derived, not stored**: a total, a filtered list or "is this valid" is worked out from the state each time, never stored beside it.
+- **One state, every screen**: what the computer and the phone both draw is one state; each field is drawn on both or named
+  as one's with why (`views` in `workflow/config.json`, the gate's *views* check).
 - **The address holds what can be shared**: a filter, a page, an open item go in the URL, so a link and the back button work.
 
 ## Getting data

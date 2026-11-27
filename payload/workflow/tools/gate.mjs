@@ -36,7 +36,7 @@ import { findStaleRefs, newStaleRefs, staleKey } from './lib/docrefs.mjs';
 import { codeTest } from './lib/lang.mjs';
 import { longFunctions, copiedFunctions, deepFunctions, copiedTests } from './lib/funclen.mjs';
 import { importCycles, untestedFiles } from './lib/structure.mjs'; import { appSteps } from './lib/apps.mjs';
-import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { clashAdvice, clashes, claimOf, settledFiles, stackOf } from './lib/claims.mjs'; import { changedIn, mainOf, neverIn, sessionClaims } from './lib/sessionclaims.mjs'; import { endStateProblems, isApproved } from './lib/endstate.mjs'; import { gatePassAdvice, gatePassOf, isTreeish, recordGatePass, recordShipPass, shipPassOf, treeOf, untrackedInputs } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
+import { kitFilesIn, namesKitFiles, specPaths, outsideSpec, ownTestFiles } from './lib/scope.mjs'; import { clashAdvice, clashes, claimOf, settledFiles, stackOf } from './lib/claims.mjs'; import { changedIn, mainOf, neverIn, sessionClaims } from './lib/sessionclaims.mjs'; import { endStateProblems, isApproved, phoneLineProblems } from './lib/endstate.mjs'; import { gatePassAdvice, gatePassOf, isTreeish, recordGatePass, recordShipPass, shipPassOf, treeOf, untrackedInputs } from './lib/shippass.mjs'; import { onlyCheck, onlyFiles } from './lib/only.mjs'; import { longRuleCells } from './lib/rulerows.mjs';
 import { parseScore, qualityVerdict } from './lib/quality.mjs';
 import { countPatterns, risen } from './lib/ratchet.mjs';
 import { addedDependencies, unnamedDependencies } from './lib/deps.mjs';
@@ -47,7 +47,7 @@ import { policySteps, dataAdvice } from './lib/policy.mjs';
 import { dueChecks, missingPartners } from './lib/checks.mjs';
 import { secretsIn, envFiles } from './lib/secrets.mjs'; import { MAIN, ORIGIN_MAIN } from './lib/branch.mjs';
 import { FILE as LEVELS_FILE, levelOf, loosenedLine, readLevels } from './lib/levels.mjs';
-import { appsOf, surfacesOf } from './lib/surfaces.mjs'; import { lines } from './lib/text.mjs'; import { useFolderEnv } from './lib/folderenv.mjs';
+import { appsOf, onPhone, surfacesOf } from './lib/surfaces.mjs'; import { viewsCheck } from './lib/views.mjs'; import { lines } from './lib/text.mjs'; import { useFolderEnv } from './lib/folderenv.mjs';
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 process.chdir(root);
@@ -428,6 +428,12 @@ const steps = [
     const out = [...problems, ...missing.map((a) => `project.surfaces names an app that is not there yet: ${a} (an entry in "apps" in the config, made when its first card is built)`)];
     return problems.length ? { ok: false, out: out.join('\n') } : { ok: true, note: `${names.join(', ')}${missing.length ? `; ${missing.join(', ')} not made yet` : ''}` };
   }],
+  // one state, every view (lib/views.mjs): each field of a state the computer and the phone both draw is read by both, or listed as one's
+  config.views?.length && ['views', () => {
+    const all = [...new Set([...git('ls-files').split('\n'), ...git('ls-files', '--others', '--exclude-standard').split('\n')])].filter((f) => f && isCode(f) && !isTest(f));
+    const out = viewsCheck(config.views, { files: all, read: readText, matches: matchesAny });
+    return out.length ? { ok: false, out: out.join('\n') } : { ok: true, note: `${config.views.length} shared state${config.views.length === 1 ? '' : 's'}: every view reads every field` };
+  }],
   ['docs', () => {
     const fresh = newStaleRefs(staleRefs, baseline.docs ?? []);
     if (fresh.length) return { ok: false, out: fresh.map((s) => `${s.doc}:${s.line} names ${s.ref}, which does not exist`).join('\n') };
@@ -436,8 +442,11 @@ const steps = [
   // an approved spec names its end state, the best version, before it picks one (lib/endstate.mjs); its advice prints at the end
   ['spec', () => {
     const specs = specFiles();
-    const { fails, advice } = endStateProblems(specs);
-    specAdvice.push(...advice);
+    const end = endStateProblems(specs);
+    // with a phone among the surfaces, the plan also says what the phone shows of it
+    const phone = phoneLineProblems(specs, onPhone(surfacesOf(config).names));
+    const fails = [...end.fails, ...phone.fails];
+    specAdvice.push(...end.advice, ...phone.advice);
     return fails.length ? { ok: false, out: fails.join('\n') } : { ok: true, note: specs.some(([, t]) => isApproved(t)) ? 'the end state is named' : 'no approved spec here' };
   }],
   // the changed code keeps problems findable: no empty catch, no console in the server; another language's: "not checked" (lib/errorrules.mjs)

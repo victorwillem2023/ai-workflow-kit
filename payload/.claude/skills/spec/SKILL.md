@@ -96,6 +96,9 @@ It waits for the owner's yes with the spec's (`--accept <n>` when the spec is ap
 
 - **How it moves or feels** (gestures, scrolling, animation, loading): the End state line names the best known way
   (`workflow/guides/SCREENS.md`, *Feel*); a part still to prove on the phone is a spike first, not a spec.
+- **Used on a phone** (`npm run surfaces` has a phone width): the "On the phone:" line says what the phone shows, planned with
+  the computer's view, so neither is built twice. A state both draw is an entry in `views` (`workflow/config.json`): its
+  new fields are drawn on both, or go under `only` with why (the gate's *views* check).
 - **Hard to undo** (a new service or datastore, a platform or provider, a boundary): suggest `/arch` first (the architecture
   board, `docs/run/SCALING.md`), and write the spec on the decision it accepts.
 - **Under `infra/`**: the spec names what it expects the plan to do; that becomes the stack's `plan.expect` (`docs/run/IAC.md`).

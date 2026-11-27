@@ -128,6 +128,9 @@ Quiet on success (one line per check); after the checks it prints one `advice:` 
   server folder when the change adds no test named for who is refused (signed out, another user's).
 - **together** (when `together` is in the config): files that change together.
   `{ "name": "migration", "when": ["src/db/schema.ts"], "needs": ["migrations/**"] }` fails a change to the tables that adds no migration.
+- **views** (`views` in the config, `lib/views.mjs` has the shape): every field of a state two views draw is read by each
+  (`x.field`, `{ field }`; not in comments or tests), or listed in `only` as one view's with why. With a phone among the
+  surfaces, the *spec* check refuses an approved spec with an empty "On the phone:" line.
 - **your own checks** (`checks` in the config), after the tests, each a command that must pass:
   `{ "name": "e2e", "command": "npx playwright test", "when": ["src/web/**"], "all": true, "setup": "npx playwright install --with-deps chromium" }`.
   `when`: only when a changed file matches; `all`: only with `--all` (slow ones); `setup`: run first, on GitHub only. The kit sets
@@ -213,7 +216,7 @@ and the stop-point hook refuses a shell write to it). Three kinds of rule, each 
 | Kind | Which | Adjustable? |
 |---|---|---|
 | safety stops | commit and push wait for your word, the sign-off, secrets, leaks, migrations, the AI wrapper, the image, the network, the packages, typecheck, tests | no: on, or the part is not installed (a level for one fails the gate) |
-| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, spec, covers, errors, waits, map, harness, versions, settings, spikes, together, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
+| quality checks | layers, size, functions, ratchets, nesting, circles, untested, naming, copies, budget, docs, spec, covers, errors, waits, map, harness, versions, settings, spikes, together, views, scope, quality, and the project's own `checks` | per check: `fail`, `advise` (said, and the gate passes) or `off` (skipped, and said) |
 | process weight | a spec, a pitch (`/shape`), a UI board, a fresh review at `/ship`, the user guide and app map kept up in the card itself | by the card's size: `process.spec`, `pitch`, `uiBoard`, `review`, `upkeep`, `designs` (`always`, `small`, `medium`, `large`, `never`); below `upkeep` the guide and the app map wait for one `/docs catch-up` pass; from `designs` on `/spec` has two designs drafted apart before it chooses one |
 
 The phase fills them in (`"phase"`; `"preset"` before kit 3.4 is still read; no file is production): `"prototype"` while nothing

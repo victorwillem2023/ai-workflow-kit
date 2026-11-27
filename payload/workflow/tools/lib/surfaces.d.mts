@@ -4,4 +4,5 @@ export function surfacesOf(config: unknown): { names: string[]; problems: string
 export function hasWeb(names: string[]): boolean;
 export function widthsOf(names: string[]): number[];
 export function appsOf(names: string[]): string[];
+export function onPhone(names: string[]): boolean;
 export function surfacesLine(names: string[]): string;

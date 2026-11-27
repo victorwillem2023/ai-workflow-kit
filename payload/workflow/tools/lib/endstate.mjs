@@ -8,6 +8,9 @@ export function endStateOf(spec) {
   return m ? m[1].trim() : null;
 }
 
+/** The text after "On the phone:", or null when the spec has no such line. */
+export const phoneLineOf = (spec) => /^On the phone:[ \t]*(.*)$/m.exec(String(spec ?? ''))?.[1].trim() ?? null;
+
 /** True when the spec says the owner approved it ("Owner approval: approved on ..."). */
 export const isApproved = (spec) => /^Owner approval:\s*approved\b/im.test(String(spec ?? ''));
 
@@ -31,6 +34,23 @@ export function endStateProblems(specs) {
     if (/\bstep\b/i.test(thisSpec) && !/#\d+/.test(thisSpec)) {
       advice.push(`advice: workflow/specs/${name} is a step toward its end state but names no card for the rest: make that card (with "Depends on: #<this card>") and put its number on the End state line`);
     }
+  }
+  return { fails, advice };
+}
+
+/**
+ * The "On the phone:" line of the approved specs, when people use the product on a phone: { fails, advice }. Left as the
+ * template wrote it (empty, or in <angle brackets>) fails: the plan says what the phone shows before anything is built, so the
+ * phone's view is not built a second time. A spec without the line (written before the template had it) gets an advice line.
+ */
+export function phoneLineProblems(specs, phone) {
+  const fails = []; const advice = [];
+  if (!phone) return { fails, advice };
+  for (const [name, text] of specs) {
+    if (!isApproved(text)) continue;
+    const line = phoneLineOf(text);
+    if (line == null) advice.push(`advice: workflow/specs/${name} has no "On the phone:" line: say what the phone shows of this change before it is built (the spec template has the line)`);
+    else if (!line || /^<[^>]*>/.test(line)) fails.push(`workflow/specs/${name}: the "On the phone:" line is empty: say what the phone shows of this change, what it leaves off and why, or "the same as on the computer" (.claude/skills/spec/SKILL.md)`);
   }
   return { fails, advice };
 }

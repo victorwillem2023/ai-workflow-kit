@@ -27,7 +27,7 @@ export const SAFETY = ['secrets', 'leaks', 'signoff', 'migrations', 'ai', 'image
 
 /** The quality checks a level applies to (a project's own `checks` entries are quality checks too, by their names). */
 export const QUALITY = ['layers', 'size', 'functions', 'ratchets', 'nesting', 'circles', 'untested', 'variants', 'budget', 'naming',
-  'copies', 'settings', 'versions', 'spikes', 'covers', 'together', 'scope', 'map', 'requests', 'harness', 'surfaces', 'docs', 'spec', 'errors', 'waits', 'quality'];
+  'copies', 'settings', 'versions', 'spikes', 'covers', 'together', 'scope', 'map', 'requests', 'harness', 'surfaces', 'views', 'docs', 'spec', 'errors', 'waits', 'quality'];
 
 const PROTOTYPE_ADVISE = ['size', 'functions', 'ratchets', 'nesting', 'circles', 'untested', 'budget', 'naming', 'copies', 'covers',
   'docs', 'errors', 'spikes', 'quality', 'map', 'harness', 'waits', 'unused', 'page weight', 'speed'];

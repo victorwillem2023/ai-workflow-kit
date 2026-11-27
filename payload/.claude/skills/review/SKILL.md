@@ -46,6 +46,8 @@ Each answer that is no comes with the file and line.
   a folder or a pattern would name.
 - **The design not taken**: when the spec has a "Design not taken:" line, did the build drift into that design after all (its
   seam, its files)? And is the reason it lost still true now that the code is written? Either one is a finding.
+- **The phone**: with an "On the phone:" line, does the phone's view show what it says? Something drawn on one screen only,
+  that the line does not leave off, is a finding.
 - **Code that grew messier to fit the change** (a file past its size, a function doing two jobs) is a finding, with the split
   or refactor that would clean it. Follow the phase line in CLAUDE.md (*Code structure*): where it says the size rules are
   advice (a prototype), a baselined file that grew is not a finding to fix now; name its split as a *Later* item instead.

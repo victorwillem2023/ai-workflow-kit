@@ -39,6 +39,9 @@ export const hasWeb = (names) => names.some((n) => SURFACES[n]?.web);
 /** The widths a screen is drawn and checked at, smallest first: phone width only when a surface is used on phones. */
 export const widthsOf = (names) => [...new Set(names.flatMap((n) => SURFACES[n]?.widths ?? []))].sort((a, b) => a - b);
 
+/** True when people use the product on a phone (a phone width is drawn): then a plan says what the phone shows ("On the phone:"). */
+export const onPhone = (names) => widthsOf(names).some((w) => w < 600);
+
 /** The apps the surfaces bring (a phone or desktop app is an app of its own: `apps` in the config, lib/apps.mjs). */
 export const appsOf = (names) => [...new Set(names.map((n) => SURFACES[n]?.app).filter(Boolean))];
 
