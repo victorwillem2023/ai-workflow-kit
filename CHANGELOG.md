@@ -2,6 +2,14 @@
 
 What changed in each version of the kit, newest first. Build on the latest tag (the README says which).
 
+- **4.24.0**: **one state for the computer and the phone: the gate says a field drawn on one screen only, and every plan says
+  what the phone shows.** On a real project a field of the shared reply (missed stops) was drawn on the computer and forgotten
+  on the phone, and built a second time. `views` in `workflow/config.json` lists a state both screens draw; the gate's *views*
+  check fails a field one screen reads and the other does not, unless `only` names it as one screen's with why (`lib/views.mjs`).
+  The spec template has an "On the phone:" line; with a phone among the surfaces the gate refuses an approved spec that leaves it
+  empty (an older spec without it gets advice). `/spec` fills it and keeps the `views` entry; `/review` checks the phone
+  against it. A fresh install's `.env.example` lists `APP_BUILT_AT` and `MIN_CLIENT_BUILT`, so its settings check passes.
+  After updating: add the `views` entry for your shared state, or let the next `/spec` on it do so. Tests in `views`.
 - **4.23.0**: **a goal finds the cards its own rule missed, and a goal too big for one go is cut in parts.** A goal counted only
   the cards on its map ends, or bugs with its one area label, so older cards, ones labelled otherwise or under a nearby area sat
   forgotten while it looked nearly done. Picking a goal now lists the open cards that look like they belong, each with why (its
